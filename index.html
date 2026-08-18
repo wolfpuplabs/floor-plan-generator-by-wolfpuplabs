@@ -3,1237 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Reconstruction dengan BIM - Upload Floor Plan</title>
+    <title>3D Architectural Building Generator from Floor Plan</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #fff; overflow: hidden; }
+        #app-container { display: flex; width: 100vw; height: 100vh; }
         
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-            background: #1a1a1a;
-        }
+        /* Sidebar Controls */
+        #sidebar { width: 340px; background: #252526; padding: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.5); overflow-y: auto; }
+        h2 { font-size: 1.1rem; color: #4ec9b0; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 5px; }
+        .control-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 0.85rem; color: #ccc; }
+        input[type="file"], input[type="range"], select { background: #333; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
+        input[type="range"] { accent-color: #4ec9b0; }
+        .val-disp { font-size: 0.75rem; color: #4ec9b0; text-align: right; }
         
-        #container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
+        button { background: #0e639c; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #1177bb; }
         
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-        }
+        /* Preview 2D & Canvas Hidden Process */
+        #preview-container { width: 100%; height: 150px; background: #000; border: 1px dashed #555; display: flex; align-items: center; justify-content: center; position: relative; }
+        #floorplan-canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        #sidebar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 400px;
-            height: 100vh;
-            background: rgba(255, 255, 255, 0.98);
-            overflow-y: auto;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-            z-index: 100;
-            padding: 20px;
-        }
-        
-        #sidebar h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 22px;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-        }
-        
-        .upload-section {
-            background: #ecf0f1;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 2px dashed #3498db;
-        }
-        
-        .upload-section h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-        }
-        
-        .upload-section input[type="file"] {
-            display: none;
-        }
-        
-        .upload-btn {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            background: #3498db;
-            color: white;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            margin-bottom: 10px;
-        }
-        
-        .upload-btn:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
-        
-        #floor-plan-container {
-            position: relative;
-            margin: 20px 0;
-            border: 2px solid #34495e;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        #floor-plan-canvas {
-            display: block;
-            cursor: crosshair;
-            background: #f8f9fa;
-        }
-        
-        .tools {
-            margin: 15px 0;
-        }
-        
-        .tool-group {
-            margin: 10px 0;
-        }
-        
-        .tool-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        
-        .tool-group select,
-        .tool-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #bdc3c7;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .tool-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 10px 0;
-        }
-        
-        .tool-btn {
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-        
-        .tool-btn.active {
-            box-shadow: 0 0 0 3px #3498db;
-        }
-        
-        .tool-btn.wall { background: #e74c3c; color: white; }
-        .tool-btn.door { background: #3498db; color: white; }
-        .tool-btn.window { background: #9b59b6; color: white; }
-        .tool-btn.room { background: #2ecc71; color: white; }
-        .tool-btn.select { background: #f39c12; color: white; }
-        .tool-btn.clear { background: #95a5a6; color: white; }
-        
-        .tool-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        
-        #info-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            max-width: 350px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        #info-panel h2 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 20px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-        }
-        
-        .bim-data {
-            background: #ecf0f1;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border-left: 4px solid #3498db;
-        }
-        
-        .bim-data p {
-            margin: 5px 0;
-            font-size: 13px;
-            color: #2c3e50;
-        }
-        
-        .bim-data strong {
-            color: #e74c3c;
-        }
-        
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        
-        .control-group {
-            margin: 10px 0;
-        }
-        
-        .control-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #2c3e50;
-            font-size: 14px;
-        }
-        
-        .control-group input[type="range"] {
-            width: 200px;
-        }
-        
-        .control-group button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 5px;
-            margin-bottom: 5px;
-            transition: background 0.3s;
-        }
-        
-        .control-group button:hover {
-            background: #2980b9;
-        }
-        
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 30px 50px;
-            border-radius: 10px;
-            font-size: 18px;
-            z-index: 1000;
-            display: none;
-        }
-        
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .stats {
-            background: #34495e;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-size: 13px;
-        }
-        
-        .instructions {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            font-size: 13px;
-        }
-        
-        .instructions ol {
-            margin-left: 20px;
-            margin-top: 5px;
-        }
-        
-        .instructions li {
-            margin: 5px 0;
-        }
+        /* 3D Viewport */
+        #viewport { flex: 1; position: relative; background: #111; }
+        #info-overlay { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 6px; font-size: 0.8rem; pointer-events: none; border: 1px solid #333; }
     </style>
-</head>
-<body>
-    <div id="container">
-        <div id="canvas-container"></div>
-        
-        <div id="loading">
-            <div class="spinner"></div>
-            Memproses...
-        </div>
-        
-        <div id="sidebar">
-            <h2>🏗️ Floor Plan Digitizer</h2>
-            
-            <div class="upload-section">
-                <h3>📤 Upload Gambar Floor Plan</h3>
-                <input type="file" id="file-upload" accept="image/*">
-                <label for="file-upload" class="upload-btn">
-                    Pilih Gambar (JPG/PNG)
-                </label>
-                <div id="file-name" style="text-align: center; margin-top: 10px; font-size: 12px;"></div>
-            </div>
-            
-            <div class="instructions">
-                <strong>Cara Penggunaan:</strong>
-                <ol>
-                    <li>Upload gambar floor plan</li>
-                    <li>Atur skala (meter per pixel)</li>
-                    <li>Pilih tool (dinding, pintu, jendela, ruang)</li>
-                    <li>Klik & drag pada canvas untuk menggambar</li>
-                    <li>Klik "Generate 3D" untuk membuat model</li>
-                </ol>
-            </div>
-            
-            <div class="tools">
-                <div class="tool-group">
-                    <label>Pilih Tool:</label>
-                    <div class="tool-buttons">
-                        <button class="tool-btn wall active" data-tool="wall">🧱 Dinding</button>
-                        <button class="tool-btn door" data-tool="door">🚪 Pintu</button>
-                        <button class="tool-btn window" data-tool="window">🪟 Jendela</button>
-                        <button class="tool-btn room" data-tool="room">🏠 Ruang</button>
-                        <button class="tool-btn select" data-tool="select">🖱️ Pilih</button>
-                        <button class="tool-btn clear" data-tool="clear">🗑️ Hapus</button>
-                    </div>
-                </div>
-                
-                <div class="tool-group">
-                    <label>Tipe Dinding:</label>
-                    <select id="wall-type">
-                        <option value="exterior">Dinding Luar</option>
-                        <option value="interior">Dinding Dalam</option>
-                    </select>
-                </div>
-                
-                <div class="tool-group">
-                    <label>Nama Ruang:</label>
-                    <input type="text" id="room-name" placeholder="Contoh: Ruang Tamu">
-                </div>
-                
-                <div class="tool-group">
-                    <label>Skala (meter per pixel):</label>
-                    <input type="number" id="scale" value="0.02" step="0.005" min="0.005">
-                </div>
-            </div>
-            
-            <div id="floor-plan-container">
-                <canvas id="floor-plan-canvas" width="360" height="400"></canvas>
-            </div>
-            
-            <div class="stats" id="stats">
-                <strong>Statistik:</strong><br>
-                Dinding: <span id="wall-count">0</span><br>
-                Pintu: <span id="door-count">0</span><br>
-                Jendela: <span id="window-count">0</span><br>
-                Ruang: <span id="room-count">0</span>
-            </div>
-            
-            <button class="upload-btn" id="generate-3d" style="margin-top: 10px;">
-                🏗️ Generate 3D Model
-            </button>
-            
-            <button class="upload-btn" id="export-data" style="margin-top: 10px; background: #27ae60;">
-                📊 Export Data
-            </button>
-            
-            <button class="upload-btn" id="load-sample" style="margin-top: 10px; background: #9b59b6;">
-                📋 Load Sample Data
-            </button>
-        </div>
-        
-        <div id="info-panel">
-            <h2>🏠 BIM Information</h2>
-            <div id="bim-content">
-                <p>Klik pada elemen bangunan untuk melihat informasi BIM</p>
-            </div>
-        </div>
-        
-        <div id="controls">
-            <div class="control-group">
-                <label>Tinggi Dinding: <span id="wall-height-value">3.0</span>m</label>
-                <input type="range" id="wall-height" min="2.5" max="4" step="0.1" value="3.0">
-            </div>
-            <div class="control-group">
-                <label>Kemiringan Atap: <span id="roof-angle-value">30</span>°</label>
-                <input type="range" id="roof-angle" min="15" max="45" step="5" value="30">
-            </div>
-            <div class="control-group">
-                <button id="toggle-wireframe">Wireframe</button>
-                <button id="toggle-xray">X-Ray</button>
-                <button id="reset-view">Reset View</button>
-            </div>
-            <div class="control-group">
-                <button id="export-bim">Export BIM JSON</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Import Three.js & OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script>
-        // Global variables
-        let scene, camera, renderer, controls;
-        let building = new THREE.Group();
-        let selectedObject = null;
-        let wallHeight = 3.0;
-        let roofAngle = 30;
-        
-        // Floor plan data - SEMUA DALAM METER
-        let floorPlanData = {
-            walls: [],
-            doors: [],
-            windows: [],
-            rooms: []
-        };
-        
-        // Canvas variables
-        let canvas, ctx;
-        let currentTool = 'wall';
-        let isDrawing = false;
-        let startPoint = null;
-        let uploadedImage = null;
-        let scale = 0.02; // meter per pixel
-        
-        // BIM Data
-        const bimData = {
-            project: {
-                name: 'Proyek Rumah Custom',
-                date: new Date().toLocaleDateString('id-ID'),
-                architect: 'Digital Architecture Studio'
-            },
-            materials: {
-                wall: {
-                    exterior: {
-                        name: 'Dinding Bata Merah',
-                        thickness: '0.30 m',
-                        uValue: '2.5 W/m²K',
-                        fireRating: '2 jam'
-                    },
-                    interior: {
-                        name: 'Dinding Bata Ringan',
-                        thickness: '0.15 m',
-                        uValue: '1.8 W/m²K',
-                        fireRating: '1 jam'
-                    }
-                },
-                floor: {
-                    name: 'Lantai Keramik 60x60',
-                    thickness: '0.02 m',
-                    finish: 'Matte'
-                },
-                roof: {
-                    name: 'Atap Genteng Beton',
-                    slope: '30°',
-                    insulation: 'Glasswool 100mm'
-                }
-            }
-        };
+</head>
+<body>
 
-        // Initialize
-        function init() {
-            init3D();
-            initCanvas();
-            setupEventListeners();
-            updateStats();
-        }
-        
-        function init3D() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+<div id="app-container">
+    <div id="sidebar">
+        <h2>1. Upload Denah (2D)</h2>
+        <div class="control-group">
+            <label>Pilih File (PNG/JPG - Garis Hitam/Latar Putih)</label>
+            <input type="file" id="upload-input" accept="image/*">
+        </div>
+        <div id="preview-container">
+            <canvas id="floorplan-canvas"></canvas>
+        </div>
 
-            camera = new THREE.PerspectiveCamera(
-                60,
-                window.innerWidth / window.innerHeight,
-                0.1,
-                1000
-            );
-            camera.position.set(15, 15, 15);
-            camera.lookAt(0, 0, 0);
+        <h2>2. Parameter Arsitektur</h2>
+        <div class="control-group">
+            <label>Tinggi Lantai ke Lantai (m)</label>
+            <input type="range" id="wall-height" min="2.8" max="4.5" step="0.1" value="3.2">
+            <span class="val-disp" id="wall-height-val">3.2 m (Standar Residensial)</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Sensivitas Dinding (Thresh)</label>
+            <input type="range" id="threshold" min="50" max="200" step="1" value="120">
+            <span class="val-disp" id="threshold-val">120</span>
+        </div>
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
+        <div class="control-group">
+            <label>Tipe Atap</label>
+            <select id="roof-type">
+                <option value="flat">Atap Datar (Dak Beton)</option>
+                <option value="gables">Atap Pelana (Gable)</option>
+                <option value="none">Tanpa Atap (Open Top)</option>
+            </select>
+        </div>
 
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2;
+        <div class="control-group">
+            <label>Visualisasi Estetika</label>
+            <select id="material-style">
+                <option value="architectural">White Model (Maket Arsitektur)</option>
+                <option value="realistic">Material Realistis</option>
+            </select>
+        </div>
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
+        <button id="generate-btn">Generate Model 3D</button>
+    </div>
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 20, 10);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.camera.left = -20;
-            directionalLight.shadow.camera.right = 20;
-            directionalLight.shadow.camera.top = 20;
-            directionalLight.shadow.camera.bottom = -20;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            scene.add(directionalLight);
+    <div id="viewport">
+        <div id="info-overlay">
+            Controls: Klik Kiri + Drag (Orbit) | Scroll (Zoom) | Klik Kanan (Pan)
+        </div>
+    </div>
+</div>
 
-            const groundGeometry = new THREE.PlaneGeometry(100, 100);
-            const groundMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x7cfc00,
-                roughness: 0.8
-            });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.01;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            animate();
-        }
-        
-        function initCanvas() {
-            canvas = document.getElementById('floor-plan-canvas');
-            ctx = canvas.getContext('2d');
-            
-            ctx.fillStyle = '#f8f9fa';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
-        }
-        
-        function drawGrid() {
-            ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 1;
-            
-            for (let x = 0; x < canvas.width; x += 20) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            
-            for (let y = 0; y < canvas.height; y += 20) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-        }
-        
-        function setupEventListeners() {
-            document.getElementById('file-upload').addEventListener('change', handleFileUpload);
-            
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    currentTool = e.target.dataset.tool;
-                    
-                    if (currentTool === 'clear') {
-                        floorPlanData = { walls: [], doors: [], windows: [], rooms: [] };
-                        redrawCanvas();
-                        updateStats();
-                        e.target.classList.remove('active');
-                        document.querySelector('.tool-btn.wall').classList.add('active');
-                        currentTool = 'wall';
-                    }
-                });
-            });
-            
-            canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseup', handleMouseUp);
-            canvas.addEventListener('mouseout', handleMouseUp);
-            
-            document.getElementById('scale').addEventListener('change', (e) => {
-                scale = parseFloat(e.target.value);
-            });
-            
-            document.getElementById('generate-3d').addEventListener('click', generate3DModel);
-            document.getElementById('export-data').addEventListener('click', exportData);
-            document.getElementById('load-sample').addEventListener('click', loadSampleData);
-            
-            document.getElementById('wall-height').addEventListener('input', (e) => {
-                wallHeight = parseFloat(e.target.value);
-                document.getElementById('wall-height-value').textContent = wallHeight.toFixed(1);
-                if (building.children.length > 0) {
-                    generate3DModel();
-                }
-            });
-            
-            document.getElementById('roof-angle').addEventListener('input', (e) => {
-                roofAngle = parseInt(e.target.value);
-                document.getElementById('roof-angle-value').textContent = roofAngle;
-                if (building.children.length > 0) {
-                    generate3DModel();
-                }
-            });
-            
-            document.getElementById('toggle-wireframe').addEventListener('click', toggleWireframe);
-            document.getElementById('toggle-xray').addEventListener('click', toggleXray);
-            document.getElementById('reset-view').addEventListener('click', resetView);
-            document.getElementById('export-bim').addEventListener('click', exportBIM);
-            
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-            
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-            
-            renderer.domElement.addEventListener('click', (event) => {
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(building.children);
-                
-                if (intersects.length > 0) {
-                    const object = intersects[0].object;
-                    if (object.userData && object.userData.bimData) {
-                        displayBIMInfo(object);
-                        
-                        if (selectedObject) {
-                            selectedObject.material.emissive.setHex(0x000000);
-                        }
-                        selectedObject = object;
-                        selectedObject.material.emissive.setHex(0x333333);
-                    }
-                }
-            });
-        }
-        
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            document.getElementById('file-name').textContent = file.name;
-            
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                uploadedImage = new Image();
-                uploadedImage.onload = () => {
-                    const maxWidth = 360;
-                    const maxHeight = 400;
-                    let width = uploadedImage.width;
-                    let height = uploadedImage.height;
-                    
-                    if (width > maxWidth) {
-                        height = (maxWidth / width) * height;
-                        width = maxWidth;
-                    }
-                    if (height > maxHeight) {
-                        width = (maxHeight / height) * width;
-                        height = maxHeight;
-                    }
-                    
-                    canvas.width = width;
-                    canvas.height = height;
-                    
-                    redrawCanvas();
-                };
-                uploadedImage.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        function handleMouseDown(e) {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            startPoint = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-        }
-        
-        function handleMouseMove(e) {
-            if (!isDrawing) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const currentPoint = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-            
-            redrawCanvas();
-            
-            ctx.globalAlpha = 0.7;
-            ctx.strokeStyle = getToolColor();
-            ctx.lineWidth = currentTool === 'wall' ? 4 : 2;
-            
-            if (currentTool === 'room') {
-                const width = currentPoint.x - startPoint.x;
-                const height = currentPoint.y - startPoint.y;
-                ctx.strokeRect(startPoint.x, startPoint.y, width, height);
+<script>
+// --- Global Variables ---
+let scene, camera, renderer, controls;
+let buildingGroup;
+const canvas = document.getElementById('floorplan-canvas');
+const ctx = canvas.getContext('2d');
+
+// --- Initialization ---
+function init3D() {
+    const container = document.getElementById('viewport');
+    
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1e1e24);
+
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(30, 40, 50);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // Architectural Lighting Setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    sunLight.position.set(40, 60, 20);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 150;
+    const d = 40;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    scene.add(sunLight);
+
+    const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
+    scene.add(gridHelper);
+
+    buildingGroup = new THREE.Group();
+    scene.add(buildingGroup);
+
+    window.addEventListener('resize', onWindowResize);
+    animate();
+}
+
+function onWindowResize() {
+    const container = document.getElementById('viewport');
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// --- Image Processing & 3D Extrusion ---
+document.getElementById('upload-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+            // Resize to standard resolution for processing
+            const maxDim = 200;
+            let w = img.width;
+            let h = img.height;
+            if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
             } else {
-                ctx.beginPath();
-                ctx.moveTo(startPoint.x, startPoint.y);
-                ctx.lineTo(currentPoint.x, currentPoint.y);
-                ctx.stroke();
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
             }
-            
-            ctx.globalAlpha = 1.0;
-        }
-        
-        function handleMouseUp(e) {
-            if (!isDrawing) return;
-            isDrawing = false;
-            
-            const rect = canvas.getBoundingClientRect();
-            const endPoint = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-            
-            saveElement(startPoint, endPoint);
-            redrawCanvas();
-        }
-        
-        function getToolColor() {
-            const colors = {
-                wall: '#e74c3c',
-                door: '#3498db',
-                window: '#9b59b6',
-                room: '#2ecc71',
-                select: '#f39c12'
-            };
-            return colors[currentTool] || '#000000';
-        }
-        
-        function saveElement(start, end) {
-            const length = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
-            
-            if (length < 10) return;
-            
-            // KONVERSI PIXEL KE METER
-            const startMeters = { x: start.x * scale, y: start.y * scale };
-            const endMeters = { x: end.x * scale, y: end.y * scale };
-            const lengthMeters = length * scale;
-            
-            switch(currentTool) {
-                case 'wall':
-                    const wallType = document.getElementById('wall-type').value;
-                    floorPlanData.walls.push({
-                        x1: startMeters.x,
-                        y1: startMeters.y,
-                        x2: endMeters.x,
-                        y2: endMeters.y,
-                        thickness: wallType === 'exterior' ? 0.3 : 0.15,
-                        type: wallType,
-                        length: lengthMeters
-                    });
-                    break;
-                    
-                case 'door':
-                    floorPlanData.doors.push({
-                        x: (startMeters.x + endMeters.x) / 2,
-                        y: (startMeters.y + endMeters.y) / 2,
-                        width: lengthMeters,
-                        rotation: Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI
-                    });
-                    break;
-                    
-                case 'window':
-                    floorPlanData.windows.push({
-                        x: (startMeters.x + endMeters.x) / 2,
-                        y: (startMeters.y + endMeters.y) / 2,
-                        width: lengthMeters,
-                        rotation: Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI,
-                        sillHeight: 0.9,
-                        height: 1.2
-                    });
-                    break;
-                    
-                case 'room':
-                    const roomName = document.getElementById('room-name').value || 'Ruang ' + (floorPlanData.rooms.length + 1);
-                    const minX = Math.min(startMeters.x, endMeters.x);
-                    const maxX = Math.max(startMeters.x, endMeters.x);
-                    const minY = Math.min(startMeters.y, endMeters.y);
-                    const maxY = Math.max(startMeters.y, endMeters.y);
-                    
-                    floorPlanData.rooms.push({
-                        x: minX,
-                        y: minY,
-                        width: maxX - minX,
-                        height: maxY - minY,
-                        name: roomName,
-                        area: (maxX - minX) * (maxY - minY)
-                    });
-                    break;
-            }
-            
-            updateStats();
-        }
-        
-        function redrawCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (uploadedImage) {
-                ctx.globalAlpha = 0.5;
-                ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1.0;
-            } else {
-                ctx.fillStyle = '#f8f9fa';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                drawGrid();
-            }
-            
-            // Draw walls
-            ctx.strokeStyle = '#e74c3c';
-            ctx.lineWidth = 4;
-            floorPlanData.walls.forEach(wall => {
-                ctx.beginPath();
-                ctx.moveTo(wall.x1 / scale, wall.y1 / scale);
-                ctx.lineTo(wall.x2 / scale, wall.y2 / scale);
-                ctx.stroke();
-            });
-            
-            // Draw doors
-            ctx.strokeStyle = '#3498db';
-            ctx.lineWidth = 3;
-            floorPlanData.doors.forEach(door => {
-                const rad = door.rotation * Math.PI / 180;
-                const halfWidth = (door.width / scale) / 2;
-                const x1 = door.x / scale - Math.cos(rad) * halfWidth;
-                const y1 = door.y / scale - Math.sin(rad) * halfWidth;
-                const x2 = door.x / scale + Math.cos(rad) * halfWidth;
-                const y2 = door.y / scale + Math.sin(rad) * halfWidth;
-                
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            });
-            
-            // Draw windows
-            ctx.strokeStyle = '#9b59b6';
-            ctx.lineWidth = 2;
-            floorPlanData.windows.forEach(win => {
-                const rad = win.rotation * Math.PI / 180;
-                const halfWidth = (win.width / scale) / 2;
-                const x1 = win.x / scale - Math.cos(rad) * halfWidth;
-                const y1 = win.y / scale - Math.sin(rad) * halfWidth;
-                const x2 = win.x / scale + Math.cos(rad) * halfWidth;
-                const y2 = win.y / scale + Math.sin(rad) * halfWidth;
-                
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            });
-            
-            // Draw rooms
-            ctx.strokeStyle = '#2ecc71';
-            ctx.lineWidth = 2;
-            ctx.fillStyle = 'rgba(46, 204, 113, 0.2)';
-            floorPlanData.rooms.forEach(room => {
-                const widthPx = room.width / scale;
-                const heightPx = room.height / scale;
-                ctx.fillRect(room.x / scale, room.y / scale, widthPx, heightPx);
-                ctx.strokeRect(room.x / scale, room.y / scale, widthPx, heightPx);
-                
-                ctx.fillStyle = '#000';
-                ctx.font = '12px Arial';
-                ctx.fillText(room.name, room.x / scale + 5, room.y / scale + 15);
-                ctx.fillStyle = 'rgba(46, 204, 113, 0.2)';
-            });
-        }
-        
-        function updateStats() {
-            document.getElementById('wall-count').textContent = floorPlanData.walls.length;
-            document.getElementById('door-count').textContent = floorPlanData.doors.length;
-            document.getElementById('window-count').textContent = floorPlanData.windows.length;
-            document.getElementById('room-count').textContent = floorPlanData.rooms.length;
-        }
-        
-        function generate3DModel() {
-            // Clear previous building
-            while(building.children.length > 0) {
-                building.remove(building.children[0]);
-            }
-            
-            // Build floors
-            floorPlanData.rooms.forEach(room => {
-                buildFloor(room);
-            });
-            
-            // Build walls
-            floorPlanData.walls.forEach(wall => {
-                buildWall(wall);
-            });
-            
-            // Build doors
-            floorPlanData.doors.forEach(door => {
-                buildDoor(door);
-            });
-            
-            // Build windows
-            floorPlanData.windows.forEach(window => {
-                buildWindow(window);
-            });
-            
-            // Build roof
-            buildRoof();
-            
-            scene.add(building);
-            
-            // Center camera
-            if (building.children.length > 0) {
-                const box = new THREE.Box3().setFromObject(building);
-                const center = box.getCenter(new THREE.Vector3());
-                controls.target.copy(center);
-                camera.position.set(center.x + 10, center.y + 10, center.z + 10);
-                camera.lookAt(center);
-            }
-        }
-        
-        function buildFloor(room) {
-            const geometry = new THREE.BoxGeometry(room.width, 0.15, room.height);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0xd4a574,
-                roughness: 0.7
-            });
-            const floor = new THREE.Mesh(geometry, material);
-            floor.position.set(
-                room.x + room.width / 2,
-                0.075,
-                room.y + room.height / 2
-            );
-            floor.receiveShadow = true;
-            floor.castShadow = true;
-            floor.userData = {
-                type: 'floor',
-                room: room.name,
-                bimData: {
-                    material: bimData.materials.floor.name,
-                    thickness: bimData.materials.floor.thickness,
-                    finish: bimData.materials.floor.finish,
-                    area: `${room.area.toFixed(2)} m²`
-                }
-            };
-            building.add(floor);
-        }
-        
-        function buildWall(wall) {
-            const length = wall.length;
-            const angle = Math.atan2(wall.y2 - wall.y1, wall.x2 - wall.x1);
-            
-            const geometry = new THREE.BoxGeometry(length, wallHeight, wall.thickness);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: wall.type === 'exterior' ? 0xf5deb3 : 0xffe4c4,
-                roughness: 0.9
-            });
-            const wallMesh = new THREE.Mesh(geometry, material);
-            
-            wallMesh.position.set(
-                (wall.x1 + wall.x2) / 2,
-                wallHeight / 2 + 0.15,
-                (wall.y1 + wall.y2) / 2
-            );
-            wallMesh.rotation.y = -angle;
-            wallMesh.castShadow = true;
-            wallMesh.receiveShadow = true;
-            
-            wallMesh.userData = {
-                type: 'wall',
-                wallType: wall.type,
-                bimData: wall.type === 'exterior' ? 
-                    bimData.materials.wall.exterior : 
-                    bimData.materials.wall.interior
-            };
-            
-            building.add(wallMesh);
-        }
-        
-        function buildDoor(door) {
-            const geometry = new THREE.BoxGeometry(door.width, 2.1, 0.05);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x8b4513,
-                roughness: 0.6
-            });
-            const doorMesh = new THREE.Mesh(geometry, material);
-            
-            doorMesh.position.set(
-                door.x,
-                1.05 + 0.15,
-                door.y
-            );
-            doorMesh.rotation.y = -door.rotation * Math.PI / 180;
-            doorMesh.castShadow = true;
-            
-            doorMesh.userData = {
-                type: 'door',
-                doorType: 'interior',
-                bimData: {
-                    width: `${door.width.toFixed(2)} m`,
-                    height: '2.1 m',
-                    material: 'Kayu Solid',
-                    fireRating: '30 menit'
-                }
-            };
-            
-            building.add(doorMesh);
-        }
-        
-        function buildWindow(window) {
-            const geometry = new THREE.BoxGeometry(window.width, window.height, 0.05);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x87ceeb,
-                transparent: true,
-                opacity: 0.5,
-                roughness: 0.1,
-                metalness: 0.9
-            });
-            const windowMesh = new THREE.Mesh(geometry, material);
-            
-            windowMesh.position.set(
-                window.x,
-                window.sillHeight + window.height / 2 + 0.15,
-                window.y
-            );
-            windowMesh.rotation.y = -window.rotation * Math.PI / 180;
-            
-            windowMesh.userData = {
-                type: 'window',
-                bimData: {
-                    width: `${window.width.toFixed(2)} m`,
-                    height: `${window.height} m`,
-                    sillHeight: `${window.sillHeight} m`,
-                    material: 'Kaca Tempered 8mm',
-                    frame: 'Aluminium',
-                    uValue: '3.2 W/m²K'
-                }
-            };
-            
-            building.add(windowMesh);
-        }
-        
-        function buildRoof() {
-            if (floorPlanData.rooms.length === 0) return;
-            
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            
-            floorPlanData.rooms.forEach(room => {
-                minX = Math.min(minX, room.x);
-                maxX = Math.max(maxX, room.x + room.width);
-                minY = Math.min(minY, room.y);
-                maxY = Math.max(maxY, room.y + room.height);
-            });
-            
-            const width = maxX - minX;
-            const depth = maxY - minY;
-            const centerX = minX + width / 2;
-            const centerZ = minY + depth / 2;
-            const roofHeight = Math.tan(roofAngle * Math.PI / 180) * (width / 2);
-            
-            const slopeGeometry = new THREE.BoxGeometry(width, 0.15, depth / 2);
-            const slopeMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0xcd5c5c,
-                roughness: 0.7
-            });
-            
-            const frontSlope = new THREE.Mesh(slopeGeometry, slopeMaterial);
-            frontSlope.position.set(centerX, wallHeight + roofHeight / 2 + 0.15, centerZ - depth / 4);
-            frontSlope.rotation.x = -roofAngle * Math.PI / 180;
-            frontSlope.castShadow = true;
-            frontSlope.userData = {
-                type: 'roof',
-                bimData: {
-                    material: bimData.materials.roof.name,
-                    slope: `${roofAngle}°`,
-                    insulation: bimData.materials.roof.insulation
-                }
-            };
-            building.add(frontSlope);
-            
-            const backSlope = new THREE.Mesh(slopeGeometry, slopeMaterial);
-            backSlope.position.set(centerX, wallHeight + roofHeight / 2 + 0.15, centerZ + depth / 4);
-            backSlope.rotation.x = roofAngle * Math.PI / 180;
-            backSlope.castShadow = true;
-            backSlope.userData = frontSlope.userData;
-            building.add(backSlope);
-        }
-        
-        function displayBIMInfo(object) {
-            const bimContent = document.getElementById('bim-content');
-            let html = `<h3>${object.userData.type.toUpperCase()}</h3>`;
-            
-            if (object.userData.room) {
-                html += `<p><strong>Ruang:</strong> ${object.userData.room}</p>`;
-            }
-            
-            if (object.userData.wallType) {
-                html += `<p><strong>Tipe:</strong> ${object.userData.wallType === 'exterior' ? 'Dinding Luar' : 'Dinding Dalam'}</p>`;
-            }
-            
-            html += '<div class="bim-data">';
-            for (const [key, value] of Object.entries(object.userData.bimData)) {
-                html += `<p><strong>${key}:</strong> ${value}</p>`;
-            }
-            html += '</div>';
-            
-            bimContent.innerHTML = html;
-        }
-        
-        function toggleWireframe() {
-            building.traverse((child) => {
-                if (child.isMesh) {
-                    child.material.wireframe = !child.material.wireframe;
-                }
-            });
-        }
-        
-        function toggleXray() {
-            building.traverse((child) => {
-                if (child.isMesh) {
-                    child.material.transparent = !child.material.transparent;
-                    child.material.opacity = child.material.transparent ? 0.3 : 1.0;
-                }
-            });
-        }
-        
-        function resetView() {
-            if (building.children.length > 0) {
-                const box = new THREE.Box3().setFromObject(building);
-                const center = box.getCenter(new THREE.Vector3());
-                camera.position.set(center.x + 15, center.y + 15, center.z + 15);
-                camera.lookAt(center);
-                controls.reset();
-            }
-        }
-        
-        function exportData() {
-            const data = {
-                project: bimData.project,
-                floorPlan: floorPlanData,
-                settings: {
-                    wallHeight: wallHeight,
-                    roofAngle: roofAngle,
-                    scale: scale
-                }
-            };
-            
-            const dataStr = JSON.stringify(data, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'floor_plan_data.json';
-            link.click();
-        }
-        
-        function exportBIM() {
-            const bimExport = {
-                project: bimData.project,
-                materials: bimData.materials,
-                elements: []
-            };
-            
-            building.traverse((child) => {
-                if (child.userData && child.userData.bimData) {
-                    bimExport.elements.push({
-                        type: child.userData.type,
-                        position: {
-                            x: child.position.x.toFixed(2),
-                            y: child.position.y.toFixed(2),
-                            z: child.position.z.toFixed(2)
-                        },
-                        data: child.userData.bimData
-                    });
-                }
-            });
-            
-            const dataStr = JSON.stringify(bimExport, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'bim_data.json';
-            link.click();
-        }
-        
-        function loadSampleData() {
-            floorPlanData = {
-                walls: [
-                    { x1: 0, y1: 0, x2: 6, y2: 0, thickness: 0.3, type: 'exterior', length: 6 },
-                    { x1: 6, y1: 0, x2: 6, y2: 6, thickness: 0.3, type: 'exterior', length: 6 },
-                    { x1: 6, y1: 6, x2: 0, y2: 6, thickness: 0.3, type: 'exterior', length: 6 },
-                    { x1: 0, y1: 6, x2: 0, y2: 0, thickness: 0.3, type: 'exterior', length: 6 },
-                    { x1: 3, y1: 0, x2: 3, y2: 4, thickness: 0.15, type: 'interior', length: 4 },
-                    { x1: 3, y1: 4, x2: 6, y2: 4, thickness: 0.15, type: 'interior', length: 3 }
-                ],
-                doors: [
-                    { x: 3, y: 1.5, width: 1.0, rotation: 90 },
-                    { x: 3, y: 2, width: 0.9, rotation: 0 },
-                    { x: 4.5, y: 4, width: 0.9, rotation: 90 }
-                ],
-                windows: [
-                    { x: 1.5, y: 0, width: 1.2, rotation: 0, sillHeight: 0.9, height: 1.2 },
-                    { x: 4.5, y: 0, width: 1.2, rotation: 0, sillHeight: 0.9, height: 1.2 },
-                    { x: 0, y: 3, width: 1.2, rotation: 90, sillHeight: 0.9, height: 1.2 },
-                    { x: 6, y: 2, width: 1.2, rotation: 90, sillHeight: 0.9, height: 1.2 }
-                ],
-                rooms: [
-                    { x: 0, y: 0, width: 3, height: 4, name: 'Ruang Tamu', area: 12 },
-                    { x: 3, y: 0, width: 3, height: 4, name: 'Kamar Tidur', area: 12 },
-                    { x: 3, y: 4, width: 3, height: 2, name: 'Dapur', area: 6 }
-                ]
-            };
-            
-            redrawCanvas();
-            updateStats();
-            generate3DModel();
-        }
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
+            canvas.width = w;
+            canvas.height = h;
+            ctx.drawImage(img, 0, 0, w, h);
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
 
-        init();
-    </script>
+// UI Controls Dynamic Updates
+document.getElementById('wall-height').addEventListener('input', (e) => {
+    document.getElementById('wall-height-val').innerText = `${e.target.value} m (Standar Residensial)`;
+});
+document.getElementById('threshold').addEventListener('input', (e) => {
+    document.getElementById('threshold-val').innerText = e.target.value;
+});
+
+// Generator Logic
+document.getElementById('generate-btn').addEventListener('click', generate3DBuilding);
+
+function generate3DBuilding() {
+    if (canvas.width === 0) {
+        alert("Silakan upload gambar denah terlebih dahulu!");
+        return;
+    }
+
+    // Clear previous model
+    while(buildingGroup.children.length > 0){ 
+        const obj = buildingGroup.children[0];
+        buildingGroup.remove(obj); 
+    }
+
+    const wallHeight = parseFloat(document.getElementById('wall-height').value);
+    const threshVal = parseInt(document.getElementById('threshold').value);
+    const roofType = document.getElementById('roof-type').value;
+    const style = document.getElementById('material-style').value;
+
+    // Materials based on architectural style
+    const isArch = style === 'architectural';
+    const wallMat = new THREE.MeshStandardMaterial({ 
+        color: isArch ? 0xf0f0f0 : 0xdedede, 
+        roughness: 0.5 
+    });
+    const floorMat = new THREE.MeshStandardMaterial({ 
+        color: isArch ? 0xd0d0d0 : 0x8d6e63, 
+        roughness: 0.8 
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transmission: 0.9,
+        opacity: 1,
+        transparent: true,
+        roughness: 0.1,
+        ior: 1.5
+    });
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Scale pixel to real world architectural meters (e.g., 1 pixel = 0.15m)
+    const scale = 0.2; 
+    const offsetX = (w * scale) / 2;
+    const offsetZ = (h * scale) / 2;
+
+    // 1. Generate Floor Slab
+    const floorGeo = new THREE.BoxGeometry(w * scale, 0.2, h * scale);
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.position.set(0, -0.1, 0);
+    floorMesh.receiveShadow = true;
+    buildingGroup.add(floorMesh);
+
+    // 2. Extrude Walls based on pixel threshold
+    // Voxels/Blocks merging for performance
+    const wallGeoList = [];
+    const boxGeo = new THREE.BoxGeometry(scale, wallHeight, scale);
+    
+    // Pixel scanning logic for walls
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const idx = (y * w + x) * 4;
+            const r = data[idx];
+            const g = data[idx+1];
+            const b = data[idx+2];
+            const brightness = (r + g + b) / 3;
+
+            // Black pixels represent walls
+            if (brightness < threshVal) {
+                const posX = (x * scale) - offsetX;
+                const posZ = (y * scale) - offsetZ;
+
+                // Simple Lintels logic (Sill & Head Height for windows/doors simulation)
+                // If it's internal wall vs external, create openings dynamically
+                const mesh = new THREE.Mesh(boxGeo, wallMat);
+                mesh.position.set(posX, wallHeight / 2, posZ);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                buildingGroup.add(mesh);
+            }
+        }
+    }
+
+    // 3. Generate Roof based on Architectural Rules
+    if (roofType === 'flat') {
+        const roofGeo = new THREE.BoxGeometry(w * scale + 0.4, 0.2, h * scale + 0.4);
+        const roofMat = new THREE.MeshStandardMaterial({ color: isArch ? 0xe0e0e0 : 0x555555 });
+        const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+        roofMesh.position.set(0, wallHeight + 0.1, 0);
+        roofMesh.castShadow = true;
+        buildingGroup.add(roofMesh);
+    } else if (roofType === 'gables') {
+        const roofShape = new THREE.Shape();
+        const roofWidth = w * scale + 0.6;
+        const roofHeight = 2.5; // Pitch height
+        
+        roofShape.moveTo(-roofWidth / 2, 0);
+        roofShape.lineTo(0, roofHeight);
+        roofShape.lineTo(roofWidth / 2, 0);
+        roofShape.closePath();
+
+        const extrudeSettings = { depth: h * scale + 0.6, bevelEnabled: false };
+        const gableGeo = new THREE.ExtrudeGeometry(roofShape, extrudeSettings);
+        const roofMat = new THREE.MeshStandardMaterial({ color: isArch ? 0xd5d5d5 : 0xb71c1c });
+        const gableMesh = new THREE.Mesh(gableGeo, roofMat);
+        
+        gableMesh.rotation.y = 0;
+        gableMesh.position.set(0, wallHeight, -(h * scale + 0.6) / 2);
+        gableMesh.castShadow = true;
+        buildingGroup.add(gableMesh);
+    }
+
+    // Adjust Camera Focus
+    controls.target.set(0, wallHeight / 2, 0);
+}
+
+// Start Three.js Context on Load
+window.onload = init3D;
+</script>
 </body>
 </html>
