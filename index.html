@@ -1,100 +1,28 @@
 <!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Architecture Generator - Orthogonal Sweep</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: #111; color: #eee; overflow: hidden; font-size: 14px; }
-        #app { display: flex; width: 100vw; height: 100vh; }
-        
-        #sidebar { width: 340px; background: #1a1a1a; padding: 20px; display: flex; flex-direction: column; gap: 15px; border-right: 1px solid #333; z-index: 10; }
-        h1 { font-size: 1.1rem; color: #00d2ff; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 5px; }
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        label { font-size: 0.8rem; color: #aaa; }
-        input[type="file"], select, input[type="range"] { background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; }
-        input[type="range"] { accent-color: #00d2ff; }
-        .val-disp { font-size: 0.75rem; color: #00d2ff; text-align: right; }
-        
-        button { background: #007acc; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; text-transform: uppercase; }
-        button:hover { background: #0098ff; }
-        
-        #preview { width: 100%; height: 160px; background: #000; border: 1px dashed #555; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
-        #canvas2d { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        #viewport { flex: 1; position: relative; background: #050505; }
-        #loader { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; color: #00d2ff; font-weight: bold; z-index: 20; flex-direction: column; gap: 10px; }
-        .spinner { width: 30px; height: 30px; border: 3px solid #333; border-top: 3px solid #00d2ff; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-</head>
-<body>
 
-<div id="app">
-    <div id="sidebar">
-        <h1>Arsitektur 3D Gen</h1>
-        
-        <div class="form-group">
-            <label>1. Upload Denah Bersih (Hitam Putih)</label>
-            <input type="file" id="upload" accept="image/*">
-        </div>
-        <div id="preview"><canvas id="canvas2d"></canvas></div>
-
-        <div class="form-group">
-            <label>Tinggi Floor-to-Floor (m)</label>
-            <input type="range" id="height" min="2.8" max="4.5" step="0.1" value="3.2">
-            <span class="val-disp" id="h-val">3.2 m (Standar)</span>
-        </div>
-        
-        <div class="form-group">
-            <label>Threshold Dinding (Hitam)</label>
-            <input type="range" id="thresh" min="20" max="200" step="1" value="120">
-            <span class="val-disp" id="t-val">120</span>
-        </div>
-
-        <button id="generate">Proses Geometri Dinding</button>
-    </div>
-
-    <div id="viewport">
-        <div id="loader">
-            <div class="spinner"></div>
-            <span>Membangun Struktur Arsitektur...</span>
-        </div>
-    </div>
-</div>
-
-<script>
-// --- Three.js Setup ---
 const container = document.getElementById('viewport');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a1a);
+scene.background = new THREE.Color(0x151518);
 
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(20, 25, 30);
+camera.position.set(20, 30, 40);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 
-// Lighting
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(30, 50, 20);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+dirLight.position.set(30, 60, 20);
 dirLight.castShadow = true;
-dirLight.shadow.camera.left = -30;
-dirLight.shadow.camera.right = 30;
-dirLight.shadow.camera.top = 30;
-dirLight.shadow.camera.bottom = -30;
 scene.add(dirLight);
-
-scene.add(new THREE.GridHelper(50, 50, 0x444444, 0x222222));
+scene.add(new THREE.GridHelper(100, 100, 0x333333, 0x222222));
 
 const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
@@ -112,9 +40,8 @@ function animate() {
 }
 animate();
 
-// --- 2D Canvas & Image Processing ---
 const canvas = document.getElementById('canvas2d');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
 document.getElementById('upload').addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -123,12 +50,13 @@ document.getElementById('upload').addEventListener('change', (e) => {
     reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-            // Resolusi menengah agar detail dinding dapat dibaca tanpa memberatkan browser
-            const MAX = 250; 
+            const MAX_DIM = 280; 
             let w = img.width, h = img.height;
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else { w = Math.round(w * MAX / h); h = MAX; }
+            if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+            else { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
             canvas.width = w; canvas.height = h;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0, w, h);
         };
         img.src = event.target.result;
@@ -136,117 +64,162 @@ document.getElementById('upload').addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
-// UI Updates
-document.getElementById('height').addEventListener('input', e => document.getElementById('h-val').innerText = e.target.value + ' m');
-document.getElementById('thresh').addEventListener('input', e => document.getElementById('t-val').innerText = e.target.value);
+document.getElementById('wallH').addEventListener('input', e => document.getElementById('wallH-val').innerText = e.target.value + ' m');
+document.getElementById('minThick').addEventListener('input', e => document.getElementById('minThick-val').innerText = e.target.value + ' px (Kikis Garis Tipis)');
+document.getElementById('minLen').addEventListener('input', e => document.getElementById('minLen-val').innerText = e.target.value + ' px');
+document.getElementById('thresh').addEventListener('input', e => document.getElementById('thresh-val').innerText = e.target.value);
 
-// --- Architectural Generation Logic ---
-document.getElementById('generate').addEventListener('click', () => {
-    if(canvas.width === 0) return alert("Upload denah!");
+document.getElementById('generateBtn').addEventListener('click', () => {
+    if(canvas.width === 0) return alert("Silakan upload gambar denah 2D terlebih dahulu.");
     
     document.getElementById('loader').style.display = 'flex';
     
     setTimeout(() => {
-        while(buildingGroup.children.length > 0) {
-            buildingGroup.remove(buildingGroup.children[0]);
-        }
+        while(buildingGroup.children.length > 0) buildingGroup.remove(buildingGroup.children[0]);
 
-        const wallH = parseFloat(document.getElementById('height').value);
-        const thresh = parseInt(document.getElementById('thresh').value);
+        const heightVal = parseFloat(document.getElementById('wallH').value);
+        const minThick = parseInt(document.getElementById('minThick').value);
+        const minLength = parseInt(document.getElementById('minLen').value);
+        const threshold = parseInt(document.getElementById('thresh').value);
         
-        // Konstanta Kaidah Arsitektur
-        const PIXEL_SCALE = 0.1; // 1 pixel = 10 cm
-        const WALL_THICKNESS = 0.15; // Tebal dinding standar 15 cm
-        const MIN_WALL_LEN = 3; // Abaikan garis yang lebih pendek dari 3 piksel (noise/teks)
+        const SCALE = 0.15; 
+        const WALL_T = 0.15; 
+        const DOOR_H = 2.1; 
+        const SILL_H = 0.9; 
 
-        const w = canvas.width;
-        const h = canvas.height;
+        const w = canvas.width, h = canvas.height;
         const imgData = ctx.getImageData(0, 0, w, h).data;
         
-        // Peta Biner Hitam Putih
-        const bwMap = Array.from({length: h}, () => new Array(w).fill(false));
-        for(let y=0; y<h; y++){
-            for(let x=0; x<w; x++){
-                const i = (y * w + x) * 4;
-                const brightness = (imgData[i] + imgData[i+1] + imgData[i+2]) / 3;
-                if(brightness < thresh) bwMap[y][x] = true;
+        // Peta Biner Mentah
+        const rawMap = Array.from({length: h}, () => new Array(w).fill(false));
+        for(let y = 0; y < h; y++){
+            for(let x = 0; x < w; x++){
+                const idx = (y * w + x) * 4;
+                const brightness = (imgData[idx] + imgData[idx+1] + imgData[idx+2]) / 3;
+                if(brightness < threshold) rawMap[y][x] = true;
             }
         }
 
-        const visited = Array.from({length: h}, () => new Array(w).fill(false));
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.7 });
+        // Peta Dinding Struktural (Hanya pertahankan area yang tebal, buang garis perabot)
+        const structMap = Array.from({length: h}, () => new Array(w).fill(false));
+        for(let y = minThick; y < h - minThick; y++){
+            for(let x = minThick; x < w - minThick; x++){
+                if(rawMap[y][x]) {
+                    // Cek ketebalan horizontal dan vertikal
+                    let hCount = 0, vCount = 0;
+                    for(let d = -minThick; d <= minThick; d++) {
+                        if(rawMap[y][x + d]) hCount++;
+                        if(rawMap[y + d][x]) vCount++;
+                    }
+                    // Jika cukup tebal, ini adalah dinding
+                    if(hCount >= minThick + 1 || vCount >= minThick + 1) {
+                        structMap[y][x] = true;
+                    }
+                }
+            }
+        }
 
-        const offsetX = (w * PIXEL_SCALE) / 2;
-        const offsetZ = (h * PIXEL_SCALE) / 2;
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.8 });
+        const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x88ccff, transmission: 0.8, opacity: 1, transparent: true, roughness: 0.1, ior: 1.5 });
+        
+        const offsetX = (w * SCALE) / 2;
+        const offsetZ = (h * SCALE) / 2;
 
-        const addWall = (posX, posZ, lengthX, lengthZ) => {
-            const geo = new THREE.BoxGeometry(lengthX, wallH, lengthZ);
-            const mesh = new THREE.Mesh(geo, wallMat);
-            // Penyesuaian pivot dari pojok ke tengah
-            mesh.position.set(
-                (posX * PIXEL_SCALE) + (lengthX / 2) - offsetX,
-                wallH / 2,
-                (posZ * PIXEL_SCALE) + (lengthZ / 2) - offsetZ
-            );
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
+        const createMesh = (posX, posZ, length, isHorizontal, yStart, yHeight, mat) => {
+            if(yHeight <= 0) return;
+            let boxW = isHorizontal ? (length * SCALE) : WALL_T;
+            let boxD = isHorizontal ? WALL_T : (length * SCALE);
+            const geo = new THREE.BoxGeometry(boxW, yHeight, boxD);
+            const mesh = new THREE.Mesh(geo, mat);
+            let finalX = (posX * SCALE) - offsetX + (isHorizontal ? boxW / 2 : 0);
+            let finalZ = (posZ * SCALE) - offsetZ + (isHorizontal ? 0 : boxD / 2);
+            mesh.position.set(finalX, yStart + (yHeight / 2), finalZ);
+            mesh.castShadow = true; mesh.receiveShadow = true;
             buildingGroup.add(mesh);
         };
 
-        // PASS 1: Horizontal Sweep (Sumbu X)
-        for(let y=0; y<h; y++) {
-            let x = 0;
-            while(x < w) {
-                if(bwMap[y][x]) {
-                    let len = 0;
-                    while(x + len < w && bwMap[y][x + len]) len++;
+        const processSegmentsAndGaps = (isHorizontal) => {
+            const limit1 = isHorizontal ? h : w;
+            const limit2 = isHorizontal ? w : h;
+            const visited = Array.from({length: h}, () => new Array(w).fill(false));
+
+            for(let i = 0; i < limit1; i++) {
+                let j = 0;
+                let segments = [];
+                
+                // Cari Segmen Dinding Tebal
+                while(j < limit2) {
+                    let y = isHorizontal ? i : j;
+                    let x = isHorizontal ? j : i;
                     
-                    if(len >= MIN_WALL_LEN) { // Syarat panjang dinding minimum
-                        for(let i=0; i<len; i++) visited[y][x+i] = true;
-                        // Render dengan ketebalan arsitektur 0.15m (bukan berdasarkan piksel)
-                        addWall(x, y, len * PIXEL_SCALE, WALL_THICKNESS);
+                    if(structMap[y][x] && !visited[y][x]) {
+                        let len = 0;
+                        while(j + len < limit2) {
+                            let cy = isHorizontal ? i : j + len;
+                            let cx = isHorizontal ? j + len : i;
+                            if(!structMap[cy][cx]) break;
+                            visited[cy][cx] = true;
+                            len++;
+                        }
+                        if(len >= minLength) {
+                            createMesh(x, y, len, isHorizontal, 0, heightVal, wallMat);
+                            segments.push({start: j, end: j + len});
+                        }
+                        j += len;
+                    } else { j++; }
+                }
+                
+                // Analisis Bukaan (Celah antar segmen dinding)
+                for(let k = 0; k < segments.length - 1; k++) {
+                    let gapStart = segments[k].end;
+                    let gapEnd = segments[k+1].start;
+                    let gapLen = gapEnd - gapStart;
+                    
+                    if(gapLen >= 4 && gapLen <= 25) {
+                        // Cek data *mentah* (rawMap) di dalam celah ini
+                        let innerPixelCount = 0;
+                        for(let g = gapStart; g < gapEnd; g++) {
+                            let gy = isHorizontal ? i : g;
+                            let gx = isHorizontal ? g : i;
+                            // Tambahkan toleransi sedikit untuk membaca garis jendela yang berdekatan
+                            if(rawMap[gy][gx] || 
+                              (isHorizontal && (rawMap[gy-1]?.[gx] || rawMap[gy+1]?.[gx])) ||
+                              (!isHorizontal && (rawMap[gy]?.[gx-1] || rawMap[gy]?.[gx+1])) ) {
+                                innerPixelCount++;
+                            }
+                        }
+                        
+                        let density = innerPixelCount / gapLen;
+                        let px = isHorizontal ? gapStart : i;
+                        let pz = isHorizontal ? i : gapStart;
+
+                        // Logika Simbol:
+                        // Jika kepadatan tinggi (ada garis sejajar di dalam gap) = JENDELA
+                        if(density > 0.25) {
+                            createMesh(px, pz, gapLen, isHorizontal, 0, SILL_H, wallMat); // Dinding Bawah
+                            createMesh(px, pz, gapLen, isHorizontal, SILL_H, DOOR_H - SILL_H, glassMat); // Kaca
+                        }
+                        // Jika kepadatan rendah (kosong) = PINTU
+                        
+                        // Buatkan Lintel (Ambang Atas) untuk semua bukaan (Pintu & Jendela)
+                        createMesh(px, pz, gapLen, isHorizontal, DOOR_H, heightVal - DOOR_H, wallMat);
                     }
-                    x += len;
-                } else {
-                    x++;
                 }
             }
-        }
+        };
 
-        // PASS 2: Vertical Sweep (Sumbu Z)
-        for(let x=0; x<w; x++) {
-            let y = 0;
-            while(y < h) {
-                // Hanya periksa piksel yang belum dijadikan dinding horizontal
-                if(bwMap[y][x] && !visited[y][x]) {
-                    let len = 0;
-                    while(y + len < h && bwMap[y + len][x] && !visited[y + len][x]) len++;
-                    
-                    if(len >= MIN_WALL_LEN) {
-                        for(let i=0; i<len; i++) visited[y+i][x] = true;
-                        // Render dinding vertikal
-                        addWall(x, y, WALL_THICKNESS, len * PIXEL_SCALE);
-                    }
-                    y += len;
-                } else {
-                    y++;
-                }
-            }
-        }
+        processSegmentsAndGaps(true);
+        processSegmentsAndGaps(false);
 
-        // Slab Lantai
-        const floor = new THREE.Mesh(
-            new THREE.BoxGeometry(w * PIXEL_SCALE + 1, 0.2, h * PIXEL_SCALE + 1),
-            new THREE.MeshStandardMaterial({ color: 0xcccccc })
-        );
-        floor.position.set(0, -0.1, 0);
-        floor.receiveShadow = true;
-        buildingGroup.add(floor);
+        // Pelat Lantai
+        const floorGeo = new THREE.BoxGeometry((w * SCALE) + 4, 0.2, (h * SCALE) + 4);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.position.set(0, -0.1, 0);
+        floorMesh.receiveShadow = true;
+        buildingGroup.add(floorMesh);
 
         document.getElementById('loader').style.display = 'none';
-        controls.target.set(0, wallH/2, 0);
-    }, 100);
+        controls.target.set(0, heightVal / 2, 0);
+    }, 50);
 });
-</script>
-</body>
-</html>
