@@ -3,33 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Architectural Building Generator from Floor Plan</title>
+    <title>Penghasil Model Bangunan 3D Presisi Arsitektur</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #fff; overflow: hidden; }
+        body { font-family: 'Consolas', 'Courier New', monospace; background: #121212; color: #e0e0e0; overflow: hidden; font-size: 14px;}
+        
         #app-container { display: flex; width: 100vw; height: 100vh; }
         
-        /* Sidebar Controls */
-        #sidebar { width: 340px; background: #252526; padding: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.5); overflow-y: auto; }
-        h2 { font-size: 1.1rem; color: #4ec9b0; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 5px; }
-        .control-group { display: flex; flex-direction: column; gap: 6px; }
-        label { font-size: 0.85rem; color: #ccc; }
-        input[type="file"], input[type="range"], select { background: #333; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
-        input[type="range"] { accent-color: #4ec9b0; }
+        /* Panel Kontrol Kiri */
+        #sidebar { width: 320px; background: #1e1e1e; padding: 15px; display: flex; flex-direction: column; gap: 12px; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.7); overflow-y: auto; border-right: 1px solid #333; }
+        h1 { font-size: 1rem; color: #4ec9b0; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { font-size: 0.9rem; color: #aaa; margin-top: 10px; }
+        
+        .control-group { display: flex; flex-direction: column; gap: 4px; }
+        label { font-size: 0.8rem; color: #ccc; }
+        
+        input[type="file"], select { background: #2d2d2d; border: 1px solid #444; color: #eee; padding: 6px; border-radius: 2px; width: 100%; font-size: 0.8rem; }
+        input[type="range"] { accent-color: #4ec9b0; width: 100%; }
         .val-disp { font-size: 0.75rem; color: #4ec9b0; text-align: right; }
         
-        button { background: #0e639c; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-        button:hover { background: #1177bb; }
+        button#generate-btn { background: #0e639c; color: white; border: none; padding: 10px; border-radius: 2px; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; transition: background 0.2s; }
+        button#generate-btn:hover { background: #1177bb; }
         
-        /* Preview 2D & Canvas Hidden Process */
-        #preview-container { width: 100%; height: 150px; background: #000; border: 1px dashed #555; display: flex; align-items: center; justify-content: center; position: relative; }
-        #floorplan-canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        /* 3D Viewport */
-        #viewport { flex: 1; position: relative; background: #111; }
-        #info-overlay { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 6px; font-size: 0.8rem; pointer-events: none; border: 1px solid #333; }
+        /* Area Pratinjau Denah */
+        #preview-container { width: 100%; height: 180px; background: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; position: relative; margin-top: 5px; overflow: hidden; }
+        #floorplan-canvas { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; /* Membantu melihat detail piksel */ }
+        #status-bar { font-size: 0.7rem; color: #888; text-align: center; margin-top: 2px; }
+
+        /* Viewport 3D Utama */
+        #viewport { flex: 1; position: relative; background: #0a0a0a; }
+        #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; color: #4ec9b0; font-size: 1.2rem; z-index: 20; }
     </style>
-    <!-- Import Three.js & OrbitControls -->
+    <!-- Dependensi Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
@@ -37,102 +42,91 @@
 
 <div id="app-container">
     <div id="sidebar">
-        <h2>1. Upload Denah (2D)</h2>
+        <h1>Generator 3D Arsitektur</h1>
+        
+        <h2>1. Unggah Denah (2D)</h2>
         <div class="control-group">
-            <label>Pilih File (PNG/JPG - Garis Hitam/Latar Putih)</label>
+            <label>Pilih File (Gambar hitam/putih bersih)</label>
             <input type="file" id="upload-input" accept="image/*">
         </div>
         <div id="preview-container">
             <canvas id="floorplan-canvas"></canvas>
         </div>
+        <div id="status-bar">Siap untuk memproses denah...</div>
 
-        <h2>2. Parameter Arsitektur</h2>
+        <h2>2. Parameter Geometri</h2>
         <div class="control-group">
-            <label>Tinggi Lantai ke Lantai (m)</label>
-            <input type="range" id="wall-height" min="2.8" max="4.5" step="0.1" value="3.2">
-            <span class="val-disp" id="wall-height-val">3.2 m (Standar Residensial)</span>
+            <label>Tinggi Lantai (m)</label>
+            <input type="range" id="wall-height" min="2.5" max="5.0" step="0.1" value="3.2">
+            <span class="val-disp" id="wall-height-val">3.2 m</span>
         </div>
         
         <div class="control-group">
-            <label>Sensivitas Dinding (Thresh)</label>
-            <input type="range" id="threshold" min="50" max="200" step="1" value="120">
-            <span class="val-disp" id="threshold-val">120</span>
+            <label>Analisis Dinding (Threshold)</label>
+            <input type="range" id="threshold" min="20" max="220" step="1" value="128">
+            <span class="val-disp" id="threshold-val">128</span>
         </div>
 
         <div class="control-group">
-            <label>Tipe Atap</label>
-            <select id="roof-type">
-                <option value="flat">Atap Datar (Dak Beton)</option>
-                <option value="gables">Atap Pelana (Gable)</option>
-                <option value="none">Tanpa Atap (Open Top)</option>
-            </select>
-        </div>
-
-        <div class="control-group">
-            <label>Visualisasi Estetika</label>
+            <label>Gaya Visual</label>
             <select id="material-style">
-                <option value="architectural">White Model (Maket Arsitektur)</option>
-                <option value="realistic">Material Realistis</option>
+                <option value="architectural_clean">Kaidah Arsitektur (Bersih)</option>
+                <option value="shaded_wireframe">Wireframe Shaded</option>
             </select>
         </div>
 
-        <button id="generate-btn">Generate Model 3D</button>
+        <button id="generate-btn">HASILKAN MODEL 3D</button>
     </div>
 
     <div id="viewport">
-        <div id="info-overlay">
-            Controls: Klik Kiri + Drag (Orbit) | Scroll (Zoom) | Klik Kanan (Pan)
-        </div>
+        <div id="loading-overlay">Memproses Struktur...</div>
     </div>
 </div>
 
 <script>
-// --- Global Variables ---
+// --- Global dan Inisialisasi ---
 let scene, camera, renderer, controls;
-let buildingGroup;
+let buildingGroup, processedMap;
 const canvas = document.getElementById('floorplan-canvas');
 const ctx = canvas.getContext('2d');
+const loadingOverlay = document.getElementById('loading-overlay');
+const statusBar = document.getElementById('status-bar');
 
-// --- Initialization ---
+// Konstanta Kaidah Arsitektur (dalam meter)
+const ARCH = {
+    wall_thickness: 0.15, // Dinding bata standar 15cm
+    column_size: 0.30,      // Kolom struktur standar 30cm
+    door_head_height: 2.1,  // Tinggi kusen atas pintu standar
+    door_width: 0.9,       // Lebar standar pintu tunggal
+    pixel_to_meter: 0.05   // Skala default: 1 pixel = 5cm
+};
+
 function init3D() {
     const container = document.getElementById('viewport');
-    
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1e1e24);
+    scene.background = new THREE.Color(0x0a0a0a);
 
-    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(30, 40, 50);
+    camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 2000);
+    camera.position.set(50, 40, 50);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
 
-    // Architectural Lighting Setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+    // Pencahayaan Arsitektur
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+    sun.position.set(50, 100, 20);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 4096;
+    sun.shadow.mapSize.height = 4096;
+    scene.add(sun);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    sunLight.position.set(40, 60, 20);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 150;
-    const d = 40;
-    sunLight.shadow.camera.left = -d;
-    sunLight.shadow.camera.right = d;
-    sunLight.shadow.camera.top = d;
-    sunLight.shadow.camera.bottom = -d;
-    scene.add(sunLight);
-
-    const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
-    scene.add(gridHelper);
+    scene.add(new THREE.GridHelper(200, 100, 0x333333, 0x222222));
 
     buildingGroup = new THREE.Group();
     scene.add(buildingGroup);
@@ -154,7 +148,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// --- Image Processing & 3D Extrusion ---
+// --- Penanganan Unggahan Denah ---
 document.getElementById('upload-input').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -163,154 +157,216 @@ document.getElementById('upload-input').addEventListener('change', function(e) {
     reader.onload = function(event) {
         const img = new Image();
         img.onload = function() {
-            // Resize to standard resolution for processing
-            const maxDim = 200;
-            let w = img.width;
-            let h = img.height;
-            if (w > h) {
-                h = Math.round((h * maxDim) / w);
-                w = maxDim;
-            } else {
-                w = Math.round((w * maxDim) / h);
-                h = maxDim;
-            }
-            canvas.width = w;
-            canvas.height = h;
-            ctx.drawImage(img, 0, 0, w, h);
+            // Mempertahankan resolusi tinggi, jangan di-resize berlebihan agar detail tidak hilang
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            statusBar.innerText = `Denah dimuat: ${img.width}x${img.height} px. Klik Generate.`;
         };
         img.src = event.target.result;
     };
     reader.readAsDataURL(file);
 });
 
-// UI Controls Dynamic Updates
-document.getElementById('wall-height').addEventListener('input', (e) => {
-    document.getElementById('wall-height-val').innerText = `${e.target.value} m (Standar Residensial)`;
-});
-document.getElementById('threshold').addEventListener('input', (e) => {
-    document.getElementById('threshold-val').innerText = e.target.value;
-});
+// Update UI
+document.getElementById('wall-height').addEventListener('input', e => document.getElementById('wall-height-val').innerText = `${e.target.value} m`);
+document.getElementById('threshold').addEventListener('input', e => document.getElementById('threshold-val').innerText = e.target.value);
 
-// Generator Logic
-document.getElementById('generate-btn').addEventListener('click', generate3DBuilding);
+// --- Generator Geometri Arsitektur Utama ---
+document.getElementById('generate-btn').addEventListener('click', generate3D);
 
-function generate3DBuilding() {
-    if (canvas.width === 0) {
-        alert("Silakan upload gambar denah terlebih dahulu!");
-        return;
-    }
+async function generate3D() {
+    if (canvas.width === 0) { alert("Silakan unggah denah terlebih dahulu!"); return; }
+    
+    loadingOverlay.style.display = 'flex';
+    statusBar.innerText = "Memulai analisis struktur...";
+    await new Promise(r => setTimeout(r, 10)); // Biarkan UI update
 
-    // Clear previous model
-    while(buildingGroup.children.length > 0){ 
-        const obj = buildingGroup.children[0];
-        buildingGroup.remove(obj); 
-    }
+    while(buildingGroup.children.length > 0) buildingGroup.remove(buildingGroup.children[0]);
 
-    const wallHeight = parseFloat(document.getElementById('wall-height').value);
-    const threshVal = parseInt(document.getElementById('threshold').value);
-    const roofType = document.getElementById('roof-type').value;
-    const style = document.getElementById('material-style').value;
-
-    // Materials based on architectural style
-    const isArch = style === 'architectural';
-    const wallMat = new THREE.MeshStandardMaterial({ 
-        color: isArch ? 0xf0f0f0 : 0xdedede, 
-        roughness: 0.5 
-    });
-    const floorMat = new THREE.MeshStandardMaterial({ 
-        color: isArch ? 0xd0d0d0 : 0x8d6e63, 
-        roughness: 0.8 
-    });
-    const glassMat = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transmission: 0.9,
-        opacity: 1,
-        transparent: true,
-        roughness: 0.1,
-        ior: 1.5
-    });
+    const settings = {
+        height: parseFloat(document.getElementById('wall-height').value),
+        thresh: parseInt(document.getElementById('threshold').value),
+        style: document.getElementById('material-style').value
+    };
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imgData.data;
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Scale pixel to real world architectural meters (e.g., 1 pixel = 0.15m)
-    const scale = 0.2; 
-    const offsetX = (w * scale) / 2;
-    const offsetZ = (h * scale) / 2;
-
-    // 1. Generate Floor Slab
-    const floorGeo = new THREE.BoxGeometry(w * scale, 0.2, h * scale);
-    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-    floorMesh.position.set(0, -0.1, 0);
-    floorMesh.receiveShadow = true;
-    buildingGroup.add(floorMesh);
-
-    // 2. Extrude Walls based on pixel threshold
-    // Voxels/Blocks merging for performance
-    const wallGeoList = [];
-    const boxGeo = new THREE.BoxGeometry(scale, wallHeight, scale);
     
-    // Pixel scanning logic for walls
+    // Tahap 1: Konversi ke Peta Biner (Dinding vs Ruang)
+    processedMap = analyzeFloorplan(imgData, settings.thresh);
+    statusBar.innerText = "Peta biner dinding dibuat. Mengonsolidasi geometri...";
+    await new Promise(r => setTimeout(r, 10));
+
+    // Tahap 2 & 3: Buat Struktur 3D Terkonsolidasi
+    createConsolidatedStructure(processedMap, settings);
+
+    loadingOverlay.style.display = 'none';
+    statusBar.innerText = "Model 3D Arsitektur siap.";
+}
+
+// Analisis Denah - Membuat peta biner boolean
+function analyzeFloorplan(imgData, thresh) {
+    const data = imgData.data;
+    const w = imgData.width;
+    const h = imgData.height;
+    const map = new Array(h).fill(0).map(() => new Array(w).fill(false));
+
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
             const idx = (y * w + x) * 4;
-            const r = data[idx];
-            const g = data[idx+1];
-            const b = data[idx+2];
-            const brightness = (r + g + b) / 3;
+            const avg = (data[idx] + data[idx+1] + data[idx+2]) / 3;
+            // piksel gelap dianggap dinding
+            if (avg < thresh) map[y][x] = true;
+        }
+    }
+    return map;
+}
 
-            // Black pixels represent walls
-            if (brightness < threshVal) {
-                const posX = (x * scale) - offsetX;
-                const posZ = (y * scale) - offsetZ;
+// Membuat Struktur 3D Terkonsolidasi
+function createConsolidatedStructure(map, settings) {
+    const h = map.length;
+    const w = map[0].length;
+    const wallThick = ARCH.wall_thickness;
+    
+    // Material
+    const wallColor = (settings.style === 'shaded_wireframe') ? 0xdddddd : 0xf0f0f0;
+    const baseMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.6, metalness: 0.1 });
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.2 });
 
-                // Simple Lintels logic (Sill & Head Height for windows/doors simulation)
-                // If it's internal wall vs external, create openings dynamically
-                const mesh = new THREE.Mesh(boxGeo, wallMat);
-                mesh.position.set(posX, wallHeight / 2, posZ);
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                buildingGroup.add(mesh);
+    const getMaterial = () => {
+        if (settings.style === 'shaded_wireframe') {
+            return [baseMat, wireMat];
+        }
+        return [baseMat];
+    };
+
+    // Helper untuk membuat box dengan skala arsitektur
+    const addBox = (xMeters, zMeters, wMeters, dMeters, hMeters, yPosMeters) => {
+        const geo = new THREE.BoxGeometry(wMeters, hMeters, dMeters);
+        const mesh = THREE.SceneUtils.createMultiMaterialObject(geo, getMaterial());
+        mesh.position.set(xMeters + wMeters/2, yPosMeters + hMeters/2, zMeters + dMeters/2);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        buildingGroup.add(mesh);
+    };
+
+    // --- 1. Lantai Dasar ---
+    addBox(-10, -10, w * ARCH.pixel_to_meter + 20, h * ARCH.pixel_to_meter + 20, 0.1, -0.1);
+
+    // --- 2. Konsolidasi Dinding (Mencegah Pilar Voxel) ---
+    statusBar.innerText = "Dinding horizontal di-render...";
+    let horizontalWalls = scanWalls(map, 'h', w, h);
+    renderConsolidatedWalls(horizontalWalls, 'h', wallThick, settings.height, addBox);
+
+    statusBar.innerText = "Dinding vertikal di-render...";
+    let verticalWalls = scanWalls(map, 'v', w, h);
+    renderConsolidatedWalls(verticalWalls, 'v', wallThick, settings.height, addBox);
+
+    // --- 3. Buat Kolom Struktur pada Sudut/Perpotongan Dinding ---
+    statusBar.innerText = "Menempatkan kolom struktur pada titik temu dinding...";
+    placeStructuralColumns(map, w, h, settings.height, addBox);
+
+    // --- 4. Buat Ambang Pintu (Lintel) (Opsional: Butuh analisis bukaan yang kompleks) ---
+    // Logika sederhana: di mana dinding horizontal/vertikal putus, tambahkan ambang atas jika jaraknya kecil (lebar pintu)
+}
+
+// Pindai dinding dan konsolidasikan menjadi segmen panjang
+function scanWalls(map, direction, w, h) {
+    const walls = [];
+    const visited = new Array(h).fill(0).map(() => new Array(w).fill(false));
+
+    if (direction === 'h') {
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (map[y][x] && !visited[y][x]) {
+                    // Cek ketebalan dinding di sini (sederhana: cek pixel di bawahnya)
+                    if (y < h-1 && map[y+1][x]) {
+                        let length = 1;
+                        visited[y][x] = true;
+                        visited[y+1][x] = true;
+                        while (x + length < w && map[y][x+length] && map[y+1][x+length]) {
+                            visited[y][x+length] = true;
+                            visited[y+1][x+length] = true;
+                            length++;
+                        }
+                        if (length > 1) walls.push({ startX: x, startY: y, length: length });
+                    }
+                }
+            }
+        }
+    } else { // Vertikal
+        for (let x = 0; x < w; x++) {
+            for (let y = 0; y < h; y++) {
+                if (map[y][x] && !visited[y][x]) {
+                    // Cek ketebalan
+                    if (x < w-1 && map[y][x+1]) {
+                        let length = 1;
+                        visited[y][x] = true;
+                        visited[y][x+1] = true;
+                        while (y + length < h && map[y+length][x] && map[y+length][x+1]) {
+                            visited[y+length][x] = true;
+                            visited[y+length][x+1] = true;
+                            length++;
+                        }
+                        if (length > 1) walls.push({ startX: x, startY: y, length: length });
+                    }
+                }
             }
         }
     }
-
-    // 3. Generate Roof based on Architectural Rules
-    if (roofType === 'flat') {
-        const roofGeo = new THREE.BoxGeometry(w * scale + 0.4, 0.2, h * scale + 0.4);
-        const roofMat = new THREE.MeshStandardMaterial({ color: isArch ? 0xe0e0e0 : 0x555555 });
-        const roofMesh = new THREE.Mesh(roofGeo, roofMat);
-        roofMesh.position.set(0, wallHeight + 0.1, 0);
-        roofMesh.castShadow = true;
-        buildingGroup.add(roofMesh);
-    } else if (roofType === 'gables') {
-        const roofShape = new THREE.Shape();
-        const roofWidth = w * scale + 0.6;
-        const roofHeight = 2.5; // Pitch height
-        
-        roofShape.moveTo(-roofWidth / 2, 0);
-        roofShape.lineTo(0, roofHeight);
-        roofShape.lineTo(roofWidth / 2, 0);
-        roofShape.closePath();
-
-        const extrudeSettings = { depth: h * scale + 0.6, bevelEnabled: false };
-        const gableGeo = new THREE.ExtrudeGeometry(roofShape, extrudeSettings);
-        const roofMat = new THREE.MeshStandardMaterial({ color: isArch ? 0xd5d5d5 : 0xb71c1c });
-        const gableMesh = new THREE.Mesh(gableGeo, roofMat);
-        
-        gableMesh.rotation.y = 0;
-        gableMesh.position.set(0, wallHeight, -(h * scale + 0.6) / 2);
-        gableMesh.castShadow = true;
-        buildingGroup.add(gableMesh);
-    }
-
-    // Adjust Camera Focus
-    controls.target.set(0, wallHeight / 2, 0);
+    return walls;
 }
 
-// Start Three.js Context on Load
+// Render segmen dinding yang sudah dikonsolidasi
+function renderConsolidatedWalls(walls, direction, thickness, height, addBoxFunc) {
+    const s = ARCH.pixel_to_meter;
+    walls.forEach(w => {
+        if (direction === 'h') {
+            addBoxFunc(w.startX * s, w.startY * s, w.length * s, thickness, height, 0);
+        } else {
+            addBoxFunc(w.startX * s, w.startY * s, thickness, w.length * s, height, 0);
+        }
+    });
+}
+
+// Menemukan sudut dan perpotongan, lalu letakkan kolom struktural
+function placeStructuralColumns(map, w, h, height, addBoxFunc) {
+    const s = ARCH.pixel_to_meter;
+    const colSize = ARCH.column_size;
+    const offset = colSize / 2;
+
+    for (let y = 2; y < h - 2; y++) {
+        for (let x = 2; x < w - 2; x++) {
+            // Deteksi perpotongan dinding sederhana
+            const center = map[y][x];
+            if (center) {
+                const up = map[y-1][x]; const down = map[y+1][x];
+                const left = map[y][x-1]; const right = map[y][x+1];
+                
+                // Kondisi L-sudut, T-junction, atau X-perempatan
+                const isVertical = up && down;
+                const isHorizontal = left && right;
+                const isL = (up || down) && (left || right);
+
+                if (isL || (isVertical && !isHorizontal) || (!isVertical && isHorizontal)) {
+                    // Hanya tempatkan jika ini adalah titik pertemuan yang "signifikan" (bukan tengah garis lurus biasa)
+                    // (Logika ini perlu penyempurnaan lebih lanjut untuk hasil sempurna, tapi ini permulaan yang baik)
+                    
+                    // Cek tetangga lebih jauh untuk memastikan ini sudut
+                    const cornerSignificance = ((up?1:0) + (down?1:0) + (left?1:0) + (right?1:0));
+                    
+                    if (cornerSignificance >= 3 || (cornerSignificance === 2 && ((up && left) || (up && right) || (down && left) || (down && right)))) {
+                         addBoxFunc(x * s - offset, y * s - offset, colSize, colSize, height, 0);
+                         
+                         // Lewati area sekitar kolom agar tidak menumpuk pilar tak perlu
+                         x += 3;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Mulai
 window.onload = init3D;
 </script>
 </body>
