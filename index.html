@@ -1,324 +1,2121 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Floor Plan - Stable Accurate Windows</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #121214; color: #fff; overflow: hidden; font-size: 13px; }
-        #app { display: flex; width: 100vw; height: 100vh; }
-        
-        #sidebar { width: 340px; background: #1a1a1d; padding: 20px; display: flex; flex-direction: column; gap: 15px; border-right: 1px solid #333; z-index: 10; box-shadow: 2px 0 15px rgba(0,0,0,0.7); overflow-y: auto; }
-        h1 { font-size: 1rem; color: #4ec9b0; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 0; letter-spacing: 0.5px; }
-        
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        label { font-size: 0.8rem; color: #ccc; }
-        input[type="file"], input[type="range"] { background: #252529; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; outline: none; }
-        input[type="range"] { accent-color: #4ec9b0; cursor: pointer; }
-        .val-disp { font-size: 0.75rem; color: #4ec9b0; text-align: right; font-weight: bold; }
-        
-        button { background: #0e639c; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; margin-top: 5px; letter-spacing: 1px; }
-        button:hover { background: #1177bb; }
-        
-        #preview-box { width: 100%; height: 160px; background: #fff; border: 2px dashed #555; display: flex; align-items: center; justify-content: center; border-radius: 6px; overflow: hidden; }
-        #canvas2d { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        #viewport { flex: 1; position: relative; background: #080808; }
-        #loader { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; color: #4ec9b0; font-weight: bold; z-index: 20; flex-direction: column; gap: 15px; font-size: 1.1rem; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #222; border-top: 4px solid #4ec9b0; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arsitek 3D — Editor Denah, Dinding, Lantai & Furnitur</title>
+<style>
+:root{
+  --bg:#101014; --panel:#17171b; --panel2:#1e1e24; --line:#2c2c34;
+  --txt:#e8e8ec; --muted:#9a9aa6; --accent:#4ec9b0; --accent2:#0e8ecf;
+  --warn:#e0a44c; --bad:#e06c75; --ok:#6fcf7f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden;font-size:13px}
+#app{display:flex;width:100vw;height:100vh}
+
+/* ---------- SIDEBAR ---------- */
+#sidebar{width:352px;min-width:352px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:10}
+#sidebar header{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+#sidebar h1{font-size:.95rem;color:var(--accent);text-transform:uppercase;letter-spacing:.6px}
+#sidebar header p{font-size:.72rem;color:var(--muted);margin-top:3px}
+.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel2)}
+.tabs button{flex:1;background:none;border:none;color:var(--muted);padding:10px 4px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border-bottom:2px solid transparent}
+.tabs button:hover{color:var(--txt)}
+.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--panel)}
+.tab-body{flex:1;overflow-y:auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:14px}
+.tab-body[hidden]{display:none}
+.tab-body>*{flex:0 0 auto}   /* jangan digencet flexbox — biar panel yang scroll */
+
+.group{display:flex;flex-direction:column;gap:6px}
+.group>label,.section-title{font-size:.74rem;color:var(--muted);font-weight:600}
+.section-title{text-transform:uppercase;letter-spacing:.6px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:6px;margin-top:4px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1;min-width:0}
+input[type=file]{font-size:.72rem}
+input[type=text],input[type=number],select,input[type=file]{background:#212128;color:var(--txt);border:1px solid var(--line);padding:7px 8px;border-radius:5px;outline:none;width:100%;font-size:.78rem;font-family:inherit}
+input:focus,select:focus{border-color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;background:none;border:none;padding:0}
+input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;flex:none;cursor:pointer}
+.chk{display:flex;gap:8px;align-items:center;font-size:.78rem;color:var(--txt);cursor:pointer}
+.chk span{flex:1}
+.val{font-size:.72rem;color:var(--accent);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.hint{font-size:.7rem;color:var(--muted);line-height:1.45}
+
+button.btn{background:var(--accent2);color:#fff;border:none;padding:10px;border-radius:5px;font-weight:700;cursor:pointer;font-size:.76rem;letter-spacing:.4px;text-transform:uppercase;transition:.15s;font-family:inherit}
+button.btn:hover{filter:brightness(1.18)}
+button.btn.ghost{background:#26262e;color:var(--txt)}
+button.btn.ghost:hover{background:#31313b}
+button.btn.danger{background:#6d2b30}
+button.btn.danger:hover{background:#8b373d}
+button.btn.sm{padding:6px 8px;font-size:.68rem;text-transform:none;letter-spacing:0}
+button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+
+#preview-box{width:100%;aspect-ratio:4/3;background:#fff;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+#preview-box .ph{color:#8a8a8a;font-size:.72rem;text-align:center;padding:10px}
+#canvas2d{max-width:100%;max-height:100%;object-fit:contain;display:none}
+#stats{font-size:.7rem;color:var(--muted);line-height:1.6;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+#stats b{color:var(--accent);font-variant-numeric:tabular-nums}
+
+/* level list */
+.lvl-item{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;cursor:pointer}
+.lvl-item.active{border-color:var(--accent);background:#1c2a28}
+.lvl-item .nm{flex:1;font-size:.78rem;font-weight:600}
+.lvl-item .el{font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.lvl-item .eye{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 4px}
+.lvl-item .eye.on{color:var(--accent)}
+
+/* catalog */
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cat-item{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 4px;text-align:center;cursor:pointer;font-size:.63rem;color:var(--muted);line-height:1.25;transition:.15s}
+.cat-item:hover{border-color:var(--accent);color:var(--txt);background:#23232b}
+.cat-item .ic{font-size:1.15rem;display:block;margin-bottom:3px}
+
+/* ---------- VIEWPORT ---------- */
+#viewport{flex:1;position:relative;background:#0a0a0c;overflow:hidden}
+#viewport canvas{display:block}
+.float{position:absolute;background:rgba(23,23,27,.94);border:1px solid var(--line);border-radius:8px;backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.5)}
+#toolbar{top:12px;left:12px;display:flex;gap:2px;padding:5px}
+#toolbar button{background:none;border:none;color:var(--muted);padding:7px 9px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit}
+#toolbar button:hover{background:#2a2a33;color:var(--txt)}
+#toolbar button.active{background:var(--accent);color:#06201b}
+#toolbar .sep{width:1px;background:var(--line);margin:4px 3px}
+#levelbar{top:12px;right:12px;padding:5px;display:flex;gap:3px;align-items:center}
+#levelbar button{background:none;border:none;color:var(--muted);padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit}
+#levelbar button.active{background:var(--accent);color:#06201b}
+#levelbar button:hover:not(.active){background:#2a2a33;color:var(--txt)}
+#hint{bottom:12px;left:12px;padding:7px 12px;font-size:.72rem;color:var(--muted);max-width:60%}
+#hint b{color:var(--accent)}
+
+#inspector{top:66px;right:12px;width:288px;max-height:calc(100vh - 92px);overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+#inspector[hidden]{display:none}
+#inspector h3{font-size:.76rem;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
+#inspector h3 span.tag{background:#2a2a33;color:var(--muted);font-size:.6rem;padding:2px 6px;border-radius:99px;letter-spacing:0;text-transform:none}
+.f-row{display:flex;align-items:center;gap:8px}
+.f-row label{font-size:.72rem;color:var(--muted);width:78px;flex:none}
+.f-row input,.f-row select{flex:1;padding:5px 7px;font-size:.74rem}
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.op-item{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:7px;display:flex;flex-direction:column;gap:5px}
+.op-item .top{display:flex;gap:6px;align-items:center}
+.op-item .top select{flex:1;padding:4px 6px;font-size:.7rem}
+.op-item .x{background:#3a2226;border:none;color:#e06c75;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:.8rem;line-height:1;flex:none}
+.badge{font-size:.67rem;padding:5px 8px;border-radius:5px;line-height:1.45}
+.badge.ok{background:#173324;color:var(--ok)}
+.badge.warn{background:#3a2f18;color:var(--warn)}
+
+#loader{position:absolute;inset:0;background:rgba(6,6,8,.9);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--accent);font-weight:700;z-index:30;font-size:.9rem}
+#loader.on{display:flex}
+.spinner{width:38px;height:38px;border:3px solid #222;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{100%{transform:rotate(360deg)}}
+#toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f1f26;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:6px;font-size:.76rem;opacity:0;transition:.25s;pointer-events:none;z-index:40}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
 </head>
 <body>
-
 <div id="app">
-    <div id="sidebar">
-        <h1>Generator Dinding & Bukaan</h1>
-        
-        <div class="form-group">
-            <label>1. Upload Denah 2D</label>
-            <input type="file" id="upload" accept="image/*">
-        </div>
-        <div id="preview-box"><canvas id="canvas2d"></canvas></div>
+  <aside id="sidebar">
+    <header>
+      <h1>Arsitek 3D</h1>
+      <p>Denah 2D → dinding vektor, multi-lantai, tangga & furnitur</p>
+    </header>
+    <nav class="tabs">
+      <button data-tab="plan" class="active">Denah</button>
+      <button data-tab="levels">Lantai</button>
+      <button data-tab="objects">Objek</button>
+      <button data-tab="file">File</button>
+    </nav>
 
-        <div class="form-group">
-            <label>Tinggi Floor-to-Floor (m)</label>
-            <input type="range" id="wallH" min="2.8" max="4.5" step="0.1" value="3.2">
-            <span class="val-disp" id="wallH-val">3.2 m</span>
-        </div>
+    <!-- ============ TAB DENAH ============ -->
+    <div class="tab-body" data-panel="plan">
+      <div class="group">
+        <label>1. Upload gambar denah</label>
+        <input type="file" id="upload" accept="image/*">
+      </div>
+      <div id="preview-box">
+        <div class="ph">Pratinjau denah &amp; hasil deteksi<br>akan tampil di sini</div>
+        <canvas id="canvas2d"></canvas>
+      </div>
 
-        <div class="form-group">
-            <label>Ketebalan Minimum Dinding</label>
-            <input type="range" id="minThick" min="1" max="5" step="1" value="2">
-            <span class="val-disp" id="minThick-val">2 px</span>
+      <div class="section-title">2. Skala Denah</div>
+      <div class="group">
+        <label>Lebar bangunan sebenarnya (m)</label>
+        <div class="row">
+          <input type="number" id="realWidth" value="12" min="1" max="200" step="0.1">
+          <span class="val" id="pxm-val">– px/m</span>
         </div>
+        <p class="hint">Ukur lebar total denah dari sisi kiri ke kanan gambar. Skala ini menentukan tebal dinding, lebar pintu, dan ukuran ruang dalam meter.</p>
+      </div>
 
-        <div class="form-group">
-            <label>Panjang Minimum Dinding</label>
-            <input type="range" id="minLen" min="1" max="40" step="1" value="6">
-            <span class="val-disp" id="minLen-val">6 px</span>
-        </div>
-        
-        <div class="form-group">
-            <label>Sensitivitas Garis Hitam</label>
-            <input type="range" id="thresh" min="50" max="250" step="1" value="187">
-            <span class="val-disp" id="thresh-val">187</span>
-        </div>
+      <div class="section-title">3. Parameter Deteksi</div>
+      <div class="group">
+        <label>Sensitivitas garis (threshold)</label>
+        <input type="range" id="thresh" min="60" max="240" step="1" value="170">
+        <span class="val" id="thresh-val">170</span>
+      </div>
+      <div class="group">
+        <label>Tebal dinding pada gambar (px)</label>
+        <input type="range" id="closeR" min="0" max="14" step="1" value="5">
+        <span class="val" id="closeR-val">5 px</span>
+        <p class="hint">Untuk denah dinding garis-ganda (kosong di tengah). Nilai ≈ setengah tebal dinding di gambar agar rongga tertutup dan sumbu dinding terbaca.</p>
+      </div>
+      <div class="group">
+        <label>Buang noise / teks (px)</label>
+        <input type="range" id="noise" min="0" max="40" step="1" value="14">
+        <span class="val" id="noise-val">14 px</span>
+      </div>
+      <div class="group">
+        <label>Panjang dinding minimum (m)</label>
+        <input type="range" id="minLen" min="0.2" max="3" step="0.1" value="0.6">
+        <span class="val" id="minLen-val">0.6 m</span>
+      </div>
+      <div class="group">
+        <label class="chk"><input type="checkbox" id="ortho" checked><span>Luruskan ke ortogonal (siku 90°)</span></label>
+        <label class="chk"><input type="checkbox" id="doOpen" checked><span>Deteksi pintu &amp; jendela otomatis</span></label>
+        <label class="chk"><input type="checkbox" id="doHeal" checked><span>Rapikan sambungan (L / T / X)</span></label>
+        <label class="chk"><input type="checkbox" id="showOverlay" checked><span>Tampilkan overlay hasil deteksi</span></label>
+      </div>
 
-        <button id="generateBtn">Buat Maket Arsitektur 3D</button>
+      <div class="section-title">4. Standar Bangunan</div>
+      <div class="group">
+        <label>Tinggi lantai ke lantai (m)</label>
+        <div class="row">
+          <input type="number" id="wallH" value="3.2" min="2.2" max="6" step="0.05">
+          <span class="val">plafon</span>
+        </div>
+      </div>
+      <div class="f-grid">
+        <div class="group"><label>Tinggi pintu (m)</label><input type="number" id="doorH" value="2.1" min="1.8" max="2.6" step="0.05"></div>
+        <div class="group"><label>Ambang jendela (m)</label><input type="number" id="sillH" value="0.9" min="0.2" max="1.5" step="0.05"></div>
+      </div>
+
+      <button class="btn" id="generateBtn">Generate Dinding 3D</button>
+      <button class="btn ghost sm" id="generateNewBtn">Generate ke lantai baru</button>
+      <div id="stats">Belum ada denah diproses.</div>
     </div>
 
-    <div id="viewport">
-        <div id="loader">
-            <div class="spinner"></div>
-            <span>Mengekstrak Dinding, Pintu, & Jendela...</span>
-        </div>
+    <!-- ============ TAB LANTAI ============ -->
+    <div class="tab-body" data-panel="levels" hidden>
+      <div class="section-title">Susunan Lantai</div>
+      <div id="lvl-list" class="group"></div>
+      <div class="row">
+        <button class="btn sm" id="addLevelBtn">+ Lantai Kosong</button>
+        <button class="btn sm ghost" id="dupLevelBtn">+ Salin Lantai Aktif</button>
+      </div>
+      <div class="section-title">Properti Lantai Aktif</div>
+      <div id="lvl-props" class="group"></div>
+      <div class="section-title">Tampilan</div>
+      <label class="chk"><input type="checkbox" id="ghostOther" checked><span>Tampilkan lantai lain transparan</span></label>
+      <label class="chk"><input type="checkbox" id="showSlab" checked><span>Tampilkan pelat lantai</span></label>
+      <label class="chk"><input type="checkbox" id="showGrid" checked><span>Tampilkan grid</span></label>
+      <label class="chk"><input type="checkbox" id="showShadow" checked><span>Bayangan</span></label>
+      <p class="hint">Elevasi tiap lantai dihitung otomatis dari tinggi lantai di bawahnya. Objek (tangga, furnitur) ikut lantai tempat ia dibuat.</p>
     </div>
+
+    <!-- ============ TAB OBJEK ============ -->
+    <div class="tab-body" data-panel="objects" hidden>
+      <div class="section-title">Tangga</div>
+      <div class="cat-grid" id="cat-stairs"></div>
+      <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
+      <div class="section-title">Furnitur &amp; Sanitair</div>
+      <div class="row"><select id="furn-filter">
+        <option value="all">Semua kategori</option>
+        <option value="kamar">Kamar Tidur</option>
+        <option value="ruang">Ruang Keluarga</option>
+        <option value="makan">Ruang Makan</option>
+        <option value="dapur">Dapur</option>
+        <option value="kamar_mandi">Kamar Mandi</option>
+        <option value="kerja">Ruang Kerja</option>
+        <option value="lain">Lainnya</option>
+      </select></div>
+      <div class="cat-grid" id="cat-furn"></div>
+      <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
+    </div>
+
+    <!-- ============ TAB FILE ============ -->
+    <div class="tab-body" data-panel="file" hidden>
+      <div class="section-title">Proyek</div>
+      <div class="group"><label>Nama proyek</label><input type="text" id="projName" value="Denah 3D"></div>
+      <button class="btn" id="saveBtn">Simpan Proyek (.json)</button>
+      <div class="group"><label>Buka proyek</label><input type="file" id="loadInput" accept="application/json,.json"></div>
+      <button class="btn ghost" id="exportObjBtn">Ekspor Model (.obj)</button>
+      <button class="btn ghost" id="snapshotBtn">Simpan Gambar (.png)</button>
+      <div class="section-title">Reset</div>
+      <button class="btn danger" id="clearLevelBtn">Kosongkan Lantai Aktif</button>
+      <button class="btn danger" id="resetBtn">Reset Semua</button>
+      <div class="section-title">Pintasan Keyboard</div>
+      <p class="hint">
+        <b>Q</b> pilih · <b>W</b> geser · <b>E</b> putar · <b>R</b> skala<br>
+        <b>L</b> gambar dinding · <b>Esc</b> batal/lepas pilihan<br>
+        <b>Del</b> hapus · <b>Ctrl+D</b> duplikat · <b>F</b> fokus objek<br>
+        <b>PgUp / PgDn</b> pindah lantai
+      </p>
+    </div>
+  </aside>
+
+  <main id="viewport">
+    <div class="float" id="toolbar">
+      <button data-tool="select" class="active" title="Pilih (Q)">Pilih</button>
+      <button data-tool="translate" title="Geser (W)">Geser</button>
+      <button data-tool="rotate" title="Putar (E)">Putar</button>
+      <button data-tool="scale" title="Skala (R)">Skala</button>
+      <div class="sep"></div>
+      <button data-tool="wall" title="Gambar dinding (L)">+ Dinding</button>
+      <div class="sep"></div>
+      <button id="snapBtn" class="active" title="Snap ke grid 5 cm / 15°">Snap</button>
+      <button id="dupBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
+      <button id="delBtn" title="Hapus (Del)">Hapus</button>
+    </div>
+    <div class="float" id="levelbar"></div>
+    <div class="float" id="inspector" hidden></div>
+    <div class="float" id="hint">Upload denah lalu <b>Generate</b>, atau gambar dinding manual dengan <b>+ Dinding</b>.</div>
+    <div id="loader"><div class="spinner"></div><span id="loader-txt">Memproses denah…</span></div>
+    <div id="toast"></div>
+  </main>
 </div>
 
 <script>
-const container = document.getElementById('viewport');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x151518);
+/* ==========================================================================
+   ARSITEK 3D — editor denah 3D berbasis data vektor
+   Model data: dinding disimpan sebagai garis-sumbu (centerline) dalam METER,
+   bukan piksel, sehingga bisa ditransform, diedit numerik, dan disimpan.
+   ========================================================================== */
 
-const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(20, 30, 40);
+/* ----------------------------- util ----------------------------- */
+const uid = (()=>{ let n=0; return p => `${p}${(++n).toString(36)}${Math.random().toString(36).slice(2,5)}`; })();
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const D2R=Math.PI/180, R2D=180/Math.PI;
+const fmt=(v,d=2)=>(Math.round(v*10**d)/10**d).toFixed(d);
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const el=(tag,cls,txt)=>{const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e;};
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(container.clientWidth, container.clientHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-container.appendChild(renderer.domElement);
-
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-dirLight.position.set(30, 60, 20);
-dirLight.castShadow = true;
-scene.add(dirLight);
-scene.add(new THREE.GridHelper(100, 100, 0x333333, 0x222222));
-
-const buildingGroup = new THREE.Group();
-scene.add(buildingGroup);
-
-window.addEventListener('resize', () => {
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-});
-
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
 }
-animate();
+function setHint(html){ $('#hint').innerHTML=html; }
 
-const canvas = document.getElementById('canvas2d');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
+/* --------------------- standar arsitektur --------------------- */
+const STD = {
+  thickness:[0.10,0.15,0.20,0.25,0.30,0.35],  // tebal dinding umum (m)
+  structuralMin:0.20,                          // >= dianggap dinding struktural
+  doorW:[0.70,0.80,0.90,1.00,1.20],            // lebar daun pintu umum
+  doorH:2.10, sillH:0.90, windowH:2.10,
+  maxDoor:1.40, maxWindow:4.00,
+  riserMin:0.15, riserMax:0.19, riserTarget:0.175,
+  treadMin:0.25, treadTarget:0.28,
+  stairWidthMin:0.90
+};
+const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
 
-document.getElementById('upload').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-            const MAX_DIM = 280; 
-            let w = img.width, h = img.height;
-            if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
-            else { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
-            canvas.width = w; canvas.height = h;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0, w, h);
-        };
-        img.src = event.target.result;
+/* --------------------------- state --------------------------- */
+const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0 };
+
+function newLevel(name,height){
+  return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
+}
+function newWall(x1,z1,x2,z2,t,h){
+  return { id:uid('w'), x1,z1,x2,z2, thickness:t||0.15, height:h||0, openings:[] };
+}
+function newOpening(type,at,width){
+  return { id:uid('o'), type:type||'door', at, width:width||0.8,
+           sill:type==='window'?STD.sillH:0, head:STD.doorH };
+}
+const L = ()=>PROJECT.levels[PROJECT.active];
+const levelElevation = idx => PROJECT.levels.slice(0,idx).reduce((s,l)=>s+l.height,0);
+
+const wallLen   = w => Math.hypot(w.x2-w.x1, w.z2-w.z1);
+const wallAngle = w => Math.atan2(w.z2-w.z1, w.x2-w.x1);
+const wallMid   = w => ({ x:(w.x1+w.x2)/2, z:(w.z1+w.z2)/2 });
+const wallH     = (w,lv) => w.height>0 ? w.height : lv.height;
+const isStructural = w => w.thickness >= STD.structuralMin;
+
+function setWallByCenter(w, cx, cz, len, ang){
+  const hx=Math.cos(ang)*len/2, hz=Math.sin(ang)*len/2;
+  w.x1=cx-hx; w.z1=cz-hz; w.x2=cx+hx; w.z2=cz+hz;
+}
+
+PROJECT.levels.push(newLevel('Lantai 1',3.2));
+
+/* --------------------------- three.js --------------------------- */
+const viewport=$('#viewport');
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0e0e11);
+scene.fog=new THREE.Fog(0x0e0e11, 70, 190);
+
+const camera=new THREE.PerspectiveCamera(45, viewport.clientWidth/viewport.clientHeight, 0.05, 600);
+camera.position.set(14,14,18);
+
+const renderer=new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+viewport.appendChild(renderer.domElement);
+
+const orbit=new THREE.OrbitControls(camera, renderer.domElement);
+orbit.enableDamping=true; orbit.dampingFactor=.07;
+orbit.maxPolarAngle=Math.PI*0.495; orbit.target.set(0,1.5,0);
+
+scene.add(new THREE.HemisphereLight(0xdfefff,0x2a2a2a,0.55));
+scene.add(new THREE.AmbientLight(0xffffff,0.25));
+const sun=new THREE.DirectionalLight(0xfff3e0,0.85);
+sun.position.set(22,34,16);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=1; sun.shadow.camera.far=140;
+sun.shadow.camera.left=-45; sun.shadow.camera.right=45;
+sun.shadow.camera.top=45; sun.shadow.camera.bottom=-45;
+sun.shadow.bias=-0.0006;
+scene.add(sun);
+
+const grid=new THREE.GridHelper(120,120,0x2f4a46,0x1e1e24);
+grid.position.y=-0.005;
+scene.add(grid);
+
+const gizmo=new THREE.TransformControls(camera, renderer.domElement);
+gizmo.setSize(0.85);
+gizmo.addEventListener('dragging-changed', e=>{ orbit.enabled=!e.value; if(!e.value) commitGizmo(); });
+gizmo.addEventListener('objectChange', onGizmoChange);
+scene.add(gizmo);
+
+const worldRoot=new THREE.Group(); scene.add(worldRoot);
+const helperRoot=new THREE.Group(); scene.add(helperRoot);
+
+let selBox=null;                    // outline seleksi
+const groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+
+addEventListener('resize',()=>{
+  camera.aspect=viewport.clientWidth/viewport.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+});
+(function animate(){ requestAnimationFrame(animate); orbit.update(); if(selBox)selBox.update(); renderer.render(scene,camera); })();
+
+/* --------------------------- material --------------------------- */
+const MAT={
+  wall      : new THREE.MeshStandardMaterial({color:0xefece5, roughness:.92, metalness:0}),
+  wallStruct: new THREE.MeshStandardMaterial({color:0xdedad0, roughness:.95, metalness:0}),
+  glass     : new THREE.MeshPhysicalMaterial({color:0xaddcf5, roughness:.06, metalness:0, transparent:true, opacity:.34, transmission:.75, ior:1.5, side:THREE.DoubleSide}),
+  frame     : new THREE.MeshStandardMaterial({color:0x6d5741, roughness:.7}),
+  door      : new THREE.MeshStandardMaterial({color:0x9c6b3f, roughness:.62}),
+  slab      : new THREE.MeshStandardMaterial({color:0x6e6a66, roughness:.95}),
+  step      : new THREE.MeshStandardMaterial({color:0xcdc4b4, roughness:.85}),
+  metal     : new THREE.MeshStandardMaterial({color:0x9aa2aa, roughness:.35, metalness:.75}),
+  wood      : new THREE.MeshStandardMaterial({color:0x9a6a3c, roughness:.68}),
+  woodDark  : new THREE.MeshStandardMaterial({color:0x5d4230, roughness:.7}),
+  fabric    : new THREE.MeshStandardMaterial({color:0x60708c, roughness:.96}),
+  fabric2   : new THREE.MeshStandardMaterial({color:0x8a8579, roughness:.96}),
+  white     : new THREE.MeshStandardMaterial({color:0xf7f7f4, roughness:.42}),
+  dark      : new THREE.MeshStandardMaterial({color:0x2a2a30, roughness:.55}),
+  plant     : new THREE.MeshStandardMaterial({color:0x4f8352, roughness:.9}),
+  water     : new THREE.MeshPhysicalMaterial({color:0x8fd0e8, roughness:.1, transparent:true, opacity:.55})
+};
+const ghostCache=new Map();
+function ghost(mat){
+  if(!ghostCache.has(mat.uuid)){
+    const m=mat.clone();
+    m.transparent=true; m.opacity=.14; m.depthWrite=false;
+    if(m.transmission!==undefined) m.transmission=0;
+    ghostCache.set(mat.uuid,m);
+  }
+  return ghostCache.get(mat.uuid);
+}
+
+/* box helper: dimensi + posisi dalam meter, sumbu lokal */
+function box(w,h,d,mat,x=0,y=0,z=0,ry=0){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z); m.rotation.y=ry;
+  m.castShadow=true; m.receiveShadow=true;
+  return m;
+}
+function cyl(rt,rb,h,mat,x=0,y=0,z=0,seg=16){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true;
+  return m;
+}
+
+/* ======================================================================
+   BUILDER — DINDING
+   Dinding dibangun dari garis-sumbu. Bukaan memotong dinding menjadi
+   panel padat (bawah ambang / atas kusen) sesuai kaidah: pintu 2.1 m,
+   jendela ambang 0.9 m, di atas bukaan selalu ada balok lintel.
+   ====================================================================== */
+function buildWallGroup(w, lv){
+  const g=new THREE.Group();
+  const len=wallLen(w), h=wallH(w,lv), t=w.thickness;
+  if(len<0.02) return g;
+  const mat=isStructural(w)?MAT.wallStruct:MAT.wall;
+
+  // bukaan yang valid: tidak keluar dinding, tidak saling tumpang tindih
+  const ops=w.openings
+    .map(o=>({...o, s:o.at-o.width/2, e:o.at+o.width/2}))
+    .filter(o=>o.width>0.1 && o.s>0.03 && o.e<len-0.03)
+    .sort((a,b)=>a.s-b.s)
+    .filter((o,i,arr)=> i===0 || o.s >= arr[i-1].e-1e-6);
+
+  const panels=[]; // [x0,x1,y0,y1]
+  let cur=0;
+  for(const o of ops){
+    if(o.s>cur+1e-4) panels.push([cur,o.s,0,h]);
+    const head=Math.min(o.head||STD.doorH, h);
+    const sill=o.type==='window' ? clamp(o.sill||STD.sillH,0,head-0.2) : 0;
+    if(sill>0.01) panels.push([o.s,o.e,0,sill]);           // dinding bawah jendela
+    if(head<h-0.01) panels.push([o.s,o.e,head,h]);          // lintel / ambang atas
+    addOpeningDetail(g,o,sill,head,t,len);
+    cur=o.e;
+  }
+  if(cur<len-1e-4) panels.push([cur,len,0,h]);
+
+  for(const [x0,x1,y0,y1] of panels){
+    const pw=x1-x0, ph=y1-y0;
+    if(pw<0.004||ph<0.004) continue;
+    g.add(box(pw,ph,t,mat, x0+pw/2-len/2, y0+ph/2, 0));
+  }
+
+  const mid=wallMid(w);
+  g.position.set(mid.x,0,mid.z);
+  g.rotation.y=-wallAngle(w);
+  g.userData={kind:'wall', id:w.id};
+  return g;
+}
+
+/* daun pintu / kaca jendela + kusen */
+function addOpeningDetail(g,o,sill,head,t,len){
+  const cx=(o.s+o.e)/2-len/2, ow=o.e-o.s;
+  const fr=0.05;
+  if(o.type==='window'){
+    const gh=head-sill;
+    const pane=box(ow-fr*2, gh-fr*2, t*0.22, MAT.glass, cx, sill+gh/2, 0);
+    pane.castShadow=false; g.add(pane);
+    // kusen keliling
+    g.add(box(ow, fr, t*0.55, MAT.frame, cx, sill+fr/2, 0));
+    g.add(box(ow, fr, t*0.55, MAT.frame, cx, head-fr/2, 0));
+    g.add(box(fr, gh, t*0.55, MAT.frame, cx-ow/2+fr/2, sill+gh/2, 0));
+    g.add(box(fr, gh, t*0.55, MAT.frame, cx+ow/2-fr/2, sill+gh/2, 0));
+    // sill menonjol
+    g.add(box(ow+0.06, 0.03, t*1.25, MAT.white, cx, sill-0.015, 0));
+  } else if(o.type==='door'){
+    // kusen
+    g.add(box(fr*0.8, head, t*0.75, MAT.frame, cx-ow/2+fr*0.4, head/2, 0));
+    g.add(box(fr*0.8, head, t*0.75, MAT.frame, cx+ow/2-fr*0.4, head/2, 0));
+    g.add(box(ow, fr*0.8, t*0.75, MAT.frame, cx, head-fr*0.4, 0));
+    // daun pintu terbuka 75° berengsel di sisi kiri bukaan
+    const leafW=ow-0.06, leafH=head-0.08;
+    const pivot=new THREE.Group();
+    pivot.position.set(cx-ow/2+0.03, leafH/2+0.02, 0);
+    const leaf=box(leafW,leafH,0.035,MAT.door, leafW/2,0,0);
+    pivot.add(leaf);
+    pivot.add(cyl(0.022,0.022,0.09,MAT.metal, leafW-0.07, 0, 0.05,10));
+    pivot.rotation.y=-75*D2R;
+    g.add(pivot);
+  }
+  // type 'opening' = bukaan bebas tanpa daun
+}
+
+/* tutup sudut/pertemuan dinding agar siku rapat (kaidah sambungan) */
+function buildJunctions(lv){
+  const g=new THREE.Group();
+  const nodes=new Map();
+  const key=(x,z)=>`${Math.round(x*40)}_${Math.round(z*40)}`;
+  for(const w of lv.walls){
+    for(const [x,z] of [[w.x1,w.z1],[w.x2,w.z2]]){
+      const k=key(x,z);
+      if(!nodes.has(k)) nodes.set(k,{x,z,t:0,n:0,h:0});
+      const nd=nodes.get(k);
+      nd.t=Math.max(nd.t,w.thickness); nd.h=Math.max(nd.h,wallH(w,lv)); nd.n++;
+    }
+  }
+  for(const nd of nodes.values()){
+    if(nd.n<2) continue;
+    const m=box(nd.t,nd.h,nd.t,MAT.wall, nd.x, nd.h/2, nd.z);
+    g.add(m);
+  }
+  return g;
+}
+
+/* pelat lantai mengikuti batas dinding */
+function buildSlab(lv){
+  if(!lv.walls.length) return null;
+  let minX=1e9,maxX=-1e9,minZ=1e9,maxZ=-1e9;
+  for(const w of lv.walls){
+    minX=Math.min(minX,w.x1,w.x2); maxX=Math.max(maxX,w.x1,w.x2);
+    minZ=Math.min(minZ,w.z1,w.z2); maxZ=Math.max(maxZ,w.z1,w.z2);
+  }
+  const pad=0.25, T=0.2;
+  const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, MAT.slab,
+              (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
+  m.castShadow=false;
+  return m;
+}
+
+/* ======================================================================
+   BUILDER — TANGGA (5 varian)
+   Perhitungan mengikuti kaidah: optrede (R) 15–19 cm, antrede (A) >= 25 cm,
+   rumus langkah 2R + A = 60–65 cm, lebar minimum 90 cm.
+   ====================================================================== */
+function stairCalc(p, levelHeight){
+  const rise = p.rise>0 ? p.rise : levelHeight;
+  const n    = Math.max(2, Math.round(rise/clamp(p.riserTarget||STD.riserTarget, STD.riserMin, STD.riserMax)));
+  const riser= rise/n;
+  const tread= p.tread||STD.treadTarget;
+  return {rise, n, riser, tread, width:p.width||1.0, formula:2*riser+tread};
+}
+function stairCheck(c){
+  const msg=[];
+  if(c.riser>STD.riserMax) msg.push(`optrede ${fmt(c.riser*100,1)} cm > 19 cm`);
+  if(c.riser<STD.riserMin) msg.push(`optrede ${fmt(c.riser*100,1)} cm < 15 cm`);
+  if(c.tread<STD.treadMin) msg.push(`antrede ${fmt(c.tread*100,1)} cm < 25 cm`);
+  if(c.formula<0.60||c.formula>0.65) msg.push(`2R+A = ${fmt(c.formula*100,1)} cm (ideal 60–65)`);
+  if(c.width<STD.stairWidthMin) msg.push(`lebar ${fmt(c.width*100,0)} cm < 90 cm`);
+  return msg;
+}
+/* Satu flight = anak tangga + pelat miring di bawahnya (seperti tangga beton),
+   sehingga ada ruang kosong di bawah tangga, bukan massa padat. */
+function buildStair(o, lv){
+  const p=o.params, g=new THREE.Group();
+  const c=stairCalc(p, lv.height);
+  const {n,riser,tread,width}=c;
+  const mat=MAT.step;
+
+  // count anak tangga, mulai anak ke-startStep, menyusuri sumbu axis ke arah sign dari (ox,oz)
+  const flight=(count,startStep,axis,sign,ox,oz)=>{
+    const fg=new THREE.Group();
+    if(count<=0) return fg;
+    for(let i=0;i<count;i++){
+      const s=startStep+i, top=(s+1)*riser, d=(i+0.5)*tread;
+      const cx = axis==='x' ? ox+sign*d : ox;
+      const cz = axis==='x' ? oz       : oz+sign*d;
+      fg.add(box(axis==='x'?tread:width, riser, axis==='x'?width:tread, mat, cx, top-riser/2, cz));
+    }
+    const run=count*tread, rise=count*riser;
+    const diag=Math.hypot(run,rise), ang=Math.atan2(rise,run);
+    const slab=box(axis==='x'?diag:width, 0.14, axis==='x'?width:diag, mat,
+                   axis==='x'?ox+sign*run/2:ox, startStep*riser+rise/2-0.09,
+                   axis==='x'?oz:oz+sign*run/2);
+    if(axis==='x') slab.rotation.z=ang*sign; else slab.rotation.x=-ang*sign;
+    fg.add(slab);
+
+    if(p.railing){
+      const posts=Math.max(2,Math.round(run/0.85));
+      for(const side of [-1,1]){
+        for(let i=0;i<=posts;i++){
+          const d=(i/posts)*run, y=startStep*riser+(d/run)*rise;
+          fg.add(cyl(0.016,0.016,0.9,MAT.metal,
+            axis==='x'?ox+sign*d:ox+side*(width/2-0.05),
+            y+0.45,
+            axis==='x'?oz+side*(width/2-0.05):oz+sign*d, 8));
+        }
+        const hr=box(axis==='x'?diag:0.05, 0.05, axis==='x'?0.05:diag, MAT.wood,
+          axis==='x'?ox+sign*run/2:ox+side*(width/2-0.05),
+          startStep*riser+rise/2+0.92,
+          axis==='x'?oz+side*(width/2-0.05):oz+sign*run/2);
+        if(axis==='x') hr.rotation.z=ang*sign; else hr.rotation.x=-ang*sign;
+        fg.add(hr);
+      }
+    }
+    return fg;
+  };
+  // bordes: pelat datar yang permukaannya rata dengan anak tangga terakhir
+  const landing=(lw,ld,cx,cz,top)=>box(lw,0.16,ld,mat,cx,top-0.08,cz);
+
+  if(p.variant==='straight'){
+    g.add(flight(n,0,'z',1,0,0));
+  }
+  else if(p.variant==='landing'){            // lurus dengan bordes antara
+    const n1=Math.ceil(n/2), land=p.landing||1.1;
+    g.add(flight(n1,0,'z',1,0,0));
+    g.add(landing(width,land,0,n1*tread+land/2,n1*riser));
+    g.add(flight(n-n1,n1,'z',1,0,n1*tread+land));
+  }
+  else if(p.variant==='l_shape'){            // belok 90°
+    const n1=Math.ceil(n/2);
+    g.add(flight(n1,0,'z',1,0,0));
+    g.add(landing(width,width,0,n1*tread+width/2,n1*riser));
+    g.add(flight(n-n1,n1,'x',1,width/2,n1*tread+width/2));
+  }
+  else if(p.variant==='u_shape'){            // putar balik 180°
+    const n1=Math.ceil(n/2), gap=p.gap!==undefined?p.gap:0.1;
+    g.add(flight(n1,0,'z',1,0,0));
+    g.add(landing(2*width+gap,width,(width+gap)/2,n1*tread+width/2,n1*riser));
+    g.add(flight(n-n1,n1,'z',-1,width+gap,n1*tread+width));
+  }
+  else if(p.variant==='spiral'){             // tangga putar mengelilingi tiang
+    const R=p.radius||0.95, sweep=(p.sweep||270)*D2R, step=sweep/n;
+    g.add(cyl(0.075,0.075,c.rise+0.9,MAT.metal,0,(c.rise+0.9)/2,0,18));
+    for(let i=0;i<n;i++){
+      const a=i*step, r0=0.12, a0=-step/2, a1=step/2;
+      const shape=new THREE.Shape();
+      shape.moveTo(Math.cos(a0)*r0, Math.sin(a0)*r0);
+      for(let k=0;k<=8;k++){ const t=a0+(a1-a0)*k/8; shape.lineTo(Math.cos(t)*R, Math.sin(t)*R); }
+      shape.lineTo(Math.cos(a1)*r0, Math.sin(a1)*r0);
+      const geo=new THREE.ExtrudeGeometry(shape,{depth:riser*0.5,bevelEnabled:false});
+      geo.rotateX(Math.PI/2);                       // pelat mendatar, menebal ke bawah
+      const m=new THREE.Mesh(geo,mat);
+      m.position.set(0,(i+1)*riser,0); m.rotation.y=-a;
+      m.castShadow=true; m.receiveShadow=true;
+      g.add(m);
+      if(p.railing){
+        const rr=R-0.06;
+        g.add(cyl(0.016,0.016,0.95,MAT.metal,Math.cos(a)*rr,(i+1)*riser+0.475,-Math.sin(a)*rr,8));
+      }
+    }
+  }
+  return g;
+}
+
+/* ======================================================================
+   BUILDER — FURNITUR (ukuran standar dalam meter)
+   ====================================================================== */
+function bed(w,l){
+  const g=new THREE.Group();
+  g.add(box(w,0.28,l,MAT.woodDark,0,0.14,0));                 // divan
+  g.add(box(w-0.06,0.22,l-0.08,MAT.fabric2,0,0.39,0));        // kasur
+  g.add(box(w,0.55,0.06,MAT.wood,0,0.42,-l/2+0.03));          // headboard
+  const pw=Math.min(0.5,w/2-0.06);
+  g.add(box(pw,0.1,0.32,MAT.white,-w/4,0.53,-l/2+0.27));
+  if(w>1.1) g.add(box(pw,0.1,0.32,MAT.white,w/4,0.53,-l/2+0.27));
+  g.add(box(w-0.04,0.05,l*0.55,MAT.fabric,0,0.52,l*0.2));     // selimut
+  return g;
+}
+function sofa(w){
+  const g=new THREE.Group();
+  g.add(box(w,0.32,0.88,MAT.fabric,0,0.2,0));
+  g.add(box(w,0.46,0.18,MAT.fabric,0,0.45,-0.35));
+  g.add(box(0.16,0.34,0.88,MAT.fabric,-w/2+0.08,0.43,0));
+  g.add(box(0.16,0.34,0.88,MAT.fabric,w/2-0.08,0.43,0));
+  const seats=Math.max(1,Math.round(w/0.75));
+  for(let i=0;i<seats;i++) g.add(box(w/seats-0.06,0.14,0.62,MAT.fabric2,-w/2+w/seats*(i+0.5),0.43,0.04));
+  for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(cyl(0.03,0.03,0.08,MAT.woodDark,sx*(w/2-0.1),0.04,sz*0.36,8));
+  return g;
+}
+function tableTop(w,d,h,mat){
+  const g=new THREE.Group();
+  g.add(box(w,0.05,d,mat||MAT.wood,0,h-0.025,0));
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    g.add(box(0.06,h-0.05,0.06,MAT.woodDark,sx*(w/2-0.07),(h-0.05)/2,sz*(d/2-0.07)));
+  return g;
+}
+function chair(){
+  const g=new THREE.Group();
+  g.add(box(0.44,0.05,0.44,MAT.wood,0,0.45,0));
+  g.add(box(0.44,0.48,0.05,MAT.wood,0,0.71,-0.2));
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    g.add(box(0.045,0.45,0.045,MAT.woodDark,sx*0.18,0.225,sz*0.18));
+  return g;
+}
+function diningSet(w,d,seats){
+  const g=new THREE.Group();
+  g.add(tableTop(w,d,0.75));
+  const perSide=Math.ceil(seats/2);
+  for(let i=0;i<perSide;i++){
+    const x=-w/2+w*(i+0.5)/perSide;
+    const c1=chair(); c1.position.set(x,0,d/2+0.32); g.add(c1);
+    if(i*2+1<seats){ const c2=chair(); c2.position.set(x,0,-d/2-0.32); c2.rotation.y=Math.PI; g.add(c2); }
+  }
+  return g;
+}
+function wardrobe(w){
+  const g=new THREE.Group();
+  g.add(box(w,2.1,0.6,MAT.wood,0,1.05,0));
+  const doors=Math.max(2,Math.round(w/0.55));
+  for(let i=0;i<doors;i++){
+    const x=-w/2+w*(i+0.5)/doors;
+    g.add(box(w/doors-0.02,2.0,0.03,MAT.woodDark,x,1.05,0.31));
+    g.add(cyl(0.012,0.012,0.12,MAT.metal,x+w/doors/2-0.07,1.05,0.34,8));
+  }
+  return g;
+}
+function kitchenCounter(w){
+  const g=new THREE.Group();
+  g.add(box(w,0.85,0.6,MAT.white,0,0.425,0));
+  g.add(box(w+0.04,0.05,0.64,MAT.dark,0,0.875,0));
+  const n=Math.max(2,Math.round(w/0.6));
+  for(let i=0;i<n;i++) g.add(box(w/n-0.02,0.78,0.02,MAT.fabric2,-w/2+w*(i+0.5)/n,0.44,0.31));
+  g.add(box(w,0.7,0.35,MAT.white,0,1.75,-0.12));   // kabinet gantung
+  return g;
+}
+function toilet(){
+  const g=new THREE.Group();
+  g.add(box(0.36,0.75,0.2,MAT.white,0,0.375,-0.28));
+  g.add(box(0.37,0.4,0.55,MAT.white,0,0.2,0.02));
+  const bowl=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.15,0.16,18),MAT.white);
+  bowl.position.set(0,0.42,0.06); bowl.scale.z=1.25; bowl.castShadow=true; g.add(bowl);
+  g.add(box(0.36,0.04,0.48,MAT.white,0,0.51,0.06));
+  return g;
+}
+function washbasin(){
+  const g=new THREE.Group();
+  g.add(box(0.6,0.16,0.45,MAT.white,0,0.85,0));
+  g.add(box(0.44,0.06,0.32,MAT.water,0,0.84,0.01));
+  g.add(box(0.5,0.72,0.3,MAT.white,0,0.38,-0.05));
+  g.add(cyl(0.02,0.02,0.22,MAT.metal,0,1.0,-0.16,10));
+  g.add(box(0.6,0.8,0.03,MAT.glass,0,1.5,-0.21));
+  return g;
+}
+function bathtub(){
+  const g=new THREE.Group();
+  g.add(box(1.7,0.58,0.75,MAT.white,0,0.29,0));
+  g.add(box(1.56,0.08,0.62,MAT.water,0,0.5,0));
+  g.add(cyl(0.022,0.022,0.25,MAT.metal,-0.78,0.68,0,10));
+  return g;
+}
+function shower(){
+  const g=new THREE.Group();
+  g.add(box(0.9,0.08,0.9,MAT.white,0,0.04,0));
+  const glass=box(0.04,2.0,0.9,MAT.glass,0.45,1.0,0); glass.castShadow=false; g.add(glass);
+  const glass2=box(0.9,2.0,0.04,MAT.glass,0,1.0,0.45); glass2.castShadow=false; g.add(glass2);
+  g.add(cyl(0.02,0.02,0.3,MAT.metal,-0.4,2.0,-0.4,10));
+  g.add(cyl(0.09,0.09,0.03,MAT.metal,-0.4,1.86,-0.4,14));
+  return g;
+}
+function fridge(){
+  const g=new THREE.Group();
+  g.add(box(0.7,1.8,0.7,MAT.metal,0,0.9,0));
+  g.add(box(0.72,0.02,0.02,MAT.dark,0,1.2,0.35));
+  g.add(cyl(0.015,0.015,0.4,MAT.dark,0.28,1.45,0.36,8));
+  g.add(cyl(0.015,0.015,0.4,MAT.dark,0.28,0.85,0.36,8));
+  return g;
+}
+function stove(){
+  const g=new THREE.Group();
+  g.add(box(0.6,0.85,0.6,MAT.metal,0,0.425,0));
+  g.add(box(0.6,0.04,0.6,MAT.dark,0,0.87,0));
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    g.add(cyl(0.08,0.08,0.02,MAT.dark,sx*0.14,0.895,sz*0.14,14));
+  g.add(box(0.5,0.35,0.02,MAT.dark,0,0.5,0.305));
+  return g;
+}
+function sinkUnit(){
+  const g=new THREE.Group();
+  g.add(box(0.8,0.85,0.6,MAT.white,0,0.425,0));
+  g.add(box(0.82,0.05,0.62,MAT.metal,0,0.875,0));
+  g.add(box(0.5,0.12,0.4,MAT.metal,0,0.84,0));
+  g.add(cyl(0.018,0.018,0.28,MAT.metal,0,1.02,-0.2,10));
+  return g;
+}
+function tvSet(){
+  const g=new THREE.Group();
+  g.add(box(1.6,0.45,0.42,MAT.woodDark,0,0.225,0));
+  g.add(box(1.25,0.72,0.05,MAT.dark,0,0.85,-0.05));
+  g.add(box(1.2,0.68,0.01,MAT.glass,0,0.85,-0.02));
+  return g;
+}
+function desk(){
+  const g=new THREE.Group();
+  g.add(tableTop(1.4,0.7,0.75));
+  g.add(box(1.2,0.4,0.02,MAT.dark,0,1.05,-0.28));
+  g.add(cyl(0.1,0.14,0.06,MAT.dark,0,0.8,-0.25,12));
+  return g;
+}
+function officeChair(){
+  const g=new THREE.Group();
+  g.add(box(0.5,0.08,0.5,MAT.dark,0,0.46,0));
+  g.add(box(0.48,0.55,0.07,MAT.dark,0,0.78,-0.22));
+  g.add(cyl(0.035,0.035,0.42,MAT.metal,0,0.25,0,10));
+  for(let i=0;i<5;i++){ const a=i/5*Math.PI*2;
+    g.add(box(0.26,0.04,0.05,MAT.dark,Math.cos(a)*0.13,0.06,Math.sin(a)*0.13,-a)); }
+  return g;
+}
+function bookshelf(){
+  const g=new THREE.Group();
+  g.add(box(0.9,1.9,0.32,MAT.wood,0,0.95,0));
+  for(let i=1;i<5;i++) g.add(box(0.86,0.03,0.3,MAT.woodDark,0,i*0.38,0.01));
+  const cols=[0x8b4a3a,0x3a5a8b,0x4a8b5a,0xb08b3a,0x7a3a8b];
+  for(let s=0;s<4;s++) for(let b=0;b<7;b++){
+    const m=new THREE.MeshStandardMaterial({color:cols[(s+b)%5],roughness:.9});
+    g.add(box(0.045,0.26,0.22,m,-0.38+b*0.06,s*0.38+0.16,0));
+  }
+  return g;
+}
+function nightstand(){
+  const g=new THREE.Group();
+  g.add(box(0.45,0.55,0.4,MAT.wood,0,0.275,0));
+  g.add(box(0.41,0.2,0.02,MAT.woodDark,0,0.38,0.21));
+  g.add(cyl(0.1,0.13,0.22,MAT.white,0,0.66,0,12));
+  return g;
+}
+function coffeeTable(){ return tableTop(1.1,0.6,0.42); }
+function rug(w,d){
+  const g=new THREE.Group();
+  const m=box(w,0.02,d,MAT.fabric,0,0.01,0); m.castShadow=false; g.add(m);
+  g.add(box(w-0.2,0.022,d-0.2,MAT.fabric2,0,0.012,0));
+  return g;
+}
+function plant(){
+  const g=new THREE.Group();
+  g.add(cyl(0.18,0.13,0.34,MAT.woodDark,0,0.17,0,14));
+  g.add(cyl(0.03,0.04,0.7,MAT.plant,0,0.65,0,8));
+  for(let i=0;i<7;i++){
+    const a=i/7*Math.PI*2, r=0.26;
+    const leaf=box(0.34,0.03,0.16,MAT.plant,Math.cos(a)*r,0.95+(i%3)*0.13,Math.sin(a)*r,-a);
+    leaf.rotation.z=0.35; g.add(leaf);
+  }
+  return g;
+}
+function counterIsland(){
+  const g=new THREE.Group();
+  g.add(box(1.8,0.88,0.9,MAT.white,0,0.44,0));
+  g.add(box(1.9,0.06,1.0,MAT.dark,0,0.91,0));
+  for(let i=0;i<2;i++){
+    const st=new THREE.Group();
+    st.add(cyl(0.16,0.16,0.06,MAT.wood,0,0.66,0,14));
+    st.add(cyl(0.03,0.03,0.66,MAT.metal,0,0.33,0,10));
+    st.position.set(-0.4+i*0.8,0,0.75); g.add(st);
+  }
+  return g;
+}
+
+/* katalog: id → {label, ikon, kategori, footprint, generator} */
+const FURN={
+  bed_single  :{l:'Ranjang 1',   i:'🛏️', c:'kamar',       f:[1.0,2.0], b:()=>bed(1.0,2.0)},
+  bed_double  :{l:'Ranjang 2',   i:'🛏️', c:'kamar',       f:[1.6,2.0], b:()=>bed(1.6,2.0)},
+  bed_king    :{l:'Ranjang King',i:'🛏️', c:'kamar',       f:[1.8,2.1], b:()=>bed(1.8,2.1)},
+  nightstand  :{l:'Nakas',       i:'🗄️', c:'kamar',       f:[0.45,0.4],b:nightstand},
+  wardrobe    :{l:'Lemari',      i:'🚪', c:'kamar',       f:[1.8,0.6], b:()=>wardrobe(1.8)},
+  sofa2       :{l:'Sofa 2 Dudukan',i:'🛋️',c:'ruang',      f:[1.6,0.88],b:()=>sofa(1.6)},
+  sofa3       :{l:'Sofa 3 Dudukan',i:'🛋️',c:'ruang',      f:[2.2,0.88],b:()=>sofa(2.2)},
+  armchair    :{l:'Kursi Santai',i:'💺', c:'ruang',       f:[0.9,0.88],b:()=>sofa(0.9)},
+  coffee_table:{l:'Meja Tamu',   i:'🪑', c:'ruang',       f:[1.1,0.6], b:coffeeTable},
+  tv_set      :{l:'Set TV',      i:'📺', c:'ruang',       f:[1.6,0.42],b:tvSet},
+  rug         :{l:'Karpet',      i:'🟫', c:'ruang',       f:[2.4,1.6], b:()=>rug(2.4,1.6)},
+  dining4     :{l:'Meja Makan 4',i:'🍽️', c:'makan',       f:[1.2,0.8], b:()=>diningSet(1.2,0.8,4)},
+  dining6     :{l:'Meja Makan 6',i:'🍽️', c:'makan',       f:[1.8,0.9], b:()=>diningSet(1.8,0.9,6)},
+  chair       :{l:'Kursi',       i:'🪑', c:'makan',       f:[0.44,0.44],b:chair},
+  kitchen     :{l:'Kitchen Set', i:'🍳', c:'dapur',       f:[2.4,0.6], b:()=>kitchenCounter(2.4)},
+  island      :{l:'Island',      i:'🧱', c:'dapur',       f:[1.8,0.9], b:counterIsland},
+  stove       :{l:'Kompor',      i:'🔥', c:'dapur',       f:[0.6,0.6], b:stove},
+  fridge      :{l:'Kulkas',      i:'🧊', c:'dapur',       f:[0.7,0.7], b:fridge},
+  sink        :{l:'Sink Dapur',  i:'🚰', c:'dapur',       f:[0.8,0.6], b:sinkUnit},
+  toilet      :{l:'Kloset',      i:'🚽', c:'kamar_mandi', f:[0.4,0.7], b:toilet},
+  washbasin   :{l:'Wastafel',    i:'🪥', c:'kamar_mandi', f:[0.6,0.45],b:washbasin},
+  bathtub     :{l:'Bathtub',     i:'🛁', c:'kamar_mandi', f:[1.7,0.75],b:bathtub},
+  shower      :{l:'Shower',      i:'🚿', c:'kamar_mandi', f:[0.9,0.9], b:shower},
+  desk        :{l:'Meja Kerja',  i:'💻', c:'kerja',       f:[1.4,0.7], b:desk},
+  office_chair:{l:'Kursi Kerja', i:'🪑', c:'kerja',       f:[0.5,0.5], b:officeChair},
+  bookshelf   :{l:'Rak Buku',    i:'📚', c:'kerja',       f:[0.9,0.32],b:bookshelf},
+  plant       :{l:'Tanaman',     i:'🪴', c:'lain',        f:[0.5,0.5], b:plant}
+};
+const STAIRS={
+  straight:{l:'Lurus',    i:'📐'},
+  landing :{l:'Bordes',   i:'🪜'},
+  l_shape :{l:'Bentuk L', i:'🔃'},
+  u_shape :{l:'Bentuk U', i:'🔄'},
+  spiral  :{l:'Putar',    i:'🌀'}
+};
+
+/* ======================================================================
+   SINKRONISASI SCENE
+   ====================================================================== */
+let SEL=null;                 // {kind:'wall'|'obj', id}
+let TOOL='select';
+let SNAP=true;
+const levelGroups=[];
+
+function buildObject(o, lv){
+  let g;
+  if(o.kind==='stair') g=buildStair(o,lv);
+  else {
+    const def=FURN[o.type];
+    g = def ? def.b() : new THREE.Group();
+  }
+  g.position.set(o.x,o.y||0,o.z);
+  g.rotation.y=o.rotY||0;
+  g.scale.set(o.sx||1,o.sy||1,o.sz||1);
+  g.userData={kind:'obj', id:o.id};
+  return g;
+}
+
+/* geometri dibuat ulang tiap edit — bebaskan yang lama agar memori GPU tidak menumpuk
+   (material sengaja tidak di-dispose karena dipakai bersama seluruh scene) */
+function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry) c.geometry.dispose(); }); }
+
+function rebuildScene(){
+  while(worldRoot.children.length){
+    const c=worldRoot.children[0];
+    worldRoot.remove(c); disposeTree(c);
+  }
+  levelGroups.length=0;
+  const ghostOther=$('#ghostOther').checked;
+  const showSlabOpt=$('#showSlab').checked;
+
+  PROJECT.levels.forEach((lv,idx)=>{
+    const lg=new THREE.Group();
+    lg.position.y=levelElevation(idx);
+    lg.userData.levelIndex=idx;
+    lg.visible = lv.visible && (idx===PROJECT.active || ghostOther);
+
+    for(const w of lv.walls) lg.add(buildWallGroup(w,lv));
+    lg.add(buildJunctions(lv));
+    if(lv.slab && showSlabOpt){ const s=buildSlab(lv); if(s) lg.add(s); }
+    for(const o of lv.objects) lg.add(buildObject(o,lv));
+
+    if(idx!==PROJECT.active){
+      lg.traverse(m=>{ if(m.isMesh){ m.material=ghost(m.material); m.castShadow=false; m.receiveShadow=false; } });
+    }
+    worldRoot.add(lg);
+    levelGroups[idx]=lg;
+  });
+  refreshSelectionVisual();
+  updateStatsBar();
+}
+
+function findGroup(kind,id){
+  const lg=levelGroups[PROJECT.active];
+  if(!lg) return null;
+  return lg.children.find(c=>c.userData.kind===kind && c.userData.id===id)||null;
+}
+function selData(){
+  if(!SEL) return null;
+  const lv=L();
+  return SEL.kind==='wall' ? lv.walls.find(w=>w.id===SEL.id) : lv.objects.find(o=>o.id===SEL.id);
+}
+
+function refreshSelectionVisual(){
+  if(selBox){ helperRoot.remove(selBox); selBox.geometry.dispose(); selBox=null; }
+  gizmo.detach();
+  if(!SEL){ renderInspector(); return; }
+  const g=findGroup(SEL.kind,SEL.id);
+  if(!g){ SEL=null; renderInspector(); return; }
+  selBox=new THREE.BoxHelper(g,0x4ec9b0);
+  selBox.material.depthTest=false;
+  helperRoot.add(selBox);
+  if(TOOL==='translate'||TOOL==='rotate'||TOOL==='scale'){
+    gizmo.setMode(TOOL);
+    gizmo.attach(g);
+    const isWall=SEL.kind==='wall';
+    gizmo.showY = !(isWall && TOOL==='translate');
+    if(TOOL==='rotate'){ gizmo.showX=false; gizmo.showZ=false; gizmo.showY=true; }
+    else { gizmo.showX=true; gizmo.showZ=true; }
+    gizmo.setTranslationSnap(SNAP?0.05:null);
+    gizmo.setRotationSnap(SNAP?15*D2R:null);
+    gizmo.setScaleSnap(SNAP?0.05:null);
+  }
+  renderInspector();
+}
+
+function select(kind,id){ SEL=(kind&&id)?{kind,id}:null; refreshSelectionVisual(); }
+
+/* --- gizmo → data --- */
+function onGizmoChange(){ if(selBox) selBox.update(); }
+function commitGizmo(){
+  const g=gizmo.object; const d=selData();
+  if(!g||!d) return;
+  if(SEL.kind==='wall'){
+    const len=Math.max(0.05, wallLen(d)*g.scale.x);
+    const ang=-g.rotation.y;
+    d.thickness=clamp(d.thickness*g.scale.z,0.05,1.5);
+    const baseH=wallH(d,L());
+    if(Math.abs(g.scale.y-1)>1e-4) d.height=clamp(baseH*g.scale.y,0.3,12);
+    setWallByCenter(d, g.position.x, g.position.z, len, ang);
+    if(SNAP){
+      d.x1=Math.round(d.x1*20)/20; d.z1=Math.round(d.z1*20)/20;
+      d.x2=Math.round(d.x2*20)/20; d.z2=Math.round(d.z2*20)/20;
+    }
+    // bukaan ikut menyesuaikan bila dinding memendek
+    d.openings=d.openings.filter(o=>o.at-o.width/2>0.02 && o.at+o.width/2<wallLen(d)-0.02);
+  } else {
+    d.x=g.position.x; d.y=Math.max(0,g.position.y); d.z=g.position.z;
+    d.rotY=g.rotation.y;
+    d.sx=g.scale.x; d.sy=g.scale.y; d.sz=g.scale.z;
+    if(d.kind==='stair'){ d.sx=d.sy=d.sz=1; }   // tangga diskalakan lewat parameter
+  }
+  rebuildScene();
+}
+
+/* ======================================================================
+   INSPECTOR
+   ====================================================================== */
+function fRow(parent,label,node){
+  const r=el('div','f-row'); r.appendChild(el('label',null,label)); r.appendChild(node); parent.appendChild(r); return r;
+}
+function numInput(value,step,onchange,min,max){
+  const i=document.createElement('input');
+  i.type='number'; i.value=(Math.round(value*1000)/1000); i.step=step;
+  if(min!=null)i.min=min; if(max!=null)i.max=max;
+  i.addEventListener('change',()=>{ const v=parseFloat(i.value); if(!isNaN(v)) onchange(v); });
+  return i;
+}
+function selInput(options,value,onchange){
+  const s=document.createElement('select');
+  for(const [v,l] of options){ const o=document.createElement('option'); o.value=v; o.textContent=l; s.appendChild(o); }
+  s.value=value;
+  s.addEventListener('change',()=>onchange(s.value));
+  return s;
+}
+
+function renderInspector(){
+  const ins=$('#inspector');
+  ins.innerHTML='';
+  const d=selData();
+  // saat menggambar dinding panel disembunyikan agar tidak menghalangi klik di viewport
+  if(!d || TOOL==='wall'){ ins.hidden=true; return; }
+  ins.hidden=false;
+
+  if(SEL.kind==='wall'){
+    const h=el('h3',null,'Dinding');
+    h.appendChild(el('span','tag', isStructural(d)?'struktural':'partisi'));
+    ins.appendChild(h);
+
+    const mid=wallMid(d), len=wallLen(d), ang=wallAngle(d)*R2D;
+    fRow(ins,'Posisi X (m)',numInput(mid.x,0.05,v=>{ setWallByCenter(d,v,wallMid(d).z,wallLen(d),wallAngle(d)); rebuildScene(); }));
+    fRow(ins,'Posisi Z (m)',numInput(mid.z,0.05,v=>{ setWallByCenter(d,wallMid(d).x,v,wallLen(d),wallAngle(d)); rebuildScene(); }));
+    fRow(ins,'Panjang (m)',numInput(len,0.05,v=>{ setWallByCenter(d,mid.x,mid.z,Math.max(0.1,v),wallAngle(d)); rebuildScene(); },0.1));
+    fRow(ins,'Sudut (°)',numInput(ang,1,v=>{ setWallByCenter(d,mid.x,mid.z,wallLen(d),v*D2R); rebuildScene(); }));
+    fRow(ins,'Tebal (m)',selInput(
+      STD.thickness.map(t=>[String(t),`${(t*100).toFixed(0)} cm${t>=STD.structuralMin?' · struktural':''}`]).concat([['custom','lainnya…']]),
+      STD.thickness.includes(+d.thickness.toFixed(2))?String(+d.thickness.toFixed(2)):'custom',
+      v=>{ if(v!=='custom'){ d.thickness=parseFloat(v); rebuildScene(); } }));
+    fRow(ins,'Tebal custom',numInput(d.thickness,0.01,v=>{ d.thickness=clamp(v,0.05,1.5); rebuildScene(); },0.05,1.5));
+    fRow(ins,'Tinggi (m)',numInput(d.height||0,0.05,v=>{ d.height=v<=0?0:clamp(v,0.3,12); rebuildScene(); },0,12));
+    ins.appendChild(el('p','hint','Tinggi 0 = mengikuti tinggi lantai ('+fmt(L().height)+' m).'));
+
+    ins.appendChild(el('div','section-title','Bukaan'));
+    const wrap=el('div','group');
+    d.openings.slice().sort((a,b)=>a.at-b.at).forEach(o=>{
+      const it=el('div','op-item');
+      const top=el('div','top');
+      top.appendChild(selInput([['door','Pintu'],['window','Jendela'],['opening','Bukaan bebas']],o.type,v=>{
+        o.type=v; o.sill=v==='window'?STD.sillH:0; renderInspector(); rebuildScene();
+      }));
+      const x=el('button','x','×');
+      x.onclick=()=>{ d.openings=d.openings.filter(q=>q.id!==o.id); renderInspector(); rebuildScene(); };
+      top.appendChild(x); it.appendChild(top);
+      const grid=el('div','f-grid');
+      const mk=(lb,val,st,cb)=>{ const c=el('div','f-row'); const l=el('label',null,lb); l.style.width='44px'; c.appendChild(l); c.appendChild(numInput(val,st,cb)); grid.appendChild(c); };
+      mk('Posisi',o.at,0.05,v=>{ o.at=clamp(v,0,wallLen(d)); rebuildScene(); });
+      mk('Lebar',o.width,0.05,v=>{ o.width=clamp(v,0.2,6); rebuildScene(); });
+      mk('Ambang',o.sill,0.05,v=>{ o.sill=clamp(v,0,2); rebuildScene(); });
+      mk('Tinggi',o.head,0.05,v=>{ o.head=clamp(v,0.5,5); rebuildScene(); });
+      it.appendChild(grid);
+      wrap.appendChild(it);
+    });
+    ins.appendChild(wrap);
+    const btns=el('div','row');
+    const bd=el('button','btn sm','+ Pintu');
+    bd.onclick=()=>{ d.openings.push(newOpening('door', wallLen(d)/2, 0.8)); renderInspector(); rebuildScene(); };
+    const bw=el('button','btn sm ghost','+ Jendela');
+    bw.onclick=()=>{ const o=newOpening('window', wallLen(d)/2, 1.2); o.head=STD.windowH; d.openings.push(o); renderInspector(); rebuildScene(); };
+    btns.appendChild(bd); btns.appendChild(bw); ins.appendChild(btns);
+
+  } else if(d.kind==='stair'){
+    const h=el('h3',null,'Tangga'); h.appendChild(el('span','tag',STAIRS[d.params.variant]?.l||d.params.variant));
+    ins.appendChild(h);
+    fRow(ins,'Varian',selInput(Object.entries(STAIRS).map(([k,v])=>[k,v.l]),d.params.variant,v=>{ d.params.variant=v; rebuildScene(); renderInspector(); }));
+    fRow(ins,'Lebar (m)',numInput(d.params.width,0.05,v=>{ d.params.width=clamp(v,0.5,3); rebuildScene(); renderInspector(); },0.5,3));
+    fRow(ins,'Antrede (m)',numInput(d.params.tread,0.01,v=>{ d.params.tread=clamp(v,0.2,0.4); rebuildScene(); renderInspector(); },0.2,0.4));
+    fRow(ins,'Optrede ideal',numInput(d.params.riserTarget,0.005,v=>{ d.params.riserTarget=clamp(v,0.12,0.21); rebuildScene(); renderInspector(); },0.12,0.21));
+    fRow(ins,'Tinggi naik (m)',numInput(d.params.rise||0,0.05,v=>{ d.params.rise=v<=0?0:v; rebuildScene(); renderInspector(); },0,12));
+    if(d.params.variant==='spiral'){
+      fRow(ins,'Radius (m)',numInput(d.params.radius,0.05,v=>{ d.params.radius=clamp(v,0.5,3); rebuildScene(); },0.5,3));
+      fRow(ins,'Sudut putar (°)',numInput(d.params.sweep,15,v=>{ d.params.sweep=clamp(v,90,1080); rebuildScene(); },90,1080));
+    }
+    if(d.params.variant==='landing') fRow(ins,'Bordes (m)',numInput(d.params.landing,0.1,v=>{ d.params.landing=clamp(v,0.8,3); rebuildScene(); },0.8,3));
+    if(d.params.variant==='u_shape') fRow(ins,'Celah (m)',numInput(d.params.gap,0.05,v=>{ d.params.gap=clamp(v,0,0.6); rebuildScene(); },0,0.6));
+    const rl=el('label','chk'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!d.params.railing;
+    cb.onchange=()=>{ d.params.railing=cb.checked; rebuildScene(); };
+    rl.appendChild(cb); rl.appendChild(el('span',null,'Railing')); ins.appendChild(rl);
+
+    const c=stairCalc(d.params,L().height), warn=stairCheck(c);
+    const badge=el('div','badge '+(warn.length?'warn':'ok'));
+    badge.innerHTML = warn.length
+      ? `⚠ ${warn.join('; ')}`
+      : `✓ ${c.n} anak tangga · optrede ${fmt(c.riser*100,1)} cm · antrede ${fmt(c.tread*100,1)} cm · 2R+A ${fmt(c.formula*100,1)} cm`;
+    ins.appendChild(badge);
+    if(warn.length) ins.appendChild(el('p','hint',`${c.n} anak tangga · optrede ${fmt(c.riser*100,1)} cm · antrede ${fmt(c.tread*100,1)} cm`));
+    ins.appendChild(el('div','section-title','Penempatan'));
+    addTransformFields(ins,d,false);
+
+  } else {
+    const def=FURN[d.type];
+    const h=el('h3',null,'Furnitur'); h.appendChild(el('span','tag',def?def.l:d.type));
+    ins.appendChild(h);
+    addTransformFields(ins,d,true);
+  }
+
+  ins.appendChild(el('div','section-title','Aksi'));
+  const row=el('div','row');
+  const bdup=el('button','btn sm ghost','Duplikat'); bdup.onclick=duplicateSelection;
+  const bdel=el('button','btn sm danger','Hapus');   bdel.onclick=deleteSelection;
+  row.appendChild(bdup); row.appendChild(bdel); ins.appendChild(row);
+}
+
+function addTransformFields(ins,d,withScale){
+  fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
+  fRow(ins,'Y (m)',numInput(d.y||0,0.05,v=>{ d.y=v; rebuildScene(); }));
+  fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
+  fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
+  if(withScale){
+    fRow(ins,'Skala X',numInput(d.sx||1,0.05,v=>{ d.sx=clamp(v,0.1,10); rebuildScene(); },0.1,10));
+    fRow(ins,'Skala Y',numInput(d.sy||1,0.05,v=>{ d.sy=clamp(v,0.1,10); rebuildScene(); },0.1,10));
+    fRow(ins,'Skala Z',numInput(d.sz||1,0.05,v=>{ d.sz=clamp(v,0.1,10); rebuildScene(); },0.1,10));
+  }
+}
+
+/* ======================================================================
+   AKSI OBJEK
+   ====================================================================== */
+function deleteSelection(){
+  const lv=L(); if(!SEL) return;
+  if(SEL.kind==='wall') lv.walls=lv.walls.filter(w=>w.id!==SEL.id);
+  else lv.objects=lv.objects.filter(o=>o.id!==SEL.id);
+  SEL=null; rebuildScene(); toast('Objek dihapus');
+}
+function duplicateSelection(){
+  const lv=L(), d=selData(); if(!d) return;
+  if(SEL.kind==='wall'){
+    const c=JSON.parse(JSON.stringify(d));
+    c.id=uid('w'); c.openings=c.openings.map(o=>({...o,id:uid('o')}));
+    c.x1+=0.5; c.x2+=0.5; c.z1+=0.5; c.z2+=0.5;
+    lv.walls.push(c); SEL={kind:'wall',id:c.id};
+  } else {
+    const c=JSON.parse(JSON.stringify(d));
+    c.id=uid('ob'); c.x+=0.6; c.z+=0.6;
+    lv.objects.push(c); SEL={kind:'obj',id:c.id};
+  }
+  rebuildScene(); toast('Objek diduplikasi');
+}
+function focusSelection(){
+  const g=SEL&&findGroup(SEL.kind,SEL.id); if(!g) return;
+  const b=new THREE.Box3().setFromObject(g), c=b.getCenter(new THREE.Vector3());
+  const r=Math.max(1.4,b.getSize(new THREE.Vector3()).length());
+  orbit.target.copy(c);
+  camera.position.copy(c.clone().add(new THREE.Vector3(r*0.85,r*0.75,r*0.9)));
+}
+
+function addObject(kind,type){
+  const lv=L();
+  const t=orbit.target;
+  const o={ id:uid('ob'), kind, type, x:Math.round(t.x*20)/20, y:0, z:Math.round(t.z*20)/20,
+            rotY:0, sx:1, sy:1, sz:1, params:{} };
+  if(kind==='stair'){
+    o.params={ variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
+               rise:0, radius:0.95, sweep:270, landing:1.1, gap:0.1, railing:true };
+  }
+  lv.objects.push(o);
+  SEL={kind:'obj',id:o.id};
+  rebuildScene();
+  if(TOOL==='select') setTool('translate');
+  const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type)) : (FURN[type]?.l||type);
+  toast(nm+' ditambahkan ke '+lv.name);
+}
+
+/* ======================================================================
+   INTERAKSI VIEWPORT
+   ====================================================================== */
+let drawState=null;       // {p1:{x,z}} saat menggambar dinding
+let previewLine=null;
+
+function ndc(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  pointer.x=((e.clientX-r.left)/r.width)*2-1;
+  pointer.y=-((e.clientY-r.top)/r.height)*2+1;
+}
+function groundPoint(e){
+  ndc(e);
+  raycaster.setFromCamera(pointer,camera);
+  const plane=new THREE.Plane(new THREE.Vector3(0,1,0), -levelElevation(PROJECT.active));
+  const hit=new THREE.Vector3();
+  if(!raycaster.ray.intersectPlane(plane,hit)) return null;
+  let x=hit.x, z=hit.z;
+  if(SNAP){ x=Math.round(x*20)/20; z=Math.round(z*20)/20; }
+  // magnet ke ujung dinding terdekat
+  let best=null,bd=0.3;
+  for(const w of L().walls){
+    for(const p of [{x:w.x1,z:w.z1},{x:w.x2,z:w.z2}]){
+      const dd=Math.hypot(p.x-x,p.z-z);
+      if(dd<bd){ bd=dd; best=p; }
+    }
+  }
+  return best?{x:best.x,z:best.z}:{x,z};
+}
+function pickObject(e){
+  ndc(e);
+  raycaster.setFromCamera(pointer,camera);
+  const lg=levelGroups[PROJECT.active];
+  if(!lg) return null;
+  const hits=raycaster.intersectObjects(lg.children,true);
+  for(const h of hits){
+    let o=h.object;
+    while(o && o.parent!==lg) o=o.parent;
+    if(o&&o.userData&&o.userData.kind) return o.userData;
+  }
+  return null;
+}
+
+renderer.domElement.addEventListener('pointerdown',e=>{ e.target._downXY=[e.clientX,e.clientY]; });
+renderer.domElement.addEventListener('pointerup',e=>{
+  const d0=e.target._downXY;
+  if(d0 && (Math.abs(e.clientX-d0[0])>4||Math.abs(e.clientY-d0[1])>4)) return; // drag orbit
+  if(gizmo.dragging) return;
+  if(e.button!==0) return;
+
+  if(TOOL==='wall'){
+    const p=groundPoint(e); if(!p) return;
+    if(!drawState){
+      drawState={p1:p};
+      setHint('Klik titik <b>akhir</b> dinding. <b>Esc</b> untuk berhenti.');
+    } else {
+      const a=drawState.p1;
+      if(Math.hypot(p.x-a.x,p.z-a.z)>0.15){
+        let x2=p.x,z2=p.z;
+        if($('#ortho').checked){       // kunci ke sumbu terdekat
+          if(Math.abs(x2-a.x)>Math.abs(z2-a.z)) z2=a.z; else x2=a.x;
+        }
+        const w=newWall(a.x,a.z,x2,z2,0.15,0);
+        L().walls.push(w);
+        SEL={kind:'wall',id:w.id};
+        drawState={p1:{x:x2,z:z2}};    // lanjut berantai
+        rebuildScene();
+      }
+    }
+    return;
+  }
+  const hit=pickObject(e);
+  select(hit?hit.kind:null, hit?hit.id:null);
+});
+
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(TOOL!=='wall'||!drawState){
+    if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; }
+    return;
+  }
+  const p=groundPoint(e); if(!p) return;
+  let {x,z}=p; const a=drawState.p1;
+  if($('#ortho').checked){ if(Math.abs(x-a.x)>Math.abs(z-a.z)) z=a.z; else x=a.x; }
+  const y=levelElevation(PROJECT.active)+0.02;
+  if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); }
+  const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x,y,a.z),new THREE.Vector3(x,y,z)]);
+  previewLine=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x4ec9b0}));
+  helperRoot.add(previewLine);
+  setHint(`Panjang: <b>${fmt(Math.hypot(x-a.x,z-a.z))} m</b> — klik untuk selesai, <b>Esc</b> berhenti.`);
+});
+
+function setTool(t){
+  TOOL=t;
+  $$('#toolbar button[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
+  if(t!=='wall'){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
+  if(t==='wall'){ gizmo.detach(); setHint('Klik titik <b>awal</b> dinding di viewport.'); }
+  else if(t==='select') setHint('Klik objek untuk memilih. <b>W</b> geser · <b>E</b> putar · <b>R</b> skala.');
+  else setHint(`Mode <b>${t==='translate'?'geser':t==='rotate'?'putar':'skala'}</b> — tarik gizmo pada objek terpilih.`);
+  refreshSelectionVisual();
+}
+
+addEventListener('keydown',e=>{
+  if(/input|select|textarea/i.test(e.target.tagName)) return;
+  const k=e.key.toLowerCase();
+  if(k==='q') setTool('select');
+  else if(k==='w') setTool('translate');
+  else if(k==='e') setTool('rotate');
+  else if(k==='r') setTool('scale');
+  else if(k==='l') setTool('wall');
+  else if(k==='f') focusSelection();
+  else if(e.key==='Escape'){
+    if(TOOL==='wall'&&drawState){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
+    else select(null);
+  }
+  else if(e.key==='Delete'||e.key==='Backspace'){ if(SEL){ e.preventDefault(); deleteSelection(); } }
+  else if(k==='d'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); duplicateSelection(); }
+  else if(e.key==='PageUp'){ e.preventDefault(); setActiveLevel(Math.min(PROJECT.levels.length-1,PROJECT.active+1)); }
+  else if(e.key==='PageDown'){ e.preventDefault(); setActiveLevel(Math.max(0,PROJECT.active-1)); }
+});
+
+/* ======================================================================
+   EKSTRAKSI DINDING OTOMATIS (raster → vektor)
+   Alur, mengikuti cara baca denah arsitektur:
+     1. Binerisasi  – pisahkan garis dari latar
+     2. Buang noise – hilangkan teks, notasi, dimensi (komponen kecil)
+     3. Closing     – tutup rongga dinding garis-ganda jadi pita masif
+     4. Distance TF – ukur tebal dinding di tiap titik
+     5. Thinning    – ambil sumbu dinding (skeleton 1 px)
+     6. Tracing     – skeleton → polyline
+     7. Simplify    – Douglas–Peucker
+     8. Ortogonal   – luruskan ke sumbu, satukan sumbu sejajar
+     9. Merge+gap   – dinding segaris disambung; celah = pintu/jendela
+    10. Healing     – rapikan sambungan L / T / X
+   ====================================================================== */
+
+function binarize(data,w,h,thr){
+  const out=new Uint8Array(w*h);
+  for(let i=0,p=0;i<w*h;i++,p+=4){
+    const lum = data[p+3]<40 ? 255 : (data[p]*0.299+data[p+1]*0.587+data[p+2]*0.114);
+    out[i]= lum<thr ? 1 : 0;
+  }
+  return out;
+}
+function dilate(src,w,h,r){
+  if(r<=0) return Uint8Array.from(src);
+  const tmp=new Uint8Array(w*h), out=new Uint8Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    let v=0;
+    for(let d=-r;d<=r&&!v;d++){ const nx=x+d; if(nx>=0&&nx<w&&src[y*w+nx]) v=1; }
+    tmp[y*w+x]=v;
+  }
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    let v=0;
+    for(let d=-r;d<=r&&!v;d++){ const ny=y+d; if(ny>=0&&ny<h&&tmp[ny*w+x]) v=1; }
+    out[y*w+x]=v;
+  }
+  return out;
+}
+function erode(src,w,h,r){
+  if(r<=0) return Uint8Array.from(src);
+  const tmp=new Uint8Array(w*h), out=new Uint8Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    let v=1;
+    for(let d=-r;d<=r&&v;d++){ const nx=x+d; if(nx<0||nx>=w||!src[y*w+nx]) v=0; }
+    tmp[y*w+x]=v;
+  }
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    let v=1;
+    for(let d=-r;d<=r&&v;d++){ const ny=y+d; if(ny<0||ny>=h||!tmp[ny*w+x]) v=0; }
+    out[y*w+x]=v;
+  }
+  return out;
+}
+function removeSmallComponents(src,w,h,minSize){
+  if(minSize<=0) return Uint8Array.from(src);
+  const out=Uint8Array.from(src), lab=new Int32Array(w*h).fill(-1), stack=[];
+  let id=0;
+  for(let i=0;i<w*h;i++){
+    if(!out[i]||lab[i]>=0) continue;
+    stack.length=0; stack.push(i); lab[i]=id;
+    const cells=[]; let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+    while(stack.length){
+      const c=stack.pop(); cells.push(c);
+      const cx=c%w, cy=(c-cx)/w;
+      if(cx<x0)x0=cx; if(cx>x1)x1=cx; if(cy<y0)y0=cy; if(cy>y1)y1=cy;
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+        const nx=cx+dx, ny=cy+dy;
+        if(nx<0||ny<0||nx>=w||ny>=h) continue;
+        const n=ny*w+nx;
+        if(out[n]&&lab[n]<0){ lab[n]=id; stack.push(n); }
+      }
+    }
+    if(Math.max(x1-x0,y1-y0) < minSize) for(const c of cells) out[c]=0;
+    id++;
+  }
+  return out;
+}
+function distanceTransform(src,w,h){
+  const INF=1e9, d=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++) d[i]= src[i]?INF:0;
+  const C1=1, C2=1.41421356;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x; if(!d[i]) continue;
+    let v=d[i];
+    if(x>0)          v=Math.min(v,d[i-1]+C1);
+    if(y>0)          v=Math.min(v,d[i-w]+C1);
+    if(x>0&&y>0)     v=Math.min(v,d[i-w-1]+C2);
+    if(x<w-1&&y>0)   v=Math.min(v,d[i-w+1]+C2);
+    d[i]=v;
+  }
+  for(let y=h-1;y>=0;y--) for(let x=w-1;x>=0;x--){
+    const i=y*w+x; if(!d[i]) continue;
+    let v=d[i];
+    if(x<w-1)          v=Math.min(v,d[i+1]+C1);
+    if(y<h-1)          v=Math.min(v,d[i+w]+C1);
+    if(x<w-1&&y<h-1)   v=Math.min(v,d[i+w+1]+C2);
+    if(x>0&&y<h-1)     v=Math.min(v,d[i+w-1]+C2);
+    d[i]=v;
+  }
+  return d;
+}
+function thinZS(src,w,h){
+  const img=Uint8Array.from(src);
+  const P=(x,y)=>(x<0||y<0||x>=w||y>=h)?0:img[y*w+x];
+  const rm=[]; let changed=true, guard=0;
+  while(changed && guard++<80){
+    changed=false;
+    for(let step=0;step<2;step++){
+      rm.length=0;
+      for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+        if(!img[y*w+x]) continue;
+        const p2=P(x,y-1),p3=P(x+1,y-1),p4=P(x+1,y),p5=P(x+1,y+1),
+              p6=P(x,y+1),p7=P(x-1,y+1),p8=P(x-1,y),p9=P(x-1,y-1);
+        const B=p2+p3+p4+p5+p6+p7+p8+p9;
+        if(B<2||B>6) continue;
+        const s=[p2,p3,p4,p5,p6,p7,p8,p9,p2];
+        let A=0; for(let i=0;i<8;i++) if(s[i]===0&&s[i+1]===1) A++;
+        if(A!==1) continue;
+        if(step===0){ if(p2*p4*p6) continue; if(p4*p6*p8) continue; }
+        else       { if(p2*p4*p8) continue; if(p2*p6*p8) continue; }
+        rm.push(y*w+x);
+      }
+      if(rm.length){ changed=true; for(const i of rm) img[i]=0; }
+    }
+  }
+  return img;
+}
+function tracePolylines(sk,w,h){
+  const ix=(x,y)=>y*w+x;
+  const nbrs=(x,y)=>{
+    const o=[];
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+      if(!dx&&!dy) continue;
+      const nx=x+dx, ny=y+dy;
+      if(nx<0||ny<0||nx>=w||ny>=h) continue;
+      if(sk[ix(nx,ny)]) o.push([nx,ny]);
+    }
+    return o;
+  };
+  const deg=new Uint8Array(w*h), pts=[];
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(sk[ix(x,y)]){ deg[ix(x,y)]=nbrs(x,y).length; pts.push([x,y]); }
+  const used=new Set(), ek=(a,b)=>a<b?a+'_'+b:b+'_'+a, polys=[];
+  const walk=(sx,sy,nx,ny)=>{
+    const line=[[sx,sy]];
+    let px=sx,py=sy,cx=nx,cy=ny,guard=0;
+    while(guard++<20000){
+      used.add(ek(ix(px,py),ix(cx,cy)));
+      line.push([cx,cy]);
+      if(deg[ix(cx,cy)]!==2) break;
+      const nb=nbrs(cx,cy).filter(([a,b])=>!(a===px&&b===py));
+      if(!nb.length) break;
+      const [ax,ay]=nb[0];
+      if(used.has(ek(ix(cx,cy),ix(ax,ay)))) break;
+      px=cx; py=cy; cx=ax; cy=ay;
+    }
+    return line;
+  };
+  for(const [x,y] of pts){
+    if(deg[ix(x,y)]===2) continue;
+    for(const [nx,ny] of nbrs(x,y)){
+      if(used.has(ek(ix(x,y),ix(nx,ny)))) continue;
+      const l=walk(x,y,nx,ny); if(l.length>1) polys.push(l);
+    }
+  }
+  for(const [x,y] of pts){
+    if(deg[ix(x,y)]!==2) continue;
+    const fresh=nbrs(x,y).filter(([a,b])=>!used.has(ek(ix(x,y),ix(a,b))));
+    if(!fresh.length) continue;
+    const l=walk(x,y,fresh[0][0],fresh[0][1]); if(l.length>2) polys.push(l);
+  }
+  return polys;
+}
+function simplifyDP(pts,eps){
+  if(pts.length<3) return pts;
+  const d2=(p,a,b)=>{
+    const dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy;
+    if(L2===0) return Math.hypot(p[0]-a[0],p[1]-a[1]);
+    let t=((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L2; t=clamp(t,0,1);
+    return Math.hypot(p[0]-(a[0]+t*dx), p[1]-(a[1]+t*dy));
+  };
+  const rec=(s,e)=>{
+    let max=0, idx=-1;
+    for(let i=s+1;i<e;i++){ const d=d2(pts[i],pts[s],pts[e]); if(d>max){max=d;idx=i;} }
+    if(max>eps && idx>0) return [...rec(s,idx), ...rec(idx,e).slice(1)];
+    return [pts[s],pts[e]];
+  };
+  return rec(0,pts.length-1);
+}
+function orthoPoly(pts,tolDeg){
+  const tol=Math.tan(tolDeg*D2R);
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const dx=Math.abs(b[0]-a[0]), dy=Math.abs(b[1]-a[1]);
+    if(dx<1e-6&&dy<1e-6) continue;
+    if(dy<=dx*tol){ const m=(a[1]+b[1])/2; a[1]=m; b[1]=m; }
+    else if(dx<=dy*tol){ const m=(a[0]+b[0])/2; a[0]=m; b[0]=m; }
+  }
+  return pts;
+}
+
+/* satukan sumbu dinding yang hampir segaris (mis. 148.2 & 149.1 → 148.6) */
+function snapAxes(segs,tol){
+  const axis=(list,get,set)=>{
+    const items=list.map(s=>({s,v:get(s),len:segLen(s)})).sort((a,b)=>a.v-b.v);
+    let i=0;
+    while(i<items.length){
+      let j=i, sum=0, wsum=0;
+      while(j<items.length && items[j].v-items[i].v<=tol){ sum+=items[j].v*items[j].len; wsum+=items[j].len; j++; }
+      const mean=sum/wsum;
+      for(let k=i;k<j;k++) set(items[k].s,mean);
+      i=j;
+    }
+  };
+  axis(segs.filter(s=>s.dir==='h'), s=>s.y1, (s,v)=>{ s.y1=v; s.y2=v; });
+  axis(segs.filter(s=>s.dir==='v'), s=>s.x1, (s,v)=>{ s.x1=v; s.x2=v; });
+  return segs;
+}
+const segLen=s=>Math.hypot(s.x2-s.x1,s.y2-s.y1);
+function segDir(s,tolDeg){
+  const dx=Math.abs(s.x2-s.x1), dy=Math.abs(s.y2-s.y1), tol=Math.tan(tolDeg*D2R);
+  if(dy<=dx*tol) return 'h';
+  if(dx<=dy*tol) return 'v';
+  return 'f';
+}
+
+/* sambung segmen segaris; celah di antaranya dicatat sebagai calon bukaan */
+function mergeCollinear(segs,maxGap){
+  const out=[];
+  const groups=new Map();
+  for(const s of segs){
+    const k = s.dir==='h' ? `h_${Math.round(s.y1*2)}` : s.dir==='v' ? `v_${Math.round(s.x1*2)}` : `f_${out.length}`;
+    if(!groups.has(k)) groups.set(k,[]);
+    groups.get(k).push(s);
+  }
+  for(const [k,list] of groups){
+    if(k[0]==='f'){ out.push(...list); continue; }
+    const horiz=k[0]==='h';
+    const norm=list.map(s=>{
+      const a=horiz?Math.min(s.x1,s.x2):Math.min(s.y1,s.y2);
+      const b=horiz?Math.max(s.x1,s.x2):Math.max(s.y1,s.y2);
+      return {a,b,axis:horiz?s.y1:s.x1};
+    }).sort((p,q)=>p.a-q.a);
+    let cur={...norm[0]};
+    for(let i=1;i<norm.length;i++){
+      const n=norm[i];
+      if(n.a<=cur.b+maxGap){
+        cur.b=Math.max(cur.b,n.b);
+      } else {
+        out.push(toSeg(cur,horiz)); cur={...n};
+      }
+    }
+    out.push(toSeg(cur,horiz));
+  }
+  return out;
+}
+function toSeg(c,horiz){
+  return horiz
+    ? {x1:c.a,y1:c.axis,x2:c.b,y2:c.axis,dir:'h'}
+    : {x1:c.axis,y1:c.a,x2:c.axis,y2:c.b,dir:'v'};
+}
+
+/* rapikan sambungan: ujung dinding yang hampir menyentuh dinding tegak lurus
+   dipanjangkan sampai sumbunya (sudut L, pertemuan T & X jadi rapat) */
+function healJunctions(segs,tol){
+  const hs=segs.filter(s=>s.dir==='h'), vs=segs.filter(s=>s.dir==='v');
+  const fix=(s,other,horiz)=>{
+    for(const key of ['1','2']){
+      const px = horiz ? s['x'+key] : s['y'+key];
+      let best=null, bd=tol;
+      for(const o of other){
+        const oAxis = horiz ? o.x1 : o.y1;                   // sumbu tegak lurus
+        const oMin  = horiz ? Math.min(o.y1,o.y2) : Math.min(o.x1,o.x2);
+        const oMax  = horiz ? Math.max(o.y1,o.y2) : Math.max(o.x1,o.x2);
+        const along = horiz ? s.y1 : s.x1;
+        if(along < oMin-tol || along > oMax+tol) continue;
+        const d=Math.abs(oAxis-px);
+        if(d<bd){ bd=d; best=oAxis; }
+      }
+      if(best!==null){ if(horiz) s['x'+key]=best; else s['y'+key]=best; }
+    }
+  };
+  for(const s of hs) fix(s,vs,true);
+  for(const s of vs) fix(s,hs,false);
+  return segs;
+}
+
+/* profil tebal dinding sepanjang sumbunya (px).
+   Dipakai dua hal sekaligus: tebal dinding (persentil 70, tahan terhadap bukaan)
+   dan letak bukaan — pintu/jendela selalu tampak sebagai "cekungan" tebal. */
+function profileThickness(dist,w,h,s){
+  const len=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  const n=Math.max(2,Math.round(len));
+  const ux=(s.x2-s.x1)/len, uy=(s.y2-s.y1)/len, nx=-uy, ny=ux;
+  const prof=new Float32Array(n+1);
+  for(let i=0;i<=n;i++){
+    let best=0;
+    for(let d=-2;d<=2;d++){
+      const x=Math.round(s.x1+ux*i+nx*d), y=Math.round(s.y1+uy*i+ny*d);
+      if(x<0||y<0||x>=w||y>=h) continue;
+      const v=dist[y*w+x];
+      if(v>best) best=v;
+    }
+    prof[i]=best*2;
+  }
+  return prof;
+}
+function percentile(arr,p){
+  if(!arr.length) return 0;
+  const a=[...arr].sort((x,y)=>x-y);
+  return a[clamp(Math.floor(a.length*p),0,a.length-1)];
+}
+/* di dalam pita dinding: ada garis (kusen/kaca) → jendela; kosong → pintu */
+function runContinuity(raw,w,h,s,a,b,band){
+  const len=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  const ux=(s.x2-s.x1)/len, uy=(s.y2-s.y1)/len, nx=-uy, ny=ux;
+  let hit=0,total=0;
+  for(let i=a;i<=b;i++){
+    total++;
+    let found=false;
+    for(let d=-band;d<=band&&!found;d++){
+      const x=Math.round(s.x1+ux*i+nx*d), y=Math.round(s.y1+uy*i+ny*d);
+      if(x<0||y<0||x>=w||y>=h) continue;
+      if(raw[y*w+x]) found=true;
+    }
+    if(found) hit++;
+  }
+  return total?hit/total:0;
+}
+/* runtun indeks yang memenuhi syarat (dipakai mencari cekungan = bukaan) */
+function findRuns(prof,test){
+  const runs=[]; let st=-1;
+  for(let i=0;i<prof.length;i++){
+    const on=test(prof[i]);
+    if(on&&st<0) st=i;
+    if(!on&&st>=0){ runs.push([st,i-1]); st=-1; }
+  }
+  if(st>=0) runs.push([st,prof.length-1]);
+  return runs;
+}
+
+function extractWalls(opt){
+  const {data,w,h,thr,closeR,noise,minLenM,ortho,detectOpen,heal,pxm,doorH,sillH}=opt;
+  const raw=binarize(data,w,h,thr);
+  let mask=removeSmallComponents(raw,w,h,noise);
+  if(closeR>0) mask=erode(dilate(mask,w,h,closeR),w,h,closeR);      // closing: tutup rongga
+  mask=dilate(erode(mask,w,h,1),w,h,1);                              // opening: buang garis tipis
+  mask=removeSmallComponents(mask,w,h,Math.max(noise,closeR*3));
+
+  const dist=distanceTransform(mask,w,h);
+  const skel=thinZS(mask,w,h);
+  const polys=tracePolylines(skel,w,h);
+
+  const tolDeg=22, eps=Math.max(1.6,pxm*0.05);
+  let segs=[];
+  for(let poly of polys){
+    if(poly.length<2) continue;
+    poly=simplifyDP(poly,eps);
+    if(ortho) poly=orthoPoly(poly,tolDeg);
+    for(let i=0;i<poly.length-1;i++){
+      const s={x1:poly[i][0],y1:poly[i][1],x2:poly[i+1][0],y2:poly[i+1][1]};
+      s.dir=ortho?segDir(s,tolDeg):segDir(s,6);
+      if(segLen(s)>=2) segs.push(s);
+    }
+  }
+  if(ortho) segs=snapAxes(segs, Math.max(2,pxm*0.12));
+  segs=mergeCollinear(segs, pxm*2.6);
+  segs=segs.filter(s=>segLen(s)>=minLenM*pxm);
+  if(heal) segs=healJunctions(segs, Math.max(3,pxm*0.35));
+  segs=segs.filter(s=>segLen(s)>=minLenM*pxm);
+
+  // px → meter, titik tengah gambar jadi origin
+  const toM=(px,py)=>({x:(px-w/2)/pxm, z:(py-h/2)/pxm});
+  const walls=[]; let nDoor=0,nWin=0;
+  for(const s of segs){
+    const a=toM(s.x1,s.y1), b=toM(s.x2,s.y2);
+    const prof=profileThickness(dist,w,h,s);
+    const nz=[...prof].filter(v=>v>0.6);
+    const tPx=percentile(nz,0.70);
+    let t = tPx>0 ? clamp(tPx/pxm,0.08,0.6) : 0.15;
+    t = Math.abs(nearest(t,STD.thickness)-t)<0.05 ? nearest(t,STD.thickness) : Math.round(t*100)/100;
+    const wall=newWall(a.x,a.z,b.x,b.z,t,0);
+    const len=wallLen(wall);
+
+    // bukaan = bagian dinding yang jauh lebih tipis dari badan dinding
+    if(detectOpen && tPx>1){
+      const band=Math.max(1,Math.round(tPx/2)-1);
+      for(const [r0,r1] of findRuns(prof, v=>v < tPx*0.70)){
+        if(r0<=1 || r1>=prof.length-2) continue;        // artefak ujung / sambungan
+        let sum=0; for(let i=r0;i<=r1;i++) sum+=prof[i];
+        const fill=sum/((r1-r0+1)*tPx);                 // sisa material di dalam bukaan
+        const cont=runContinuity(raw,w,h,s,r0,r1,band);
+
+        // tepi lubang: bila bukaan kosong, tepi dari distance transform melebar
+        // (~0.35 × tebal di tiap sisi) — pakai tepi lubang yang sebenarnya
+        let e0=r0, e1=r1;
+        if(fill<0.25){
+          const inner=findRuns(prof, v=>v<=1.0).filter(([p0,p1])=>p0>=r0&&p1<=r1);
+          if(inner.length){
+            const i0=inner[0][0], i1=inner[inner.length-1][1];
+            if(i1-i0+1 >= 0.35*pxm){ e0=i0; e1=i1; }
+          }
+        }
+        const gw=(e1-e0+1)/pxm;
+        if(gw<0.45 || gw>STD.maxWindow) continue;
+        const center=((e0+e1)/2)/pxm;
+        if(center<0.15 || center>len-0.15) continue;
+
+        let type,width=gw;
+        // ada material/garis kaca di dalam pita dinding → jendela;
+        // bukaan kosong melompong → pintu (atau bukaan bebas bila lebar)
+        if(fill>=0.25 || (cont>0.55 && gw>1.0)){ type='window'; nWin++; }
+        else if(gw<=STD.maxDoor){
+          type='door';
+          const std=nearest(gw,STD.doorW);
+          if(Math.abs(std-gw)<0.12) width=std;          // bulatkan ke lebar pintu standar
+          nDoor++;
+        } else type='opening';
+        const o=newOpening(type,center,width);
+        if(type==='window'){ o.sill=sillH; o.head=Math.max(sillH+0.6,doorH); }
+        else if(type==='opening'){ o.sill=0; o.head=doorH+0.3; }
+        else { o.sill=0; o.head=doorH; }
+        wall.openings.push(o);
+      }
+    }
+    walls.push(wall);
+  }
+  return {walls, nDoor, nWin, mask, skel, segs};
+}
+
+/* ======================================================================
+   UI — DENAH
+   ====================================================================== */
+const canvas2d=$('#canvas2d');
+const ctx2d=canvas2d.getContext('2d',{willReadFrequently:true});
+let SRC_IMG=null, LAST_RESULT=null;
+const PROC_MAX=760;
+
+function pxPerMeter(){
+  const rw=parseFloat($('#realWidth').value)||12;
+  return SRC_IMG ? canvas2d.width/rw : 30;
+}
+function updatePxm(){
+  $('#pxm-val').textContent = SRC_IMG ? fmt(pxPerMeter(),1)+' px/m' : '– px/m';
+}
+$('#upload').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      const k=PROC_MAX/Math.max(w,h);
+      if(k<1){ w=Math.round(w*k); h=Math.round(h*k); }
+      canvas2d.width=w; canvas2d.height=h;
+      ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
+      ctx2d.drawImage(img,0,0,w,h);
+      SRC_IMG=img;
+      canvas2d.style.display='block';
+      const ph=$('#preview-box .ph'); if(ph) ph.style.display='none';
+      updatePxm();
+      toast(`Denah dimuat (${w}×${h} px)`);
+      setHint('Atur <b>skala</b> lalu klik <b>Generate Dinding 3D</b>.');
     };
-    reader.readAsDataURL(file);
+    img.src=ev.target.result;
+  };
+  rd.readAsDataURL(f);
+});
+$('#realWidth').addEventListener('input',updatePxm);
+
+const bind=(id,suffix,fn)=>{
+  const s=$('#'+id), v=$('#'+id+'-val');
+  const upd=()=>{ v.textContent=s.value+(suffix||''); fn&&fn(); };
+  s.addEventListener('input',upd); upd();
+};
+bind('thresh','');
+bind('closeR',' px');
+bind('noise',' px');
+bind('minLen',' m');
+
+function drawOverlay(res){
+  if(!SRC_IMG) return;
+  const w=canvas2d.width,h=canvas2d.height;
+  ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
+  ctx2d.drawImage(SRC_IMG,0,0,w,h);
+  if(!$('#showOverlay').checked || !res) return;
+  const pxm=pxPerMeter();
+  ctx2d.save();
+  ctx2d.globalAlpha=0.55;
+  for(const wl of res.walls){
+    const x1=wl.x1*pxm+w/2, y1=wl.z1*pxm+h/2, x2=wl.x2*pxm+w/2, y2=wl.z2*pxm+h/2;
+    ctx2d.strokeStyle= isStructural(wl)?'#d9453d':'#ff8a3d';
+    ctx2d.lineWidth=Math.max(2,wl.thickness*pxm);
+    ctx2d.lineCap='butt';
+    ctx2d.beginPath(); ctx2d.moveTo(x1,y1); ctx2d.lineTo(x2,y2); ctx2d.stroke();
+  }
+  ctx2d.globalAlpha=0.95;
+  for(const wl of res.walls){
+    const len=wallLen(wl), ux=(wl.x2-wl.x1)/len, uz=(wl.z2-wl.z1)/len;
+    for(const o of wl.openings){
+      const ax=wl.x1+ux*(o.at-o.width/2), az=wl.z1+uz*(o.at-o.width/2);
+      const bx=wl.x1+ux*(o.at+o.width/2), bz=wl.z1+uz*(o.at+o.width/2);
+      ctx2d.strokeStyle= o.type==='window'?'#1b8ad6':(o.type==='door'?'#17a673':'#9b59b6');
+      ctx2d.lineWidth=Math.max(3,wl.thickness*pxm*1.1);
+      ctx2d.beginPath();
+      ctx2d.moveTo(ax*pxm+w/2,az*pxm+h/2); ctx2d.lineTo(bx*pxm+w/2,bz*pxm+h/2); ctx2d.stroke();
+    }
+  }
+  ctx2d.restore();
+}
+
+function updateStatsBar(){
+  const lv=L();
+  const total=lv.walls.reduce((s,w)=>s+wallLen(w),0);
+  const ops=lv.walls.reduce((s,w)=>s+w.openings.length,0);
+  const doors=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>o.type==='door').length,0);
+  const wins=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>o.type==='window').length,0);
+  const struct=lv.walls.filter(isStructural).length;
+  let area=0;
+  if(lv.walls.length){
+    let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+    for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+    area=(x1-x0)*(z1-z0);
+  }
+  $('#stats').innerHTML = lv.walls.length||lv.objects.length
+    ? `<b>${lv.name}</b> · dinding <b>${lv.walls.length}</b> (struktural <b>${struct}</b>)<br>
+       panjang total <b>${fmt(total,1)} m</b> · luas kotak <b>${fmt(area,1)} m²</b><br>
+       bukaan <b>${ops}</b> — pintu <b>${doors}</b>, jendela <b>${wins}</b><br>
+       objek <b>${lv.objects.length}</b> · tinggi lantai <b>${fmt(lv.height)} m</b>`
+    : 'Belum ada denah diproses.';
+}
+
+function runGenerate(toNewLevel){
+  if(!SRC_IMG) return toast('Upload gambar denah dulu.');
+  $('#loader').classList.add('on');
+  $('#loader-txt').textContent='Vektorisasi dinding…';
+  setTimeout(()=>{
+    try{
+      const w=canvas2d.width,h=canvas2d.height;
+      const data=ctx2d.getImageData(0,0,w,h).data;
+      const pxm=pxPerMeter();
+      const lvH=parseFloat($('#wallH').value)||3.2;
+      const res=extractWalls({
+        data,w,h,
+        thr:+$('#thresh').value,
+        closeR:+$('#closeR').value,
+        noise:+$('#noise').value,
+        minLenM:+$('#minLen').value,
+        ortho:$('#ortho').checked,
+        detectOpen:$('#doOpen').checked,
+        heal:$('#doHeal').checked,
+        pxm,
+        doorH:parseFloat($('#doorH').value)||2.1,
+        sillH:parseFloat($('#sillH').value)||0.9
+      });
+      if(!res.walls.length){
+        toast('Tidak ada dinding terdeteksi — coba naikkan threshold atau turunkan panjang minimum.');
+      }
+      if(toNewLevel){
+        const lv=newLevel('Lantai '+(PROJECT.levels.length+1), lvH);
+        PROJECT.levels.push(lv);
+        PROJECT.active=PROJECT.levels.length-1;
+      }
+      const lv=L();
+      lv.height=lvH;
+      lv.walls=res.walls;
+      PROJECT.pxPerMeter=pxm;
+      LAST_RESULT=res;
+      updatePxm();
+      SEL=null;
+      renderLevels();
+      rebuildScene();
+      drawOverlay(res);
+      // framing kamera
+      const b=new THREE.Box3().setFromObject(worldRoot);
+      if(b.isEmpty()===false){
+        const c=b.getCenter(new THREE.Vector3()), sz=b.getSize(new THREE.Vector3()).length();
+        orbit.target.set(c.x,lvH/2,c.z);
+        camera.position.set(c.x+sz*0.55,c.y+sz*0.5,c.z+sz*0.6);
+      }
+      toast(`${res.walls.length} dinding · ${res.nDoor} pintu · ${res.nWin} jendela`);
+      setHint('Klik dinding untuk <b>edit</b> (posisi, panjang, tebal, bukaan). <b>W/E/R</b> untuk transform.');
+    }catch(err){
+      console.error(err); toast('Gagal memproses: '+err.message);
+    }finally{
+      $('#loader').classList.remove('on');
+    }
+  },30);
+}
+$('#generateBtn').onclick=()=>runGenerate(false);
+$('#generateNewBtn').onclick=()=>runGenerate(true);
+$('#showOverlay').addEventListener('change',()=>drawOverlay(LAST_RESULT));
+
+/* ======================================================================
+   UI — LANTAI
+   ====================================================================== */
+function setActiveLevel(i){
+  PROJECT.active=clamp(i,0,PROJECT.levels.length-1);
+  SEL=null;
+  renderLevels(); rebuildScene();
+  toast('Lantai aktif: '+L().name);
+}
+function renderLevels(){
+  const list=$('#lvl-list'); list.innerHTML='';
+  PROJECT.levels.forEach((lv,i)=>{
+    const it=el('div','lvl-item'+(i===PROJECT.active?' active':''));
+    it.onclick=e=>{ if(e.target.classList.contains('eye')) return; setActiveLevel(i); };
+    const nm=el('div','nm',lv.name);
+    const info=el('div','el',`+${fmt(levelElevation(i),2)} m`);
+    const eye=el('button','eye'+(lv.visible?' on':''),lv.visible?'●':'○');
+    eye.onclick=ev=>{ ev.stopPropagation(); lv.visible=!lv.visible; renderLevels(); rebuildScene(); };
+    it.appendChild(nm); it.appendChild(info); it.appendChild(eye);
+    list.appendChild(it);
+  });
+
+  const p=$('#lvl-props'); p.innerHTML='';
+  const lv=L();
+  const nameI=document.createElement('input'); nameI.type='text'; nameI.value=lv.name;
+  nameI.onchange=()=>{ lv.name=nameI.value||'Lantai'; renderLevels(); updateStatsBar(); };
+  fRow(p,'Nama',nameI);
+  fRow(p,'Tinggi (m)',numInput(lv.height,0.05,v=>{ lv.height=clamp(v,2.0,8); renderLevels(); rebuildScene(); },2,8));
+  fRow(p,'Elevasi (m)',(()=>{ const i=document.createElement('input'); i.type='text'; i.value=fmt(levelElevation(PROJECT.active),2); i.disabled=true; return i; })());
+  const sl=el('label','chk'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=lv.slab;
+  cb.onchange=()=>{ lv.slab=cb.checked; rebuildScene(); };
+  sl.appendChild(cb); sl.appendChild(el('span',null,'Pelat lantai')); p.appendChild(sl);
+  const del=el('button','btn sm danger','Hapus Lantai Ini');
+  del.onclick=()=>{
+    if(PROJECT.levels.length<2) return toast('Minimal harus ada satu lantai.');
+    PROJECT.levels.splice(PROJECT.active,1);
+    PROJECT.active=clamp(PROJECT.active,0,PROJECT.levels.length-1);
+    SEL=null; renderLevels(); rebuildScene();
+  };
+  p.appendChild(del);
+
+  const bar=$('#levelbar'); bar.innerHTML='';
+  PROJECT.levels.forEach((l,i)=>{
+    const b=el('button',i===PROJECT.active?'active':'', 'L'+(i+1));
+    b.title=l.name; b.onclick=()=>setActiveLevel(i);
+    bar.appendChild(b);
+  });
+  const add=el('button',null,'+'); add.title='Tambah lantai';
+  add.onclick=()=>addLevel(false); bar.appendChild(add);
+  updateStatsBar();
+}
+function addLevel(copy){
+  const src=L();
+  const lv=newLevel('Lantai '+(PROJECT.levels.length+1), src?src.height:3.2);
+  if(copy&&src){
+    lv.walls=src.walls.map(w=>({...JSON.parse(JSON.stringify(w)), id:uid('w'),
+                                openings:w.openings.map(o=>({...o,id:uid('o')}))}));
+    lv.objects=src.objects.filter(o=>o.kind!=='stair')
+                          .map(o=>({...JSON.parse(JSON.stringify(o)), id:uid('ob')}));
+  }
+  PROJECT.levels.push(lv);
+  PROJECT.active=PROJECT.levels.length-1;
+  SEL=null; renderLevels(); rebuildScene();
+  toast(copy?'Lantai disalin ke atas':'Lantai baru ditambahkan');
+}
+$('#addLevelBtn').onclick=()=>addLevel(false);
+$('#dupLevelBtn').onclick=()=>addLevel(true);
+['ghostOther','showSlab'].forEach(id=>$('#'+id).addEventListener('change',rebuildScene));
+$('#showGrid').addEventListener('change',e=>grid.visible=e.target.checked);
+$('#showShadow').addEventListener('change',e=>{ renderer.shadowMap.enabled=e.target.checked; rebuildScene(); });
+
+/* ======================================================================
+   UI — KATALOG OBJEK
+   ====================================================================== */
+function renderCatalogs(){
+  const cs=$('#cat-stairs'); cs.innerHTML='';
+  for(const [k,v] of Object.entries(STAIRS)){
+    const b=el('div','cat-item');
+    b.innerHTML=`<span class="ic">${v.i}</span>${v.l}`;
+    b.onclick=()=>addObject('stair',k);
+    cs.appendChild(b);
+  }
+  const cf=$('#cat-furn'); cf.innerHTML='';
+  const filt=$('#furn-filter').value;
+  for(const [k,v] of Object.entries(FURN)){
+    if(filt!=='all'&&v.c!==filt) continue;
+    const b=el('div','cat-item');
+    b.innerHTML=`<span class="ic">${v.i}</span>${v.l}`;
+    b.title=`${v.f[0]}×${v.f[1]} m`;
+    b.onclick=()=>addObject('furn',k);
+    cf.appendChild(b);
+  }
+}
+$('#furn-filter').addEventListener('change',renderCatalogs);
+
+/* ======================================================================
+   UI — TOOLBAR & TAB
+   ====================================================================== */
+$$('#toolbar button[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$('#snapBtn').onclick=()=>{ SNAP=!SNAP; $('#snapBtn').classList.toggle('active',SNAP); refreshSelectionVisual(); toast('Snap '+(SNAP?'aktif (5 cm / 15°)':'nonaktif')); };
+$('#dupBtn').onclick=duplicateSelection;
+$('#delBtn').onclick=deleteSelection;
+$$('.tabs button').forEach(b=>b.onclick=()=>{
+  $$('.tabs button').forEach(x=>x.classList.toggle('active',x===b));
+  $$('.tab-body').forEach(p=>p.hidden = p.dataset.panel!==b.dataset.tab);
 });
 
-document.getElementById('wallH').addEventListener('input', e => document.getElementById('wallH-val').innerText = e.target.value + ' m');
-document.getElementById('minThick').addEventListener('input', e => document.getElementById('minThick-val').innerText = e.target.value + ' px');
-document.getElementById('minLen').addEventListener('input', e => document.getElementById('minLen-val').innerText = e.target.value + ' px');
-document.getElementById('thresh').addEventListener('input', e => document.getElementById('thresh-val').innerText = e.target.value);
-
-document.getElementById('generateBtn').addEventListener('click', () => {
-    if(canvas.width === 0) return alert("Silakan upload gambar denah 2D terlebih dahulu.");
-    
-    document.getElementById('loader').style.display = 'flex';
-    
-    setTimeout(() => {
-        while(buildingGroup.children.length > 0) buildingGroup.remove(buildingGroup.children[0]);
-
-        const heightVal = parseFloat(document.getElementById('wallH').value);
-        const minThick = parseInt(document.getElementById('minThick').value);
-        const minLength = parseInt(document.getElementById('minLen').value);
-        const threshold = parseInt(document.getElementById('thresh').value);
-        
-        const SCALE = 0.15; 
-        const WALL_T = 0.15; 
-        const DOOR_H = 2.1; 
-        const SILL_H = 0.9; 
-
-        const w = canvas.width, h = canvas.height;
-        const imgData = ctx.getImageData(0, 0, w, h).data;
-        
-        // Peta Biner Mentah
-        const rawMap = Array.from({length: h}, () => new Array(w).fill(false));
-        for(let y = 0; y < h; y++){
-            for(let x = 0; x < w; x++){
-                const idx = (y * w + x) * 4;
-                const brightness = (imgData[idx] + imgData[idx+1] + imgData[idx+2]) / 3;
-                if(brightness < threshold) rawMap[y][x] = true;
-            }
-        }
-
-        // Peta Dinding Struktural (Sistem Stabil Tanpa Erosi Agresif)
-        const structMap = Array.from({length: h}, () => new Array(w).fill(false));
-        for(let y = minThick; y < h - minThick; y++){
-            for(let x = minThick; x < w - minThick; x++){
-                if(rawMap[y][x]) {
-                    let hCount = 0, vCount = 0;
-                    for(let d = -minThick; d <= minThick; d++) {
-                        if(rawMap[y][x + d]) hCount++;
-                        if(rawMap[y + d][x]) vCount++;
-                    }
-                    if(hCount >= minThick + 1 || vCount >= minThick + 1) {
-                        structMap[y][x] = true;
-                    }
-                }
-            }
-        }
-
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.8 });
-        const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x66bbff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.1, ior: 1.5 });
-        
-        const offsetX = (w * SCALE) / 2;
-        const offsetZ = (h * SCALE) / 2;
-
-        const createMesh = (posX, posZ, length, isHorizontal, yStart, yHeight, mat, isGlass = false) => {
-            if(yHeight <= 0) return;
-            // Jika objek adalah kaca, ketebalannya dibuat lebih tipis (1/3 tebal dinding)
-            let thickness = isGlass ? (WALL_T * 0.3) : WALL_T;
-            
-            let boxW = isHorizontal ? (length * SCALE) : thickness;
-            let boxD = isHorizontal ? thickness : (length * SCALE);
-            
-            const geo = new THREE.BoxGeometry(boxW, yHeight, boxD);
-            const mesh = new THREE.Mesh(geo, mat);
-            
-            let finalX = (posX * SCALE) - offsetX + (isHorizontal ? boxW / 2 : 0);
-            let finalZ = (posZ * SCALE) - offsetZ + (isHorizontal ? 0 : boxD / 2);
-            
-            mesh.position.set(finalX, yStart + (yHeight / 2), finalZ);
-            mesh.castShadow = !isGlass; 
-            mesh.receiveShadow = true;
-            buildingGroup.add(mesh);
-        };
-
-        const processSegmentsAndGaps = (isHorizontal) => {
-            const limit1 = isHorizontal ? h : w;
-            const limit2 = isHorizontal ? w : h;
-            const visited = Array.from({length: h}, () => new Array(w).fill(false));
-
-            for(let i = 0; i < limit1; i++) {
-                let j = 0;
-                let segments = [];
-                
-                // Cari Segmen Dinding Tebal
-                while(j < limit2) {
-                    let y = isHorizontal ? i : j;
-                    let x = isHorizontal ? j : i;
-                    
-                    if(structMap[y][x] && !visited[y][x]) {
-                        let len = 0;
-                        while(j + len < limit2) {
-                            let cy = isHorizontal ? i : j + len;
-                            let cx = isHorizontal ? j + len : i;
-                            if(!structMap[cy][cx]) break;
-                            visited[cy][cx] = true;
-                            len++;
-                        }
-                        if(len >= minLength) {
-                            createMesh(x, y, len, isHorizontal, 0, heightVal, wallMat);
-                            segments.push({start: j, end: j + len});
-                        }
-                        j += len;
-                    } else { j++; }
-                }
-                
-                // Analisis Bukaan (Pintu/Jendela)
-                for(let k = 0; k < segments.length - 1; k++) {
-                    let gapStart = segments[k].end;
-                    let gapEnd = segments[k+1].start;
-                    let gapLen = gapEnd - gapStart;
-                    
-                    // PERBAIKAN: Batas deteksi dinaikkan hingga 85px untuk mendeteksi jendela berukuran raksasa
-                    if(gapLen >= 4 && gapLen <= 85) {
-                        let hitCount = 0;
-                        
-                        // Perlebar area pindaian untuk menangkap garis sejajar (jendela)
-                        let bandWidth = Math.max(3, minThick + 2); 
-                        
-                        // Cek berapa banyak titik di sepanjang gap yang dilewati oleh garis hitam pada gambar asli
-                        for(let g = gapStart; g < gapEnd; g++) {
-                            let foundBlackPixel = false;
-                            for(let d = -bandWidth; d <= bandWidth; d++) {
-                                let gy = isHorizontal ? i + d : g;
-                                let gx = isHorizontal ? g : i + d;
-                                
-                                // Cek agar tidak keluar batas gambar
-                                if(gy >= 0 && gy < h && gx >= 0 && gx < w) {
-                                    if(rawMap[gy][gx]) {
-                                        foundBlackPixel = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if(foundBlackPixel) hitCount++;
-                        }
-                        
-                        let px = isHorizontal ? gapStart : i;
-                        let pz = isHorizontal ? i : gapStart;
-
-                        // Continuity adalah persentase panjang gap yang terisi garis (kaca/kusen pada denah)
-                        let continuity = hitCount / gapLen;
-
-                        // Jika lebih dari 40% panjang bukaan dilewati garis sejajar, maka itu JENDELA
-                        if(continuity > 0.40) {
-                            createMesh(px, pz, gapLen, isHorizontal, 0, SILL_H, wallMat); // Dinding Bawah
-                            createMesh(px, pz, gapLen, isHorizontal, SILL_H, DOOR_H - SILL_H, glassMat, true); // Kaca Tipis
-                        }
-                        
-                        // Buatkan Lintel (Ambang Atas) untuk menutupi bagian atas Pintu & Jendela
-                        createMesh(px, pz, gapLen, isHorizontal, DOOR_H, heightVal - DOOR_H, wallMat);
-                    }
-                }
-            }
-        };
-
-        processSegmentsAndGaps(true);
-        processSegmentsAndGaps(false);
-
-        // Pelat Lantai
-        const floorGeo = new THREE.BoxGeometry((w * SCALE) + 4, 0.2, (h * SCALE) + 4);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-        floorMesh.position.set(0, -0.1, 0);
-        floorMesh.receiveShadow = true;
-        buildingGroup.add(floorMesh);
-
-        document.getElementById('loader').style.display = 'none';
-        controls.target.set(0, heightVal / 2, 0);
-    }, 50);
+/* ======================================================================
+   FILE
+   ====================================================================== */
+function download(content,name,type){
+  const blob=content instanceof Blob?content:new Blob([content],{type:type||'application/octet-stream'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+$('#projName').addEventListener('change',e=>PROJECT.name=e.target.value||'Denah 3D');
+$('#saveBtn').onclick=()=>{
+  download(JSON.stringify({v:2, ...PROJECT},null,1), (PROJECT.name||'denah')+'.json','application/json');
+  toast('Proyek disimpan');
+};
+$('#loadInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    try{
+      const j=JSON.parse(ev.target.result);
+      if(!j.levels||!j.levels.length) throw new Error('format tidak dikenali');
+      PROJECT.name=j.name||'Denah 3D';
+      PROJECT.pxPerMeter=j.pxPerMeter||30;
+      PROJECT.levels=j.levels.map(l=>({
+        id:l.id||uid('lv'), name:l.name||'Lantai', height:l.height||3.2,
+        slab:l.slab!==false, visible:l.visible!==false,
+        walls:(l.walls||[]).map(w=>({...w, id:w.id||uid('w'), openings:(w.openings||[]).map(o=>({...o,id:o.id||uid('o')}))})),
+        objects:(l.objects||[]).map(o=>({...o, id:o.id||uid('ob'), params:o.params||{}}))
+      }));
+      PROJECT.active=clamp(j.active||0,0,PROJECT.levels.length-1);
+      SEL=null; $('#projName').value=PROJECT.name;
+      renderLevels(); rebuildScene();
+      toast('Proyek dimuat: '+PROJECT.name);
+    }catch(err){ toast('Gagal memuat: '+err.message); }
+  };
+  rd.readAsText(f);
 });
+$('#exportObjBtn').onclick=()=>{
+  let out=`# ${PROJECT.name} — Arsitek 3D\n`, off=1, n=0;
+  const v=new THREE.Vector3();
+  for(const lg of levelGroups){
+    if(!lg||!lg.visible) continue;
+    lg.updateMatrixWorld(true);
+    lg.traverse(m=>{
+      if(!m.isMesh) return;
+      const g=m.geometry, pos=g&&g.attributes&&g.attributes.position;
+      if(!pos) return;
+      for(let i=0;i<pos.count;i++){
+        v.fromBufferAttribute(pos,i).applyMatrix4(m.matrixWorld);
+        out+=`v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
+      }
+      const idx=g.index;
+      if(idx) for(let i=0;i<idx.count;i+=3) out+=`f ${idx.getX(i)+off} ${idx.getX(i+1)+off} ${idx.getX(i+2)+off}\n`;
+      else    for(let i=0;i<pos.count;i+=3) out+=`f ${i+off} ${i+1+off} ${i+2+off}\n`;
+      off+=pos.count; n++;
+    });
+  }
+  if(!n) return toast('Belum ada model untuk diekspor.');
+  download(out,(PROJECT.name||'model')+'.obj','text/plain');
+  toast(`Model diekspor (${n} mesh)`);
+};
+$('#snapshotBtn').onclick=()=>{
+  renderer.render(scene,camera);
+  renderer.domElement.toBlob(b=>{ download(b,(PROJECT.name||'render')+'.png'); toast('Gambar disimpan'); });
+};
+$('#clearLevelBtn').onclick=()=>{
+  const lv=L();
+  if((lv.walls.length||lv.objects.length) && !confirm(`Kosongkan ${lv.name}? Semua dinding dan objek di lantai ini akan dihapus.`)) return; lv.walls=[]; lv.objects=[]; SEL=null; LAST_RESULT=null;
+  rebuildScene(); drawOverlay(null); toast(lv.name+' dikosongkan');
+};
+$('#resetBtn').onclick=()=>{
+  if(!confirm('Reset seluruh proyek? Semua lantai, dinding, dan objek akan hilang.')) return;
+  PROJECT.levels=[newLevel('Lantai 1',parseFloat($('#wallH').value)||3.2)];
+  PROJECT.active=0; SEL=null; LAST_RESULT=null;
+  renderLevels(); rebuildScene(); drawOverlay(null); toast('Proyek direset');
+};
+$('#wallH').addEventListener('change',e=>{
+  const v=parseFloat(e.target.value)||3.2;
+  if(!L().walls.length&&!L().objects.length){ L().height=v; renderLevels(); rebuildScene(); }
+});
+
+/* ------------------------------ init ------------------------------ */
+renderCatalogs();
+renderLevels();
+setTool('select');
+rebuildScene();
+updatePxm();
 </script>
 </body>
 </html>
