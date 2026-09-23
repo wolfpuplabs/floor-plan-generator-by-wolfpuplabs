@@ -145,12 +145,16 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
 
       <div class="section-title">2. Skala Denah</div>
       <div class="group">
-        <label>Lebar bangunan sebenarnya (m)</label>
+        <label>Lebar bangunan (angka dimensi di denah)</label>
         <div class="row">
-          <input type="number" id="realWidth" value="12" min="1" max="200" step="0.1">
-          <span class="val" id="pxm-val">– px/m</span>
+          <input type="number" id="realWidth" value="12" min="1" max="500" step="0.1">
+          <select id="unit" style="max-width:74px">
+            <option value="m">meter</option>
+            <option value="ft">kaki (')</option>
+          </select>
         </div>
-        <p class="hint">Ukur lebar total denah dari sisi kiri ke kanan gambar. Skala ini menentukan tebal dinding, lebar pintu, dan ukuran ruang dalam meter.</p>
+        <span class="val" id="pxm-val">– px/m</span>
+        <p class="hint">Isi lebar <b>bangunannya</b>, bukan lebar berkas gambar — margin kosong di sekitar denah diabaikan sendiri. Ambil dari garis dimensi terluar, misalnya 40'. Skala ini menentukan tebal dinding, lebar pintu, dan ukuran ruang.</p>
       </div>
 
       <div class="section-title">3. Parameter Deteksi</div>
@@ -184,6 +188,8 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
         <label class="chk"><input type="checkbox" id="ortho" checked><span>Luruskan ke ortogonal (siku 90°)</span></label>
         <label class="chk"><input type="checkbox" id="doDoors" checked><span>Baca simbol busur ayun pintu</span></label>
         <label class="chk"><input type="checkbox" id="doOpen" checked><span>Deteksi bukaan dari potongan dinding</span></label>
+        <label class="chk"><input type="checkbox" id="doStairs" checked><span>Baca simbol tangga (deret antrede)</span></label>
+        <label class="chk"><input type="checkbox" id="doFix" checked><span>Baca perabot sanitair (kloset, bak, shower, wastafel)</span></label>
         <label class="chk"><input type="checkbox" id="doHeal" checked><span>Rapikan sambungan (L / T / X)</span></label>
         <label class="chk"><input type="checkbox" id="showOverlay" checked><span>Tampilkan overlay hasil deteksi</span></label>
       </div>
@@ -525,6 +531,14 @@ function addOpeningDetail(g,o,sill,head,t,len){
     pivot.add(cyl(0.022,0.022,0.09,MAT.metal, leafW-0.07, 0, 0.05,10));
     pivot.rotation.y=-75*D2R;
     g.add(pivot);
+  }
+  else if(o.type==='slider'){
+    // pintu geser: dua bilah di muka dinding yang berseberangan, tanpa busur
+    g.add(box(ow, fr*0.6, t*0.75, MAT.frame, cx, head-fr*0.3, 0));
+    g.add(box(ow, fr*0.5, t*0.75, MAT.frame, cx, fr*0.25, 0));
+    const lw=ow/2-0.02, lh=head-0.08;
+    g.add(box(lw, lh, 0.04, MAT.door, cx-ow/2+lw/2, lh/2+0.04,  t*0.32));
+    g.add(box(lw, lh, 0.04, MAT.door, cx+ow/2-lw/2, lh/2+0.04, -t*0.32));
   }
   // type 'opening' = bukaan bebas tanpa daun
 }
@@ -1091,7 +1105,7 @@ function renderInspector(){
     d.openings.slice().sort((a,b)=>a.at-b.at).forEach(o=>{
       const it=el('div','op-item');
       const top=el('div','top');
-      top.appendChild(selInput([['door','Pintu'],['window','Jendela'],['opening','Bukaan bebas']],o.type,v=>{
+      top.appendChild(selInput([['door','Pintu ayun'],['slider','Pintu geser'],['window','Jendela'],['opening','Bukaan bebas']],o.type,v=>{
         o.type=v; o.sill=v==='window'?STD.sillH:0; renderInspector(); rebuildScene();
       }));
       const x=el('button','x','×');
@@ -1146,6 +1160,9 @@ function renderInspector(){
     const def=FURN[d.type];
     const h=el('h3',null,'Furnitur'); h.appendChild(el('span','tag',def?def.l:d.type));
     ins.appendChild(h);
+    fRow(ins,'Jenis',selInput(Object.entries(FURN).map(([k,v])=>[k,v.l]),d.type,v=>{
+      d.type=v; rebuildScene(); renderInspector();
+    }));
     addTransformFields(ins,d,true);
   }
 
@@ -1197,6 +1214,23 @@ function focusSelection(){
   const r=Math.max(1.4,b.getSize(new THREE.Vector3()).length());
   orbit.target.copy(c);
   camera.position.copy(c.clone().add(new THREE.Vector3(r*0.85,r*0.75,r*0.9)));
+}
+
+/* Perabot sanitair selalu menempel dinding, jadi punggungnya (sumbu -Z lokal)
+   diputar menghadap dinding terdekat. */
+function faceNearestWall(obj, walls){
+  let bx=0, bz=0, bd=1e9;
+  for(const w of walls){
+    const L=wallLen(w); if(L<0.1) continue;
+    const ux=(w.x2-w.x1)/L, uz=(w.z2-w.z1)/L;
+    const t=clamp((obj.x-w.x1)*ux+(obj.z-w.z1)*uz, 0, L);
+    const px=w.x1+ux*t, pz=w.z1+uz*t;
+    const d=Math.hypot(obj.x-px, obj.z-pz);
+    if(d<bd){ bd=d; bx=px; bz=pz; }
+  }
+  if(bd>1.5) return;
+  const dirX=-Math.sin(obj.rotY), dirZ=-Math.cos(obj.rotY);   // arah punggung
+  if((bx-obj.x)*dirX + (bz-obj.z)*dirZ < 0) obj.rotY+=Math.PI;
 }
 
 function addObject(kind,type){
@@ -1689,7 +1723,7 @@ function otsuSplit(vals,maxBin){
   }
   return best;
 }
-function calibrate(bin,w,h,pxm){
+function calibrate(bin,w,h){
   // 1) Radius closing: cari yang TERKECIL yang sudah membuat dinding jadi masif.
   //    Denah poche sudah masif sejak awal; denah garis-ganda baru masif setelah
   //    rongga di tengahnya tertutup. Titik-belok kurva ini yang dicari, bukan
@@ -1733,43 +1767,69 @@ function calibrate(bin,w,h,pxm){
 
 /* ---------------------------------------------------------------------
    SIMBOL PINTU — busur ayun
-   Busur ayun adalah seperempat lingkaran berpusat di engsel; jari-jarinya
-   sama dengan lebar daun pintu. Diuji: semua piksel busur berjarak sama
-   dari salah satu sudut kotak pembatas, membentang 55°–110°.
+   Busur ayun berpusat di engsel dan jari-jarinya = lebar daun pintu.
+   Dicari dengan RANSAC lingkaran, bukan diukur dari sudut kotak pembatas:
+   daun pintu sering digambar sebagai kotak, dan ujung busur kerap terpotong
+   tepi dinding, sehingga uji berbasis kotak pembatas mudah meleset.
+   Penyaring palsunya bukan bentuk, melainkan KONTEKS: pusat busur wajib
+   berada di atas dinding (dicek saat penempatan) dan jari-jarinya harus
+   sebesar daun pintu yang masuk akal.
    --------------------------------------------------------------------- */
+function circumcircle(x1,y1,x2,y2,x3,y3){
+  const d=2*(x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2));
+  if(Math.abs(d)<1e-6) return null;
+  const s1=x1*x1+y1*y1, s2=x2*x2+y2*y2, s3=x3*x3+y3*y3;
+  const cx=(s1*(y2-y3)+s2*(y3-y1)+s3*(y1-y2))/d;
+  const cy=(s1*(x3-x2)+s2*(x1-x3)+s3*(x2-x1))/d;
+  return {cx,cy,r:Math.hypot(x1-cx,y1-cy)};
+}
 function detectDoorArcs(thin,w,h,pxm){
-  const rMin=0.5*pxm, rMax=1.6*pxm, out=[];
+  const rMin=0.5*pxm, rMax=1.7*pxm, out=[];
+  let seed=20260922;
+  const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
   for(const c of components(thin,w,h,3000)){
-    if(c.bw<rMin*0.8||c.bh<rMin*0.8||c.bw>rMax*1.3||c.bh>rMax*1.3) continue;
-    const ar=c.bw/c.bh; if(ar<0.55||ar>1.8) continue;
-    if(c.px.length > 9*Math.max(c.bw,c.bh)) continue;      // blok masif, bukan kurva
+    const ext=Math.max(c.bw,c.bh);
+    if(ext<rMin*0.7 || ext>rMax*1.6) continue;
+    const n=c.px.length;
+    if(n<14 || n>14*ext) continue;                 // blok masif bukan kurva
     const xs=c.px.map(i=>i%w), ys=c.px.map(i=>(i-i%w)/w);
+    const tol=Math.max(1.3,0.03*pxm);
     let best=null;
-    for(const [hx,hy] of [[c.x0,c.y0],[c.x1,c.y0],[c.x0,c.y1],[c.x1,c.y1]]){
-      const d=xs.map((x,k)=>Math.hypot(x-hx,ys[k]-hy));
-      const r=percentile(d,0.97);
-      if(r<rMin||r>rMax) continue;
-      const idx=[]; for(let k=0;k<d.length;k++) if(d[k]>=0.82*r) idx.push(k);
-      if(idx.length < 0.28*d.length) continue;
-      const mean=idx.reduce((a,k)=>a+d[k],0)/idx.length;
-      const sd=Math.sqrt(idx.reduce((a,k)=>a+(d[k]-mean)**2,0)/idx.length);
-      if(sd > 0.035*r+1.2) continue;                        // garis lurus gagal di sini
-      // Rentang sudut harus dihitung melingkar: busur yang menyapu ke arah
-      // barat melewati lompatan +pi/-pi, dan min-maks biasa akan salah baca.
-      const angs=idx.map(k=>Math.atan2(ys[k]-hy, xs[k]-hx)).sort((a,b)=>a-b);
-      let gap=angs[0]+2*Math.PI-angs[angs.length-1];
-      for(let k=1;k<angs.length;k++) gap=Math.max(gap, angs[k]-angs[k-1]);
-      const span=(2*Math.PI-gap)*R2D;
-      if(span<55||span>115) continue;
-      const fit=fitCircle(xs,ys,idx);
-      if(!fit) continue;
-      if(Math.hypot(fit.cx-hx,fit.cy-hy) > 0.25*r) continue;   // pusat harus di sudut engsel
-      if(fit.r<rMin||fit.r>rMax) continue;
-      const score=idx.length/d.length - sd/r;
-      if(!best||score>best.score) best={hx:fit.cx, hy:fit.cy, r:fit.r, score,
-        cx:(c.x0+c.x1)/2, cy:(c.y0+c.y1)/2};
+    for(let it=0; it<220; it++){
+      const i=(rnd()*n)|0, j=(rnd()*n)|0, k=(rnd()*n)|0;
+      if(i===j||j===k||i===k) continue;
+      const cc=circumcircle(xs[i],ys[i],xs[j],ys[j],xs[k],ys[k]);
+      if(!cc||cc.r<rMin||cc.r>rMax) continue;
+      let cnt=0;
+      for(let m=0;m<n;m++)
+        if(Math.abs(Math.hypot(xs[m]-cc.cx,ys[m]-cc.cy)-cc.r)<=tol) cnt++;
+      if(!best||cnt>best.cnt) best={...cc,cnt};
     }
-    if(best) out.push(best);
+    if(!best||best.cnt<Math.max(12,0.26*n)) continue;
+    const inliers=fit=>{
+      const o=[];
+      for(let m=0;m<n;m++)
+        if(Math.abs(Math.hypot(xs[m]-fit.cx,ys[m]-fit.cy)-fit.r)<=tol) o.push(m);
+      return o;
+    };
+    let idx=inliers(best);
+    const fit=fitCircle(xs,ys,idx)||best;
+    if(fit.r<rMin||fit.r>rMax) continue;
+    idx=inliers(fit);
+    if(idx.length<Math.max(12,0.26*n)) continue;
+    // bentang sudut melingkar: 90 derajat lazim, lingkaran penuh (meja/wastafel) ditolak
+    const angs=idx.map(k=>Math.atan2(ys[k]-fit.cy,xs[k]-fit.cx)).sort((p,q)=>p-q);
+    const na=angs.length;
+    let gap=angs[0]+2*Math.PI-angs[na-1], gi=na-1;
+    for(let k=1;k<na;k++){ const d=angs[k]-angs[k-1]; if(d>gap){ gap=d; gi=k-1; } }
+    const sweep=(2*Math.PI-gap)*R2D;
+    if(sweep<50||sweep>200) continue;
+    const aA=angs[(gi+1)%na], aB=angs[gi];          // ujung-ujung busur
+    let mx=0,my=0; for(const k of idx){ mx+=xs[k]; my+=ys[k]; }
+    out.push({hx:fit.cx, hy:fit.cy, r:fit.r, sweep,
+              cx:mx/idx.length, cy:my/idx.length,
+              ax:fit.cx+Math.cos(aA)*fit.r, ay:fit.cy+Math.sin(aA)*fit.r,
+              bx:fit.cx+Math.cos(aB)*fit.r, by:fit.cy+Math.sin(aB)*fit.r});
   }
   return out;
 }
@@ -1806,17 +1866,52 @@ function segProject(s,px,py){
   return {t, d:Math.hypot(px-(s.x1+ux*tc), py-(s.y1+uy*tc)), L, ux, uy};
 }
 
+/* Kepadatan poche sepanjang dinding: berapa persen pita setebal dinding
+   yang benar-benar terisi tinta pada gambar ASLI.
+   Kaidahnya: dinding yang terpotong digambar MASIF, sedangkan jendela
+   digambar sebagai garis-garis kaca — tetap "ada" tapi tidak masif.
+   Ini menangkap jendela yang garis kacanya berdempetan sehingga sempat
+   terbaca sebagai dinding utuh. */
+function profileSolid(raw,w,h,s,band){
+  const L=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  const n=Math.max(2,Math.round(L));
+  const ux=(s.x2-s.x1)/L, uy=(s.y2-s.y1)/L, nx=-uy, ny=ux;
+  const out=new Float32Array(n+1);
+  for(let i=0;i<=n;i++){
+    let hit=0,tot=0;
+    for(let d=-band;d<=band;d++){
+      const x=Math.round(s.x1+ux*i+nx*d), y=Math.round(s.y1+uy*i+ny*d);
+      if(x<0||y<0||x>=w||y>=h) continue;
+      tot++; if(raw[y*w+x]) hit++;
+    }
+    out[i]=tot?hit/tot:1;
+  }
+  return out;
+}
+/* gabungkan rentang yang bertumpang tindih atau bersentuhan */
+function mergeIntervals(list){
+  if(!list.length) return [];
+  const a=list.slice().sort((p,q)=>p[0]-q[0]), out=[a[0].slice()];
+  for(let i=1;i<a.length;i++){
+    const last=out[out.length-1];
+    if(a[i][0]<=last[1]+1) last[1]=Math.max(last[1],a[i][1]);
+    else out.push(a[i].slice());
+  }
+  return out;
+}
+
 /* Simbol jendela = garis menerus SEJAJAR dinding di dalam tebal dinding.
    Karena itu yang diukur adalah liputan per-jalur sejajar, lalu diambil yang
    terbaik — arsiran yang memotong menyilang hanya menutup sedikit tiap jalur,
    jadi tidak lagi tertukar dengan kaca. */
-function thinFill(thin,w,h,s,r0,r1,band){
+function thinFill(thin,w,h,s,r0,r1,dMin,dMax){
   const L=Math.hypot(s.x2-s.x1,s.y2-s.y1);
   const ux=(s.x2-s.x1)/L, uy=(s.y2-s.y1)/L, nx=-uy, ny=ux;
   const n=r1-r0+1;
   if(n<=0) return 0;
   let best=0;
-  for(let d=-band;d<=band;d++){
+  for(let d=-dMax;d<=dMax;d++){
+    if(Math.abs(d)<dMin) continue;
     let hit=0;
     for(let i=r0;i<=r1;i++){
       const x=Math.round(s.x1+ux*i+nx*d), y=Math.round(s.y1+uy*i+ny*d);
@@ -1828,16 +1923,189 @@ function thinFill(thin,w,h,s,r0,r1,band){
   return best/n;
 }
 
+/* ---------------------------------------------------------------------
+   SIMBOL LAIN DI LAPIS GARIS TIPIS
+   Denah arsitektur memakai simbol baku: tangga digambar sebagai deretan
+   garis antrede yang berjarak sama, pintu geser sebagai dua bilah sejajar
+   yang bergeser, dan perabot sanitair punya ukuran baku. Semuanya dibaca
+   dari lapis garis tipis, setelah dinding dipisahkan.
+   --------------------------------------------------------------------- */
+
+/* pecah lapis simbol jadi ruas-ruas lurus */
+function symbolSegments(thin,w,h,pxm){
+  const polys=tracePolylines(thinZS(thin,w,h),w,h);
+  const out=[];
+  for(let poly of polys){
+    if(poly.length<2) continue;
+    poly=simplifyDP(poly,2);
+    for(let i=0;i<poly.length-1;i++){
+      const s={x1:poly[i][0],y1:poly[i][1],x2:poly[i+1][0],y2:poly[i+1][1]};
+      if(segLen(s)>=0.12*pxm){ s.dir=segDir(s,8); out.push(s); }
+    }
+  }
+  return out;
+}
+
+/* TANGGA: >=5 garis antrede sejajar, berjarak sama (20-40 cm) dan
+   sama panjang (lebar tangga 0.7-2.0 m). Syarat "sama panjang" inilah
+   yang memisahkannya dari arsiran, yang ujungnya terpotong bentuk ruang. */
+function detectStairs(segs,pxm){
+  const out=[];
+  for(const dir of ['h','v']){
+    const key = s => dir==='h' ? s.y1 : s.x1;
+    const rng = s => dir==='h' ? [Math.min(s.x1,s.x2),Math.max(s.x1,s.x2)]
+                               : [Math.min(s.y1,s.y2),Math.max(s.y1,s.y2)];
+    // garis panah arah naik memotong antrede jadi dua; disatukan lebih dulu
+    const list=mergeCollinear(segs.filter(s=>s.dir===dir), 0.12*pxm)
+                   .filter(s=>s.dir===dir && segLen(s)>=0.55*pxm && segLen(s)<=2.2*pxm)
+                   .sort((a,b)=>key(a)-key(b));
+    let i=0;
+    while(i<list.length){
+      const grp=[list[i]];
+      for(let j=i+1;j<list.length;j++){
+        const prev=grp[grp.length-1], d=key(list[j])-key(prev);
+        if(d<0.18*pxm) continue;                       // dua garis berimpit
+        if(d>0.42*pxm) break;                          // jeda terlalu jauh
+        const [a0,a1]=rng(prev), [b0,b1]=rng(list[j]);
+        if(Math.min(a1,b1)-Math.max(a0,b0) < 0.6*Math.min(a1-a0,b1-b0)) break;
+        if(grp.length>=2){
+          const d0=key(grp[1])-key(grp[0]);
+          if(Math.abs(d-d0) > 0.3*d0) break;           // jarak harus seragam
+        }
+        grp.push(list[j]);
+      }
+      if(grp.length>=5){
+        const lens=grp.map(segLen);
+        const mean=lens.reduce((a,b)=>a+b,0)/lens.length;
+        const sd=Math.sqrt(lens.reduce((a,b)=>a+(b-mean)**2,0)/lens.length);
+        const pitch=(key(grp[grp.length-1])-key(grp[0]))/(grp.length-1);
+        if(sd<0.18*mean && pitch>0.18*pxm && pitch<0.42*pxm){
+          let lo=1e9,hi=-1e9;
+          for(const s of grp){ const [a,b]=rng(s); lo=Math.min(lo,a); hi=Math.max(hi,b); }
+          out.push({
+            dir, pitch, width:mean,
+            run0:key(grp[0])-pitch/2, run1:key(grp[grp.length-1])+pitch/2,
+            cross:(lo+hi)/2, steps:grp.length+1
+          });
+          i+=grp.length; continue;
+        }
+      }
+      i++;
+    }
+  }
+  return out;
+}
+
+/* PERABOT SANITAIR: dikenali dari ukuran baku (karena skala sudah diketahui)
+   ditambah ciri khas — shower bersilang diagonal, wastafel & kloset punya
+   cekungan bulat di dalamnya. */
+function fixtureKind(wm,hm,feat){
+  const long=Math.max(wm,hm), short=Math.min(wm,hm), ratio=long/Math.max(short,0.01);
+  if(long>=1.40&&long<=2.10 && short>=0.60&&short<=1.00 && feat.blob) return 'bathtub';
+  if(long>=0.70&&long<=1.35 && short>=0.70&&short<=1.35 && feat.cross) return 'shower';
+  // kloset lebih lonjong daripada wastafel — itu pembedanya
+  if(long>=0.55&&long<=0.90 && short>=0.28&&short<=0.55 && ratio>=1.45 && feat.blob) return 'toilet';
+  if(long>=0.38&&long<=0.85 && short>=0.25&&short<=0.62 && ratio<1.45  && feat.blob) return 'washbasin';
+  return null;
+}
+function detectFixtures(thin,w,h,pxm,segs){
+  const out=[];
+  for(const c of components(thin,w,h,3000)){
+    const wm=c.bw/pxm, hm=c.bh/pxm;
+    if(Math.max(wm,hm)<0.35 || Math.max(wm,hm)>2.2) continue;
+    if(c.px.length > 10*Math.max(c.bw,c.bh)) continue;         // blok masif
+    const cross = hasCrossDiagonals(c,w);
+    const blob  = hasInnerHole(thin,w,h,c);
+    const kind=fixtureKind(wm,hm,{cross, blob});
+    if(!kind) continue;
+    out.push({kind, cx:(c.x0+c.x1)/2, cy:(c.y0+c.y1)/2, bw:c.bw, bh:c.bh,
+              x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1});
+  }
+  // cekungan di dalam perabot sering ikut terbaca sebagai perabot tersendiri —
+  // yang bersarang dibuang, yang terluar dipertahankan
+  out.sort((a,b)=>(b.bw*b.bh)-(a.bw*a.bh));
+  const keep=[];
+  for(const f of out){
+    const inside=keep.some(k=>f.x0>=k.x0-2&&f.x1<=k.x1+2&&f.y0>=k.y0-2&&f.y1<=k.y1+2);
+    if(!inside) keep.push(f);
+  }
+  return keep;
+}
+/* Simbol shower = kotak dengan silang diagonal. Diuji langsung dari sebaran
+   piksel terhadap kedua diagonal kotak pembatas: penipisan skeleton menyisakan
+   pola dua piksel pada garis 45 derajat, sehingga penelusuran ruas memecahnya
+   jadi serpihan dan tidak bisa diandalkan. */
+function hasCrossDiagonals(c,w){
+  const bw=c.bw, bh=c.bh;
+  if(bw<8||bh<8) return false;
+  const tol=Math.max(1.8, 0.06*Math.min(bw,bh));
+  const g=Math.hypot(1/bw,1/bh);
+  let on=0;
+  for(const i of c.px){
+    const x=i%w, y=(i-x)/w;
+    const u=(x-c.x0)/bw, v=(y-c.y0)/bh;
+    const d1=Math.abs(u-v)/g, d2=Math.abs(u+v-1)/g;
+    if(Math.min(d1,d2)<=tol) on++;
+  }
+  return on >= 0.28*c.px.length;
+}
+
+/* apakah ada rongga putih tertutup di dalam kotak komponen
+   (cekungan wastafel / kloset) — diuji dengan banjir dari tepi kotak */
+function hasInnerHole(thin,w,h,c){
+  const bw=c.bw+2, bh=c.bh+2;
+  if(bw*bh>60000) return false;
+  const at=(x,y)=>thin[(y+c.y0-1)*w+(x+c.x0-1)];
+  const vis=new Uint8Array(bw*bh), st=[];
+  for(let x=0;x<bw;x++){ st.push(x, x+(bh-1)*bw); }
+  for(let y=0;y<bh;y++){ st.push(y*bw, bw-1+y*bw); }
+  while(st.length){
+    const i=st.pop();
+    if(i<0||i>=bw*bh||vis[i]) continue;
+    const x=i%bw, y=(i-x)/bw;
+    const gx=x+c.x0-1, gy=y+c.y0-1;
+    if(gx<0||gy<0||gx>=w||gy>=h){ vis[i]=1; continue; }
+    if(thin[gy*w+gx]) continue;
+    vis[i]=1;
+    st.push(i-1,i+1,i-bw,i+bw);
+  }
+  let hole=0;
+  for(let y=1;y<bh-1;y++) for(let x=1;x<bw-1;x++){
+    const gx=x+c.x0-1, gy=y+c.y0-1;
+    if(gx<0||gy<0||gx>=w||gy>=h) continue;
+    if(!thin[gy*w+gx] && !vis[y*bw+x]) hole++;
+  }
+  return hole >= 0.06*c.bw*c.bh;
+}
+
+/* Kotak pembatas bangunan, dipakai menurunkan skala dari angka dimensi yang
+   tertulis di denah (mis. 40'), bukan dari lebar berkas yang ikut memuat
+   margin kosong. Bukaan memecah dinding jadi banyak ruas, jadi yang dipakai
+   gabungan SEMUA ruas yang berarti — bukan satu komponen terbesar. */
+function buildingBBox(mask,w,h){
+  const comps=components(mask,w,h);
+  if(!comps.length) return null;
+  const total=comps.reduce((a,c)=>a+c.px.length,0);
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,used=0;
+  for(const c of comps){
+    if(c.px.length < Math.max(20, 0.02*total)) continue;   // abaikan bercak
+    x0=Math.min(x0,c.x0); y0=Math.min(y0,c.y0);
+    x1=Math.max(x1,c.x1); y1=Math.max(y1,c.y1); used++;
+  }
+  if(!used) return null;
+  return {x0,y0,w:x1-x0+1,h:y1-y0+1};
+}
+
 function extractPlan(opt){
-  const {data,w,h,thr,noise,minLenM,ortho,detectOpen,detectDoors,heal,pxm,
-         doorH,sillH,auto,closeRManual,wallMinManual}=opt;
+  const {data,w,h,thr,noise,minLenM,ortho,detectOpen,detectDoors,heal,realWidth,
+         doorH,sillH,auto,closeRManual,wallMinManual,detectStairsOpt,detectFix}=opt;
 
   const raw=binarize(data,w,h,thr);
   const rawClean=removeSmallComponents(raw,w,h,noise);
 
   // --- lapis dinding: garis tebal saja ---
   // kalibrasi hanya dijalankan bila diminta — pencariannya memakan waktu
-  const cal = auto ? calibrate(rawClean,w,h,pxm)
+  const cal = auto ? calibrate(rawClean,w,h)
                    : {closeR:closeRManual, wallMinPx:wallMinManual,
                       strokeP90:0, strokeP50:0, poche:closeRManual<=2,
                       closed:closing(rawClean,w,h,closeRManual)};
@@ -1845,6 +2113,41 @@ function extractPlan(opt){
   let mask=cal.closed;
   mask=opening(mask,w,h,Math.max(1,Math.round(wallMinPx/2)));   // buang goresan tipis
   mask=removeSmallComponents(mask,w,h,Math.max(noise,wallMinPx*2));
+  // Pada denah poche, dinding digambar MASIF. Garis-garis berdempetan (mis.
+  // garis luar-dalam bak mandi) bisa menyatu jadi pita tebal dan menyamar
+  // sebagai dinding; disaring dengan melihat berapa persen pita itu benar-
+  // benar bertinta pada gambar asli.
+  if(cal.poche){
+    const comps=components(mask,w,h);
+    const solidC=[], looseC=[];
+    for(const c of comps){
+      let ink=0;
+      for(const i of c.px) if(rawClean[i]) ink++;
+      (ink/c.px.length >= 0.85 ? solidC : looseC).push(c);
+    }
+    const keep=new Uint8Array(w*h);
+    for(const c of solidC) for(const i of c.px) keep[i]=1;
+    // Pita renggang yang TERAPIT dinding masif di kedua ujungnya adalah
+    // jendela di dalam dinding, jadi tetap dipertahankan; yang berdiri
+    // sendiri di tengah ruang memang bukan dinding.
+    const near=(x0,y0,x1,y1)=>{
+      for(let y=Math.max(0,y0);y<=Math.min(h-1,y1);y++)
+        for(let x=Math.max(0,x0);x<=Math.min(w-1,x1);x++)
+          if(keep[y*w+x]) return true;
+      return false;
+    };
+    for(const c of looseC){
+      const pad=4, horiz=c.bw>=c.bh;
+      const a = horiz ? near(c.x0-pad,c.y0,c.x0-1,c.y1) : near(c.x0,c.y0-pad,c.x1,c.y0-1);
+      const b = horiz ? near(c.x1+1,c.y0,c.x1+pad,c.y1) : near(c.x0,c.y1+1,c.x1,c.y1+pad);
+      if(a&&b) for(const i of c.px) keep[i]=1;
+    }
+    mask=keep;
+  }
+
+  // --- skala: lebar bangunan terdeteksi dipetakan ke ukuran sebenarnya ---
+  const bbox=buildingBBox(mask,w,h);
+  const pxm = (bbox && bbox.w>20) ? bbox.w/realWidth : w/realWidth;
 
   // --- lapis simbol: sisa garis tipis di luar pita dinding ---
   const wallZone=dilate(mask,w,h,2);
@@ -1884,6 +2187,12 @@ function extractPlan(opt){
     }
     if(bs<0) continue;
     const s=segs[bs], pr=segProject(s,a.hx,a.hy);
+    // Busur ayun yang sah: satu ujungnya rebah di garis dinding (daun tertutup),
+    // ujung lainnya menjauh tegak lurus (daun terbuka). Lengkung perabot yang
+    // pusatnya kebetulan jatuh di dinding tidak memenuhi ini.
+    const dA=segProject(s,a.ax,a.ay).d, dB=segProject(s,a.bx,a.by).d;
+    if(Math.min(dA,dB) > 0.55*a.r) continue;
+    if(Math.max(dA,dB) < 0.60*a.r) continue;
     const sgn=Math.sign((a.cx-a.hx)*pr.ux + (a.cy-a.hy)*pr.uy) || 1;
     const t0=clamp(pr.t,0,pr.L), t1=clamp(pr.t+sgn*a.r,0,pr.L);
     if(Math.abs(t1-t0) < 0.4*pxm) continue;
@@ -1893,7 +2202,7 @@ function extractPlan(opt){
   }
 
   const toM=(px,py)=>({x:(px-w/2)/pxm, z:(py-h/2)/pxm});
-  const walls=[]; let nDoor=0,nWin=0,nOpen=0;
+  const walls=[]; let nDoor=0,nWin=0,nOpen=0,nSlide=0;
 
   for(let si=0; si<segs.length; si++){
     const s=segs[si];
@@ -1904,8 +2213,26 @@ function extractPlan(opt){
     t = Math.abs(nearest(t,STD.thickness)-t)<0.05 ? nearest(t,STD.thickness) : Math.round(t*100)/100;
     const wall=newWall(A.x,A.z,B.x,B.z,t,0);
     const len=wallLen(wall);
-    const band=Math.max(1,Math.round(tPx/2)-1);
-    const taken=[];                                  // rentang px yang sudah jadi bukaan
+    const band=Math.max(1,Math.round(tPx/2)-1);          // di dalam tebal dinding
+    const outer=band+Math.max(2,Math.round(0.22*pxm));   // di luar muka dinding
+    const solid=profileSolid(rawClean,w,h,s,band);
+    // Patokannya kepadatan khas dinding INI, bukan angka mutlak: pada denah
+    // poche jendela tampak lebih renggang dari dindingnya, sedangkan pada
+    // denah garis-ganda justru lebih rapat karena ada garis kaca di rongga.
+    const base=percentile([...solid],0.5);
+    const devs=i=>Math.abs(solid[Math.min(i,solid.length-1)]-base)>0.18;
+    const taken=[];
+
+    // klasifikasi satu rentang bukaan, dipakai bersama oleh busur & cekungan
+    const classify=(e0,e1,empty)=>{
+      const inner=thinFill(thin,w,h,s,e0,e1,0,band);
+      const out2 =thinFill(thin,w,h,s,e0,e1,Math.round(tPx/2)+2,outer);
+      let devCount=0; for(let i=e0;i<=e1;i++) if(devs(i)) devCount++;
+      const lined = !empty && devCount > 0.5*(e1-e0+1);
+      if(out2>0.45 && inner>0.2) return 'slider';        // dua bilah bergeser
+      if(inner>0.55 || lined) return 'window';           // garis kaca sejajar
+      return null;
+    };
 
     // 1) bukaan dari simbol busur pintu (paling dapat dipercaya)
     for(const g of (arcBySeg.get(si)||[])){
@@ -1914,38 +2241,38 @@ function extractPlan(opt){
       if(Math.abs(std-width)<0.12) width=std;
       const center=(g.a+g.b)/2/pxm;
       if(center<0.15||center>len-0.15) continue;
-      const o=newOpening('door',center,width);
-      o.sill=0; o.head=doorH;
-      wall.openings.push(o); nDoor++;
+      const e0=Math.max(0,Math.round(g.a)), e1=Math.min(prof.length-1,Math.round(g.b));
+      let sumP=0; for(let i=e0;i<=e1;i++) sumP+=prof[i];
+      const empty=(sumP/Math.max(1,e1-e0+1)) < 0.25*tPx;
+      // jendela berdaun ayun juga memakai busur — bedanya dindingnya tidak
+      // benar-benar dibuka, masih ada garis kaca di penampangnya
+      const kind = classify(e0,e1,empty)==='window' ? 'window' : 'door';
+      const o=newOpening(kind,center,width);
+      if(kind==='window'){ o.sill=sillH; o.head=Math.max(sillH+0.6,doorH); nWin++; }
+      else { o.sill=0; o.head=doorH; nDoor++; }
+      wall.openings.push(o);
       taken.push([g.a,g.b]);
     }
 
-    // 2) bukaan dari cekungan profil tebal (jendela, pintu tanpa busur, bukaan bebas)
+    // 2) bukaan sisanya, dibaca dari dua sudut pandang sekaligus:
+    //    a. profil tebal   -> lubang yang benar-benar kosong (pintu, bukaan bebas)
+    //    b. profil kepadatan -> jendela: dindingnya "ada" tapi tidak masif
     if(detectOpen && tPx>1){
-      for(const [r0,r1] of findRuns(prof, v=>v < tPx*0.70)){
+      const cands=mergeIntervals([
+        ...findRuns(prof,  v=>v < tPx*0.70),
+        ...findRuns(solid, v=>Math.abs(v-base) > 0.18)
+      ]);
+      for(const [r0,r1] of cands){
         if(r0<=1 || r1>=prof.length-2) continue;
         if(taken.some(([a,b])=>Math.min(b,r1)-Math.max(a,r0) > 0.35*(r1-r0))) continue;
-        let sum=0; for(let i=r0;i<=r1;i++) sum+=prof[i];
-        const fill=sum/((r1-r0+1)*tPx);
-        // Jendela digambar sebagai garis SEJAJAR dinding di dalam tebal dinding.
-        // Pita sengaja disempitkan ke dalam tebal dinding supaya busur ayun pintu
-        // (yang menyapu keluar dinding) tidak ikut terbaca sebagai kaca.
-        const band0=Math.max(1,Math.round(tPx/2)-1);
-        const glass=thinFill(thin,w,h,s,r0,r1,band0);
-        // sisa material harus MENERUS sepanjang bukaan agar dianggap kaca/kusen;
-        // arsiran yang memotong hanya menyisakan bercak, bukan pita menerus
-        let cont=0; for(let i=r0;i<=r1;i++) if(prof[i] > 0.15*tPx) cont++;
-        cont/=(r1-r0+1);
-        // dan tebalnya harus rata: pita kaca/kusen tebalnya tetap,
-        // sisa arsiran yang memotong tebalnya naik-turun
-        const mean=sum/(r1-r0+1);
-        let vr=0; for(let i=r0;i<=r1;i++) vr+=(prof[i]-mean)**2;
-        const even=mean>0 && Math.sqrt(vr/(r1-r0+1)) < 0.35*mean;
-        const isWin = glass>0.55 || (fill>=0.25 && cont>0.80 && even);
+        let sumP=0;
+        for(let i=r0;i<=r1;i++) sumP+=prof[i];
+        const nRun=r1-r0+1;
+        const empty = (sumP/nRun) < 0.25*tPx;
+
         let e0=r0, e1=r1;
-        if(!isWin){
-          // lubang benar-benar kosong (pintu): pakai tepi lubang yang sesungguhnya,
-          // karena tepi dari distance transform selalu melebar
+        if(empty){
+          // tepi dari distance transform selalu melebar - pakai tepi lubang asli
           const inner=findRuns(prof, v=>v<=1.0).filter(([p0,p1])=>p0>=r0&&p1<=r1);
           if(inner.length){
             const i0=inner[0][0], i1=inner[inner.length-1][1];
@@ -1956,8 +2283,11 @@ function extractPlan(opt){
         if(gw<0.45 || gw>STD.maxWindow) continue;
         const center=((e0+e1)/2)/pxm;
         if(center<0.15 || center>len-0.15) continue;
+
+        const kind=classify(e0,e1,empty);
         let type,width=gw;
-        if(isWin){ type='window'; nWin++; }
+        if(kind==='slider'){ type='slider'; nSlide++; }
+        else if(kind==='window'){ type='window'; nWin++; }
         else if(gw<=STD.maxDoor){
           type='door';
           const std=nearest(gw,STD.doorW);
@@ -1973,7 +2303,34 @@ function extractPlan(opt){
     }
     walls.push(wall);
   }
-  return {walls, nDoor, nWin, nOpen, arcs, cal, closeR, wallMinPx};
+
+  // --- simbol lain di lapis garis tipis: tangga & perabot sanitair ---
+  let symSegs=null, stairs=[], fixtures=[];
+  if(detectStairsOpt || detectFix){
+    symSegs=symbolSegments(thin,w,h,pxm);
+    if(detectStairsOpt){
+      for(const st of detectStairs(symSegs,pxm)){
+        const horiz = st.dir==='v';                 // garis antrede tegak -> naik ke arah X
+        const p0 = horiz ? toM(st.run0,st.cross) : toM(st.cross,st.run0);
+        stairs.push({
+          x:p0.x, z:p0.z,
+          rotY: horiz ? Math.PI/2 : 0,
+          steps:st.steps, width:st.width/pxm, tread:st.pitch/pxm
+        });
+      }
+    }
+    if(detectFix){
+      for(const f of detectFixtures(thin,w,h,pxm,symSegs)){
+        const c=toM(f.cx,f.cy);
+        fixtures.push({kind:f.kind, x:c.x, z:c.z,
+                       rotY:(f.bw>=f.bh?0:Math.PI/2), w:f.bw/pxm, d:f.bh/pxm});
+      }
+    }
+  }
+
+  return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox,
+          stairs, fixtures};
+
 }
 
 /* ======================================================================
@@ -1984,12 +2341,20 @@ const ctx2d=canvas2d.getContext('2d',{willReadFrequently:true});
 let SRC_IMG=null, LAST_RESULT=null;
 const PROC_MAX=760;
 
+/* lebar bangunan dalam meter, apa pun satuan yang dipilih */
+function realWidthM(){
+  const v=parseFloat($('#realWidth').value)||12;
+  return $('#unit').value==='ft' ? v*0.3048 : v;
+}
+/* skala sebenarnya baru diketahui setelah bangunan terdeteksi */
 function pxPerMeter(){
-  const rw=parseFloat($('#realWidth').value)||12;
-  return SRC_IMG ? canvas2d.width/rw : 30;
+  if(LAST_RESULT&&LAST_RESULT.pxm) return LAST_RESULT.pxm;
+  return SRC_IMG ? canvas2d.width/realWidthM() : 30;
 }
 function updatePxm(){
-  $('#pxm-val').textContent = SRC_IMG ? fmt(pxPerMeter(),1)+' px/m' : '– px/m';
+  $('#pxm-val').textContent = (LAST_RESULT&&LAST_RESULT.pxm)
+    ? fmt(LAST_RESULT.pxm,1)+' px/m'
+    : (SRC_IMG ? 'skala dihitung saat generate' : '– px/m');
 }
 $('#upload').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
@@ -2015,6 +2380,7 @@ $('#upload').addEventListener('change',e=>{
   rd.readAsDataURL(f);
 });
 $('#realWidth').addEventListener('input',updatePxm);
+$('#unit').addEventListener('change',updatePxm);
 
 const bind=(id,suffix,fn)=>{
   const s=$('#'+id), v=$('#'+id+'-val');
@@ -2049,11 +2415,24 @@ function drawOverlay(res){
     for(const o of wl.openings){
       const ax=wl.x1+ux*(o.at-o.width/2), az=wl.z1+uz*(o.at-o.width/2);
       const bx=wl.x1+ux*(o.at+o.width/2), bz=wl.z1+uz*(o.at+o.width/2);
-      ctx2d.strokeStyle= o.type==='window'?'#1b8ad6':(o.type==='door'?'#17a673':'#9b59b6');
+      ctx2d.strokeStyle= o.type==='window'?'#1b8ad6'
+                       : o.type==='door'?'#17a673'
+                       : o.type==='slider'?'#d4a017':'#9b59b6';
       ctx2d.lineWidth=Math.max(3,wl.thickness*pxm*1.1);
       ctx2d.beginPath();
       ctx2d.moveTo(ax*pxm+w/2,az*pxm+h/2); ctx2d.lineTo(bx*pxm+w/2,bz*pxm+h/2); ctx2d.stroke();
     }
+  }
+  // simbol tangga & perabot sanitair yang terbaca
+  ctx2d.globalAlpha=0.85; ctx2d.lineWidth=2;
+  for(const st of (res.stairs||[])){
+    ctx2d.strokeStyle='#8e44ad';
+    const x=st.x*pxm+w/2, y=st.z*pxm+h/2;
+    ctx2d.beginPath(); ctx2d.arc(x,y,7,0,Math.PI*2); ctx2d.stroke();
+  }
+  for(const f of (res.fixtures||[])){
+    ctx2d.strokeStyle='#e67e22';
+    ctx2d.strokeRect(f.x*pxm+w/2-f.w*pxm/2, f.z*pxm+h/2-f.d*pxm/2, f.w*pxm, f.d*pxm);
   }
   // simbol busur ayun pintu yang terbaca
   if(res.arcs){
@@ -2097,7 +2476,6 @@ function runGenerate(toNewLevel){
     try{
       const w=canvas2d.width,h=canvas2d.height;
       const data=ctx2d.getImageData(0,0,w,h).data;
-      const pxm=pxPerMeter();
       const lvH=parseFloat($('#wallH').value)||3.2;
       const res=extractPlan({
         data,w,h,
@@ -2107,11 +2485,13 @@ function runGenerate(toNewLevel){
         ortho:$('#ortho').checked,
         detectOpen:$('#doOpen').checked,
         detectDoors:$('#doDoors').checked,
+        detectStairsOpt:$('#doStairs').checked,
+        detectFix:$('#doFix').checked,
         heal:$('#doHeal').checked,
         auto:$('#autoCal').checked,
         closeRManual:+$('#closeR').value,
         wallMinManual:+$('#wallMin').value,
-        pxm,
+        realWidth:realWidthM(),
         doorH:parseFloat($('#doorH').value)||2.1,
         sillH:parseFloat($('#sillH').value)||0.9
       });
@@ -2126,7 +2506,22 @@ function runGenerate(toNewLevel){
       const lv=L();
       lv.height=lvH;
       lv.walls=res.walls;
-      PROJECT.pxPerMeter=pxm;
+      // objek hasil pembacaan simbol; yang lama dibuang agar tidak menumpuk
+      lv.objects=lv.objects.filter(o=>!o.fromPlan);
+      for(const st of res.stairs){
+        lv.objects.push({id:uid('ob'), kind:'stair', type:'straight', fromPlan:true,
+          x:st.x, y:0, z:st.z, rotY:st.rotY, sx:1, sy:1, sz:1,
+          params:{variant:'straight', width:clamp(st.width,0.6,3), tread:clamp(st.tread,0.2,0.4),
+                  riserTarget:STD.riserTarget, rise:0, radius:0.95, sweep:270,
+                  landing:1.1, gap:0.1, railing:true}});
+      }
+      for(const f of res.fixtures){
+        const o={id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
+                 x:f.x, y:0, z:f.z, rotY:f.rotY, sx:1, sy:1, sz:1, params:{}};
+        faceNearestWall(o, lv.walls);
+        lv.objects.push(o);
+      }
+      PROJECT.pxPerMeter=res.pxm;
       LAST_RESULT=res;
       updatePxm();
       SEL=null;
@@ -2140,13 +2535,19 @@ function runGenerate(toNewLevel){
         orbit.target.set(c.x,lvH/2,c.z);
         camera.position.set(c.x+sz*0.55,c.y+sz*0.5,c.z+sz*0.6);
       }
-      toast(`${res.walls.length} dinding · ${res.nDoor} pintu · ${res.nWin} jendela`);
+      toast(`${res.walls.length} dinding · ${res.nDoor} pintu · ${res.nWin} jendela`
+        + (res.nSlide?` · ${res.nSlide} geser`:'')
+        + (res.stairs.length?` · ${res.stairs.length} tangga`:'')
+        + (res.fixtures.length?` · ${res.fixtures.length} sanitair`:''));
       $('#cal-info').innerHTML = (!$('#autoCal').checked ? 'Kalibrasi manual aktif. ' :
         `Terbaca: goresan tebal <b>${fmt(res.cal.strokeP90,1)} px</b> → `
         + (res.cal.poche?'dinding <b>masif (poche)</b>':'dinding <b>garis-ganda</b>')
         + `. `)
-        + `Ambang dinding <b>${res.wallMinPx} px</b> (${fmt(res.wallMinPx/pxm*100,0)} cm), `
-        + `tutup rongga <b>${res.closeR} px</b>. Simbol busur pintu terbaca: <b>${res.arcs.filter(a=>a.placed).length}/${res.arcs.length}</b>.`;
+        + `Ambang dinding <b>${res.wallMinPx} px</b> (${fmt(res.wallMinPx/res.pxm*100,0)} cm), `
+        + `tutup rongga <b>${res.closeR} px</b>. Skala <b>${fmt(res.pxm,1)} px/m</b>. `
+        + `Busur ayun pintu terpakai: <b>${res.arcs.filter(a=>a.placed).length}</b>`
+        + (res.arcs.length>res.arcs.filter(a=>a.placed).length
+           ? ` (${res.arcs.length-res.arcs.filter(a=>a.placed).length} kandidat ditolak karena tidak menempel di dinding)` : '')+'.';
       setHint('Klik dinding untuk <b>edit</b> (posisi, panjang, tebal, bukaan). <b>W/E/R</b> untuk transform.');
     }catch(err){
       console.error(err); toast('Gagal memproses: '+err.message);
