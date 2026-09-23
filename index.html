@@ -250,6 +250,8 @@ details#adv>*:not(summary){margin-bottom:8px}
       </div>
       <div class="section-title">Properti Lantai Aktif</div>
       <div id="lvl-props" class="group"></div>
+      <button class="btn sm ghost" id="autoVoidBtn">Lubangi Pelat dari Tangga Lantai Bawah</button>
+      <p class="hint">Membuat void di pelat lantai ini tepat di tempat ruang bebas kepala tangga di bawahnya kurang dari 2,00 m.</p>
       <div class="section-title">Tampilan</div>
       <label class="chk"><input type="checkbox" id="ghostOther" checked><span>Tampilkan lantai lain transparan</span></label>
       <label class="chk"><input type="checkbox" id="showSlab" checked><span>Tampilkan pelat lantai</span></label>
@@ -263,6 +265,9 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="section-title">Tangga</div>
       <div class="cat-grid" id="cat-stairs"></div>
       <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
+      <div class="section-title">Void (Lubang Pelat Lantai)</div>
+      <div class="cat-grid" id="cat-void"></div>
+      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
       <div class="section-title">Furnitur &amp; Sanitair</div>
       <div class="row"><select id="furn-filter">
         <option value="all">Semua kategori</option>
@@ -391,7 +396,9 @@ const STD = {
   maxDoor:1.40, maxWindow:4.00, minWallLen:0.60,
   riserMin:0.15, riserMax:0.19, riserTarget:0.175,
   treadMin:0.25, treadTarget:0.28,
-  stairWidthMin:0.90
+  stairWidthMin:0.90,
+  headroom:2.00,                               // ruang bebas kepala di bawah pelat
+  slabT:0.20                                   // tebal pelat lantai
 };
 const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
 
@@ -632,6 +639,39 @@ function buildJunctions(lv){
 }
 
 /* pelat lantai mengikuti batas dinding */
+/* ukuran void sudah termasuk skala dari gizmo, supaya lubang di pelat selalu
+   sama persis dengan kotak yang terlihat di viewport */
+const voidW = o => Math.max(0.2,(o.params.w||1)*(o.sx||1));
+const voidD = o => Math.max(0.2,(o.params.d||1)*(o.sz||1));
+/* Lubang harus benar-benar berada di dalam pelat: lubang yang menjorok keluar
+   membuat triangulasi gagal dan pelat malah jadi rapat. Poligonnya dipotong
+   dulu ke kotak pelat (Sutherland–Hodgman), disisakan bibir tipis di tepi. */
+function clipPolyRect(poly,x0,x1,z0,z1){
+  const lx=(a,b,x)=>{ const t=(x-a[0])/(b[0]-a[0]); return [x, a[1]+t*(b[1]-a[1])]; };
+  const lz=(a,b,z)=>{ const t=(z-a[1])/(b[1]-a[1]); return [a[0]+t*(b[0]-a[0]), z]; };
+  const edges=[[p=>p[0]>=x0,(a,b)=>lx(a,b,x0)], [p=>p[0]<=x1,(a,b)=>lx(a,b,x1)],
+               [p=>p[1]>=z0,(a,b)=>lz(a,b,z0)], [p=>p[1]<=z1,(a,b)=>lz(a,b,z1)]];
+  let out=poly;
+  for(const [inside,cut] of edges){
+    const src=out; out=[];
+    for(let i=0;i<src.length;i++){
+      const A=src[i], B=src[(i+1)%src.length], ia=inside(A), ib=inside(B);
+      if(ia){ out.push(A); if(!ib) out.push(cut(A,B)); }
+      else if(ib) out.push(cut(A,B));
+    }
+    if(out.length<3) return [];
+  }
+  return out;
+}
+const polyArea = pts => Math.abs(pts.reduce((a,p,i)=>{
+  const q=pts[(i+1)%pts.length]; return a+(p[0]*q[1]-q[0]*p[1]); },0))/2;
+
+const voidCorners = o => {
+  const hw=voidW(o)/2, hd=voidD(o)/2, a=o.rotY||0, c=Math.cos(a), sn=Math.sin(a);
+  return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]]
+    .map(([px,pz])=>[o.x+px*c+pz*sn, o.z-px*sn+pz*c]);
+};
+
 function buildSlab(lv){
   if(!lv.walls.length) return null;
   let minX=1e9,maxX=-1e9,minZ=1e9,maxZ=-1e9;
@@ -639,11 +679,60 @@ function buildSlab(lv){
     minX=Math.min(minX,w.x1,w.x2); maxX=Math.max(maxX,w.x1,w.x2);
     minZ=Math.min(minZ,w.z1,w.z2); maxZ=Math.max(maxZ,w.z1,w.z2);
   }
-  const pad=0.25, T=0.2;
-  const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, MAT.slab,
-              (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
-  m.castShadow=false;
+  const pad=0.25, T=STD.slabT;
+  const voids=lv.objects.filter(o=>o.kind==='void');
+  if(!voids.length){
+    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, MAT.slab,
+                (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
+    m.castShadow=false;
+    return m;
+  }
+  // Pelat berlubang: denah digambar sebagai Shape (sumbu z dibalik supaya
+  // setelah dimiringkan ke bidang XZ arahnya tetap), tiap void jadi Path lubang.
+  const x0=minX-pad, x1=maxX+pad, z0=minZ-pad, z1=maxZ+pad;
+  const shape=new THREE.Shape();
+  shape.moveTo(x0,-z0); shape.lineTo(x1,-z0); shape.lineTo(x1,-z1); shape.lineTo(x0,-z1);
+  shape.closePath();
+  const eps=0.02;
+  for(const v of voids){
+    const pts=clipPolyRect(voidCorners(v),x0+eps,x1-eps,z0+eps,z1-eps);
+    if(pts.length<3 || polyArea(pts)<0.02) continue;
+    const hole=new THREE.Path();
+    hole.moveTo(pts[0][0],-pts[0][1]);
+    for(let i=1;i<pts.length;i++) hole.lineTo(pts[i][0],-pts[i][1]);
+    hole.closePath();
+    shape.holes.push(hole);
+  }
+  if(!shape.holes.length){
+    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, MAT.slab,
+                (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
+    m.castShadow=false;
+    return m;
+  }
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:T,bevelEnabled:false});
+  geo.rotateX(-Math.PI/2);        // denah XY → bidang XZ, tebal ke arah +Y
+  geo.translate(0,-T,0);          // permukaan atas rata dengan lantai (y=0)
+  geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,MAT.slab);
+  m.castShadow=false; m.receiveShadow=true;
   return m;
+}
+
+/* Kotak bantu void: hanya penanda di editor — transparan, tidak ikut diekspor. */
+function buildVoid(o){
+  const g=new THREE.Group();
+  const w=o.params.w||1, d=o.params.d||1, T=STD.slabT;
+  const fill=new THREE.Mesh(new THREE.BoxGeometry(w,T*1.05,d),
+    new THREE.MeshBasicMaterial({color:0x4ec9b0, transparent:true, opacity:0.16,
+                                 depthWrite:false, side:THREE.DoubleSide}));
+  fill.position.y=-T/2;
+  const edge=new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(w,T*1.05,d)),
+    new THREE.LineBasicMaterial({color:0x4ec9b0}));
+  edge.position.y=-T/2;
+  g.add(fill); g.add(edge);
+  g.traverse(c=>{ c.userData.noExport=true; c.castShadow=false; c.receiveShadow=false; });
+  return g;
 }
 
 /* ======================================================================
@@ -1019,6 +1108,7 @@ const levelGroups=[];
 function buildObject(o, lv){
   let g;
   if(o.kind==='stair') g=buildStair(o,lv);
+  else if(o.kind==='void') g=buildVoid(o);
   else {
     const def=FURN[o.type];
     g = def ? def.b() : new THREE.Group();
@@ -1026,7 +1116,7 @@ function buildObject(o, lv){
   g.position.set(o.x,o.y||0,o.z);
   g.rotation.y=o.rotY||0;
   g.scale.set(o.sx||1,o.sy||1,o.sz||1);
-  g.userData={kind:'obj', id:o.id};
+  g.userData={kind:'obj', id:o.id, noExport:o.kind==='void'};
   return g;
 }
 
@@ -1187,6 +1277,11 @@ function commitGizmo(){
     d.rotY=g.rotation.y;
     d.sx=g.scale.x; d.sy=g.scale.y; d.sz=g.scale.z;
     if(d.kind==='stair'){ d.sx=d.sy=d.sz=1; }   // tangga diskalakan lewat parameter
+    if(d.kind==='void'){                        // skala dilebur jadi ukuran lubang
+      d.params.w=clamp(d.params.w*d.sx,0.3,40);
+      d.params.d=clamp(d.params.d*d.sz,0.3,40);
+      d.y=0; d.sx=d.sy=d.sz=1;
+    }
   }
   rebuildScene();
 }
@@ -1293,8 +1388,24 @@ function renderInspector(){
       : `✓ ${c.n} anak tangga · optrede ${fmt(c.riser*100,1)} cm · antrede ${fmt(c.tread*100,1)} cm · 2R+A ${fmt(c.formula*100,1)} cm`;
     ins.appendChild(badge);
     if(warn.length) ins.appendChild(el('p','hint',`${c.n} anak tangga · optrede ${fmt(c.riser*100,1)} cm · antrede ${fmt(c.tread*100,1)} cm`));
+    ins.appendChild(el('div','section-title','Lantai di atas'));
+    const bv=el('button','btn sm ghost','Lubangi lantai di atas');
+    bv.onclick=()=>makeStairVoid(d);
+    ins.appendChild(bv);
+    ins.appendChild(el('p','hint','Lubang dibuat di pelat lantai berikutnya, mulai dari anak tangga yang ruang bebas kepalanya kurang dari 2,00 m.'));
+
     ins.appendChild(el('div','section-title','Penempatan'));
     addTransformFields(ins,d,false);
+
+  } else if(d.kind==='void'){
+    const h=el('h3',null,'Void'); h.appendChild(el('span','tag','lubang pelat'));
+    ins.appendChild(h);
+    fRow(ins,'Lebar X (m)',numInput(voidW(d),0.05,v=>{ d.params.w=clamp(v,0.3,40); d.sx=1; rebuildScene(); renderInspector(); },0.3,40));
+    fRow(ins,'Panjang Z (m)',numInput(voidD(d),0.05,v=>{ d.params.d=clamp(v,0.3,40); d.sz=1; rebuildScene(); renderInspector(); },0.3,40));
+    fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
+    fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
+    fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
+    ins.appendChild(el('div','badge ok','Lubang ini memotong pelat lantai ' + L().name + '. Kotak hijau hanya penanda di editor — tidak ikut diekspor.'));
 
   } else {
     const def=FURN[d.type];
@@ -1375,6 +1486,71 @@ function faceNearestWall(obj, walls){
   if((bx-obj.x)*dirX + (bz-obj.z)*dirZ < 0) obj.rotY+=Math.PI;
 }
 
+/* ---------------------------------------------------------------------
+   VOID DARI TANGGA
+   Pelat lantai atas harus dilubangi tepat di tempat orang yang menaiki
+   tangga kehilangan ruang bebas kepala. Jadi lubangnya tidak dibuat
+   sepanjang tangga, melainkan mulai dari anak tangga pertama yang ruang
+   bebasnya kurang dari 2,00 m — kaidah yang sama yang dipakai menghitung
+   optrede dan antrede. Untuk tangga berbelok, seluruh tapaknya dilubangi
+   karena jalur naiknya tidak lurus.
+   --------------------------------------------------------------------- */
+function stairVoidRect(o,lv){
+  const g=buildStair(o,lv);
+  g.updateMatrixWorld(true);
+  const b=new THREE.Box3().setFromObject(g);
+  disposeTree(g);
+  if(!isFinite(b.min.x)) return null;
+  let z0=b.min.z, z1=b.max.z;
+  if(o.params.variant==='straight'){
+    const c=stairCalc(o.params,lv.height);
+    const free=lv.height-STD.slabT-STD.headroom;        // sisa ruang di bawah pelat
+    const safe=Math.max(0,Math.floor(free/c.riser));    // anak tangga terakhir yang masih lega
+    const start=b.min.z+safe*c.tread;
+    if(start>=z1-0.05) return null;                     // seluruh tangga masih lega
+    z0=start;
+  }
+  const m=0.08;                                          // kelonggaran tepi
+  const cx=(b.min.x+b.max.x)/2, cz=(z0+z1)/2;
+  const a=o.rotY||0, cs=Math.cos(a), sn=Math.sin(a);
+  return { x:o.x+cx*cs+cz*sn, z:o.z-cx*sn+cz*cs, rotY:a,
+           w:(b.max.x-b.min.x)+m*2, d:(z1-z0)+m*2 };
+}
+function pushVoid(level,r){
+  // void yang sudah ada di titik yang sama tidak digandakan
+  if(level.objects.some(o=>o.kind==='void' && Math.hypot(o.x-r.x,o.z-r.z)<0.4)) return false;
+  level.objects.push({ id:uid('ob'), kind:'void', type:'rect', x:r.x, y:0, z:r.z,
+                       rotY:r.rotY, sx:1, sy:1, sz:1, params:{ w:r.w, d:r.d } });
+  return true;
+}
+function makeStairVoid(o){
+  const lv=L(), up=PROJECT.levels[PROJECT.active+1];
+  if(!up) return toast('Belum ada lantai di atas — tambah lantai dulu.');
+  const r=stairVoidRect(o,lv);
+  if(!r) return toast('Ruang bebas kepala sudah cukup; pelat tidak perlu dilubangi.');
+  if(!pushVoid(up,r)) return toast('Di '+up.name+' sudah ada void di tempat itu.');
+  HIST.label='Void dari tangga';
+  rebuildScene();
+  toast(`Void ${fmt(r.w,2)} × ${fmt(r.d,2)} m dibuat di ${up.name}`);
+}
+/* melubangi pelat lantai aktif mengikuti semua tangga di lantai bawahnya */
+function autoVoidsFromBelow(){
+  const below=PROJECT.levels[PROJECT.active-1];
+  if(!below) return toast('Ini lantai paling bawah — tidak ada tangga di bawahnya.');
+  const stairs=below.objects.filter(o=>o.kind==='stair');
+  if(!stairs.length) return toast(below.name+' belum punya tangga.');
+  let n=0, lega=0;
+  for(const st of stairs){
+    const r=stairVoidRect(st,below);
+    if(!r){ lega++; continue; }
+    if(pushVoid(L(),r)) n++;
+  }
+  if(!n) return toast(lega?'Ruang bebas kepala semua tangga sudah cukup.':'Void-nya sudah ada.');
+  HIST.label='Void dari tangga lantai bawah';
+  rebuildScene();
+  toast(`${n} void dibuat di ${L().name} dari tangga ${below.name}`);
+}
+
 function addObject(kind,type){
   const lv=L();
   const t=orbit.target;
@@ -1384,12 +1560,17 @@ function addObject(kind,type){
     o.params={ variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
                rise:0, steps:0, radius:0.95, sweep:270, landing:1.1, gap:0.1, railing:true };
   }
+  if(kind==='void') o.params={ w:1.2, d:3.0 };
   lv.objects.push(o);
   SEL={kind:'obj',id:o.id};
-  HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type)) : (FURN[type]?.l||type));
+  HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
+                      : kind==='void'  ? 'void'
+                      : (FURN[type]?.l||type));
   rebuildScene();
   if(TOOL==='select') setTool('translate');
-  const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type)) : (FURN[type]?.l||type);
+  const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type))
+           : kind==='void'  ? 'Void (lubang pelat)'
+           : (FURN[type]?.l||type);
   toast(nm+' ditambahkan ke '+lv.name);
 }
 
@@ -2881,6 +3062,7 @@ function updateStatsBar(){
   const doors=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>o.type==='door').length,0);
   const wins=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>o.type==='window').length,0);
   const struct=lv.walls.filter(isStructural).length;
+  const voidN=lv.objects.filter(o=>o.kind==='void').length;
   let area=0;
   if(lv.walls.length){
     let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
@@ -2891,7 +3073,7 @@ function updateStatsBar(){
     ? `<b>${lv.name}</b> · dinding <b>${lv.walls.length}</b> (struktural <b>${struct}</b>)<br>
        panjang total <b>${fmt(total,1)} m</b> · luas kotak <b>${fmt(area,1)} m²</b><br>
        bukaan <b>${ops}</b> — pintu <b>${doors}</b>, jendela <b>${wins}</b><br>
-       objek <b>${lv.objects.length}</b> · tinggi lantai <b>${fmt(lv.height)} m</b>`
+       objek <b>${lv.objects.filter(o=>o.kind!=='void').length}</b>${voidN?` · void <b>${voidN}</b>`:''} · tinggi lantai <b>${fmt(lv.height)} m</b>`
     : 'Belum ada denah diproses.';
 }
 
@@ -3060,6 +3242,7 @@ function addLevel(copy){
   toast(copy?'Lantai disalin ke atas':'Lantai baru ditambahkan');
 }
 $('#addLevelBtn').onclick=()=>addLevel(false);
+$('#autoVoidBtn').onclick=autoVoidsFromBelow;
 $('#dupLevelBtn').onclick=()=>addLevel(true);
 ['ghostOther','showSlab'].forEach(id=>$('#'+id).addEventListener('change',rebuildScene));
 $('#showGrid').addEventListener('change',e=>grid.visible=e.target.checked);
@@ -3076,6 +3259,13 @@ function renderCatalogs(){
     b.onclick=()=>addObject('stair',k);
     cs.appendChild(b);
   }
+  const cv=$('#cat-void'); cv.innerHTML='';
+  const bv=el('div','cat-item');
+  bv.innerHTML='<span class="ic">▭</span>Void persegi';
+  bv.title='Lubang pada pelat lantai aktif';
+  bv.onclick=()=>addObject('void','rect');
+  cv.appendChild(bv);
+
   const cf=$('#cat-furn'); cf.innerHTML='';
   const filt=$('#furn-filter').value;
   for(const [k,v] of Object.entries(FURN)){
@@ -3149,7 +3339,7 @@ $('#exportObjBtn').onclick=()=>{
     if(!lg||!lg.visible) continue;
     lg.updateMatrixWorld(true);
     lg.traverse(m=>{
-      if(!m.isMesh) return;
+      if(!m.isMesh || m.userData.noExport) return;
       const g=m.geometry, pos=g&&g.attributes&&g.attributes.position;
       if(!pos) return;
       for(let i=0;i<pos.count;i++){
@@ -3196,7 +3386,7 @@ function arBuildScene(){
     for(const w of lv.walls){ lg.add(buildWallGroup(w,lv)); n++; }
     lg.add(buildJunctions(lv));
     if(lv.slab && $('#showSlab').checked){ const sl=buildSlab(lv); if(sl){ lg.add(sl); n++; } }
-    for(const o of lv.objects){ lg.add(buildObject(o,lv)); n++; }
+    for(const o of lv.objects){ if(o.kind==='void') continue; lg.add(buildObject(o,lv)); n++; }
     root.add(lg);
   });
   return n ? root : null;
