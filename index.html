@@ -2343,6 +2343,83 @@ function buildingBBox(mask,w,h){
   return {x0,y0,w:x1-x0+1,h:y1-y0+1};
 }
 
+/* ---------------------------------------------------------------------
+   DINDING GARIS-GANDA DI DENAH CAMPURAN
+   Satu denah kerap memakai dua gaya sekaligus: dinding masif (poche) di
+   badan bangunan, dan dinding garis-ganda tipis di bagian lain. Satu
+   radius closing tidak bisa melayani keduanya — cukup untuk menutup
+   rongga garis-ganda, dan ruangan kecil ikut tertutup.
+   Jalan keluarnya bukan menebalkan segalanya, melainkan mengisi rongga
+   yang MEMANG rongga dinding: himpitan dua garis tipis sejajar yang
+   jaraknya sebesar tebal dinding lazim.
+   Penyaring palsunya keberulangan: arsiran, anak tangga, dan sirip
+   perabot selalu muncul sebagai TIGA garis sejajar berjarak sama atau
+   lebih; dinding hanya dua. --------------------------------------------------------------------- */
+function cavityFill(src,w,h,pxm,anchor){
+  const thinMax = Math.max(1, Math.round(0.08*pxm));   // garis gambar, bukan poche
+  const gapMin  = Math.max(1, Math.round(0.04*pxm));
+  const gapMax  = Math.max(2, Math.round(0.34*pxm));   // rongga dinding terlebar
+  const bandMax = Math.max(3, Math.round(0.42*pxm));   // tebal dinding terlebar
+  const minLen  = Math.max(6, Math.round(0.60*pxm));   // ruas dinding terpendek
+  const out=new Uint8Array(w*h);
+  let total=0;
+
+  const scan=(horiz)=>{
+    const lines = horiz ? h : w, len = horiz ? w : h;
+    const cand=new Uint8Array(w*h);
+    const at=(l,t)=> horiz ? l*w+t : t*w+l;
+    for(let l=0;l<lines;l++){
+      // runs bertinta pada baris ini
+      const runs=[];
+      let t=0;
+      while(t<len){
+        if(!src[at(l,t)]){ t++; continue; }
+        const a=t; while(t<len&&src[at(l,t)]) t++;
+        runs.push([a,t-1]);
+      }
+      for(let k=0;k+1<runs.length;k++){
+        const A=runs[k], B=runs[k+1];
+        const wA=A[1]-A[0]+1, wB=B[1]-B[0]+1, g=B[0]-A[1]-1;
+        if(wA>thinMax||wB>thinMax) continue;
+        if(g<gapMin||g>gapMax) continue;
+        if(wA+g+wB>bandMax) continue;
+        // pola berulang = arsiran / anak tangga, bukan rongga dinding
+        let rep=false;
+        if(k>0){ const gz=A[0]-runs[k-1][1]-1; if(gz>=gapMin&&Math.abs(gz-g)<=0.4*g) rep=true; }
+        if(k+2<runs.length){ const gc=runs[k+2][0]-B[1]-1; if(gc>=gapMin&&Math.abs(gc-g)<=0.4*g) rep=true; }
+        if(rep) continue;
+        for(let x=A[0];x<=B[1];x++) cand[at(l,x)]=1;
+      }
+    }
+    // pita hanya sah bila panjang dan langsing — sisanya kebetulan setempat
+    for(const c of components(cand,w,h)){
+      const long=Math.max(c.bw,c.bh), short=Math.min(c.bw,c.bh);
+      if(long<minLen || short>bandMax*1.4 || long<short*2.5) continue;
+      if((horiz && c.bh<c.bw) || (!horiz && c.bw<c.bh)) continue;  // arah pindaian
+      for(const i of c.px){ if(!out[i]){ out[i]=1; total++; } }
+    }
+  };
+  scan(true); scan(false);
+
+  // Dinding tidak berdiri sendirian: ia menyambung ke jaringan dinding lain.
+  // Pita yang melayang sendiri di tengah ruang — rongga bibir bak mandi,
+  // sirip perabot — dibuang di sini.
+  if(anchor && total){
+    const d=Math.max(2,Math.round(0.10*pxm));
+    const glue=new Uint8Array(w*h);
+    for(let i=0;i<w*h;i++) if(out[i]||anchor[i]) glue[i]=1;
+    const net=new Uint8Array(w*h);
+    for(const c of components(dilate(glue,w,h,d),w,h)){
+      let hit=false;
+      for(const i of c.px) if(anchor[i]){ hit=true; break; }
+      if(hit) for(const i of c.px) net[i]=1;
+    }
+    total=0;
+    for(let i=0;i<w*h;i++){ if(out[i]){ if(net[i]) total++; else out[i]=0; } }
+  }
+  return {mask:out, n:total};
+}
+
 function extractPlan(opt){
   const {data,w,h,thr,noise,minLenM,ortho,detectOpen,detectDoors,heal,realWidth,
          doorH,sillH,auto,closeRManual,wallMinManual,detectStairsOpt,detectFix}=opt;
@@ -2369,6 +2446,16 @@ function extractPlan(opt){
   let mask=cal.closed;
   mask=opening(mask,w,h,Math.max(1,Math.round(wallMinPx/2)));   // buang goresan tipis
   mask=removeSmallComponents(mask,w,h,Math.max(noiseA,wallMinPx*2));
+
+  // Skala sementara dari pita dinding yang sudah pasti; dipakai untuk mengenali
+  // rongga dinding garis-ganda yang belum tertutup radius closing global.
+  const bbox0=buildingBBox(mask,w,h);
+  const pxm0=(bbox0&&bbox0.w>20)?bbox0.w/realWidth:w/realWidth;
+  const cav = cal.poche ? cavityFill(rawClean,w,h,pxm0,mask) : {mask:null,n:0};
+  if(cav.n){
+    for(let i=0;i<w*h;i++) if(cav.mask[i]) mask[i]=1;
+    mask=removeSmallComponents(mask,w,h,Math.max(noiseA,wallMinPx*2));
+  }
   // Pada denah poche, dinding digambar MASIF. Garis-garis berdempetan (mis.
   // garis luar-dalam bak mandi) bisa menyatu jadi pita tebal dan menyamar
   // sebagai dinding; disaring dengan melihat berapa persen pita itu benar-
@@ -2378,7 +2465,8 @@ function extractPlan(opt){
     const solidC=[], looseC=[];
     for(const c of comps){
       let ink=0;
-      for(const i of c.px) if(rawClean[i]) ink++;
+      // rongga yang sengaja diisi dihitung sebagai tinta: itu memang dinding
+      for(const i of c.px) if(rawClean[i]||(cav.mask&&cav.mask[i])) ink++;
       (ink/c.px.length >= 0.85 ? solidC : looseC).push(c);
     }
     const keep=new Uint8Array(w*h);
@@ -2666,7 +2754,7 @@ function extractPlan(opt){
     }
   }
 
-  return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox,
+  return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox, cavityPx:cav.n,
           stairs, fixtures, thr:thrA, noise:noiseA, minLenM:minLenA, ortho:orthoA};
 
 }
@@ -2887,6 +2975,7 @@ function runGenerate(toNewLevel){
         + `. `)
         + `Ambang dinding <b>${res.wallMinPx} px</b> (${fmt(res.wallMinPx/res.pxm*100,0)} cm), `
         + `tutup rongga <b>${res.closeR} px</b>, ${res.ortho?'diluruskan siku':'sudut bebas'}. Skala <b>${fmt(res.pxm,1)} px/m</b>. `
+        + (res.cavityPx ? `Rongga dinding garis-ganda ikut diisi (<b>${fmt(res.cavityPx/res.pxm/res.pxm,1)} m²</b>). ` : '')
         + `Busur ayun pintu terpakai: <b>${res.arcs.filter(a=>a.placed).length}</b>`
         + (res.arcs.length>res.arcs.filter(a=>a.placed).length
            ? ` (${res.arcs.length-res.arcs.filter(a=>a.placed).length} kandidat ditolak karena tidak menempel di dinding)` : '')+'.';
