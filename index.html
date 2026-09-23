@@ -2446,12 +2446,12 @@ function extractPlan(opt){
     const cprof=wcol ? profileColorDiff(data,w,h,s,band,wcol,thrA) : null;
 
     const items=[];
-    const stat=(key,isDoor)=>{
-      if(!key) return;
+    const bucket=key=>{
       const e=colorStat.get(key)||{n:0,door:0};
-      e.n++; if(isDoor) e.door++;
-      colorStat.set(key,e);
+      colorStat.set(key,e); return e;
     };
+    const stat     = key => { if(key) bucket(key).n++; };      // satu bilah = satu hitungan
+    const statDoor = key => { if(key) bucket(key).door++; };   // suaranya saja, bukan hitungan baru
 
     const arcSpans=(arcBySeg.get(si)||[]).map(g=>[Math.min(g.a,g.b),Math.max(g.a,g.b)]);
 
@@ -2460,12 +2460,29 @@ function extractPlan(opt){
     // hanya menandai bukaan yang sudah ada sebagai pintu (lihat di bawah),
     // sebab pintu tidak mungkin berada di dinding yang masih masif.
     if(detectOpen && tPx>1){
-      const runs=[
-        ...findRuns(prof,  v=>v < tPx*0.70),
-        ...findRuns(solid, v=>Math.abs(v-base) > 0.18)
-      ];
-      if(cprof) runs.push(...findRuns(cprof, v=>v>0.55));
-      for(const [r0,r1] of mergeIntervals(runs)){
+      // Celah pada dinding adalah sumber yang paling tegas, jadi dipakai apa
+      // adanya. Sinyal kerapatan dan warna hanya menambah bukaan di tempat
+      // yang TIDAK bertumpang tindih dengan celah — kalau digabung begitu
+      // saja, celah pintu melebur dengan simpangan arsiran di sebelahnya dan
+      // terbaca sebagai satu bukaan lebar, bukan beberapa pintu.
+      const gapRuns=mergeIntervals(findRuns(prof, v=>v < tPx*0.70));
+      const extra=[...findRuns(solid, v=>Math.abs(v-base) > 0.18)];
+      if(cprof) extra.push(...findRuns(cprof, v=>v>0.55));
+      const clipped=[];
+      for(const [a0,a1] of mergeIntervals(extra)){
+        let cur=[[a0,a1]];
+        for(const [g0,g1] of gapRuns){
+          const next=[];
+          for(const [c0,c1] of cur){
+            if(g1<c0||g0>c1){ next.push([c0,c1]); continue; }
+            if(g0-1>c0) next.push([c0,g0-1]);
+            if(g1+1<c1) next.push([g1+1,c1]);
+          }
+          cur=next;
+        }
+        clipped.push(...cur);
+      }
+      for(const [r0,r1] of [...gapRuns,...clipped].sort((a,b)=>a[0]-b[0])){
         if(r0<=1 || r1>=prof.length-2) continue;
 
         let sumP=0; for(let i=r0;i<=r1;i++) sumP+=prof[i];
@@ -2499,7 +2516,7 @@ function extractPlan(opt){
         const col = (!empty && cdev>0.55) ? runColor(data,w,h,s,e0,e1,band,thrA) : null;
         items.push({e0,e1,width:gw,center,empty,inner,out2,
                     lined:!empty && devC>0.5*nRun, col, key:colorKey(col)});
-        if(col) stat(colorKey(col), false);
+        if(col) stat(colorKey(col));
       }
     }
     // Busur ayun menandai bukaan mana yang berupa pintu. Busur yang tidak
@@ -2513,8 +2530,19 @@ function extractPlan(opt){
       }
       if(best && bo > 0.35*Math.min(best.e1-best.e0, t1-t0)) best.arcDoor=true;
     }
-    for(const it of items) if(it.arcDoor && it.col) stat(colorKey(it.col), true);
-    ctx.push({wall,s,items,band,tPx,len});
+    for(const it of items) if(it.arcDoor && it.col) statDoor(colorKey(it.col));
+    // Dinding luar dikenali dari letaknya di tepi kotak bangunan. Ini dipakai
+    // memutus kerancuan pokok: bukaan kosong yang dilintasi satu garis bisa
+    // berarti kaca jendela ATAU daun pintu yang rebah sebidang dinding.
+    // Kaidahnya, jendela ada di dinding luar dan pintu di dinding dalam.
+    let exterior=false;
+    if(bbox){
+      const m=0.6*pxm;
+      const cx0=(s.x1+s.x2)/2, cy0=(s.y1+s.y2)/2;
+      exterior = Math.abs(cx0-bbox.x0)<m || Math.abs(cx0-(bbox.x0+bbox.w))<m
+              || Math.abs(cy0-bbox.y0)<m || Math.abs(cy0-(bbox.y0+bbox.h))<m;
+    }
+    ctx.push({wall,s,items,band,tPx,len,exterior});
   }
 
   /* TAHAP 2 — arti tiap warna dibaca dari denahnya sendiri: warna bilah yang
@@ -2530,18 +2558,24 @@ function extractPlan(opt){
   // TAHAP 3 — bentuk bukaannya
   const walls=[]; let nDoor=0,nWin=0,nOpen=0,nSlide=0;
   for(const cx of ctx){
-    const {wall,items}=cx;
+    const {wall,items,exterior}=cx;
     for(const it of items){
       let type, width=it.width;
-      if(it.arcDoor) type = it.inner>0.55 ? 'window' : 'door';   // busur + kaca = jendela ayun
+      // Busur berarti pintu. Jendela berdaun ayun juga berbusur, bedanya
+      // dindingnya tidak benar-benar berlubang — masih ada kaca di penampangnya.
+      if(it.arcDoor) type = (!it.empty && (it.inner>0.55||it.lined)) ? 'window' : 'door';
       else if(it.out2>0.45 && it.inner>0.2) type='slider';
-      else if(it.inner>0.55 || it.lined) type='window';
+      // Bilah berwarna diperiksa lebih dulu: warnanya keterangan yang lebih
+      // tegas daripada ciri material mana pun.
       else if(it.col){
-        // bilah berwarna: pintu bila sewarna dengan bilah yang berbusur ayun,
-        // kalau denahnya tanpa busur sama sekali jatuh ke ukuran daun pintu
+        // pintu bila sewarna dengan bilah yang berbusur ayun; kalau denahnya
+        // tanpa busur sama sekali, jatuh ke ukuran daun pintu
         type = anyArcColor ? (doorColors.has(it.key)?'door':'window')
                            : (it.width<=STD.maxDoor?'door':'window');
       }
+      else if(!it.empty && (it.inner>0.55 || it.lined)) type='window';
+      else if(it.empty && exterior && it.inner>0.55) type='window';
+      else if(it.empty && !exterior) type = it.width<=STD.maxDoor ? 'door' : 'opening';
       else if(it.width<=STD.maxDoor) type='door';
       else type='opening';
 
