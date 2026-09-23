@@ -289,7 +289,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="section-title">AR / Model Viewer</div>
       <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
       <button class="btn ghost" id="exportGlbBtn">Ekspor Model (.glb)</button>
-      <p class="hint">Yang diekspor adalah lantai yang sedang tampak di viewport (termasuk pilihan pelat lantai), diperkecil jadi maket — skalanya bisa diubah di panel AR. Android: tombol AR memakai WebXR/Scene Viewer. iOS: Quick Look menuntut format USDZ, jadi di iPhone/iPad panel ini tampil sebagai 3D viewer saja.</p>
+      <p class="hint">Yang diekspor adalah lantai yang sedang tampak di viewport (termasuk pilihan pelat lantai), diperkecil jadi maket — skalanya bisa diubah di panel AR. Android memakai WebXR/Scene Viewer; iOS memakai AR Quick Look lewat berkas USDZ yang dibuat otomatis. Di browser iOS selain Safari, USDZ-nya disiapkan sendiri dan bisa diunduh dari panel AR.</p>
       <div class="section-title">Reset</div>
       <button class="btn danger" id="clearLevelBtn">Kosongkan Lantai Aktif</button>
       <button class="btn danger" id="resetBtn">Reset Semua</button>
@@ -343,6 +343,7 @@ details#adv>*:not(summary){margin-bottom:8px}
     </label>
     <div class="spacer"></div>
     <button class="btn ghost sm" id="arDownload">Unduh .glb</button>
+    <button class="btn ghost sm" id="arUsdz">Unduh .usdz</button>
     <button class="btn sm" id="arClose">Tutup</button>
   </header>
   <div id="arStage">
@@ -3172,7 +3173,16 @@ $('#snapshotBtn').onclick=()=>{
 /* ======================================================================
    AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
    ====================================================================== */
-const AR={ url:null, blob:null, denom:50, open:false, dim:null, lib:null };
+const AR={ url:null, blob:null, usdz:null, usdzUrl:null,
+           denom:50, open:false, dim:null, lib:null, usdzLib:null };
+
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+/* Safari di iOS membuat USDZ-nya sendiri, jadi tombol AR langsung jalan.
+   Chrome/Edge/Firefox/DuckDuckGo di iOS ditolak model-viewer kecuali berkas
+   USDZ-nya kita sediakan sendiri lewat ios-src — itu yang dilakukan di bawah. */
+const IS_IOS_THIRDPARTY = IS_IOS &&
+  /CriOS\/|EdgiOS\/|FxiOS\/|GSA\/|DuckDuckGo\//.test(navigator.userAgent);
 
 /* scene bersih khusus ekspor: semua lantai yang tampak, tanpa material hantu,
    tanpa helper/gizmo — dibangun ulang dari data supaya tidak mengusik viewport */
@@ -3192,38 +3202,73 @@ function arBuildScene(){
   return n ? root : null;
 }
 
-/* GLB dengan titik nol di tengah denah dan alas di y=0 (syarat penempatan AR),
+/* titik nol di tengah denah, alas di y=0 (syarat penempatan AR), lalu
    diperkecil sesuai skala maket supaya muat di atas meja */
-function arExportGLB(){
+function arBuildModel(){
+  const root=arBuildScene();
+  if(!root) return null;
+  root.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(root);
+  if(!isFinite(box.min.x)) return null;
+  const size=box.getSize(new THREE.Vector3()), ctr=box.getCenter(new THREE.Vector3());
+  root.position.set(-ctr.x,-box.min.y,-ctr.z);
+  const wrap=new THREE.Group();
+  wrap.add(root);
+  wrap.scale.setScalar(1/AR.denom);
+  wrap.updateMatrixWorld(true);
+  return {wrap,size};
+}
+
+function arGLB(wrap){
   return new Promise((res,rej)=>{
     if(typeof THREE.GLTFExporter!=='function')
       return rej(new Error('Pustaka GLTFExporter belum termuat — periksa koneksi internet.'));
-    const root=arBuildScene();
-    if(!root) return rej(new Error('Belum ada model untuk ditampilkan. Generate atau gambar dinding dulu.'));
-    root.updateMatrixWorld(true);
-    const box=new THREE.Box3().setFromObject(root);
-    if(!isFinite(box.min.x)) return rej(new Error('Model kosong.'));
-    const size=box.getSize(new THREE.Vector3()), ctr=box.getCenter(new THREE.Vector3());
-    root.position.set(-ctr.x,-box.min.y,-ctr.z);
-    const wrap=new THREE.Group();
-    wrap.add(root);
-    wrap.scale.setScalar(1/AR.denom);
-    wrap.updateMatrixWorld(true);
-    AR.dim=size;
     try{
       new THREE.GLTFExporter().parse(wrap,out=>{
-        disposeTree(wrap);
         res(new Blob([out instanceof ArrayBuffer?out:JSON.stringify(out)],{type:'model/gltf-binary'}));
       },{binary:true});
-    }catch(err){ disposeTree(wrap); rej(err); }
+    }catch(err){ rej(err); }
   });
 }
 
+/* USDZ = format AR Quick Look di iOS. Exporter-nya modul ES, jadi dimuat
+   saat dibutuhkan saja. */
+function arUsdzLib(){
+  if(!AR.usdzLib)
+    AR.usdzLib=import('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/exporters/USDZExporter.js')
+      .then(m=>m.USDZExporter);
+  return AR.usdzLib;
+}
+async function arUSDZ(wrap){
+  const Exporter=await arUsdzLib();
+  const out=await new Exporter().parse(wrap);
+  return new Blob([out],{type:'model/vnd.usdz+zip'});
+}
+
+async function arExport(withUSDZ){
+  const m=arBuildModel();
+  if(!m) throw new Error('Belum ada model untuk ditampilkan. Generate atau gambar dinding dulu.');
+  AR.dim=m.size;
+  try{
+    const glb=await arGLB(m.wrap);
+    let usdz=null;
+    if(withUSDZ){
+      try{ usdz=await arUSDZ(m.wrap); }
+      catch(err){ console.warn('USDZ gagal dibuat:',err); }
+    }
+    return {glb,usdz};
+  }finally{ disposeTree(m.wrap); }
+}
+
 function arNote(){
-  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-  if(ios) return 'Di iOS, AR (Quick Look) menuntut berkas <b>USDZ</b> yang belum bisa dibuat di sini — panel ini bekerja sebagai 3D viewer, dan berkas .glb tetap bisa diunduh.';
   const mv=$('#arViewer');
+  if(IS_IOS){
+    if(!IS_IOS_THIRDPARTY)
+      return 'Tekan <b>Lihat di ruanganmu</b> — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis.';
+    if(AR.usdzUrl)
+      return 'Browser iOS selain Safari hanya mau membuka Quick Look bila berkas USDZ-nya disediakan, dan itu sudah disiapkan. Kalau tombol AR tetap diam, buka halaman ini di <b>Safari</b>, atau unduh .usdz lalu buka dari Files.';
+    return 'Di browser iOS selain Safari, AR menuntut berkas USDZ dan pembuatannya gagal di sini. Buka halaman ini lewat <b>Safari</b>.';
+  }
   if(mv && mv.canActivateAR) return 'Perangkat ini mendukung AR — tekan <b>Lihat di ruanganmu</b>.';
   return 'AR belum tersedia di perangkat ini (butuh Android dengan ARCore atau browser ber-WebXR); panel tetap berfungsi sebagai 3D viewer.';
 }
@@ -3266,13 +3311,33 @@ function arDownload(){
   download(AR.blob,(PROJECT.name||'model')+'.glb');
   toast('Model .glb diunduh');
 }
+async function arDownloadUsdz(){
+  try{
+    if(!AR.usdz){
+      toast('Membuat USDZ…');
+      const m=arBuildModel();
+      if(!m) return toast('Belum ada model untuk diekspor.');
+      try{ AR.usdz=await arUSDZ(m.wrap); }finally{ disposeTree(m.wrap); }
+    }
+    download(AR.usdz,(PROJECT.name||'model')+'.usdz');
+    toast('Model .usdz diunduh — buka dari Files untuk AR Quick Look');
+  }catch(err){ toast('USDZ gagal dibuat: '+err.message); }
+}
 
 async function arRefresh(){
   const mv=$('#arViewer');
   try{
-    const blob=await arExportGLB();
+    const {glb,usdz}=await arExport(IS_IOS);
     if(AR.url) URL.revokeObjectURL(AR.url);
-    AR.blob=blob; AR.url=URL.createObjectURL(blob);
+    AR.blob=glb; AR.url=URL.createObjectURL(glb);
+    if(AR.usdzUrl){ URL.revokeObjectURL(AR.usdzUrl); AR.usdzUrl=null; }
+    AR.usdz=usdz;
+    if(usdz){
+      AR.usdzUrl=URL.createObjectURL(usdz);
+      // hanya dipasang di browser iOS pihak ketiga; Safari lebih baik memakai
+      // pengubah USDZ bawaan model-viewer yang lebih baru
+      if(IS_IOS_THIRDPARTY) mv.setAttribute('ios-src',AR.usdzUrl);
+    }
     try{ await arLibReady(); }
     catch(e){ arFallback('Pustaka model-viewer gagal dimuat (butuh koneksi ke CDN). Model tetap bisa diunduh sebagai .glb lalu dibuka di aplikasi AR mana pun.'); arInfo(); return; }
     $('#arFallback').classList.remove('on');
@@ -3297,18 +3362,20 @@ function closeAR(){
   AR.open=false;
   $('#arPanel').hidden=true;
   const mv=$('#arViewer');
-  if(mv) mv.removeAttribute('src');
+  if(mv){ mv.removeAttribute('src'); mv.removeAttribute('ios-src'); }
   if(AR.url){ URL.revokeObjectURL(AR.url); AR.url=null; }
+  if(AR.usdzUrl){ URL.revokeObjectURL(AR.usdzUrl); AR.usdzUrl=null; }
 }
 
 $('#arBtn').onclick=openAR;
 $('#arBtn2').onclick=openAR;
 $('#arClose').onclick=closeAR;
 $('#arDownload').onclick=arDownload;
+$('#arUsdz').onclick=arDownloadUsdz;
 $('#arScale').onchange=e=>{ AR.denom=parseFloat(e.target.value)||50; if(AR.open){ toast('Menyusun ulang maket…'); arRefresh(); } };
 $('#arViewer').addEventListener('load',arInfo);
 $('#exportGlbBtn').onclick=async()=>{
-  try{ const blob=await arExportGLB(); AR.blob=blob; arDownload(); }
+  try{ const {glb}=await arExport(false); AR.blob=glb; arDownload(); }
   catch(err){ toast(err.message); }
 };
 
