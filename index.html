@@ -120,6 +120,19 @@ details#adv>*:not(summary){margin-bottom:8px}
 @keyframes spin{100%{transform:rotate(360deg)}}
 #toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f1f26;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:6px;font-size:.76rem;opacity:0;transition:.25s;pointer-events:none;z-index:40}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ---------- AR viewer ---------- */
+#arPanel{position:fixed;inset:0;z-index:200;background:#0b0b0e;display:flex;flex-direction:column}
+#arPanel > header{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);background:#141419;flex-wrap:wrap}
+#arPanel > header h2{font-size:.82rem;margin:0;letter-spacing:.4px;text-transform:uppercase;color:var(--accent)}
+#arPanel > header .spacer{flex:1}
+#arPanel > header label{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+#arPanel > header select{background:#1d1d24;color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:.72rem;font-family:inherit}
+#arStage{flex:1;position:relative;min-height:0}
+#arStage model-viewer{width:100%;height:100%;background:linear-gradient(#20222a,#101117);--poster-color:transparent}
+#arFallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:var(--muted);font-size:.8rem;line-height:1.6}
+#arFallback.on{display:flex}
+#arInfo{padding:8px 12px;border-top:1px solid var(--line);background:#141419;color:var(--muted);font-size:.7rem;line-height:1.55}
+#arInfo b{color:var(--txt)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -127,6 +140,8 @@ details#adv>*:not(summary){margin-bottom:8px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -271,6 +286,10 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="group"><label>Buka proyek</label><input type="file" id="loadInput" accept="application/json,.json"></div>
       <button class="btn ghost" id="exportObjBtn">Ekspor Model (.obj)</button>
       <button class="btn ghost" id="snapshotBtn">Simpan Gambar (.png)</button>
+      <div class="section-title">AR / Model Viewer</div>
+      <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
+      <button class="btn ghost" id="exportGlbBtn">Ekspor Model (.glb)</button>
+      <p class="hint">Yang diekspor adalah lantai yang sedang tampak di viewport (termasuk pilihan pelat lantai), diperkecil jadi maket — skalanya bisa diubah di panel AR. Android: tombol AR memakai WebXR/Scene Viewer. iOS: Quick Look menuntut format USDZ, jadi di iPhone/iPad panel ini tampil sebagai 3D viewer saja.</p>
       <div class="section-title">Reset</div>
       <button class="btn danger" id="clearLevelBtn">Kosongkan Lantai Aktif</button>
       <button class="btn danger" id="resetBtn">Reset Semua</button>
@@ -300,6 +319,8 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button id="snapBtn" class="active" title="Snap ke grid 5 cm / 15°">Snap</button>
       <button id="dupBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
       <button id="delBtn" title="Hapus (Del)">Hapus</button>
+      <div class="sep"></div>
+      <button id="arBtn" title="Lihat model di AR / 3D viewer">AR</button>
     </div>
     <div class="float" id="levelbar"></div>
     <div class="float" id="inspector" hidden></div>
@@ -307,6 +328,34 @@ details#adv>*:not(summary){margin-bottom:8px}
     <div id="loader"><div class="spinner"></div><span id="loader-txt">Memproses denah…</span></div>
     <div id="toast"></div>
   </main>
+</div>
+
+<div id="arPanel" hidden>
+  <header>
+    <h2>AR / 3D Viewer</h2>
+    <label>Skala maket
+      <select id="arScale">
+        <option value="1">1 : 1 (ukuran asli)</option>
+        <option value="20">1 : 20</option>
+        <option value="50" selected>1 : 50</option>
+        <option value="100">1 : 100</option>
+      </select>
+    </label>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" id="arDownload">Unduh .glb</button>
+    <button class="btn sm" id="arClose">Tutup</button>
+  </header>
+  <div id="arStage">
+    <model-viewer id="arViewer" alt="Model 3D denah" camera-controls touch-action="pan-y"
+                  ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+                  shadow-intensity="1" shadow-softness="0.7" exposure="1.05" environment-image="neutral"
+                  camera-orbit="-35deg 62deg auto" min-camera-orbit="auto 0deg auto"
+                  interaction-prompt="none">
+      <button slot="ar-button" class="btn sm" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%)">Lihat di ruanganmu (AR)</button>
+    </model-viewer>
+    <div id="arFallback"></div>
+  </div>
+  <div id="arInfo"></div>
 </div>
 
 <script>
@@ -1446,6 +1495,7 @@ function setTool(t){
 }
 
 addEventListener('keydown',e=>{
+  if(typeof AR!=='undefined' && AR.open){ if(e.key==='Escape') closeAR(); return; }
   if(/input|select|textarea/i.test(e.target.tagName)) return;
   const k=e.key.toLowerCase();
   if(k==='q') setTool('select');
@@ -2293,6 +2343,83 @@ function buildingBBox(mask,w,h){
   return {x0,y0,w:x1-x0+1,h:y1-y0+1};
 }
 
+/* ---------------------------------------------------------------------
+   DINDING GARIS-GANDA DI DENAH CAMPURAN
+   Satu denah kerap memakai dua gaya sekaligus: dinding masif (poche) di
+   badan bangunan, dan dinding garis-ganda tipis di bagian lain. Satu
+   radius closing tidak bisa melayani keduanya — cukup untuk menutup
+   rongga garis-ganda, dan ruangan kecil ikut tertutup.
+   Jalan keluarnya bukan menebalkan segalanya, melainkan mengisi rongga
+   yang MEMANG rongga dinding: himpitan dua garis tipis sejajar yang
+   jaraknya sebesar tebal dinding lazim.
+   Penyaring palsunya keberulangan: arsiran, anak tangga, dan sirip
+   perabot selalu muncul sebagai TIGA garis sejajar berjarak sama atau
+   lebih; dinding hanya dua. --------------------------------------------------------------------- */
+function cavityFill(src,w,h,pxm,anchor){
+  const thinMax = Math.max(1, Math.round(0.08*pxm));   // garis gambar, bukan poche
+  const gapMin  = Math.max(1, Math.round(0.04*pxm));
+  const gapMax  = Math.max(2, Math.round(0.34*pxm));   // rongga dinding terlebar
+  const bandMax = Math.max(3, Math.round(0.42*pxm));   // tebal dinding terlebar
+  const minLen  = Math.max(6, Math.round(0.60*pxm));   // ruas dinding terpendek
+  const out=new Uint8Array(w*h);
+  let total=0;
+
+  const scan=(horiz)=>{
+    const lines = horiz ? h : w, len = horiz ? w : h;
+    const cand=new Uint8Array(w*h);
+    const at=(l,t)=> horiz ? l*w+t : t*w+l;
+    for(let l=0;l<lines;l++){
+      // runs bertinta pada baris ini
+      const runs=[];
+      let t=0;
+      while(t<len){
+        if(!src[at(l,t)]){ t++; continue; }
+        const a=t; while(t<len&&src[at(l,t)]) t++;
+        runs.push([a,t-1]);
+      }
+      for(let k=0;k+1<runs.length;k++){
+        const A=runs[k], B=runs[k+1];
+        const wA=A[1]-A[0]+1, wB=B[1]-B[0]+1, g=B[0]-A[1]-1;
+        if(wA>thinMax||wB>thinMax) continue;
+        if(g<gapMin||g>gapMax) continue;
+        if(wA+g+wB>bandMax) continue;
+        // pola berulang = arsiran / anak tangga, bukan rongga dinding
+        let rep=false;
+        if(k>0){ const gz=A[0]-runs[k-1][1]-1; if(gz>=gapMin&&Math.abs(gz-g)<=0.4*g) rep=true; }
+        if(k+2<runs.length){ const gc=runs[k+2][0]-B[1]-1; if(gc>=gapMin&&Math.abs(gc-g)<=0.4*g) rep=true; }
+        if(rep) continue;
+        for(let x=A[0];x<=B[1];x++) cand[at(l,x)]=1;
+      }
+    }
+    // pita hanya sah bila panjang dan langsing — sisanya kebetulan setempat
+    for(const c of components(cand,w,h)){
+      const long=Math.max(c.bw,c.bh), short=Math.min(c.bw,c.bh);
+      if(long<minLen || short>bandMax*1.4 || long<short*2.5) continue;
+      if((horiz && c.bh<c.bw) || (!horiz && c.bw<c.bh)) continue;  // arah pindaian
+      for(const i of c.px){ if(!out[i]){ out[i]=1; total++; } }
+    }
+  };
+  scan(true); scan(false);
+
+  // Dinding tidak berdiri sendirian: ia menyambung ke jaringan dinding lain.
+  // Pita yang melayang sendiri di tengah ruang — rongga bibir bak mandi,
+  // sirip perabot — dibuang di sini.
+  if(anchor && total){
+    const d=Math.max(2,Math.round(0.10*pxm));
+    const glue=new Uint8Array(w*h);
+    for(let i=0;i<w*h;i++) if(out[i]||anchor[i]) glue[i]=1;
+    const net=new Uint8Array(w*h);
+    for(const c of components(dilate(glue,w,h,d),w,h)){
+      let hit=false;
+      for(const i of c.px) if(anchor[i]){ hit=true; break; }
+      if(hit) for(const i of c.px) net[i]=1;
+    }
+    total=0;
+    for(let i=0;i<w*h;i++){ if(out[i]){ if(net[i]) total++; else out[i]=0; } }
+  }
+  return {mask:out, n:total};
+}
+
 function extractPlan(opt){
   const {data,w,h,thr,noise,minLenM,ortho,detectOpen,detectDoors,heal,realWidth,
          doorH,sillH,auto,closeRManual,wallMinManual,detectStairsOpt,detectFix}=opt;
@@ -2319,6 +2446,16 @@ function extractPlan(opt){
   let mask=cal.closed;
   mask=opening(mask,w,h,Math.max(1,Math.round(wallMinPx/2)));   // buang goresan tipis
   mask=removeSmallComponents(mask,w,h,Math.max(noiseA,wallMinPx*2));
+
+  // Skala sementara dari pita dinding yang sudah pasti; dipakai untuk mengenali
+  // rongga dinding garis-ganda yang belum tertutup radius closing global.
+  const bbox0=buildingBBox(mask,w,h);
+  const pxm0=(bbox0&&bbox0.w>20)?bbox0.w/realWidth:w/realWidth;
+  const cav = cal.poche ? cavityFill(rawClean,w,h,pxm0,mask) : {mask:null,n:0};
+  if(cav.n){
+    for(let i=0;i<w*h;i++) if(cav.mask[i]) mask[i]=1;
+    mask=removeSmallComponents(mask,w,h,Math.max(noiseA,wallMinPx*2));
+  }
   // Pada denah poche, dinding digambar MASIF. Garis-garis berdempetan (mis.
   // garis luar-dalam bak mandi) bisa menyatu jadi pita tebal dan menyamar
   // sebagai dinding; disaring dengan melihat berapa persen pita itu benar-
@@ -2328,7 +2465,8 @@ function extractPlan(opt){
     const solidC=[], looseC=[];
     for(const c of comps){
       let ink=0;
-      for(const i of c.px) if(rawClean[i]) ink++;
+      // rongga yang sengaja diisi dihitung sebagai tinta: itu memang dinding
+      for(const i of c.px) if(rawClean[i]||(cav.mask&&cav.mask[i])) ink++;
       (ink/c.px.length >= 0.85 ? solidC : looseC).push(c);
     }
     const keep=new Uint8Array(w*h);
@@ -2446,12 +2584,12 @@ function extractPlan(opt){
     const cprof=wcol ? profileColorDiff(data,w,h,s,band,wcol,thrA) : null;
 
     const items=[];
-    const stat=(key,isDoor)=>{
-      if(!key) return;
+    const bucket=key=>{
       const e=colorStat.get(key)||{n:0,door:0};
-      e.n++; if(isDoor) e.door++;
-      colorStat.set(key,e);
+      colorStat.set(key,e); return e;
     };
+    const stat     = key => { if(key) bucket(key).n++; };      // satu bilah = satu hitungan
+    const statDoor = key => { if(key) bucket(key).door++; };   // suaranya saja, bukan hitungan baru
 
     const arcSpans=(arcBySeg.get(si)||[]).map(g=>[Math.min(g.a,g.b),Math.max(g.a,g.b)]);
 
@@ -2460,12 +2598,29 @@ function extractPlan(opt){
     // hanya menandai bukaan yang sudah ada sebagai pintu (lihat di bawah),
     // sebab pintu tidak mungkin berada di dinding yang masih masif.
     if(detectOpen && tPx>1){
-      const runs=[
-        ...findRuns(prof,  v=>v < tPx*0.70),
-        ...findRuns(solid, v=>Math.abs(v-base) > 0.18)
-      ];
-      if(cprof) runs.push(...findRuns(cprof, v=>v>0.55));
-      for(const [r0,r1] of mergeIntervals(runs)){
+      // Celah pada dinding adalah sumber yang paling tegas, jadi dipakai apa
+      // adanya. Sinyal kerapatan dan warna hanya menambah bukaan di tempat
+      // yang TIDAK bertumpang tindih dengan celah — kalau digabung begitu
+      // saja, celah pintu melebur dengan simpangan arsiran di sebelahnya dan
+      // terbaca sebagai satu bukaan lebar, bukan beberapa pintu.
+      const gapRuns=mergeIntervals(findRuns(prof, v=>v < tPx*0.70));
+      const extra=[...findRuns(solid, v=>Math.abs(v-base) > 0.18)];
+      if(cprof) extra.push(...findRuns(cprof, v=>v>0.55));
+      const clipped=[];
+      for(const [a0,a1] of mergeIntervals(extra)){
+        let cur=[[a0,a1]];
+        for(const [g0,g1] of gapRuns){
+          const next=[];
+          for(const [c0,c1] of cur){
+            if(g1<c0||g0>c1){ next.push([c0,c1]); continue; }
+            if(g0-1>c0) next.push([c0,g0-1]);
+            if(g1+1<c1) next.push([g1+1,c1]);
+          }
+          cur=next;
+        }
+        clipped.push(...cur);
+      }
+      for(const [r0,r1] of [...gapRuns,...clipped].sort((a,b)=>a[0]-b[0])){
         if(r0<=1 || r1>=prof.length-2) continue;
 
         let sumP=0; for(let i=r0;i<=r1;i++) sumP+=prof[i];
@@ -2499,7 +2654,7 @@ function extractPlan(opt){
         const col = (!empty && cdev>0.55) ? runColor(data,w,h,s,e0,e1,band,thrA) : null;
         items.push({e0,e1,width:gw,center,empty,inner,out2,
                     lined:!empty && devC>0.5*nRun, col, key:colorKey(col)});
-        if(col) stat(colorKey(col), false);
+        if(col) stat(colorKey(col));
       }
     }
     // Busur ayun menandai bukaan mana yang berupa pintu. Busur yang tidak
@@ -2513,8 +2668,19 @@ function extractPlan(opt){
       }
       if(best && bo > 0.35*Math.min(best.e1-best.e0, t1-t0)) best.arcDoor=true;
     }
-    for(const it of items) if(it.arcDoor && it.col) stat(colorKey(it.col), true);
-    ctx.push({wall,s,items,band,tPx,len});
+    for(const it of items) if(it.arcDoor && it.col) statDoor(colorKey(it.col));
+    // Dinding luar dikenali dari letaknya di tepi kotak bangunan. Ini dipakai
+    // memutus kerancuan pokok: bukaan kosong yang dilintasi satu garis bisa
+    // berarti kaca jendela ATAU daun pintu yang rebah sebidang dinding.
+    // Kaidahnya, jendela ada di dinding luar dan pintu di dinding dalam.
+    let exterior=false;
+    if(bbox){
+      const m=0.6*pxm;
+      const cx0=(s.x1+s.x2)/2, cy0=(s.y1+s.y2)/2;
+      exterior = Math.abs(cx0-bbox.x0)<m || Math.abs(cx0-(bbox.x0+bbox.w))<m
+              || Math.abs(cy0-bbox.y0)<m || Math.abs(cy0-(bbox.y0+bbox.h))<m;
+    }
+    ctx.push({wall,s,items,band,tPx,len,exterior});
   }
 
   /* TAHAP 2 — arti tiap warna dibaca dari denahnya sendiri: warna bilah yang
@@ -2530,18 +2696,24 @@ function extractPlan(opt){
   // TAHAP 3 — bentuk bukaannya
   const walls=[]; let nDoor=0,nWin=0,nOpen=0,nSlide=0;
   for(const cx of ctx){
-    const {wall,items}=cx;
+    const {wall,items,exterior}=cx;
     for(const it of items){
       let type, width=it.width;
-      if(it.arcDoor) type = it.inner>0.55 ? 'window' : 'door';   // busur + kaca = jendela ayun
+      // Busur berarti pintu. Jendela berdaun ayun juga berbusur, bedanya
+      // dindingnya tidak benar-benar berlubang — masih ada kaca di penampangnya.
+      if(it.arcDoor) type = (!it.empty && (it.inner>0.55||it.lined)) ? 'window' : 'door';
       else if(it.out2>0.45 && it.inner>0.2) type='slider';
-      else if(it.inner>0.55 || it.lined) type='window';
+      // Bilah berwarna diperiksa lebih dulu: warnanya keterangan yang lebih
+      // tegas daripada ciri material mana pun.
       else if(it.col){
-        // bilah berwarna: pintu bila sewarna dengan bilah yang berbusur ayun,
-        // kalau denahnya tanpa busur sama sekali jatuh ke ukuran daun pintu
+        // pintu bila sewarna dengan bilah yang berbusur ayun; kalau denahnya
+        // tanpa busur sama sekali, jatuh ke ukuran daun pintu
         type = anyArcColor ? (doorColors.has(it.key)?'door':'window')
                            : (it.width<=STD.maxDoor?'door':'window');
       }
+      else if(!it.empty && (it.inner>0.55 || it.lined)) type='window';
+      else if(it.empty && exterior && it.inner>0.55) type='window';
+      else if(it.empty && !exterior) type = it.width<=STD.maxDoor ? 'door' : 'opening';
       else if(it.width<=STD.maxDoor) type='door';
       else type='opening';
 
@@ -2582,7 +2754,7 @@ function extractPlan(opt){
     }
   }
 
-  return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox,
+  return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox, cavityPx:cav.n,
           stairs, fixtures, thr:thrA, noise:noiseA, minLenM:minLenA, ortho:orthoA};
 
 }
@@ -2803,6 +2975,7 @@ function runGenerate(toNewLevel){
         + `. `)
         + `Ambang dinding <b>${res.wallMinPx} px</b> (${fmt(res.wallMinPx/res.pxm*100,0)} cm), `
         + `tutup rongga <b>${res.closeR} px</b>, ${res.ortho?'diluruskan siku':'sudut bebas'}. Skala <b>${fmt(res.pxm,1)} px/m</b>. `
+        + (res.cavityPx ? `Rongga dinding garis-ganda ikut diisi (<b>${fmt(res.cavityPx/res.pxm/res.pxm,1)} m²</b>). ` : '')
         + `Busur ayun pintu terpakai: <b>${res.arcs.filter(a=>a.placed).length}</b>`
         + (res.arcs.length>res.arcs.filter(a=>a.placed).length
            ? ` (${res.arcs.length-res.arcs.filter(a=>a.placed).length} kandidat ditolak karena tidak menempel di dinding)` : '')+'.';
@@ -2996,6 +3169,149 @@ $('#snapshotBtn').onclick=()=>{
   renderer.render(scene,camera);
   renderer.domElement.toBlob(b=>{ download(b,(PROJECT.name||'render')+'.png'); toast('Gambar disimpan'); });
 };
+/* ======================================================================
+   AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
+   ====================================================================== */
+const AR={ url:null, blob:null, denom:50, open:false, dim:null, lib:null };
+
+/* scene bersih khusus ekspor: semua lantai yang tampak, tanpa material hantu,
+   tanpa helper/gizmo — dibangun ulang dari data supaya tidak mengusik viewport */
+function arBuildScene(){
+  const root=new THREE.Group();
+  let n=0;
+  PROJECT.levels.forEach((lv,idx)=>{
+    if(!lv.visible) return;
+    const lg=new THREE.Group();
+    lg.position.y=levelElevation(idx);
+    for(const w of lv.walls){ lg.add(buildWallGroup(w,lv)); n++; }
+    lg.add(buildJunctions(lv));
+    if(lv.slab && $('#showSlab').checked){ const sl=buildSlab(lv); if(sl){ lg.add(sl); n++; } }
+    for(const o of lv.objects){ lg.add(buildObject(o,lv)); n++; }
+    root.add(lg);
+  });
+  return n ? root : null;
+}
+
+/* GLB dengan titik nol di tengah denah dan alas di y=0 (syarat penempatan AR),
+   diperkecil sesuai skala maket supaya muat di atas meja */
+function arExportGLB(){
+  return new Promise((res,rej)=>{
+    if(typeof THREE.GLTFExporter!=='function')
+      return rej(new Error('Pustaka GLTFExporter belum termuat — periksa koneksi internet.'));
+    const root=arBuildScene();
+    if(!root) return rej(new Error('Belum ada model untuk ditampilkan. Generate atau gambar dinding dulu.'));
+    root.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(root);
+    if(!isFinite(box.min.x)) return rej(new Error('Model kosong.'));
+    const size=box.getSize(new THREE.Vector3()), ctr=box.getCenter(new THREE.Vector3());
+    root.position.set(-ctr.x,-box.min.y,-ctr.z);
+    const wrap=new THREE.Group();
+    wrap.add(root);
+    wrap.scale.setScalar(1/AR.denom);
+    wrap.updateMatrixWorld(true);
+    AR.dim=size;
+    try{
+      new THREE.GLTFExporter().parse(wrap,out=>{
+        disposeTree(wrap);
+        res(new Blob([out instanceof ArrayBuffer?out:JSON.stringify(out)],{type:'model/gltf-binary'}));
+      },{binary:true});
+    }catch(err){ disposeTree(wrap); rej(err); }
+  });
+}
+
+function arNote(){
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(ios) return 'Di iOS, AR (Quick Look) menuntut berkas <b>USDZ</b> yang belum bisa dibuat di sini — panel ini bekerja sebagai 3D viewer, dan berkas .glb tetap bisa diunduh.';
+  const mv=$('#arViewer');
+  if(mv && mv.canActivateAR) return 'Perangkat ini mendukung AR — tekan <b>Lihat di ruanganmu</b>.';
+  return 'AR belum tersedia di perangkat ini (butuh Android dengan ARCore atau browser ber-WebXR); panel tetap berfungsi sebagai 3D viewer.';
+}
+function arInfo(){
+  const d=AR.dim;
+  let t='';
+  if(d){
+    const cm=v=>(v/AR.denom*100).toFixed(1);
+    t=`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
+  }
+  $('#arInfo').innerHTML=t+arNote();
+}
+
+/* custom element dimuat sebagai modul; tunggu sebentar lalu menyerah dengan anggun */
+function arLibReady(){
+  if(AR.lib) return AR.lib;
+  AR.lib = window.customElements
+    ? Promise.race([
+        customElements.whenDefined('model-viewer'),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))
+      ])
+    : Promise.reject(new Error('unsupported'));
+  return AR.lib;
+}
+
+function arFallback(msg){
+  const fb=$('#arFallback');
+  fb.innerHTML='';
+  fb.appendChild(el('div',null,msg));
+  if(AR.blob){
+    const b=el('button','btn sm','Unduh .glb');
+    b.onclick=arDownload;
+    fb.appendChild(b);
+  }
+  fb.classList.add('on');
+}
+
+function arDownload(){
+  if(!AR.blob) return toast('Model belum siap.');
+  download(AR.blob,(PROJECT.name||'model')+'.glb');
+  toast('Model .glb diunduh');
+}
+
+async function arRefresh(){
+  const mv=$('#arViewer');
+  try{
+    const blob=await arExportGLB();
+    if(AR.url) URL.revokeObjectURL(AR.url);
+    AR.blob=blob; AR.url=URL.createObjectURL(blob);
+    try{ await arLibReady(); }
+    catch(e){ arFallback('Pustaka model-viewer gagal dimuat (butuh koneksi ke CDN). Model tetap bisa diunduh sebagai .glb lalu dibuka di aplikasi AR mana pun.'); arInfo(); return; }
+    $('#arFallback').classList.remove('on');
+    mv.src=AR.url;
+    arInfo();
+  }catch(err){
+    arFallback(err.message);
+    arInfo();
+  }
+}
+
+async function openAR(){
+  $('#loader-txt').textContent='Menyiapkan model AR…';
+  $('#loader').classList.add('on');
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  await arRefresh();
+  $('#loader').classList.remove('on');
+  AR.open=true;
+  $('#arPanel').hidden=false;
+}
+function closeAR(){
+  AR.open=false;
+  $('#arPanel').hidden=true;
+  const mv=$('#arViewer');
+  if(mv) mv.removeAttribute('src');
+  if(AR.url){ URL.revokeObjectURL(AR.url); AR.url=null; }
+}
+
+$('#arBtn').onclick=openAR;
+$('#arBtn2').onclick=openAR;
+$('#arClose').onclick=closeAR;
+$('#arDownload').onclick=arDownload;
+$('#arScale').onchange=e=>{ AR.denom=parseFloat(e.target.value)||50; if(AR.open){ toast('Menyusun ulang maket…'); arRefresh(); } };
+$('#arViewer').addEventListener('load',arInfo);
+$('#exportGlbBtn').onclick=async()=>{
+  try{ const blob=await arExportGLB(); AR.blob=blob; arDownload(); }
+  catch(err){ toast(err.message); }
+};
+
 $('#clearLevelBtn').onclick=()=>{
   const lv=L();
   if((lv.walls.length||lv.objects.length) && !confirm(`Kosongkan ${lv.name}? Semua dinding dan objek di lantai ini akan dihapus.`)) return; lv.walls=[]; lv.objects=[]; SEL=null; LAST_RESULT=null;
