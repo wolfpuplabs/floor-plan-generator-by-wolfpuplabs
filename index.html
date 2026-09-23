@@ -55,6 +55,13 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
 #preview-box{width:100%;aspect-ratio:4/3;background:#fff;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 #preview-box .ph{color:#8a8a8a;font-size:.72rem;text-align:center;padding:10px}
 #canvas2d{max-width:100%;max-height:100%;object-fit:contain;display:none}
+details#adv{border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--panel2)}
+details#adv>summary{cursor:pointer;font-size:.72rem;color:var(--muted);font-weight:600;list-style:none}
+details#adv>summary::-webkit-details-marker{display:none}
+details#adv>summary::before{content:'▸ ';color:var(--accent)}
+details#adv[open]>summary::before{content:'▾ '}
+details#adv[open]>summary{margin-bottom:8px}
+details#adv>*:not(summary){margin-bottom:8px}
 #stats{font-size:.7rem;color:var(--muted);line-height:1.6;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
 #stats b{color:var(--accent);font-variant-numeric:tabular-nums}
 
@@ -80,6 +87,9 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
 #toolbar button{background:none;border:none;color:var(--muted);padding:7px 9px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit}
 #toolbar button:hover{background:#2a2a33;color:var(--txt)}
 #toolbar button.active{background:var(--accent);color:#06201b}
+#toolbar button:disabled{opacity:.3;cursor:default}
+#toolbar button:disabled:hover{background:none;color:var(--muted)}
+#undoBtn,#redoBtn{font-size:1rem;line-height:1;padding:6px 9px}
 #toolbar .sep{width:1px;background:var(--line);margin:4px 3px}
 #levelbar{top:12px;right:12px;padding:5px;display:flex;gap:3px;align-items:center}
 #levelbar button{background:none;border:none;color:var(--muted);padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit}
@@ -157,42 +167,45 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
         <p class="hint">Isi lebar <b>bangunannya</b>, bukan lebar berkas gambar — margin kosong di sekitar denah diabaikan sendiri. Ambil dari garis dimensi terluar, misalnya 40'. Skala ini menentukan tebal dinding, lebar pintu, dan ukuran ruang.</p>
       </div>
 
-      <div class="section-title">3. Parameter Deteksi</div>
-      <div class="group">
-        <label>Sensitivitas garis (threshold)</label>
-        <input type="range" id="thresh" min="60" max="240" step="1" value="170">
-        <span class="val" id="thresh-val">170</span>
-      </div>
-      <label class="chk"><input type="checkbox" id="autoCal" checked><span>Kalibrasi berat garis otomatis</span></label>
-      <p class="hint" id="cal-info">Lebar goresan diukur dari gambar untuk memisahkan <b>garis tebal = dinding</b> dari <b>garis tipis = simbol</b> (busur pintu, kaca, arsiran, furnitur, teks). Matikan bila ingin mengatur sendiri.</p>
-      <div class="group" id="manual-cal" hidden>
-        <label>Tutup rongga dinding garis-ganda (px)</label>
-        <input type="range" id="closeR" min="0" max="14" step="1" value="1">
-        <span class="val" id="closeR-val">1 px</span>
-        <label>Tebal dinding minimum (px)</label>
-        <input type="range" id="wallMin" min="2" max="30" step="1" value="6">
-        <span class="val" id="wallMin-val">6 px</span>
-        <p class="hint">Apa pun yang lebih tipis dari nilai ini dianggap simbol, bukan dinding.</p>
-      </div>
-      <div class="group">
-        <label>Buang noise / teks (px)</label>
-        <input type="range" id="noise" min="0" max="40" step="1" value="14">
-        <span class="val" id="noise-val">14 px</span>
-      </div>
-      <div class="group">
-        <label>Panjang dinding minimum (m)</label>
-        <input type="range" id="minLen" min="0.2" max="3" step="0.1" value="0.6">
-        <span class="val" id="minLen-val">0.6 m</span>
-      </div>
-      <div class="group">
+      <div class="section-title">3. Deteksi Otomatis</div>
+      <p class="hint" id="cal-info">Mengikuti kaidah gambar kerja: <b>semua garis tebal dibaca sebagai dinding</b>, garis tipis dibaca sebagai <b>simbol</b> — busur ayun pintu, kaca jendela, pintu geser, deret antrede tangga, dan perabot sanitair. Ambang hitam, tebal dinding, dan pelurusan siku dihitung sendiri dari gambarnya. Tidak ada yang perlu disetel.</p>
+      <label class="chk"><input type="checkbox" id="showOverlay" checked><span>Tampilkan overlay hasil deteksi</span></label>
+
+      <details id="adv">
+        <summary>Pengaturan lanjutan</summary>
+        <label class="chk"><input type="checkbox" id="autoDetect" checked><span>Semua otomatis</span></label>
+        <p class="hint">Hilangkan centang di atas hanya bila hasilnya meleset pada denah dengan gaya gambar yang tidak lazim.</p>
+        <div class="group">
+          <label>Sensitivitas garis (threshold)</label>
+          <input type="range" id="thresh" min="60" max="240" step="1" value="170">
+          <span class="val" id="thresh-val">170</span>
+        </div>
+        <label class="chk"><input type="checkbox" id="autoCal" checked><span>Kalibrasi berat garis otomatis</span></label>
+        <div class="group" id="manual-cal" hidden>
+          <label>Tutup rongga dinding garis-ganda (px)</label>
+          <input type="range" id="closeR" min="0" max="14" step="1" value="1">
+          <span class="val" id="closeR-val">1 px</span>
+          <label>Tebal dinding minimum (px)</label>
+          <input type="range" id="wallMin" min="2" max="30" step="1" value="6">
+          <span class="val" id="wallMin-val">6 px</span>
+        </div>
+        <div class="group">
+          <label>Buang noise / teks (px)</label>
+          <input type="range" id="noise" min="0" max="40" step="1" value="14">
+          <span class="val" id="noise-val">14 px</span>
+        </div>
+        <div class="group">
+          <label>Panjang dinding minimum (m)</label>
+          <input type="range" id="minLen" min="0.2" max="3" step="0.1" value="0.6">
+          <span class="val" id="minLen-val">0.6 m</span>
+        </div>
         <label class="chk"><input type="checkbox" id="ortho" checked><span>Luruskan ke ortogonal (siku 90°)</span></label>
         <label class="chk"><input type="checkbox" id="doDoors" checked><span>Baca simbol busur ayun pintu</span></label>
         <label class="chk"><input type="checkbox" id="doOpen" checked><span>Deteksi bukaan dari potongan dinding</span></label>
-        <label class="chk"><input type="checkbox" id="doStairs" checked><span>Baca simbol tangga (deret antrede)</span></label>
-        <label class="chk"><input type="checkbox" id="doFix" checked><span>Baca perabot sanitair (kloset, bak, shower, wastafel)</span></label>
+        <label class="chk"><input type="checkbox" id="doStairs" checked><span>Baca simbol tangga</span></label>
+        <label class="chk"><input type="checkbox" id="doFix" checked><span>Baca perabot sanitair</span></label>
         <label class="chk"><input type="checkbox" id="doHeal" checked><span>Rapikan sambungan (L / T / X)</span></label>
-        <label class="chk"><input type="checkbox" id="showOverlay" checked><span>Tampilkan overlay hasil deteksi</span></label>
-      </div>
+      </details>
 
       <div class="section-title">4. Standar Bangunan</div>
       <div class="group">
@@ -266,6 +279,7 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
         <b>Q</b> pilih · <b>W</b> geser · <b>E</b> putar · <b>R</b> skala<br>
         <b>L</b> gambar dinding · <b>Esc</b> batal/lepas pilihan<br>
         <b>Del</b> hapus · <b>Ctrl+D</b> duplikat · <b>F</b> fokus objek<br>
+        <b>Ctrl+Z</b> urung · <b>Ctrl+Shift+Z</b> ulang<br>
         <b>PgUp / PgDn</b> pindah lantai
       </p>
     </div>
@@ -273,6 +287,9 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
 
   <main id="viewport">
     <div class="float" id="toolbar">
+      <button id="undoBtn" title="Urung (Ctrl+Z)" disabled>↶</button>
+      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" disabled>↷</button>
+      <div class="sep"></div>
       <button data-tool="select" class="active" title="Pilih (Q)">Pilih</button>
       <button data-tool="translate" title="Geser (W)">Geser</button>
       <button data-tool="rotate" title="Putar (E)">Putar</button>
@@ -321,7 +338,7 @@ const STD = {
   structuralMin:0.20,                          // >= dianggap dinding struktural
   doorW:[0.70,0.80,0.90,1.00,1.20],            // lebar daun pintu umum
   doorH:2.10, sillH:0.90, windowH:2.10,
-  maxDoor:1.40, maxWindow:4.00,
+  maxDoor:1.40, maxWindow:4.00, minWallLen:0.60,
   riserMin:0.15, riserMax:0.19, riserTarget:0.175,
   treadMin:0.25, treadTarget:0.28,
   stairWidthMin:0.90
@@ -956,6 +973,67 @@ function buildObject(o, lv){
   return g;
 }
 
+/* ======================================================================
+   RIWAYAT (URUNG / ULANG)
+   Snapshot diambil sendiri setiap scene dibangun ulang, lalu dibandingkan
+   isinya: sakelar tampilan tidak mengubah data sehingga tidak ikut tercatat,
+   sedangkan setiap jalur penyuntingan otomatis tercakup tanpa perlu dipasangi
+   satu per satu.
+   ====================================================================== */
+const HIST={stack:[], idx:-1, limit:60, label:'Edit properti', timer:null};
+const snapState=()=>JSON.stringify({levels:PROJECT.levels, active:PROJECT.active});
+
+function pushHistory(){
+  const s=snapState();
+  if(HIST.idx>=0 && HIST.stack[HIST.idx].s===s) return;   // tidak ada yang berubah
+  HIST.stack.length=HIST.idx+1;
+  HIST.stack.push({s, label:HIST.label});
+  if(HIST.stack.length>HIST.limit) HIST.stack.shift();
+  HIST.idx=HIST.stack.length-1;
+  HIST.label='Edit properti';
+  updateHistUI();
+}
+function scheduleHistory(){
+  clearTimeout(HIST.timer);
+  HIST.timer=setTimeout(pushHistory,150);                 // satu perubahan = satu catatan
+}
+function applyHistory(i){
+  const e=HIST.stack[i]; if(!e) return;
+  const d=JSON.parse(e.s);
+  PROJECT.levels=d.levels;
+  PROJECT.active=clamp(d.active,0,d.levels.length-1);
+  SEL=null;
+  HIST.idx=i;
+  renderLevels(); rebuildScene();
+  updateHistUI();
+}
+function undo(){
+  if(HIST.idx<=0) return toast('Tidak ada lagi yang bisa dibatalkan');
+  const lbl=HIST.stack[HIST.idx].label;
+  applyHistory(HIST.idx-1);
+  toast('Dibatalkan: '+lbl);
+}
+function redo(){
+  if(HIST.idx>=HIST.stack.length-1) return toast('Tidak ada yang bisa diulang');
+  applyHistory(HIST.idx+1);
+  toast('Diulang: '+HIST.stack[HIST.idx].label);
+}
+function resetHistory(label){
+  HIST.stack.length=0; HIST.idx=-1;
+  HIST.label=label||'Awal';
+  pushHistory();
+}
+function updateHistUI(){
+  const u=$('#undoBtn'), r=$('#redoBtn');
+  if(!u||!r) return;
+  u.disabled = HIST.idx<=0;
+  r.disabled = HIST.idx>=HIST.stack.length-1;
+  u.title = u.disabled ? 'Tidak ada yang bisa dibatalkan'
+                       : `Batalkan: ${HIST.stack[HIST.idx].label}  (Ctrl+Z)`;
+  r.title = r.disabled ? 'Tidak ada yang bisa diulang'
+                       : `Ulangi: ${HIST.stack[HIST.idx+1].label}  (Ctrl+Shift+Z)`;
+}
+
 /* geometri dibuat ulang tiap edit — bebaskan yang lama agar memori GPU tidak menumpuk
    (material sengaja tidak di-dispose karena dipakai bersama seluruh scene) */
 function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry) c.geometry.dispose(); }); }
@@ -988,6 +1066,7 @@ function rebuildScene(){
   });
   refreshSelectionVisual();
   updateStatsBar();
+  scheduleHistory();
 }
 
 function findGroup(kind,id){
@@ -1031,6 +1110,8 @@ function onGizmoChange(){ if(selBox) selBox.update(); }
 function commitGizmo(){
   const g=gizmo.object; const d=selData();
   if(!g||!d) return;
+  HIST.label = gizmo.mode==='translate' ? 'Geser objek'
+             : gizmo.mode==='rotate'    ? 'Putar objek' : 'Skala objek';
   if(SEL.kind==='wall'){
     const len=Math.max(0.05, wallLen(d)*g.scale.x);
     const ang=-g.rotation.y;
@@ -1190,12 +1271,14 @@ function addTransformFields(ins,d,withScale){
    ====================================================================== */
 function deleteSelection(){
   const lv=L(); if(!SEL) return;
+  HIST.label = SEL.kind==='wall' ? 'Hapus dinding' : 'Hapus objek';
   if(SEL.kind==='wall') lv.walls=lv.walls.filter(w=>w.id!==SEL.id);
   else lv.objects=lv.objects.filter(o=>o.id!==SEL.id);
   SEL=null; rebuildScene(); toast('Objek dihapus');
 }
 function duplicateSelection(){
   const lv=L(), d=selData(); if(!d) return;
+  HIST.label='Duplikat objek';
   if(SEL.kind==='wall'){
     const c=JSON.parse(JSON.stringify(d));
     c.id=uid('w'); c.openings=c.openings.map(o=>({...o,id:uid('o')}));
@@ -1244,6 +1327,7 @@ function addObject(kind,type){
   }
   lv.objects.push(o);
   SEL={kind:'obj',id:o.id};
+  HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type)) : (FURN[type]?.l||type));
   rebuildScene();
   if(TOOL==='select') setTool('translate');
   const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type)) : (FURN[type]?.l||type);
@@ -1314,6 +1398,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
         }
         const w=newWall(a.x,a.z,x2,z2,0.15,0);
         L().walls.push(w);
+        HIST.label='Gambar dinding';
         SEL={kind:'wall',id:w.id};
         drawState={p1:{x:x2,z:z2}};    // lanjut berantai
         rebuildScene();
@@ -1366,6 +1451,8 @@ addEventListener('keydown',e=>{
   }
   else if(e.key==='Delete'||e.key==='Backspace'){ if(SEL){ e.preventDefault(); deleteSelection(); } }
   else if(k==='d'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); duplicateSelection(); }
+  else if(k==='z'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); e.shiftKey?redo():undo(); }
+  else if(k==='y'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); redo(); }
   else if(e.key==='PageUp'){ e.preventDefault(); setActiveLevel(Math.min(PROJECT.levels.length-1,PROJECT.active+1)); }
   else if(e.key==='PageDown'){ e.preventDefault(); setActiveLevel(Math.max(0,PROJECT.active-1)); }
 });
@@ -1388,6 +1475,22 @@ addEventListener('keydown',e=>{
    Lapis simbol  : busur ayun  → pintu (lebar = jari-jari busur = lebar daun)
                    garis dalam pita dinding → jendela
    ====================================================================== */
+
+/* Tingkat terang kertas = puncak histogram di sisi terang. Gambar kerja
+   arsitektur selalu tinta gelap di atas kertas terang, jadi ambang hitam
+   cukup diturunkan dari tingkat kertas itu — stabil untuk kertas putih
+   maupun hasil pindai yang keabuan. */
+function paperLevel(data,w,h){
+  const hist=new Array(256).fill(0);
+  for(let i=0,p=0;i<w*h;i++,p+=4){
+    const lum = data[p+3]<40 ? 255
+      : clamp(Math.round(data[p]*0.299+data[p+1]*0.587+data[p+2]*0.114),0,255);
+    hist[lum]++;
+  }
+  let best=255, bc=-1;
+  for(let i=100;i<256;i++) if(hist[i]>bc){ bc=hist[i]; best=i; }
+  return best;
+}
 
 function binarize(data,w,h,thr){
   const out=new Uint8Array(w*h);
@@ -1784,7 +1887,10 @@ function circumcircle(x1,y1,x2,y2,x3,y3){
   return {cx,cy,r:Math.hypot(x1-cx,y1-cy)};
 }
 function detectDoorArcs(thin,w,h,pxm){
-  const rMin=0.5*pxm, rMax=1.7*pxm, out=[];
+  // Jari-jari busur = lebar daun pintu, jadi rentangnya mengikuti ukuran daun
+  // yang lazim (70-120 cm) dengan sedikit kelonggaran. Rentang yang terlalu
+  // longgar membuat lengkung perabot ikut terbaca sebagai pintu.
+  const rMin=0.55*pxm, rMax=1.35*pxm, out=[];
   let seed=20260922;
   const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
   for(const c of components(thin,w,h,3000)){
@@ -2100,8 +2206,17 @@ function extractPlan(opt){
   const {data,w,h,thr,noise,minLenM,ortho,detectOpen,detectDoors,heal,realWidth,
          doorH,sillH,auto,closeRManual,wallMinManual,detectStairsOpt,detectFix}=opt;
 
-  const raw=binarize(data,w,h,thr);
-  const rawClean=removeSmallComponents(raw,w,h,noise);
+  // Nilai yang tidak diberikan dihitung sendiri: tidak ada yang perlu disetel.
+  // Otsu mencari lembah histogram; untuk gambar garis di atas kertas ambangnya
+  // digeser ke arah putih supaya halo anti-alias di tepi goresan ikut terambil
+  // dan garis tidak jadi putus-putus.
+  const thrA   = thr!=null ? thr
+                 : clamp(Math.round(paperLevel(data,w,h)*0.67),90,220);
+  const noiseA = noise!=null ? noise : Math.max(6,Math.round(0.018*Math.max(w,h)));
+  const minLenA= minLenM!=null ? minLenM : STD.minWallLen;
+
+  const raw=binarize(data,w,h,thrA);
+  const rawClean=removeSmallComponents(raw,w,h,noiseA);
 
   // --- lapis dinding: garis tebal saja ---
   // kalibrasi hanya dijalankan bila diminta — pencariannya memakan waktu
@@ -2112,7 +2227,7 @@ function extractPlan(opt){
   const closeR=cal.closeR, wallMinPx=cal.wallMinPx;
   let mask=cal.closed;
   mask=opening(mask,w,h,Math.max(1,Math.round(wallMinPx/2)));   // buang goresan tipis
-  mask=removeSmallComponents(mask,w,h,Math.max(noise,wallMinPx*2));
+  mask=removeSmallComponents(mask,w,h,Math.max(noiseA,wallMinPx*2));
   // Pada denah poche, dinding digambar MASIF. Garis-garis berdempetan (mis.
   // garis luar-dalam bak mandi) bisa menyatu jadi pita tebal dan menyamar
   // sebagai dinding; disaring dengan melihat berapa persen pita itu benar-
@@ -2158,22 +2273,36 @@ function extractPlan(opt){
   const dist=distanceTransform(mask,w,h);
   const polys=tracePolylines(thinZS(mask,w,h),w,h);
   const tolDeg=22, eps=Math.max(1.6,pxm*0.05);
+  const simp=polys.filter(pl=>pl.length>=2).map(pl=>simplifyDP(pl,eps));
+
+  // Denah bangunan hampir selalu siku. Dipakai atau tidaknya pelurusan
+  // ditentukan dari gambarnya sendiri: berapa persen panjang garis yang
+  // sudah mendekati sumbu.
+  let orthoA=ortho;
+  if(orthoA==null){
+    let axial=0, tot=0;
+    for(const pl of simp) for(let i=0;i<pl.length-1;i++){
+      const t={x1:pl[i][0],y1:pl[i][1],x2:pl[i+1][0],y2:pl[i+1][1]};
+      const L=segLen(t); tot+=L;
+      if(segDir(t,10)!=='f') axial+=L;
+    }
+    orthoA = tot>0 ? (axial/tot)>0.70 : true;
+  }
+
   let segs=[];
-  for(let poly of polys){
-    if(poly.length<2) continue;
-    poly=simplifyDP(poly,eps);
-    if(ortho) poly=orthoPoly(poly,tolDeg);
+  for(let poly of simp){
+    if(orthoA) poly=orthoPoly(poly,tolDeg);
     for(let i=0;i<poly.length-1;i++){
       const s={x1:poly[i][0],y1:poly[i][1],x2:poly[i+1][0],y2:poly[i+1][1]};
-      s.dir=ortho?segDir(s,tolDeg):segDir(s,6);
+      s.dir=orthoA?segDir(s,tolDeg):segDir(s,6);
       if(segLen(s)>=2) segs.push(s);
     }
   }
-  if(ortho) segs=snapAxes(segs, Math.max(2,pxm*0.12));
+  if(orthoA) segs=snapAxes(segs, Math.max(2,pxm*0.12));
   segs=mergeCollinear(segs, pxm*2.6);
-  segs=segs.filter(s=>segLen(s)>=minLenM*pxm);
+  segs=segs.filter(s=>segLen(s)>=minLenA*pxm);
   if(heal) segs=healJunctions(segs, Math.max(3,pxm*0.35));
-  segs=segs.filter(s=>segLen(s)>=minLenM*pxm);
+  segs=segs.filter(s=>segLen(s)>=minLenA*pxm);
 
   // --- simbol pintu, ditempelkan ke dinding terdekat ---
   const arcs = detectDoors ? detectDoorArcs(thin,w,h,pxm) : [];
@@ -2329,7 +2458,7 @@ function extractPlan(opt){
   }
 
   return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox,
-          stairs, fixtures};
+          stairs, fixtures, thr:thrA, noise:noiseA, minLenM:minLenA, ortho:orthoA};
 
 }
 
@@ -2477,18 +2606,20 @@ function runGenerate(toNewLevel){
       const w=canvas2d.width,h=canvas2d.height;
       const data=ctx2d.getImageData(0,0,w,h).data;
       const lvH=parseFloat($('#wallH').value)||3.2;
+      // null = hitung sendiri dari gambar
+      const AUTO=$('#autoDetect').checked;
       const res=extractPlan({
         data,w,h,
-        thr:+$('#thresh').value,
-        noise:+$('#noise').value,
-        minLenM:+$('#minLen').value,
-        ortho:$('#ortho').checked,
-        detectOpen:$('#doOpen').checked,
-        detectDoors:$('#doDoors').checked,
-        detectStairsOpt:$('#doStairs').checked,
-        detectFix:$('#doFix').checked,
-        heal:$('#doHeal').checked,
-        auto:$('#autoCal').checked,
+        thr:     AUTO ? null : +$('#thresh').value,
+        noise:   AUTO ? null : +$('#noise').value,
+        minLenM: AUTO ? null : +$('#minLen').value,
+        ortho:   AUTO ? null : $('#ortho').checked,
+        detectOpen:      AUTO || $('#doOpen').checked,
+        detectDoors:     AUTO || $('#doDoors').checked,
+        detectStairsOpt: AUTO || $('#doStairs').checked,
+        detectFix:       AUTO || $('#doFix').checked,
+        heal:            AUTO || $('#doHeal').checked,
+        auto:            AUTO || $('#autoCal').checked,
         closeRManual:+$('#closeR').value,
         wallMinManual:+$('#wallMin').value,
         realWidth:realWidthM(),
@@ -2506,6 +2637,7 @@ function runGenerate(toNewLevel){
       const lv=L();
       lv.height=lvH;
       lv.walls=res.walls;
+      HIST.label = toNewLevel ? 'Generate ke lantai baru' : 'Generate denah';
       // objek hasil pembacaan simbol; yang lama dibuang agar tidak menumpuk
       lv.objects=lv.objects.filter(o=>!o.fromPlan);
       for(const st of res.stairs){
@@ -2539,12 +2671,13 @@ function runGenerate(toNewLevel){
         + (res.nSlide?` · ${res.nSlide} geser`:'')
         + (res.stairs.length?` · ${res.stairs.length} tangga`:'')
         + (res.fixtures.length?` · ${res.fixtures.length} sanitair`:''));
-      $('#cal-info').innerHTML = (!$('#autoCal').checked ? 'Kalibrasi manual aktif. ' :
-        `Terbaca: goresan tebal <b>${fmt(res.cal.strokeP90,1)} px</b> → `
+      const autoMode = $('#autoDetect').checked || $('#autoCal').checked;
+      $('#cal-info').innerHTML = (!autoMode ? 'Kalibrasi manual aktif. ' :
+        `Terbaca: ambang hitam <b>${res.thr}</b>, goresan tebal <b>${fmt(res.cal.strokeP90,1)} px</b> → `
         + (res.cal.poche?'dinding <b>masif (poche)</b>':'dinding <b>garis-ganda</b>')
         + `. `)
         + `Ambang dinding <b>${res.wallMinPx} px</b> (${fmt(res.wallMinPx/res.pxm*100,0)} cm), `
-        + `tutup rongga <b>${res.closeR} px</b>. Skala <b>${fmt(res.pxm,1)} px/m</b>. `
+        + `tutup rongga <b>${res.closeR} px</b>, ${res.ortho?'diluruskan siku':'sudut bebas'}. Skala <b>${fmt(res.pxm,1)} px/m</b>. `
         + `Busur ayun pintu terpakai: <b>${res.arcs.filter(a=>a.placed).length}</b>`
         + (res.arcs.length>res.arcs.filter(a=>a.placed).length
            ? ` (${res.arcs.length-res.arcs.filter(a=>a.placed).length} kandidat ditolak karena tidak menempel di dinding)` : '')+'.';
@@ -2598,7 +2731,7 @@ function renderLevels(){
     if(PROJECT.levels.length<2) return toast('Minimal harus ada satu lantai.');
     PROJECT.levels.splice(PROJECT.active,1);
     PROJECT.active=clamp(PROJECT.active,0,PROJECT.levels.length-1);
-    SEL=null; renderLevels(); rebuildScene();
+    SEL=null; HIST.label='Hapus lantai'; renderLevels(); rebuildScene();
   };
   p.appendChild(del);
 
@@ -2623,7 +2756,8 @@ function addLevel(copy){
   }
   PROJECT.levels.push(lv);
   PROJECT.active=PROJECT.levels.length-1;
-  SEL=null; renderLevels(); rebuildScene();
+  SEL=null; HIST.label=copy?'Salin lantai':'Tambah lantai';
+  renderLevels(); rebuildScene();
   toast(copy?'Lantai disalin ke atas':'Lantai baru ditambahkan');
 }
 $('#addLevelBtn').onclick=()=>addLevel(false);
@@ -2660,6 +2794,8 @@ $('#furn-filter').addEventListener('change',renderCatalogs);
    UI — TOOLBAR & TAB
    ====================================================================== */
 $$('#toolbar button[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$('#undoBtn').onclick=undo;
+$('#redoBtn').onclick=redo;
 $('#snapBtn').onclick=()=>{ SNAP=!SNAP; $('#snapBtn').classList.toggle('active',SNAP); refreshSelectionVisual(); toast('Snap '+(SNAP?'aktif (5 cm / 15°)':'nonaktif')); };
 $('#dupBtn').onclick=duplicateSelection;
 $('#delBtn').onclick=deleteSelection;
@@ -2701,6 +2837,7 @@ $('#loadInput').addEventListener('change',e=>{
       PROJECT.active=clamp(j.active||0,0,PROJECT.levels.length-1);
       SEL=null; $('#projName').value=PROJECT.name;
       renderLevels(); rebuildScene();
+      resetHistory('Proyek dimuat');
       toast('Proyek dimuat: '+PROJECT.name);
     }catch(err){ toast('Gagal memuat: '+err.message); }
   };
@@ -2737,13 +2874,15 @@ $('#snapshotBtn').onclick=()=>{
 $('#clearLevelBtn').onclick=()=>{
   const lv=L();
   if((lv.walls.length||lv.objects.length) && !confirm(`Kosongkan ${lv.name}? Semua dinding dan objek di lantai ini akan dihapus.`)) return; lv.walls=[]; lv.objects=[]; SEL=null; LAST_RESULT=null;
+  HIST.label='Kosongkan lantai';
   rebuildScene(); drawOverlay(null); toast(lv.name+' dikosongkan');
 };
 $('#resetBtn').onclick=()=>{
   if(!confirm('Reset seluruh proyek? Semua lantai, dinding, dan objek akan hilang.')) return;
   PROJECT.levels=[newLevel('Lantai 1',parseFloat($('#wallH').value)||3.2)];
   PROJECT.active=0; SEL=null; LAST_RESULT=null;
-  renderLevels(); rebuildScene(); drawOverlay(null); toast('Proyek direset');
+  renderLevels(); rebuildScene(); drawOverlay(null);
+  resetHistory('Proyek baru'); toast('Proyek direset');
 };
 $('#wallH').addEventListener('change',e=>{
   const v=parseFloat(e.target.value)||3.2;
@@ -2756,6 +2895,7 @@ renderLevels();
 setTool('select');
 rebuildScene();
 updatePxm();
+resetHistory('Awal');
 </script>
 </body>
 </html>
