@@ -141,6 +141,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
 </head>
 <body>
@@ -268,6 +269,11 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="section-title">Void (Lubang Pelat Lantai)</div>
       <div class="cat-grid" id="cat-void"></div>
       <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
+      <div class="section-title">Model Sendiri (.glb)</div>
+      <div class="group"><label>Unggah model</label>
+        <input type="file" id="glbInput" accept=".glb,model/gltf-binary" multiple></div>
+      <div id="model-list" class="group"></div>
+      <p class="hint">Model glTF biner (.glb) ikut tersimpan di dalam berkas proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas.</p>
       <div class="section-title">Furnitur &amp; Sanitair</div>
       <div class="row"><select id="furn-filter">
         <option value="all">Semua kategori</option>
@@ -405,7 +411,7 @@ const STD = {
 const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
 
 /* --------------------------- state --------------------------- */
-const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0 };
+const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{} };
 
 function newLevel(name,height){
   return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
@@ -415,7 +421,8 @@ function newWall(x1,z1,x2,z2,t,h){
 }
 function newOpening(type,at,width){
   return { id:uid('o'), type:type||'door', at, width:width||0.8,
-           sill:type==='window'?STD.sillH:0, head:STD.doorH };
+           sill:type==='window'?STD.sillH:0, head:STD.doorH,
+           hinge:'L', swing:1 };          // engsel kiri, ayun ke muka +Z dinding
 }
 const L = ()=>PROJECT.levels[PROJECT.active];
 const levelElevation = idx => PROJECT.levels.slice(0,idx).reduce((s,l)=>s+l.height,0);
@@ -598,14 +605,17 @@ function addOpeningDetail(g,o,sill,head,t,len){
     g.add(box(fr*0.8, head, t*0.75, MAT.frame, cx-ow/2+fr*0.4, head/2, 0));
     g.add(box(fr*0.8, head, t*0.75, MAT.frame, cx+ow/2-fr*0.4, head/2, 0));
     g.add(box(ow, fr*0.8, t*0.75, MAT.frame, cx, head-fr*0.4, 0));
-    // daun pintu terbuka 75° berengsel di sisi kiri bukaan
+    // Daun pintu terbuka 75°. Engsel dan arah ayun ikut data bukaan: hinge 'R'
+    // memindah engsel ke sisi seberang, swing −1 membalik daun ke muka dinding
+    // yang lain. Keduanya cuma membalik tanda, jadi geometrinya tetap satu.
+    const hs = o.hinge==='R' ? -1 : 1;
+    const sw = o.swing===-1 ? -1 : 1;
     const leafW=ow-0.06, leafH=head-0.08;
     const pivot=new THREE.Group();
-    pivot.position.set(cx-ow/2+0.03, leafH/2+0.02, 0);
-    const leaf=box(leafW,leafH,0.035,MAT.door, leafW/2,0,0);
-    pivot.add(leaf);
-    pivot.add(cyl(0.022,0.022,0.09,MAT.metal, leafW-0.07, 0, 0.05,10));
-    pivot.rotation.y=-75*D2R;
+    pivot.position.set(cx+hs*(-ow/2+0.03), leafH/2+0.02, 0);
+    pivot.add(box(leafW,leafH,0.035,MAT.door, hs*leafW/2,0,0));
+    pivot.add(cyl(0.022,0.022,0.09,MAT.metal, hs*(leafW-0.07), 0, 0.05,10));
+    pivot.rotation.y=-75*D2R*sw*hs;
     g.add(pivot);
   }
   else if(o.type==='slider'){
@@ -1326,6 +1336,10 @@ function buildObject(o, lv){
   let g;
   if(o.kind==='stair') g=buildStair(o,lv);
   else if(o.kind==='void') g=buildVoid(o);
+  else if(o.kind==='model'){
+    const tpl=ASSET_OBJ.get(o.type);
+    g = tpl ? tpl.clone(true) : missingModelBox();
+  }
   else {
     const def=FURN[o.type];
     g = def ? def.b() : new THREE.Group();
@@ -1571,6 +1585,14 @@ function renderInspector(){
       mk('Ambang',o.sill,0.05,v=>{ o.sill=clamp(v,0,2); rebuildScene(); });
       mk('Tinggi',o.head,0.05,v=>{ o.head=clamp(v,0.5,5); rebuildScene(); });
       it.appendChild(grid);
+      if(o.type==='door'){
+        const row=el('div','row');
+        const bh=el('button','btn sm ghost','⇄ Balik engsel');
+        bh.onclick=()=>{ o.hinge = o.hinge==='R'?'L':'R'; rebuildScene(); };
+        const bs=el('button','btn sm ghost','⇅ Balik ayun');
+        bs.onclick=()=>{ o.swing = o.swing===-1?1:-1; rebuildScene(); };
+        row.appendChild(bh); row.appendChild(bs); it.appendChild(row);
+      }
       wrap.appendChild(it);
     });
     ins.appendChild(wrap);
@@ -1673,6 +1695,20 @@ function renderInspector(){
     }
     ins.appendChild(el('div','badge ok','Lubang ini memotong pelat lantai ' + L().name + '. Kotak hijau hanya penanda di editor — tidak ikut diekspor, tetapi pagarnya ikut.'));
 
+  } else if(d.kind==='model'){
+    const a=PROJECT.assets[d.type];
+    const h=el('h3',null,'Model'); h.appendChild(el('span','tag',a?a.name:'hilang'));
+    ins.appendChild(h);
+    if(!a) ins.appendChild(el('div','badge warn','⚠ Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.'));
+    else if(!ASSET_OBJ.has(d.type)) ins.appendChild(el('div','badge warn','⚠ Berkas model gagal diurai.'));
+    else ins.appendChild(el('div','badge ok',`Ukuran asli ${a.dims.map(v=>fmt(v,2)).join(' × ')} m`
+        + (a.fit!==1 ? ` (sudah diskalakan otomatis ×${fmt(a.fit,3)})` : '')));
+    addTransformFields(ins,d,true);
+    if(a){
+      const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
+      ins.appendChild(el('p','hint',`Ukuran terpasang ${fmt(sz,2)} × ${fmt(szz,2)} m, tinggi ${fmt(sy,2)} m.`));
+    }
+
   } else {
     const def=FURN[d.type];
     const h=el('h3',null,'Furnitur'); h.appendChild(el('span','tag',def?def.l:d.type));
@@ -1750,6 +1786,109 @@ function faceNearestWall(obj, walls){
   if(bd>1.5) return;
   const dirX=-Math.sin(obj.rotY), dirZ=-Math.cos(obj.rotY);   // arah punggung
   if((bx-obj.x)*dirX + (bz-obj.z)*dirZ < 0) obj.rotY+=Math.PI;
+}
+
+/* ======================================================================
+   PUSTAKA MODEL SENDIRI (.glb)
+   Berkasnya ikut tersimpan di dalam proyek (base64) supaya satu berkas .json
+   tetap utuh dibuka di komputer lain — model yang hanya ada di memori akan
+   hilang begitu halaman dimuat ulang. Hasil uraiannya disimpan sebagai
+   contoh di memori, lalu tiap objek cukup menyalinnya.
+   ====================================================================== */
+const ASSET_OBJ=new Map();            // id -> THREE.Object3D contoh
+const ASSET_MAX=20*1024*1024;         // 20 MB per berkas
+
+function b64FromBuf(buf){
+  const u=new Uint8Array(buf); let s='';
+  for(let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+  return btoa(s);
+}
+function bufFromB64(b64){
+  const bin=atob(b64), u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+  return u.buffer;
+}
+
+/* Model ditegakkan di titik nol lantai: alasnya di y=0 dan tengahnya di
+   sumbu, supaya perlakuannya sama dengan perabot bawaan. Ukuran yang jelas
+   di luar nalar perabot (mis. model bersatuan sentimeter) diskalakan sekali
+   ke 1 m dan pemakainya diberi tahu. */
+function prepareAssetObject(root){
+  const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+  const maxD=Math.max(size.x,size.y,size.z);
+  let fit=1;
+  if(maxD>12 || (maxD>0 && maxD<0.08)) fit=1/maxD;
+  // Penyesuaian ukuran dan letak dikenakan pada modelnya, BUKAN pada
+  // pembungkusnya: skala pembungkus nanti dipakai objek di denah, dan kalau
+  // dipakai dua-duanya yang satu menimpa yang lain.
+  root.scale.multiplyScalar(fit);
+  root.updateMatrixWorld(true);
+  const b2=new THREE.Box3().setFromObject(root);
+  const c=b2.getCenter(new THREE.Vector3());
+  root.position.x-=c.x; root.position.z-=c.z; root.position.y-=b2.min.y;
+  const wrap=new THREE.Group();
+  wrap.add(root);
+  wrap.updateMatrixWorld(true);
+  wrap.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
+  const s3=new THREE.Box3().setFromObject(wrap).getSize(new THREE.Vector3());
+  return {obj:wrap, fit, dims:[+s3.x.toFixed(3),+s3.y.toFixed(3),+s3.z.toFixed(3)]};
+}
+function parseAsset(id,buf){
+  return new Promise((res,rej)=>{
+    if(typeof THREE.GLTFLoader!=='function')
+      return rej(new Error('Pustaka GLTFLoader belum termuat — periksa koneksi internet.'));
+    new THREE.GLTFLoader().parse(buf,'',gltf=>{
+      const r=prepareAssetObject(gltf.scene||gltf.scenes[0]);
+      ASSET_OBJ.set(id,r.obj);
+      res(r);
+    },err=>rej(new Error(err&&err.message?err.message:'berkas .glb tidak terbaca')));
+  });
+}
+async function loadProjectAssets(){
+  const ids=Object.keys(PROJECT.assets||{});
+  ASSET_OBJ.clear();
+  let gagal=0;
+  for(const id of ids){
+    try{ await parseAsset(id,bufFromB64(PROJECT.assets[id].data)); }
+    catch(err){ gagal++; console.warn('aset gagal:',id,err); }
+  }
+  return {total:ids.length, gagal};
+}
+async function importAssetFile(file){
+  if(file.size>ASSET_MAX) throw new Error(`Berkas ${fmt(file.size/1048576,1)} MB melebihi batas 20 MB.`);
+  const buf=await file.arrayBuffer();
+  const id=uid('as');
+  const r=await parseAsset(id,buf);
+  PROJECT.assets[id]={ name:file.name.replace(/\.glb$/i,''), size:file.size,
+                       dims:r.dims, fit:r.fit, data:b64FromBuf(buf) };
+  return {id, ...r};
+}
+function assetInUse(id){
+  let n=0;
+  for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.kind==='model'&&o.type===id) n++;
+  return n;
+}
+function deleteAsset(id){
+  const n=assetInUse(id), nm=PROJECT.assets[id]?.name||id;
+  if(n && !confirm(`Model "${nm}" masih dipakai ${n} objek. Hapus juga objeknya?`)) return;
+  for(const lv of PROJECT.levels) lv.objects=lv.objects.filter(o=>!(o.kind==='model'&&o.type===id));
+  delete PROJECT.assets[id]; ASSET_OBJ.delete(id);
+  if(SEL) SEL=null;
+  HIST.label='Hapus model '+nm;
+  renderCatalogs(); rebuildScene();
+  toast(`Model "${nm}" dihapus`);
+}
+/* model yang berkasnya hilang tetap kelihatan sebagai kotak penanda supaya
+   posisinya tidak ikut lenyap dari denah */
+function missingModelBox(){
+  const g=new THREE.Group();
+  const geo=new THREE.BoxGeometry(0.6,0.6,0.6);
+  g.add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x8a4a4a,roughness:.9})));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({color:0xd08a8a})));
+  g.position.y=0.3;
+  const w=new THREE.Group(); w.add(g);
+  return w;
 }
 
 /* ---------------------------------------------------------------------
@@ -1832,6 +1971,7 @@ function addObject(kind,type){
   // void yang dibuat sendiri adalah lubang terbuka di lantai, jadi pagarnya
   // langsung dipasang; void dari tangga dibiarkan terbuka karena tangganya
   // sendiri yang mengisi lubang itu
+  if(kind==='model') o.params={};
   if(kind==='void') o.params = type==='L'
       ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5, railing:true, railH:STD.guardH, openSides:[] }
       : { shape:'rect', w:1.2, d:3.0, railing:true, railH:STD.guardH, openSides:[] };
@@ -1839,11 +1979,13 @@ function addObject(kind,type){
   SEL={kind:'obj',id:o.id};
   HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
                       : kind==='void'  ? 'void'
+                      : kind==='model' ? (PROJECT.assets[type]?.name||'model')
                       : (FURN[type]?.l||type));
   rebuildScene();
   if(TOOL==='select') setTool('translate');
   const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type))
            : kind==='void'  ? 'Void (lubang pelat)'
+           : kind==='model' ? (PROJECT.assets[type]?.name||'Model')
            : (FURN[type]?.l||type);
   toast(nm+' ditambahkan ke '+lv.name);
 }
@@ -3010,8 +3152,14 @@ function extractPlan(opt){
     const sgn=Math.sign((a.cx-a.hx)*pr.ux + (a.cy-a.hy)*pr.uy) || 1;
     const t0=clamp(pr.t,0,pr.L), t1=clamp(pr.t+sgn*a.r,0,pr.L);
     if(Math.abs(t1-t0) < 0.4*pxm) continue;
+    // Busur juga memberi tahu di ujung mana engselnya dan ke muka dinding mana
+    // daunnya membuka — keterangan yang selama ini dibuang. Ujung busur yang
+    // paling jauh dari dinding adalah daun yang terbuka.
+    const op = dA>dB ? [a.ax,a.ay] : [a.bx,a.by];
+    const nx=-pr.uy, ny=pr.ux;                    // arah +Z lokal dinding
+    const side = Math.sign((op[0]-a.hx)*nx + (op[1]-a.hy)*ny) || 1;
     if(!arcBySeg.has(bs)) arcBySeg.set(bs,[]);
-    arcBySeg.get(bs).push({a:Math.min(t0,t1), b:Math.max(t0,t1)});
+    arcBySeg.get(bs).push({a:Math.min(t0,t1), b:Math.max(t0,t1), hinge:pr.t, side});
     a.placed=true;
   }
 
@@ -3047,7 +3195,7 @@ function extractPlan(opt){
     const stat     = key => { if(key) bucket(key).n++; };      // satu bilah = satu hitungan
     const statDoor = key => { if(key) bucket(key).door++; };   // suaranya saja, bukan hitungan baru
 
-    const arcSpans=(arcBySeg.get(si)||[]).map(g=>[Math.min(g.a,g.b),Math.max(g.a,g.b)]);
+    const arcSpans=arcBySeg.get(si)||[];
 
     // Bukaan dicari dari dindingnya sendiri: cekungan tebal, penampang yang
     // menyimpang, atau beda warna. Busur ayun TIDAK membuat bukaan — busur
@@ -3116,13 +3264,16 @@ function extractPlan(opt){
     // Busur ayun menandai bukaan mana yang berupa pintu. Busur yang tidak
     // berpasangan dengan bukaan mana pun diabaikan — itu lengkung perabot
     // atau garis antrede tangga yang kebetulan dekat dinding.
-    for(const [t0,t1] of arcSpans){
+    for(const g of arcSpans){
+      const t0=g.a, t1=g.b;
       let best=null, bo=0;
       for(const it of items){
         const ov=Math.min(it.e1,t1)-Math.max(it.e0,t0);
         if(ov>bo){ bo=ov; best=it; }
       }
-      if(best && bo > 0.35*Math.min(best.e1-best.e0, t1-t0)) best.arcDoor=true;
+      if(best && bo > 0.35*Math.min(best.e1-best.e0, t1-t0)){
+        best.arcDoor=true; best.arcHinge=g.hinge; best.arcSide=g.side;
+      }
     }
     for(const it of items) if(it.arcDoor && it.col) statDoor(colorKey(it.col));
     // Dinding luar dikenali dari letaknya di tepi kotak bangunan. Ini dipakai
@@ -3178,6 +3329,10 @@ function extractPlan(opt){
         if(Math.abs(std-width)<0.12) width=std;
       }
       const o=newOpening(type,it.center,width);
+      if(type==='door' && it.arcHinge!=null){
+        o.hinge = Math.abs(it.arcHinge-it.e0) <= Math.abs(it.arcHinge-it.e1) ? 'L' : 'R';
+        o.swing = it.arcSide<0 ? -1 : 1;
+      }
       if(type==='window'){ o.sill=sillH; o.head=Math.max(sillH+0.6,doorH); nWin++; }
       else if(type==='opening'){ o.sill=0; o.head=doorH+0.3; nOpen++; }
       else { o.sill=0; o.head=doorH; if(type==='slider') nSlide++; else nDoor++; }
@@ -3542,6 +3697,23 @@ function renderCatalogs(){
     cv.appendChild(bv);
   }
 
+  const ml=$('#model-list'); ml.innerHTML='';
+  const ids=Object.keys(PROJECT.assets||{});
+  if(!ids.length) ml.appendChild(el('p','hint','Belum ada model diunggah.'));
+  for(const id of ids){
+    const a=PROJECT.assets[id], row=el('div','row');
+    const badd=el('button','btn sm', a.name);
+    badd.title=`${(a.dims||[]).map(v=>fmt(v,2)).join(' × ')} m · ${fmt(a.size/1024,0)} KB`
+             + (ASSET_OBJ.has(id)?'':' · berkas gagal diurai');
+    badd.onclick=()=>addObject('model',id);
+    const bdel=el('button','btn sm danger','×');
+    bdel.style.flex='0 0 34px';
+    bdel.title='Hapus model dari pustaka';
+    bdel.onclick=()=>deleteAsset(id);
+    row.appendChild(badd); row.appendChild(bdel);
+    ml.appendChild(row);
+  }
+
   const cf=$('#cat-furn'); cf.innerHTML='';
   const filt=$('#furn-filter').value;
   for(const [k,v] of Object.entries(FURN)){
@@ -3554,6 +3726,25 @@ function renderCatalogs(){
   }
 }
 $('#furn-filter').addEventListener('change',renderCatalogs);
+$('#glbInput').addEventListener('change',async e=>{
+  const files=[...e.target.files]; e.target.value='';
+  for(const f of files){
+    try{
+      $('#loader-txt').textContent='Membaca '+f.name+'…';
+      $('#loader').classList.add('on');
+      const r=await importAssetFile(f);
+      $('#loader').classList.remove('on');
+      renderCatalogs();
+      const d=r.dims.map(v=>fmt(v,2)).join(' × ');
+      toast(`${PROJECT.assets[r.id].name} dimuat — ${d} m`
+        + (r.fit!==1 ? ' (diskalakan otomatis)' : '')
+        + (f.size>5*1048576 ? ' · berkas besar, proyek ikut membesar' : ''));
+    }catch(err){
+      $('#loader').classList.remove('on');
+      toast('Gagal memuat '+f.name+': '+err.message);
+    }
+  }
+});
 
 /* ======================================================================
    UI — TOOLBAR & TAB
@@ -3600,10 +3791,18 @@ $('#loadInput').addEventListener('change',e=>{
         objects:(l.objects||[]).map(o=>({...o, id:o.id||uid('ob'), params:o.params||{}}))
       }));
       PROJECT.active=clamp(j.active||0,0,PROJECT.levels.length-1);
+      PROJECT.assets=j.assets||{};
       SEL=null; $('#projName').value=PROJECT.name;
-      renderLevels(); rebuildScene();
+      renderLevels(); renderCatalogs(); rebuildScene();
       resetHistory('Proyek dimuat');
       toast('Proyek dimuat: '+PROJECT.name);
+      if(Object.keys(PROJECT.assets).length){
+        loadProjectAssets().then(r=>{
+          renderCatalogs(); rebuildScene();
+          toast(r.gagal ? `${r.total-r.gagal}/${r.total} model dimuat, ${r.gagal} gagal`
+                        : `${r.total} model dari pustaka dimuat`);
+        });
+      }
     }catch(err){ toast('Gagal memuat: '+err.message); }
   };
   rd.readAsText(f);
