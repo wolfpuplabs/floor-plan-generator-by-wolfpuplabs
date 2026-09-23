@@ -2399,7 +2399,7 @@ function extractPlan(opt){
   const arcs = detectDoors ? detectDoorArcs(thin,w,h,pxm) : [];
   const arcBySeg=new Map();
   for(const a of arcs){
-    let bs=-1, bd=Math.max(8,0.30*pxm);
+    let bs=-1, bd=Math.max(10,0.45*pxm);
     for(let i=0;i<segs.length;i++){
       const pr=segProject(segs[i],a.hx,a.hy);
       if(pr.t<-2||pr.t>pr.L+2) continue;
@@ -2445,7 +2445,7 @@ function extractPlan(opt){
     const base=percentile([...solid],0.5);
     const cprof=wcol ? profileColorDiff(data,w,h,s,band,wcol,thrA) : null;
 
-    const taken=[], items=[];
+    const items=[];
     const stat=(key,isDoor)=>{
       if(!key) return;
       const e=colorStat.get(key)||{n:0,door:0};
@@ -2453,27 +2453,12 @@ function extractPlan(opt){
       colorStat.set(key,e);
     };
 
-    // 1) bukaan dari simbol busur ayun — paling dapat dipercaya
-    for(const g of (arcBySeg.get(si)||[])){
-      let width=(g.b-g.a)/pxm;
-      const std=nearest(width,STD.doorW);
-      if(Math.abs(std-width)<0.12) width=std;
-      const center=(g.a+g.b)/2/pxm;
-      if(center<0.15||center>len-0.15) continue;
-      const e0=clamp(Math.round(g.a),0,prof.length-1), e1=clamp(Math.round(g.b),0,prof.length-1);
-      let sumP=0; for(let i=e0;i<=e1;i++) sumP+=prof[i];
-      const empty=(sumP/Math.max(1,e1-e0+1)) < 0.25*tPx;
-      const inner=thinFill(thin,w,h,s,e0,e1,0,band);
-      let devC=0; for(let i=e0;i<=e1;i++) if(Math.abs(solid[Math.min(i,solid.length-1)]-base)>0.18) devC++;
-      // jendela berdaun ayun juga memakai busur; bedanya penampang dindingnya
-      // masih berisi garis kaca
-      const isWin = inner>0.55 || (!empty && devC>0.5*(e1-e0+1));
-      items.push({e0,e1,width,center,kind:isWin?'window':'door',fixed:true});
-      taken.push([g.a,g.b]);
-      if(!empty) stat(colorKey(runColor(data,w,h,s,e0,e1,band,thrA)), !isWin);
-    }
+    const arcSpans=(arcBySeg.get(si)||[]).map(g=>[Math.min(g.a,g.b),Math.max(g.a,g.b)]);
 
-    // 2) calon lain: cekungan tebal, penampang menyimpang, ATAU beda warna
+    // Bukaan dicari dari dindingnya sendiri: cekungan tebal, penampang yang
+    // menyimpang, atau beda warna. Busur ayun TIDAK membuat bukaan — busur
+    // hanya menandai bukaan yang sudah ada sebagai pintu (lihat di bawah),
+    // sebab pintu tidak mungkin berada di dinding yang masih masif.
     if(detectOpen && tPx>1){
       const runs=[
         ...findRuns(prof,  v=>v < tPx*0.70),
@@ -2482,7 +2467,7 @@ function extractPlan(opt){
       if(cprof) runs.push(...findRuns(cprof, v=>v>0.55));
       for(const [r0,r1] of mergeIntervals(runs)){
         if(r0<=1 || r1>=prof.length-2) continue;
-        if(taken.some(([p0,p1])=>Math.min(p1,r1)-Math.max(p0,r0) > 0.35*(r1-r0))) continue;
+
         let sumP=0; for(let i=r0;i<=r1;i++) sumP+=prof[i];
         const nRun=r1-r0+1;
         const empty=(sumP/nRun) < 0.25*tPx;
@@ -2517,6 +2502,18 @@ function extractPlan(opt){
         if(col) stat(colorKey(col), false);
       }
     }
+    // Busur ayun menandai bukaan mana yang berupa pintu. Busur yang tidak
+    // berpasangan dengan bukaan mana pun diabaikan — itu lengkung perabot
+    // atau garis antrede tangga yang kebetulan dekat dinding.
+    for(const [t0,t1] of arcSpans){
+      let best=null, bo=0;
+      for(const it of items){
+        const ov=Math.min(it.e1,t1)-Math.max(it.e0,t0);
+        if(ov>bo){ bo=ov; best=it; }
+      }
+      if(best && bo > 0.35*Math.min(best.e1-best.e0, t1-t0)) best.arcDoor=true;
+    }
+    for(const it of items) if(it.arcDoor && it.col) stat(colorKey(it.col), true);
     ctx.push({wall,s,items,band,tPx,len});
   }
 
@@ -2536,7 +2533,7 @@ function extractPlan(opt){
     const {wall,items}=cx;
     for(const it of items){
       let type, width=it.width;
-      if(it.fixed){ type=it.kind; }
+      if(it.arcDoor) type = it.inner>0.55 ? 'window' : 'door';   // busur + kaca = jendela ayun
       else if(it.out2>0.45 && it.inner>0.2) type='slider';
       else if(it.inner>0.55 || it.lined) type='window';
       else if(it.col){
