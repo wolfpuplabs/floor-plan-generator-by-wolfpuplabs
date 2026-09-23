@@ -120,6 +120,19 @@ details#adv>*:not(summary){margin-bottom:8px}
 @keyframes spin{100%{transform:rotate(360deg)}}
 #toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f1f26;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:6px;font-size:.76rem;opacity:0;transition:.25s;pointer-events:none;z-index:40}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ---------- AR viewer ---------- */
+#arPanel{position:fixed;inset:0;z-index:200;background:#0b0b0e;display:flex;flex-direction:column}
+#arPanel > header{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);background:#141419;flex-wrap:wrap}
+#arPanel > header h2{font-size:.82rem;margin:0;letter-spacing:.4px;text-transform:uppercase;color:var(--accent)}
+#arPanel > header .spacer{flex:1}
+#arPanel > header label{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+#arPanel > header select{background:#1d1d24;color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:.72rem;font-family:inherit}
+#arStage{flex:1;position:relative;min-height:0}
+#arStage model-viewer{width:100%;height:100%;background:linear-gradient(#20222a,#101117);--poster-color:transparent}
+#arFallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:var(--muted);font-size:.8rem;line-height:1.6}
+#arFallback.on{display:flex}
+#arInfo{padding:8px 12px;border-top:1px solid var(--line);background:#141419;color:var(--muted);font-size:.7rem;line-height:1.55}
+#arInfo b{color:var(--txt)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -127,6 +140,8 @@ details#adv>*:not(summary){margin-bottom:8px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -271,6 +286,10 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="group"><label>Buka proyek</label><input type="file" id="loadInput" accept="application/json,.json"></div>
       <button class="btn ghost" id="exportObjBtn">Ekspor Model (.obj)</button>
       <button class="btn ghost" id="snapshotBtn">Simpan Gambar (.png)</button>
+      <div class="section-title">AR / Model Viewer</div>
+      <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
+      <button class="btn ghost" id="exportGlbBtn">Ekspor Model (.glb)</button>
+      <p class="hint">Yang diekspor adalah lantai yang sedang tampak di viewport (termasuk pilihan pelat lantai), diperkecil jadi maket — skalanya bisa diubah di panel AR. Android: tombol AR memakai WebXR/Scene Viewer. iOS: Quick Look menuntut format USDZ, jadi di iPhone/iPad panel ini tampil sebagai 3D viewer saja.</p>
       <div class="section-title">Reset</div>
       <button class="btn danger" id="clearLevelBtn">Kosongkan Lantai Aktif</button>
       <button class="btn danger" id="resetBtn">Reset Semua</button>
@@ -300,6 +319,8 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button id="snapBtn" class="active" title="Snap ke grid 5 cm / 15°">Snap</button>
       <button id="dupBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
       <button id="delBtn" title="Hapus (Del)">Hapus</button>
+      <div class="sep"></div>
+      <button id="arBtn" title="Lihat model di AR / 3D viewer">AR</button>
     </div>
     <div class="float" id="levelbar"></div>
     <div class="float" id="inspector" hidden></div>
@@ -307,6 +328,34 @@ details#adv>*:not(summary){margin-bottom:8px}
     <div id="loader"><div class="spinner"></div><span id="loader-txt">Memproses denah…</span></div>
     <div id="toast"></div>
   </main>
+</div>
+
+<div id="arPanel" hidden>
+  <header>
+    <h2>AR / 3D Viewer</h2>
+    <label>Skala maket
+      <select id="arScale">
+        <option value="1">1 : 1 (ukuran asli)</option>
+        <option value="20">1 : 20</option>
+        <option value="50" selected>1 : 50</option>
+        <option value="100">1 : 100</option>
+      </select>
+    </label>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" id="arDownload">Unduh .glb</button>
+    <button class="btn sm" id="arClose">Tutup</button>
+  </header>
+  <div id="arStage">
+    <model-viewer id="arViewer" alt="Model 3D denah" camera-controls touch-action="pan-y"
+                  ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+                  shadow-intensity="1" shadow-softness="0.7" exposure="1.05" environment-image="neutral"
+                  camera-orbit="-35deg 62deg auto" min-camera-orbit="auto 0deg auto"
+                  interaction-prompt="none">
+      <button slot="ar-button" class="btn sm" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%)">Lihat di ruanganmu (AR)</button>
+    </model-viewer>
+    <div id="arFallback"></div>
+  </div>
+  <div id="arInfo"></div>
 </div>
 
 <script>
@@ -1446,6 +1495,7 @@ function setTool(t){
 }
 
 addEventListener('keydown',e=>{
+  if(typeof AR!=='undefined' && AR.open){ if(e.key==='Escape') closeAR(); return; }
   if(/input|select|textarea/i.test(e.target.tagName)) return;
   const k=e.key.toLowerCase();
   if(k==='q') setTool('select');
@@ -3030,6 +3080,149 @@ $('#snapshotBtn').onclick=()=>{
   renderer.render(scene,camera);
   renderer.domElement.toBlob(b=>{ download(b,(PROJECT.name||'render')+'.png'); toast('Gambar disimpan'); });
 };
+/* ======================================================================
+   AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
+   ====================================================================== */
+const AR={ url:null, blob:null, denom:50, open:false, dim:null, lib:null };
+
+/* scene bersih khusus ekspor: semua lantai yang tampak, tanpa material hantu,
+   tanpa helper/gizmo — dibangun ulang dari data supaya tidak mengusik viewport */
+function arBuildScene(){
+  const root=new THREE.Group();
+  let n=0;
+  PROJECT.levels.forEach((lv,idx)=>{
+    if(!lv.visible) return;
+    const lg=new THREE.Group();
+    lg.position.y=levelElevation(idx);
+    for(const w of lv.walls){ lg.add(buildWallGroup(w,lv)); n++; }
+    lg.add(buildJunctions(lv));
+    if(lv.slab && $('#showSlab').checked){ const sl=buildSlab(lv); if(sl){ lg.add(sl); n++; } }
+    for(const o of lv.objects){ lg.add(buildObject(o,lv)); n++; }
+    root.add(lg);
+  });
+  return n ? root : null;
+}
+
+/* GLB dengan titik nol di tengah denah dan alas di y=0 (syarat penempatan AR),
+   diperkecil sesuai skala maket supaya muat di atas meja */
+function arExportGLB(){
+  return new Promise((res,rej)=>{
+    if(typeof THREE.GLTFExporter!=='function')
+      return rej(new Error('Pustaka GLTFExporter belum termuat — periksa koneksi internet.'));
+    const root=arBuildScene();
+    if(!root) return rej(new Error('Belum ada model untuk ditampilkan. Generate atau gambar dinding dulu.'));
+    root.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(root);
+    if(!isFinite(box.min.x)) return rej(new Error('Model kosong.'));
+    const size=box.getSize(new THREE.Vector3()), ctr=box.getCenter(new THREE.Vector3());
+    root.position.set(-ctr.x,-box.min.y,-ctr.z);
+    const wrap=new THREE.Group();
+    wrap.add(root);
+    wrap.scale.setScalar(1/AR.denom);
+    wrap.updateMatrixWorld(true);
+    AR.dim=size;
+    try{
+      new THREE.GLTFExporter().parse(wrap,out=>{
+        disposeTree(wrap);
+        res(new Blob([out instanceof ArrayBuffer?out:JSON.stringify(out)],{type:'model/gltf-binary'}));
+      },{binary:true});
+    }catch(err){ disposeTree(wrap); rej(err); }
+  });
+}
+
+function arNote(){
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(ios) return 'Di iOS, AR (Quick Look) menuntut berkas <b>USDZ</b> yang belum bisa dibuat di sini — panel ini bekerja sebagai 3D viewer, dan berkas .glb tetap bisa diunduh.';
+  const mv=$('#arViewer');
+  if(mv && mv.canActivateAR) return 'Perangkat ini mendukung AR — tekan <b>Lihat di ruanganmu</b>.';
+  return 'AR belum tersedia di perangkat ini (butuh Android dengan ARCore atau browser ber-WebXR); panel tetap berfungsi sebagai 3D viewer.';
+}
+function arInfo(){
+  const d=AR.dim;
+  let t='';
+  if(d){
+    const cm=v=>(v/AR.denom*100).toFixed(1);
+    t=`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
+  }
+  $('#arInfo').innerHTML=t+arNote();
+}
+
+/* custom element dimuat sebagai modul; tunggu sebentar lalu menyerah dengan anggun */
+function arLibReady(){
+  if(AR.lib) return AR.lib;
+  AR.lib = window.customElements
+    ? Promise.race([
+        customElements.whenDefined('model-viewer'),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))
+      ])
+    : Promise.reject(new Error('unsupported'));
+  return AR.lib;
+}
+
+function arFallback(msg){
+  const fb=$('#arFallback');
+  fb.innerHTML='';
+  fb.appendChild(el('div',null,msg));
+  if(AR.blob){
+    const b=el('button','btn sm','Unduh .glb');
+    b.onclick=arDownload;
+    fb.appendChild(b);
+  }
+  fb.classList.add('on');
+}
+
+function arDownload(){
+  if(!AR.blob) return toast('Model belum siap.');
+  download(AR.blob,(PROJECT.name||'model')+'.glb');
+  toast('Model .glb diunduh');
+}
+
+async function arRefresh(){
+  const mv=$('#arViewer');
+  try{
+    const blob=await arExportGLB();
+    if(AR.url) URL.revokeObjectURL(AR.url);
+    AR.blob=blob; AR.url=URL.createObjectURL(blob);
+    try{ await arLibReady(); }
+    catch(e){ arFallback('Pustaka model-viewer gagal dimuat (butuh koneksi ke CDN). Model tetap bisa diunduh sebagai .glb lalu dibuka di aplikasi AR mana pun.'); arInfo(); return; }
+    $('#arFallback').classList.remove('on');
+    mv.src=AR.url;
+    arInfo();
+  }catch(err){
+    arFallback(err.message);
+    arInfo();
+  }
+}
+
+async function openAR(){
+  $('#loader-txt').textContent='Menyiapkan model AR…';
+  $('#loader').classList.add('on');
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  await arRefresh();
+  $('#loader').classList.remove('on');
+  AR.open=true;
+  $('#arPanel').hidden=false;
+}
+function closeAR(){
+  AR.open=false;
+  $('#arPanel').hidden=true;
+  const mv=$('#arViewer');
+  if(mv) mv.removeAttribute('src');
+  if(AR.url){ URL.revokeObjectURL(AR.url); AR.url=null; }
+}
+
+$('#arBtn').onclick=openAR;
+$('#arBtn2').onclick=openAR;
+$('#arClose').onclick=closeAR;
+$('#arDownload').onclick=arDownload;
+$('#arScale').onchange=e=>{ AR.denom=parseFloat(e.target.value)||50; if(AR.open){ toast('Menyusun ulang maket…'); arRefresh(); } };
+$('#arViewer').addEventListener('load',arInfo);
+$('#exportGlbBtn').onclick=async()=>{
+  try{ const blob=await arExportGLB(); AR.blob=blob; arDownload(); }
+  catch(err){ toast(err.message); }
+};
+
 $('#clearLevelBtn').onclick=()=>{
   const lv=L();
   if((lv.walls.length||lv.objects.length) && !confirm(`Kosongkan ${lv.name}? Semua dinding dan objek di lantai ini akan dihapus.`)) return; lv.walls=[]; lv.objects=[]; SEL=null; LAST_RESULT=null;
