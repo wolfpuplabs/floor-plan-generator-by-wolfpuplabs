@@ -267,7 +267,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
       <div class="section-title">Void (Lubang Pelat Lantai)</div>
       <div class="cat-grid" id="cat-void"></div>
-      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
+      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
       <div class="section-title">Furnitur &amp; Sanitair</div>
       <div class="row"><select id="furn-filter">
         <option value="all">Semua kategori</option>
@@ -643,34 +643,211 @@ function buildJunctions(lv){
    sama persis dengan kotak yang terlihat di viewport */
 const voidW = o => Math.max(0.2,(o.params.w||1)*(o.sx||1));
 const voidD = o => Math.max(0.2,(o.params.d||1)*(o.sz||1));
-/* Lubang harus benar-benar berada di dalam pelat: lubang yang menjorok keluar
-   membuat triangulasi gagal dan pelat malah jadi rapat. Poligonnya dipotong
-   dulu ke kotak pelat (Sutherland–Hodgman), disisakan bibir tipis di tepi. */
-function clipPolyRect(poly,x0,x1,z0,z1){
-  const lx=(a,b,x)=>{ const t=(x-a[0])/(b[0]-a[0]); return [x, a[1]+t*(b[1]-a[1])]; };
-  const lz=(a,b,z)=>{ const t=(z-a[1])/(b[1]-a[1]); return [a[0]+t*(b[0]-a[0]), z]; };
-  const edges=[[p=>p[0]>=x0,(a,b)=>lx(a,b,x0)], [p=>p[0]<=x1,(a,b)=>lx(a,b,x1)],
-               [p=>p[1]>=z0,(a,b)=>lz(a,b,z0)], [p=>p[1]<=z1,(a,b)=>lz(a,b,z1)]];
-  let out=poly;
-  for(const [inside,cut] of edges){
-    const src=out; out=[];
-    for(let i=0;i<src.length;i++){
-      const A=src[i], B=src[(i+1)%src.length], ia=inside(A), ib=inside(B);
-      if(ia){ out.push(A); if(!ib) out.push(cut(A,B)); }
-      else if(ib) out.push(cut(A,B));
+/* Denah void di sumbu lokalnya: persegi, atau bentuk L (persegi dengan takik
+   di sudut +x/+z — sudut lain dicapai dengan memutar void). */
+function voidLocalPoly(o){
+  const w=voidW(o), d=voidD(o), hw=w/2, hd=d/2;
+  if(o.params.shape!=='L') return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]];
+  const cw=clamp((o.params.cw||w/2)*(o.sx||1),0.05,w-0.05);
+  const cd=clamp((o.params.cd||d/2)*(o.sz||1),0.05,d-0.05);
+  return [[-hw,-hd],[hw,-hd],[hw,hd-cd],[hw-cw,hd-cd],[hw-cw,hd],[-hw,hd]];
+}
+function voidPolygon(o){
+  const a=o.rotY||0, c=Math.cos(a), sn=Math.sin(a);
+  return voidLocalPoly(o).map(([px,pz])=>[o.x+px*c+pz*sn, o.z-px*sn+pz*c]);
+}
+
+/* ---------------------------------------------------------------------
+   PELAT LANTAI BERLUBANG
+   Lubang tidak dipasang sebagai "hole" pada satu Shape: triangulasi earcut
+   menolak lubang yang saling tumpang tindih, menjorok keluar tepi, atau
+   cekung seperti bentuk L — dan kegagalannya diam-diam, pelat malah jadi
+   rapat kembali.
+   Yang dipakai: pelat diiris menjadi pita tegak di setiap x penting (tiap
+   titik sudut void dan tiap perpotongan tepi antar void). Di dalam satu
+   pita, susunan lubang tidak berubah dan tiap tepi lurus, sehingga sisa
+   pelat pada pita itu persis sekumpulan trapesium — dihitung, bukan
+   ditebak. Tumpang tindih selesai sendiri karena selang yang beririsan
+   digabung dulu.
+   --------------------------------------------------------------------- */
+function segCrossX(a1,a2,b1,b2){
+  const d1x=a2[0]-a1[0], d1z=a2[1]-a1[1], d2x=b2[0]-b1[0], d2z=b2[1]-b1[1];
+  const den=d1x*d2z-d1z*d2x;
+  if(Math.abs(den)<1e-12) return null;                 // sejajar
+  const t=((b1[0]-a1[0])*d2z-(b1[1]-a1[1])*d2x)/den;
+  const u=((b1[0]-a1[0])*d1z-(b1[1]-a1[1])*d1x)/den;
+  if(t<0||t>1||u<0||u>1) return null;
+  return a1[0]+t*d1x;
+}
+const pointInPoly=(x,z,poly)=>{
+  let c=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const [xi,zi]=poly[i], [xj,zj]=poly[j];
+    if((zi>z)!==(zj>z) && x < (xj-xi)*(z-zi)/(zj-zi)+xi) c=!c;
+  }
+  return c;
+};
+/* selang z yang ditempati poligon pada garis tegak x (aturan setengah
+   terbuka: tiap sisi menyumbang tepat satu perpotongan) */
+function spansAt(poly,x){
+  const zs=[];
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i], b=poly[(i+1)%poly.length];
+    if((a[0]<=x&&b[0]>x)||(b[0]<=x&&a[0]>x))
+      zs.push(a[1]+((x-a[0])/(b[0]-a[0]))*(b[1]-a[1]));
+  }
+  zs.sort((p,q)=>p-q);
+  const out=[];
+  for(let i=0;i+1<zs.length;i+=2) out.push([zs[i],zs[i+1]]);
+  return out;
+}
+function slabStrips(x0,x1,z0,z1,polys){
+  const xs=new Set([x0,x1]);
+  const addX=x=>{ if(x>x0+1e-6&&x<x1-1e-6) xs.add(x); };
+  const edges=[];
+  for(const p of polys){
+    for(const v of p) addX(v[0]);
+    for(let i=0;i<p.length;i++) edges.push([p[i],p[(i+1)%p.length]]);
+  }
+  for(let i=0;i<edges.length;i++)
+    for(let j=i+1;j<edges.length;j++){
+      const X=segCrossX(edges[i][0],edges[i][1],edges[j][0],edges[j][1]);
+      if(X!=null) addX(X);
     }
-    if(out.length<3) return [];
+  // Perpotongan yang sama bisa terhitung dua kali dengan selisih sepersekian
+  // nanometer. Kalau dibiarkan, pita di kiri dan di kanan memakai nilai x yang
+  // berbeda, dinding dalamnya tidak saling meniadakan, dan garis jahitan itu
+  // terlihat di permukaan pelat. Jadi nilai yang praktis sama dirapatkan.
+  const raw=[...xs].sort((a,b)=>a-b), xv=[];
+  for(const v of raw) if(!xv.length || v-xv[xv.length-1]>1e-5) xv.push(v);
+  const strips=[];
+  for(let k=0;k+1<xv.length;k++){
+    const xa=xv[k], xb=xv[k+1], wd=xb-xa;
+    if(wd<1e-9) continue;
+    // dicuplik sedikit di dalam pita supaya tidak jatuh tepat di titik sudut,
+    // lalu dikembalikan ke tepi pita secara linear — tepinya memang lurus
+    const sa=xa+wd*1e-4, sb=xb-wd*1e-4, span=sb-sa;
+    const items=[];
+    for(const p of polys){
+      const A=spansAt(p,sa), B=spansAt(p,sb);
+      if(A.length!==B.length) continue;
+      const toEdge=(va,vb)=>[va+(vb-va)*(xa-sa)/span, va+(vb-va)*(xb-sa)/span];
+      for(let i=0;i<A.length;i++){
+        const lo=toEdge(A[i][0],B[i][0]), hi=toEdge(A[i][1],B[i][1]);
+        items.push({a0:A[i][0], a1:A[i][1], loA:lo[0], loB:lo[1], hiA:hi[0], hiB:hi[1]});
+      }
+    }
+    items.sort((p,q)=>p.a0-q.a0);
+    const merged=[];
+    for(const it of items){
+      const last=merged[merged.length-1];
+      if(last && it.a0<=last.a1+1e-9){
+        last.a1=Math.max(last.a1,it.a1);
+        last.loA=Math.min(last.loA,it.loA); last.loB=Math.min(last.loB,it.loB);
+        last.hiA=Math.max(last.hiA,it.hiA); last.hiB=Math.max(last.hiB,it.hiB);
+      } else merged.push({...it});
+    }
+    const free=[];
+    let ca=z0, cb=z0;
+    const emit=(za,zb)=>{
+      if(za-ca>1e-6||zb-cb>1e-6) free.push([ca,Math.max(ca,za),cb,Math.max(cb,zb)]);
+    };
+    for(const m of merged){
+      emit(clamp(m.loA,z0,z1), clamp(m.loB,z0,z1));
+      ca=Math.max(ca,clamp(m.hiA,z0,z1));
+      cb=Math.max(cb,clamp(m.hiB,z0,z1));
+    }
+    emit(z1,z1);
+    if(free.length) strips.push({xa,xb,free});
+  }
+  return strips;
+}
+
+/* Dua pita bertetangga menghitung nilai z di garis pemisahnya dari cuplikan
+   yang berbeda, jadi hasilnya bisa meleset beberapa nanometer. Sepele, tetapi
+   cukup untuk meninggalkan celah rambut di permukaan dan menyisakan dinding
+   tipis yang mestinya saling meniadakan — maka nilainya dirapatkan dulu. */
+function snapStripSeams(strips,tol){
+  const lines=new Map();
+  const add=(x,v,set)=>{ const a=lines.get(x)||[]; a.push({v,set}); lines.set(x,a); };
+  for(const st of strips) for(const f of st.free){
+    add(st.xa,f[0],v=>f[0]=v); add(st.xa,f[1],v=>f[1]=v);
+    add(st.xb,f[2],v=>f[2]=v); add(st.xb,f[3],v=>f[3]=v);
+  }
+  for(const arr of lines.values()){
+    arr.sort((a,b)=>a.v-b.v);
+    let i=0;
+    while(i<arr.length){
+      let j=i, sum=arr[i].v;
+      while(j+1<arr.length && arr[j+1].v-arr[i].v<=tol){ j++; sum+=arr[j].v; }
+      const m=sum/(j-i+1);
+      for(let k=i;k<=j;k++) arr[k].set(m);
+      i=j+1;
+    }
+  }
+}
+
+/* Pelat dirakit sendiri, bukan lewat ExtrudeGeometry per potongan: kalau tiap
+   trapesium diberi dinding sendiri, jahitan antar pita ikut terlihat sebagai
+   garis gelap di permukaan. Jadi tutup atas-bawah dibuat per trapesium,
+   sedangkan dinding tegak hanya dibuat di batas yang benar-benar batas —
+   di garis pemisah pita dipakai selisih simetris antara selang pita kiri dan
+   pita kanan, sehingga dinding dalam yang saling menempel lenyap. */
+function xorIntervals(A,B){
+  const pts=[...new Set([...A.flat(),...B.flat()])].sort((a,b)=>a-b), out=[];
+  for(let i=0;i+1<pts.length;i++){
+    const m=(pts[i]+pts[i+1])/2;
+    if(pts[i+1]-pts[i]<1e-7) continue;
+    const ia=A.some(([a,b])=>m>a&&m<b), ib=B.some(([a,b])=>m>a&&m<b);
+    if(ia===ib) continue;
+    const last=out[out.length-1];
+    if(last && Math.abs(last[1]-pts[i])<1e-9) last[1]=pts[i+1];
+    else out.push([pts[i],pts[i+1]]);
   }
   return out;
 }
-const polyArea = pts => Math.abs(pts.reduce((a,p,i)=>{
-  const q=pts[(i+1)%pts.length]; return a+(p[0]*q[1]-q[0]*p[1]); },0))/2;
+function slabGeometry(strips,T,insideFn){
+  const pos=[];
+  const tri=(a,b,c)=>pos.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
+  const quad=(a,b,c,d)=>{ tri(a,b,c); tri(a,c,d); };
+  // tutup atas & bawah
+  for(const st of strips) for(const [za0,za1,zb0,zb1] of st.free){
+    const A=[st.xa,0,za0], B=[st.xa,0,za1], C=[st.xb,0,zb1], D=[st.xb,0,zb0];
+    quad(A,B,C,D);                                    // normal +Y
+    const a=[st.xa,-T,za0], b=[st.xa,-T,za1], c=[st.xb,-T,zb1], d=[st.xb,-T,zb0];
+    quad(a,d,c,b);                                    // normal −Y
+  }
+  // dinding tegak: arah hadap ditentukan dari sisi mana yang masih pelat
+  const wall=(px,pz,qx,qz)=>{
+    const dx=qx-px, dz=qz-pz;
+    if(Math.hypot(dx,dz)<1e-6) return;
+    const len=Math.hypot(dx,dz), nx=dz/len, nz=-dx/len;   // normal dari urutan P→Q
+    const mx=(px+qx)/2, mz=(pz+qz)/2, e=0.004;
+    const flip = insideFn(mx+nx*e, mz+nz*e);              // sisi itu masih pelat → balik
+    const P0=[px,0,pz], Q0=[qx,0,qz], Q1=[qx,-T,qz], P1=[px,-T,pz];
+    if(flip) quad(P0,P1,Q1,Q0); else quad(P0,Q0,Q1,P1);
+  };
+  for(const st of strips) for(const [za0,za1,zb0,zb1] of st.free){
+    wall(st.xa,za0, st.xb,zb0);                        // tepi bawah trapesium
+    wall(st.xb,zb1, st.xa,za1);                        // tepi atas trapesium
+  }
+  // garis pemisah pita (termasuk tepi terluar pelat)
+  const lines=new Map();
+  const put=(x,side,iv)=>{ const e=lines.get(x)||{L:[],R:[]}; e[side].push(iv); lines.set(x,e); };
+  for(const st of strips){
+    for(const [za0,za1,zb0,zb1] of st.free){
+      put(st.xa,'R',[za0,za1]);
+      put(st.xb,'L',[zb0,zb1]);
+    }
+  }
+  for(const [x,e] of lines)
+    for(const [lo,hi] of xorIntervals(e.L,e.R)) wall(x,lo,x,hi);
 
-const voidCorners = o => {
-  const hw=voidW(o)/2, hd=voidD(o)/2, a=o.rotY||0, c=Math.cos(a), sn=Math.sin(a);
-  return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]]
-    .map(([px,pz])=>[o.x+px*c+pz*sn, o.z-px*sn+pz*c]);
-};
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.computeVertexNormals();
+  return geo;
+}
 
 function buildSlab(lv){
   if(!lv.walls.length) return null;
@@ -687,50 +864,36 @@ function buildSlab(lv){
     m.castShadow=false;
     return m;
   }
-  // Pelat berlubang: denah digambar sebagai Shape (sumbu z dibalik supaya
-  // setelah dimiringkan ke bidang XZ arahnya tetap), tiap void jadi Path lubang.
   const x0=minX-pad, x1=maxX+pad, z0=minZ-pad, z1=maxZ+pad;
-  const shape=new THREE.Shape();
-  shape.moveTo(x0,-z0); shape.lineTo(x1,-z0); shape.lineTo(x1,-z1); shape.lineTo(x0,-z1);
-  shape.closePath();
-  const eps=0.02;
-  for(const v of voids){
-    const pts=clipPolyRect(voidCorners(v),x0+eps,x1-eps,z0+eps,z1-eps);
-    if(pts.length<3 || polyArea(pts)<0.02) continue;
-    const hole=new THREE.Path();
-    hole.moveTo(pts[0][0],-pts[0][1]);
-    for(let i=1;i<pts.length;i++) hole.lineTo(pts[i][0],-pts[i][1]);
-    hole.closePath();
-    shape.holes.push(hole);
-  }
-  if(!shape.holes.length){
-    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, MAT.slab,
-                (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
-    m.castShadow=false;
-    return m;
-  }
-  const geo=new THREE.ExtrudeGeometry(shape,{depth:T,bevelEnabled:false});
-  geo.rotateX(-Math.PI/2);        // denah XY → bidang XZ, tebal ke arah +Y
-  geo.translate(0,-T,0);          // permukaan atas rata dengan lantai (y=0)
-  geo.computeVertexNormals();
-  const m=new THREE.Mesh(geo,MAT.slab);
+  const polys=voids.map(voidPolygon);
+  const strips=slabStrips(x0,x1,z0,z1,polys);
+  if(!strips.length) return null;                      // seluruh pelat berlubang
+  snapStripSeams(strips,1e-6);
+  const inSlab=(x,z)=>{
+    if(x<x0||x>x1||z<z0||z>z1) return false;
+    for(const p of polys) if(pointInPoly(x,z,p)) return false;
+    return true;
+  };
+  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),MAT.slab);
   m.castShadow=false; m.receiveShadow=true;
   return m;
 }
 
-/* Kotak bantu void: hanya penanda di editor — transparan, tidak ikut diekspor. */
+/* Penanda void: hanya alat bantu di editor — transparan, tidak ikut diekspor.
+   Bentuknya mengikuti poligon void supaya persis sama dengan lubangnya. */
 function buildVoid(o){
-  const g=new THREE.Group();
-  const w=o.params.w||1, d=o.params.d||1, T=STD.slabT;
-  const fill=new THREE.Mesh(new THREE.BoxGeometry(w,T*1.05,d),
-    new THREE.MeshBasicMaterial({color:0x4ec9b0, transparent:true, opacity:0.16,
-                                 depthWrite:false, side:THREE.DoubleSide}));
-  fill.position.y=-T/2;
-  const edge=new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(w,T*1.05,d)),
-    new THREE.LineBasicMaterial({color:0x4ec9b0}));
-  edge.position.y=-T/2;
-  g.add(fill); g.add(edge);
+  const g=new THREE.Group(), T=STD.slabT;
+  const poly=voidLocalPoly(o);
+  const sh=new THREE.Shape();
+  sh.moveTo(poly[0][0],-poly[0][1]);
+  for(let i=1;i<poly.length;i++) sh.lineTo(poly[i][0],-poly[i][1]);
+  sh.closePath();
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:T*1.05,bevelEnabled:false});
+  geo.rotateX(-Math.PI/2); geo.translate(0,-T*1.05/2,0);
+  g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x4ec9b0, transparent:true,
+        opacity:0.16, depthWrite:false, side:THREE.DoubleSide})));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({color:0x4ec9b0})));
   g.traverse(c=>{ c.userData.noExport=true; c.castShadow=false; c.receiveShadow=false; });
   return g;
 }
@@ -1400,8 +1563,18 @@ function renderInspector(){
   } else if(d.kind==='void'){
     const h=el('h3',null,'Void'); h.appendChild(el('span','tag','lubang pelat'));
     ins.appendChild(h);
+    fRow(ins,'Bentuk',selInput([['rect','Persegi'],['L','Bentuk L']],d.params.shape==='L'?'L':'rect',v=>{
+      d.params.shape=v;
+      if(v==='L'){ d.params.cw=d.params.cw||voidW(d)/2; d.params.cd=d.params.cd||voidD(d)/2; }
+      rebuildScene(); renderInspector();
+    }));
     fRow(ins,'Lebar X (m)',numInput(voidW(d),0.05,v=>{ d.params.w=clamp(v,0.3,40); d.sx=1; rebuildScene(); renderInspector(); },0.3,40));
     fRow(ins,'Panjang Z (m)',numInput(voidD(d),0.05,v=>{ d.params.d=clamp(v,0.3,40); d.sz=1; rebuildScene(); renderInspector(); },0.3,40));
+    if(d.params.shape==='L'){
+      fRow(ins,'Takik X (m)',numInput((d.params.cw||voidW(d)/2)*(d.sx||1),0.05,v=>{ d.params.cw=clamp(v,0.05,voidW(d)-0.05); d.sx=1; rebuildScene(); renderInspector(); }));
+      fRow(ins,'Takik Z (m)',numInput((d.params.cd||voidD(d)/2)*(d.sz||1),0.05,v=>{ d.params.cd=clamp(v,0.05,voidD(d)-0.05); d.sz=1; rebuildScene(); renderInspector(); }));
+      ins.appendChild(el('p','hint','Takik dipotong dari sudut +X/+Z; putar void untuk memindah sudutnya.'));
+    }
     fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
     fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
     fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
@@ -1560,7 +1733,9 @@ function addObject(kind,type){
     o.params={ variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
                rise:0, steps:0, radius:0.95, sweep:270, landing:1.1, gap:0.1, railing:true };
   }
-  if(kind==='void') o.params={ w:1.2, d:3.0 };
+  if(kind==='void') o.params = type==='L'
+      ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5 }
+      : { shape:'rect', w:1.2, d:3.0 };
   lv.objects.push(o);
   SEL={kind:'obj',id:o.id};
   HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
@@ -3260,11 +3435,13 @@ function renderCatalogs(){
     cs.appendChild(b);
   }
   const cv=$('#cat-void'); cv.innerHTML='';
-  const bv=el('div','cat-item');
-  bv.innerHTML='<span class="ic">▭</span>Void persegi';
-  bv.title='Lubang pada pelat lantai aktif';
-  bv.onclick=()=>addObject('void','rect');
-  cv.appendChild(bv);
+  for(const [t,ic,lb] of [['rect','▭','Void persegi'],['L','◣','Void bentuk L']]){
+    const bv=el('div','cat-item');
+    bv.innerHTML=`<span class="ic">${ic}</span>${lb}`;
+    bv.title='Lubang pada pelat lantai aktif';
+    bv.onclick=()=>addObject('void',t);
+    cv.appendChild(bv);
+  }
 
   const cf=$('#cat-furn'); cf.innerHTML='';
   const filt=$('#furn-filter').value;
