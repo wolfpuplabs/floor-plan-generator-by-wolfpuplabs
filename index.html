@@ -398,6 +398,8 @@ const STD = {
   treadMin:0.25, treadTarget:0.28,
   stairWidthMin:0.90,
   headroom:2.00,                               // ruang bebas kepala di bawah pelat
+  guardH:1.00, guardMin:0.90,                  // pagar pengaman tepi void
+  railH:0.95,                                  // pegangan tangga
   slabT:0.20                                   // tebal pelat lantai
 };
 const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
@@ -880,21 +882,67 @@ function buildSlab(lv){
 }
 
 /* Penanda void: hanya alat bantu di editor — transparan, tidak ikut diekspor.
-   Bentuknya mengikuti poligon void supaya persis sama dengan lubangnya. */
-function buildVoid(o){
-  const g=new THREE.Group(), T=STD.slabT;
-  const poly=voidLocalPoly(o);
+   Bentuknya mengikuti poligon void supaya persis sama dengan lubangnya.
+   Pagar pengamannya sebaliknya bangunan sungguhan, jadi ikut diekspor. */
+function voidShape(poly){
   const sh=new THREE.Shape();
   sh.moveTo(poly[0][0],-poly[0][1]);
   for(let i=1;i<poly.length;i++) sh.lineTo(poly[i][0],-poly[i][1]);
   sh.closePath();
-  const geo=new THREE.ExtrudeGeometry(sh,{depth:T*1.05,bevelEnabled:false});
+  return sh;
+}
+/* Nama sisi dilihat dari normal luarnya (poligon berputar berlawanan jarum
+   jam), supaya pemakai tahu sisi mana yang sedang dibuka untuk jalan masuk. */
+function voidSideName(a,b){
+  const ox=b[1]-a[1], oz=-(b[0]-a[0]);
+  return Math.abs(ox)>Math.abs(oz) ? (ox>0?'Kanan (+X)':'Kiri (−X)')
+                                   : (oz>0?'Belakang (+Z)':'Depan (−Z)');
+}
+function voidSideLabels(poly){
+  const seen={}, out=[];
+  for(let i=0;i<poly.length;i++){
+    const nm=voidSideName(poly[i],poly[(i+1)%poly.length]);
+    seen[nm]=(seen[nm]||0)+1;
+    out.push(seen[nm]>1 ? `${nm} ${seen[nm]}` : nm);
+  }
+  return out;
+}
+function buildVoidRail(o,poly){
+  const rg=new THREE.Group();
+  const h=clamp(o.params.railH||STD.guardH,0.6,1.6);
+  const open=new Set(o.params.openSides||[]);
+  const inset=0.04;                       // tiang berdiri di pelat, bukan di lubang
+  for(let i=0;i<poly.length;i++){
+    if(open.has(i)) continue;
+    const a=poly[i], b=poly[(i+1)%poly.length];
+    const dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz);
+    if(len<0.15) continue;
+    const nx=dz/len, nz=-dx/len;          // normal KELUAR: tiang berdiri di pelat,
+    const ax=a[0]+nx*inset, az=a[1]+nz*inset, bx=b[0]+nx*inset, bz=b[1]+nz*inset;
+    const posts=Math.max(2,Math.round(len/0.9)+1);
+    for(let k=0;k<posts;k++){
+      const t=k/(posts-1);
+      rg.add(cyl(0.016,0.016,h,MAT.metal, ax+(bx-ax)*t, h/2, az+(bz-az)*t, 8));
+    }
+    const rail=box(len,0.05,0.05,MAT.wood,(ax+bx)/2,h+0.025,(az+bz)/2);
+    rail.rotation.y=-Math.atan2(dz,dx);
+    rg.add(rail);
+  }
+  return rg;
+}
+function buildVoid(o){
+  const g=new THREE.Group(), T=STD.slabT;
+  const poly=voidLocalPoly(o);
+  const geo=new THREE.ExtrudeGeometry(voidShape(poly),{depth:T*1.05,bevelEnabled:false});
   geo.rotateX(-Math.PI/2); geo.translate(0,-T*1.05/2,0);
-  g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x4ec9b0, transparent:true,
+  const mark=new THREE.Group();
+  mark.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x4ec9b0, transparent:true,
         opacity:0.16, depthWrite:false, side:THREE.DoubleSide})));
-  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+  mark.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
         new THREE.LineBasicMaterial({color:0x4ec9b0})));
-  g.traverse(c=>{ c.userData.noExport=true; c.castShadow=false; c.receiveShadow=false; });
+  mark.traverse(c=>{ c.userData.noExport=true; c.castShadow=false; c.receiveShadow=false; });
+  g.add(mark);
+  if(o.params.railing) g.add(buildVoidRail(o,poly));
   return g;
 }
 
@@ -933,6 +981,7 @@ function buildStair(o, lv){
   const c=stairCalc(p, lv.height);
   const {n,riser,tread,width}=c;
   const mat=MAT.step;
+  const mir=p.mirror?-1:1;        // arah belok: kanan (1) atau kiri (−1)
 
   // count anak tangga, mulai anak ke-startStep, menyusuri sumbu axis ke arah sign dari (ox,oz)
   const flight=(count,startStep,axis,sign,ox,oz)=>{
@@ -988,19 +1037,24 @@ function buildStair(o, lv){
     const n1=Math.ceil(n/2);
     g.add(flight(n1,0,'z',1,0,0));
     g.add(landing(width,width,0,n1*tread+width/2,n1*riser));
-    g.add(flight(n-n1,n1,'x',1,width/2,n1*tread+width/2));
+    g.add(flight(n-n1,n1,'x',mir,mir*width/2,n1*tread+width/2));
   }
   else if(p.variant==='u_shape'){            // putar balik 180°
+    // Bordes harus tetap kosong: orang menapak ke bordes dulu, baru berbalik
+    // dan naik lagi di jalur sebelahnya. Karena itu tanjakan kedua berangkat
+    // dari TEPI DEKAT bordes dan berjalan balik — bukan dari tepi jauhnya,
+    // yang membuat anak tangganya menimpa bordes dan tangga tak bisa dilalui.
     const n1=Math.ceil(n/2), gap=p.gap!==undefined?p.gap:0.1;
+    const off=mir*(width+gap);
     g.add(flight(n1,0,'z',1,0,0));
-    g.add(landing(2*width+gap,width,(width+gap)/2,n1*tread+width/2,n1*riser));
-    g.add(flight(n-n1,n1,'z',-1,width+gap,n1*tread+width));
+    g.add(landing(2*width+gap,width,off/2,n1*tread+width/2,n1*riser));
+    g.add(flight(n-n1,n1,'z',-1,off,n1*tread));
   }
   else if(p.variant==='spiral'){             // tangga putar mengelilingi tiang
     const R=p.radius||0.95, sweep=(p.sweep||270)*D2R, step=sweep/n;
     g.add(cyl(0.075,0.075,c.rise+0.9,MAT.metal,0,(c.rise+0.9)/2,0,18));
     for(let i=0;i<n;i++){
-      const a=i*step, r0=0.12, a0=-step/2, a1=step/2;
+      const a=mir*i*step, r0=0.12, a0=-step/2, a1=step/2;
       const shape=new THREE.Shape();
       shape.moveTo(Math.cos(a0)*r0, Math.sin(a0)*r0);
       for(let k=0;k<=8;k++){ const t=a0+(a1-a0)*k/8; shape.lineTo(Math.cos(t)*R, Math.sin(t)*R); }
@@ -1278,8 +1332,11 @@ function buildObject(o, lv){
   }
   g.position.set(o.x,o.y||0,o.z);
   g.rotation.y=o.rotY||0;
-  g.scale.set(o.sx||1,o.sy||1,o.sz||1);
-  g.userData={kind:'obj', id:o.id, noExport:o.kind==='void'};
+  // ukuran void sudah termasuk skalanya di dalam poligon, jadi grupnya tidak
+  // diskalakan lagi; gizmo tetap menskalakan grup secara langsung saat ditarik
+  if(o.kind==='void') g.scale.set(1,1,1);
+  else g.scale.set(o.sx||1,o.sy||1,o.sz||1);
+  g.userData={kind:'obj', id:o.id};
   return g;
 }
 
@@ -1538,6 +1595,14 @@ function renderInspector(){
       fRow(ins,'Radius (m)',numInput(d.params.radius,0.05,v=>{ d.params.radius=clamp(v,0.5,3); rebuildScene(); },0.5,3));
       fRow(ins,'Sudut putar (°)',numInput(d.params.sweep,15,v=>{ d.params.sweep=clamp(v,90,1080); rebuildScene(); },90,1080));
     }
+    if(d.params.variant==='l_shape'||d.params.variant==='u_shape'||d.params.variant==='spiral'){
+      const ml=el('label','chk'); const mc=document.createElement('input');
+      mc.type='checkbox'; mc.checked=!!d.params.mirror;
+      mc.onchange=()=>{ d.params.mirror=mc.checked; rebuildScene(); };
+      ml.appendChild(mc);
+      ml.appendChild(el('span',null, d.params.variant==='spiral' ? 'Putar balik arah' : 'Cermin (belok ke kiri)'));
+      ins.appendChild(ml);
+    }
     if(d.params.variant==='landing') fRow(ins,'Bordes (m)',numInput(d.params.landing,0.1,v=>{ d.params.landing=clamp(v,0.8,3); rebuildScene(); },0.8,3));
     if(d.params.variant==='u_shape') fRow(ins,'Celah (m)',numInput(d.params.gap,0.05,v=>{ d.params.gap=clamp(v,0,0.6); rebuildScene(); },0,0.6));
     const rl=el('label','chk'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!d.params.railing;
@@ -1578,7 +1643,35 @@ function renderInspector(){
     fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
     fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
     fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
-    ins.appendChild(el('div','badge ok','Lubang ini memotong pelat lantai ' + L().name + '. Kotak hijau hanya penanda di editor — tidak ikut diekspor.'));
+    ins.appendChild(el('div','section-title','Pagar Pengaman'));
+    const rl=el('label','chk'); const rc=document.createElement('input');
+    rc.type='checkbox'; rc.checked=!!d.params.railing;
+    rc.onchange=()=>{ d.params.railing=rc.checked; rebuildScene(); renderInspector(); };
+    rl.appendChild(rc); rl.appendChild(el('span',null,'Pasang pagar di tepi void'));
+    ins.appendChild(rl);
+    if(d.params.railing){
+      fRow(ins,'Tinggi pagar (m)',numInput(d.params.railH||STD.guardH,0.05,v=>{
+        d.params.railH=clamp(v,0.6,1.6); rebuildScene(); renderInspector(); },0.6,1.6));
+      const hh=d.params.railH||STD.guardH;
+      if(hh<STD.guardMin)
+        ins.appendChild(el('div','badge warn',`⚠ tinggi ${fmt(hh*100,0)} cm < ${fmt(STD.guardMin*100,0)} cm, batas aman tepi lubang lantai`));
+      const labs=voidSideLabels(voidLocalPoly(d));
+      const open=new Set(d.params.openSides||[]);
+      ins.appendChild(el('p','hint','Buka sisi tempat orang masuk — misalnya sisi tangga. Arah sisi dihitung pada sumbu void sendiri, sebelum diputar.'));
+      labs.forEach((nm,i)=>{
+        const sl=el('label','chk'); const sc=document.createElement('input');
+        sc.type='checkbox'; sc.checked=open.has(i);
+        sc.onchange=()=>{
+          const set=new Set(d.params.openSides||[]);
+          sc.checked ? set.add(i) : set.delete(i);
+          d.params.openSides=[...set].sort((a,b)=>a-b);
+          rebuildScene();
+        };
+        sl.appendChild(sc); sl.appendChild(el('span',null,'Sisi terbuka: '+nm));
+        ins.appendChild(sl);
+      });
+    }
+    ins.appendChild(el('div','badge ok','Lubang ini memotong pelat lantai ' + L().name + '. Kotak hijau hanya penanda di editor — tidak ikut diekspor, tetapi pagarnya ikut.'));
 
   } else {
     const def=FURN[d.type];
@@ -1693,7 +1786,9 @@ function pushVoid(level,r){
   // void yang sudah ada di titik yang sama tidak digandakan
   if(level.objects.some(o=>o.kind==='void' && Math.hypot(o.x-r.x,o.z-r.z)<0.4)) return false;
   level.objects.push({ id:uid('ob'), kind:'void', type:'rect', x:r.x, y:0, z:r.z,
-                       rotY:r.rotY, sx:1, sy:1, sz:1, params:{ w:r.w, d:r.d } });
+                       rotY:r.rotY, sx:1, sy:1, sz:1,
+                       params:{ shape:'rect', w:r.w, d:r.d,
+                                railing:false, railH:STD.guardH, openSides:[] } });
   return true;
 }
 function makeStairVoid(o){
@@ -1731,11 +1826,15 @@ function addObject(kind,type){
             rotY:0, sx:1, sy:1, sz:1, params:{} };
   if(kind==='stair'){
     o.params={ variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
-               rise:0, steps:0, radius:0.95, sweep:270, landing:1.1, gap:0.1, railing:true };
+               rise:0, steps:0, radius:0.95, sweep:270, landing:1.1, gap:0.1,
+               railing:true, mirror:false };
   }
+  // void yang dibuat sendiri adalah lubang terbuka di lantai, jadi pagarnya
+  // langsung dipasang; void dari tangga dibiarkan terbuka karena tangganya
+  // sendiri yang mengisi lubang itu
   if(kind==='void') o.params = type==='L'
-      ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5 }
-      : { shape:'rect', w:1.2, d:3.0 };
+      ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5, railing:true, railH:STD.guardH, openSides:[] }
+      : { shape:'rect', w:1.2, d:3.0, railing:true, railH:STD.guardH, openSides:[] };
   lv.objects.push(o);
   SEL={kind:'obj',id:o.id};
   HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
@@ -3563,7 +3662,15 @@ function arBuildScene(){
     for(const w of lv.walls){ lg.add(buildWallGroup(w,lv)); n++; }
     lg.add(buildJunctions(lv));
     if(lv.slab && $('#showSlab').checked){ const sl=buildSlab(lv); if(sl){ lg.add(sl); n++; } }
-    for(const o of lv.objects){ if(o.kind==='void') continue; lg.add(buildObject(o,lv)); n++; }
+    for(const o of lv.objects){
+      const og=buildObject(o,lv);
+      if(o.kind==='void'){                       // penanda dibuang, pagarnya ikut
+        const drop=[]; og.traverse(c=>{ if(c.userData.noExport) drop.push(c); });
+        for(const c of drop) if(c.parent) c.parent.remove(c);
+        if(!og.children.length) continue;
+      }
+      lg.add(og); n++;
+    }
     root.add(lg);
   });
   return n ? root : null;
