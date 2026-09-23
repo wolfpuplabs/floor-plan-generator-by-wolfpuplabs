@@ -603,7 +603,14 @@ function buildSlab(lv){
    ====================================================================== */
 function stairCalc(p, levelHeight){
   const rise = p.rise>0 ? p.rise : levelHeight;
-  const n    = Math.max(2, Math.round(rise/clamp(p.riserTarget||STD.riserTarget, STD.riserMin, STD.riserMax)));
+  // Bila jumlah anak tangga terbaca dari gambar, itu yang dipakai supaya
+  // denah 3D sepanjang tangga yang benar-benar digambar; optrede tinggal
+  // dibagi dari tinggi lantai dan kesesuaiannya ditampilkan di inspector.
+  const auto = Math.max(2, Math.round(rise/clamp(p.riserTarget||STD.riserTarget, STD.riserMin, STD.riserMax)));
+  let n = p.steps>0 ? Math.max(2,Math.round(p.steps)) : auto;
+  // jumlah yang terbaca dari gambar hanya dipakai bila optrede-nya masih masuk
+  // akal; kalau tidak, pembacaannya yang meleset dan tinggi lantai yang dipakai
+  if(rise/n < 0.10 || rise/n > 0.25) n = auto;
   const riser= rise/n;
   const tread= p.tread||STD.treadTarget;
   return {rise, n, riser, tread, width:p.width||1.0, formula:2*riser+tread};
@@ -1217,6 +1224,8 @@ function renderInspector(){
     fRow(ins,'Antrede (m)',numInput(d.params.tread,0.01,v=>{ d.params.tread=clamp(v,0.2,0.4); rebuildScene(); renderInspector(); },0.2,0.4));
     fRow(ins,'Optrede ideal',numInput(d.params.riserTarget,0.005,v=>{ d.params.riserTarget=clamp(v,0.12,0.21); rebuildScene(); renderInspector(); },0.12,0.21));
     fRow(ins,'Tinggi naik (m)',numInput(d.params.rise||0,0.05,v=>{ d.params.rise=v<=0?0:v; rebuildScene(); renderInspector(); },0,12));
+    fRow(ins,'Jumlah anak tangga',numInput(d.params.steps||0,1,v=>{ d.params.steps=v<=0?0:Math.round(v); rebuildScene(); renderInspector(); },0,60));
+    ins.appendChild(el('p','hint','0 = dihitung dari tinggi lantai; selain itu mengikuti jumlah yang tergambar di denah.'));
     if(d.params.variant==='spiral'){
       fRow(ins,'Radius (m)',numInput(d.params.radius,0.05,v=>{ d.params.radius=clamp(v,0.5,3); rebuildScene(); },0.5,3));
       fRow(ins,'Sudut putar (°)',numInput(d.params.sweep,15,v=>{ d.params.sweep=clamp(v,90,1080); rebuildScene(); },90,1080));
@@ -1323,7 +1332,7 @@ function addObject(kind,type){
             rotY:0, sx:1, sy:1, sz:1, params:{} };
   if(kind==='stair'){
     o.params={ variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
-               rise:0, radius:0.95, sweep:270, landing:1.1, gap:0.1, railing:true };
+               rise:0, steps:0, radius:0.95, sweep:270, landing:1.1, gap:0.1, railing:true };
   }
   lv.objects.push(o);
   SEL={kind:'obj',id:o.id};
@@ -2030,6 +2039,80 @@ function thinFill(thin,w,h,s,r0,r1,dMin,dMax){
 }
 
 /* ---------------------------------------------------------------------
+   WARNA
+   Banyak denah memberi warna berbeda pada bukaan: dinding satu warna,
+   jendela dan pintu digambar sebagai bilah berwarna lain DI DALAM dinding.
+   Kegelapannya mirip, jadi pembacaan hitam-putih melewatkannya. Yang dipakai
+   di sini kromatisitas — perbandingan R:G:B tanpa terang-gelap — sehingga
+   denah hitam-putih (semua tinta netral) tidak terpengaruh sama sekali.
+   --------------------------------------------------------------------- */
+function chroma(r,g,b){
+  const s=r+g+b;
+  if(s<60) return [1/3,1/3,1/3];           // terlalu gelap: anggap netral
+  return [r/s, g/s, b/s];
+}
+const chromaDist=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
+
+/* warna khas dinding + ambang "berbeda warna", diturunkan dari sebaran
+   warna dinding itu sendiri */
+function wallInkColor(data,mask,w,h){
+  const cs=[];
+  for(let i=0;i<w*h;i++){
+    if(!mask[i]) continue;
+    const p=i*4;
+    cs.push(chroma(data[p],data[p+1],data[p+2]));
+  }
+  if(cs.length<50) return null;
+  const med=k=>{ const a=cs.map(c=>c[k]).sort((x,y)=>x-y); return a[a.length>>1]; };
+  const c=[med(0),med(1),med(2)];
+  const devs=cs.map(x=>chromaDist(x,c)).sort((a,b)=>a-b);
+  const mad=devs[devs.length>>1];
+  return {c, tol:clamp(6*mad,0.10,0.35)};
+}
+
+/* sepanjang dinding: berapa persen piksel bertinta di pita yang warnanya
+   menyimpang jauh dari warna dinding */
+function profileColorDiff(data,w,h,s,band,wc,thr){
+  const L=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  const n=Math.max(2,Math.round(L));
+  const ux=(s.x2-s.x1)/L, uy=(s.y2-s.y1)/L, nx=-uy, ny=ux;
+  const out=new Float32Array(n+1);
+  for(let i=0;i<=n;i++){
+    let ink=0, diff=0;
+    for(let d=-band;d<=band;d++){
+      const x=Math.round(s.x1+ux*i+nx*d), y=Math.round(s.y1+uy*i+ny*d);
+      if(x<0||y<0||x>=w||y>=h) continue;
+      const p=(y*w+x)*4;
+      const lum=data[p]*0.299+data[p+1]*0.587+data[p+2]*0.114;
+      if(lum>=thr) continue;                      // latar terang, bukan material
+      ink++;
+      if(chromaDist(chroma(data[p],data[p+1],data[p+2]), wc.c) > wc.tol) diff++;
+    }
+    out[i]= ink ? diff/ink : 0;
+  }
+  return out;
+}
+
+/* warna rata-rata material di satu rentang bukaan (untuk mengelompokkan
+   bilah sewarna: mana yang berarti pintu, mana yang jendela) */
+function runColor(data,w,h,s,r0,r1,band,thr){
+  const L=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  const ux=(s.x2-s.x1)/L, uy=(s.y2-s.y1)/L, nx=-uy, ny=ux;
+  const cs=[];
+  for(let i=r0;i<=r1;i++) for(let d=-band;d<=band;d++){
+    const x=Math.round(s.x1+ux*i+nx*d), y=Math.round(s.y1+uy*i+ny*d);
+    if(x<0||y<0||x>=w||y>=h) continue;
+    const p=(y*w+x)*4;
+    if(data[p]*0.299+data[p+1]*0.587+data[p+2]*0.114 >= thr) continue;
+    cs.push(chroma(data[p],data[p+1],data[p+2]));
+  }
+  if(!cs.length) return null;
+  const med=k=>{ const a=cs.map(c=>c[k]).sort((x,y)=>x-y); return a[a.length>>1]; };
+  return [med(0),med(1),med(2)];
+}
+const colorKey=c=>c?c.map(v=>Math.round(v*20)).join('_'):'';
+
+/* ---------------------------------------------------------------------
    SIMBOL LAIN DI LAPIS GARIS TIPIS
    Denah arsitektur memakai simbol baku: tangga digambar sebagai deretan
    garis antrede yang berjarak sama, pintu geser sebagai dua bilah sejajar
@@ -2056,7 +2139,7 @@ function symbolSegments(thin,w,h,pxm){
    sama panjang (lebar tangga 0.7-2.0 m). Syarat "sama panjang" inilah
    yang memisahkannya dari arsiran, yang ujungnya terpotong bentuk ruang. */
 function detectStairs(segs,pxm){
-  const out=[];
+  const out=[], pmin=0.18*pxm, pmax=0.42*pxm;
   for(const dir of ['h','v']){
     const key = s => dir==='h' ? s.y1 : s.x1;
     const rng = s => dir==='h' ? [Math.min(s.x1,s.x2),Math.max(s.x1,s.x2)]
@@ -2065,38 +2148,46 @@ function detectStairs(segs,pxm){
     const list=mergeCollinear(segs.filter(s=>s.dir===dir), 0.12*pxm)
                    .filter(s=>s.dir===dir && segLen(s)>=0.55*pxm && segLen(s)<=2.2*pxm)
                    .sort((a,b)=>key(a)-key(b));
-    let i=0;
-    while(i<list.length){
-      const grp=[list[i]];
+    const used=new Set();
+    for(let i=0;i<list.length;i++){
+      if(used.has(i)) continue;
+      const grp=[i];
+      let d0=null, intervals=0;
       for(let j=i+1;j<list.length;j++){
-        const prev=grp[grp.length-1], d=key(list[j])-key(prev);
-        if(d<0.18*pxm) continue;                       // dua garis berimpit
-        if(d>0.42*pxm) break;                          // jeda terlalu jauh
+        if(used.has(j)) continue;
+        const prev=list[grp[grp.length-1]], d=key(list[j])-key(prev);
+        if(d<pmin) continue;                       // berimpit dengan antrede sebelumnya
+        const ref=d0||d;
+        if(ref>pmax || d>2.4*ref) break;           // jeda terlalu jauh: deret selesai
+        // Satu garis antrede kerap hilang karena terpotong garis panah arah
+        // naik, jadi lompatan dua kali jarak masih diterima.
+        const mult=Math.round(d/ref);
+        if(mult<1||mult>2) continue;
+        if(Math.abs(d-mult*ref) > 0.3*ref) continue;
+        // Garis milik objek lain (perabot, teks) sering terselip di antara
+        // antrede. Yang begitu dilewati saja — bukan alasan memutus deret.
         const [a0,a1]=rng(prev), [b0,b1]=rng(list[j]);
-        if(Math.min(a1,b1)-Math.max(a0,b0) < 0.6*Math.min(a1-a0,b1-b0)) break;
-        if(grp.length>=2){
-          const d0=key(grp[1])-key(grp[0]);
-          if(Math.abs(d-d0) > 0.3*d0) break;           // jarak harus seragam
-        }
-        grp.push(list[j]);
+        if(Math.min(a1,b1)-Math.max(a0,b0) < 0.6*Math.min(a1-a0,b1-b0)) continue;
+        if(d0===null && mult===1) d0=d;
+        grp.push(j); intervals+=mult;
       }
-      if(grp.length>=5){
-        const lens=grp.map(segLen);
-        const mean=lens.reduce((a,b)=>a+b,0)/lens.length;
-        const sd=Math.sqrt(lens.reduce((a,b)=>a+(b-mean)**2,0)/lens.length);
-        const pitch=(key(grp[grp.length-1])-key(grp[0]))/(grp.length-1);
-        if(sd<0.18*mean && pitch>0.18*pxm && pitch<0.42*pxm){
-          let lo=1e9,hi=-1e9;
-          for(const s of grp){ const [a,b]=rng(s); lo=Math.min(lo,a); hi=Math.max(hi,b); }
-          out.push({
-            dir, pitch, width:mean,
-            run0:key(grp[0])-pitch/2, run1:key(grp[grp.length-1])+pitch/2,
-            cross:(lo+hi)/2, steps:grp.length+1
-          });
-          i+=grp.length; continue;
-        }
-      }
-      i++;
+      if(grp.length<5 || intervals<4) continue;
+      const segsG=grp.map(k=>list[k]);
+      const lens=segsG.map(segLen);
+      const mean=lens.reduce((a,b)=>a+b,0)/lens.length;
+      const sd=Math.sqrt(lens.reduce((a,b)=>a+(b-mean)**2,0)/lens.length);
+      // jarak dari rentang dibagi jumlah selang — tahan terhadap garis yang hilang
+      const span=key(segsG[segsG.length-1])-key(segsG[0]);
+      const pitch=span/intervals;
+      if(sd>=0.18*mean || pitch<=pmin || pitch>=pmax) continue;
+      let lo=1e9,hi=-1e9;
+      for(const sg of segsG){ const [a2,b2]=rng(sg); lo=Math.min(lo,a2); hi=Math.max(hi,b2); }
+      out.push({
+        dir, pitch, width:mean,
+        run0:key(segsG[0]), run1:key(segsG[segsG.length-1]),
+        cross:(lo+hi)/2, steps:intervals            // anak tangga = jumlah selang
+      });
+      grp.forEach(k=>used.add(k));
     }
   }
   return out;
@@ -2331,8 +2422,14 @@ function extractPlan(opt){
   }
 
   const toM=(px,py)=>({x:(px-w/2)/pxm, z:(py-h/2)/pxm});
-  const walls=[]; let nDoor=0,nWin=0,nOpen=0,nSlide=0;
 
+  // Warna khas dinding — dipakai mengenali bilah berwarna lain di dalam dinding
+  const wcol = wallInkColor(data,mask,w,h);
+
+  /* TAHAP 1 — kumpulkan calon bukaan tiap dinding beserta cirinya.
+     Penentuan jenis ditunda, sebab arti sebuah warna baru ketahuan setelah
+     seluruh denah terbaca. */
+  const ctx=[], colorStat=new Map();
   for(let si=0; si<segs.length; si++){
     const s=segs[si];
     const A=toM(s.x1,s.y1), B=toM(s.x2,s.y2);
@@ -2342,66 +2439,56 @@ function extractPlan(opt){
     t = Math.abs(nearest(t,STD.thickness)-t)<0.05 ? nearest(t,STD.thickness) : Math.round(t*100)/100;
     const wall=newWall(A.x,A.z,B.x,B.z,t,0);
     const len=wallLen(wall);
-    const band=Math.max(1,Math.round(tPx/2)-1);          // di dalam tebal dinding
-    const outer=band+Math.max(2,Math.round(0.22*pxm));   // di luar muka dinding
+    const band=Math.max(1,Math.round(tPx/2)-1);
+    const outer=band+Math.max(2,Math.round(0.22*pxm));
     const solid=profileSolid(rawClean,w,h,s,band);
-    // Patokannya kepadatan khas dinding INI, bukan angka mutlak: pada denah
-    // poche jendela tampak lebih renggang dari dindingnya, sedangkan pada
-    // denah garis-ganda justru lebih rapat karena ada garis kaca di rongga.
     const base=percentile([...solid],0.5);
-    const devs=i=>Math.abs(solid[Math.min(i,solid.length-1)]-base)>0.18;
-    const taken=[];
+    const cprof=wcol ? profileColorDiff(data,w,h,s,band,wcol,thrA) : null;
 
-    // klasifikasi satu rentang bukaan, dipakai bersama oleh busur & cekungan
-    const classify=(e0,e1,empty)=>{
-      const inner=thinFill(thin,w,h,s,e0,e1,0,band);
-      const out2 =thinFill(thin,w,h,s,e0,e1,Math.round(tPx/2)+2,outer);
-      let devCount=0; for(let i=e0;i<=e1;i++) if(devs(i)) devCount++;
-      const lined = !empty && devCount > 0.5*(e1-e0+1);
-      if(out2>0.45 && inner>0.2) return 'slider';        // dua bilah bergeser
-      if(inner>0.55 || lined) return 'window';           // garis kaca sejajar
-      return null;
+    const taken=[], items=[];
+    const stat=(key,isDoor)=>{
+      if(!key) return;
+      const e=colorStat.get(key)||{n:0,door:0};
+      e.n++; if(isDoor) e.door++;
+      colorStat.set(key,e);
     };
 
-    // 1) bukaan dari simbol busur pintu (paling dapat dipercaya)
+    // 1) bukaan dari simbol busur ayun — paling dapat dipercaya
     for(const g of (arcBySeg.get(si)||[])){
       let width=(g.b-g.a)/pxm;
       const std=nearest(width,STD.doorW);
       if(Math.abs(std-width)<0.12) width=std;
       const center=(g.a+g.b)/2/pxm;
       if(center<0.15||center>len-0.15) continue;
-      const e0=Math.max(0,Math.round(g.a)), e1=Math.min(prof.length-1,Math.round(g.b));
+      const e0=clamp(Math.round(g.a),0,prof.length-1), e1=clamp(Math.round(g.b),0,prof.length-1);
       let sumP=0; for(let i=e0;i<=e1;i++) sumP+=prof[i];
       const empty=(sumP/Math.max(1,e1-e0+1)) < 0.25*tPx;
-      // jendela berdaun ayun juga memakai busur — bedanya dindingnya tidak
-      // benar-benar dibuka, masih ada garis kaca di penampangnya
-      const kind = classify(e0,e1,empty)==='window' ? 'window' : 'door';
-      const o=newOpening(kind,center,width);
-      if(kind==='window'){ o.sill=sillH; o.head=Math.max(sillH+0.6,doorH); nWin++; }
-      else { o.sill=0; o.head=doorH; nDoor++; }
-      wall.openings.push(o);
+      const inner=thinFill(thin,w,h,s,e0,e1,0,band);
+      let devC=0; for(let i=e0;i<=e1;i++) if(Math.abs(solid[Math.min(i,solid.length-1)]-base)>0.18) devC++;
+      // jendela berdaun ayun juga memakai busur; bedanya penampang dindingnya
+      // masih berisi garis kaca
+      const isWin = inner>0.55 || (!empty && devC>0.5*(e1-e0+1));
+      items.push({e0,e1,width,center,kind:isWin?'window':'door',fixed:true});
       taken.push([g.a,g.b]);
+      if(!empty) stat(colorKey(runColor(data,w,h,s,e0,e1,band,thrA)), !isWin);
     }
 
-    // 2) bukaan sisanya, dibaca dari dua sudut pandang sekaligus:
-    //    a. profil tebal   -> lubang yang benar-benar kosong (pintu, bukaan bebas)
-    //    b. profil kepadatan -> jendela: dindingnya "ada" tapi tidak masif
+    // 2) calon lain: cekungan tebal, penampang menyimpang, ATAU beda warna
     if(detectOpen && tPx>1){
-      const cands=mergeIntervals([
+      const runs=[
         ...findRuns(prof,  v=>v < tPx*0.70),
         ...findRuns(solid, v=>Math.abs(v-base) > 0.18)
-      ]);
-      for(const [r0,r1] of cands){
+      ];
+      if(cprof) runs.push(...findRuns(cprof, v=>v>0.55));
+      for(const [r0,r1] of mergeIntervals(runs)){
         if(r0<=1 || r1>=prof.length-2) continue;
-        if(taken.some(([a,b])=>Math.min(b,r1)-Math.max(a,r0) > 0.35*(r1-r0))) continue;
-        let sumP=0;
-        for(let i=r0;i<=r1;i++) sumP+=prof[i];
+        if(taken.some(([p0,p1])=>Math.min(p1,r1)-Math.max(p0,r0) > 0.35*(r1-r0))) continue;
+        let sumP=0; for(let i=r0;i<=r1;i++) sumP+=prof[i];
         const nRun=r1-r0+1;
-        const empty = (sumP/nRun) < 0.25*tPx;
+        const empty=(sumP/nRun) < 0.25*tPx;
 
         let e0=r0, e1=r1;
         if(empty){
-          // tepi dari distance transform selalu melebar - pakai tepi lubang asli
           const inner=findRuns(prof, v=>v<=1.0).filter(([p0,p1])=>p0>=r0&&p1<=r1);
           if(inner.length){
             const i0=inner[0][0], i1=inner[inner.length-1][1];
@@ -2413,22 +2500,63 @@ function extractPlan(opt){
         const center=((e0+e1)/2)/pxm;
         if(center<0.15 || center>len-0.15) continue;
 
-        const kind=classify(e0,e1,empty);
-        let type,width=gw;
-        if(kind==='slider'){ type='slider'; nSlide++; }
-        else if(kind==='window'){ type='window'; nWin++; }
-        else if(gw<=STD.maxDoor){
-          type='door';
-          const std=nearest(gw,STD.doorW);
-          if(Math.abs(std-gw)<0.12) width=std;
-          nDoor++;
-        } else { type='opening'; nOpen++; }
-        const o=newOpening(type,center,width);
-        if(type==='window'){ o.sill=sillH; o.head=Math.max(sillH+0.6,doorH); }
-        else if(type==='opening'){ o.sill=0; o.head=doorH+0.3; }
-        else { o.sill=0; o.head=doorH; }
-        wall.openings.push(o);
+        const inner=thinFill(thin,w,h,s,e0,e1,0,band);
+        const out2 =thinFill(thin,w,h,s,e0,e1,Math.round(tPx/2)+2,outer);
+        let devC=0, meanS=0;
+        for(let i=r0;i<=r1;i++){
+          const v=solid[Math.min(i,solid.length-1)];
+          meanS+=v; if(Math.abs(v-base)>0.18) devC++;
+        }
+        meanS/=nRun;
+        // seberapa kuat warnanya menyimpang dari dinding
+        let cdev=0;
+        if(cprof){ for(let i=e0;i<=e1;i++) cdev+=cprof[Math.min(i,cprof.length-1)]; cdev/=(e1-e0+1); }
+        const col = (!empty && cdev>0.55) ? runColor(data,w,h,s,e0,e1,band,thrA) : null;
+        items.push({e0,e1,width:gw,center,empty,inner,out2,
+                    lined:!empty && devC>0.5*nRun, col, key:colorKey(col)});
+        if(col) stat(colorKey(col), false);
       }
+    }
+    ctx.push({wall,s,items,band,tPx,len});
+  }
+
+  /* TAHAP 2 — arti tiap warna dibaca dari denahnya sendiri: warna bilah yang
+     paling sering berpasangan dengan busur ayun berarti pintu, sisanya
+     jendela. Persis cara orang membaca legenda denah berwarna. */
+  const doorColors=new Set();
+  let anyArcColor=false;
+  for(const [k,e] of colorStat) if(e.door>0) anyArcColor=true;
+  if(anyArcColor){
+    for(const [k,e] of colorStat) if(e.door>0 && e.door/e.n>0.4) doorColors.add(k);
+  }
+
+  // TAHAP 3 — bentuk bukaannya
+  const walls=[]; let nDoor=0,nWin=0,nOpen=0,nSlide=0;
+  for(const cx of ctx){
+    const {wall,items}=cx;
+    for(const it of items){
+      let type, width=it.width;
+      if(it.fixed){ type=it.kind; }
+      else if(it.out2>0.45 && it.inner>0.2) type='slider';
+      else if(it.inner>0.55 || it.lined) type='window';
+      else if(it.col){
+        // bilah berwarna: pintu bila sewarna dengan bilah yang berbusur ayun,
+        // kalau denahnya tanpa busur sama sekali jatuh ke ukuran daun pintu
+        type = anyArcColor ? (doorColors.has(it.key)?'door':'window')
+                           : (it.width<=STD.maxDoor?'door':'window');
+      }
+      else if(it.width<=STD.maxDoor) type='door';
+      else type='opening';
+
+      if(type==='door'){
+        const std=nearest(width,STD.doorW);
+        if(Math.abs(std-width)<0.12) width=std;
+      }
+      const o=newOpening(type,it.center,width);
+      if(type==='window'){ o.sill=sillH; o.head=Math.max(sillH+0.6,doorH); nWin++; }
+      else if(type==='opening'){ o.sill=0; o.head=doorH+0.3; nOpen++; }
+      else { o.sill=0; o.head=doorH; if(type==='slider') nSlide++; else nDoor++; }
+      wall.openings.push(o);
     }
     walls.push(wall);
   }
@@ -2644,7 +2772,7 @@ function runGenerate(toNewLevel){
         lv.objects.push({id:uid('ob'), kind:'stair', type:'straight', fromPlan:true,
           x:st.x, y:0, z:st.z, rotY:st.rotY, sx:1, sy:1, sz:1,
           params:{variant:'straight', width:clamp(st.width,0.6,3), tread:clamp(st.tread,0.2,0.4),
-                  riserTarget:STD.riserTarget, rise:0, radius:0.95, sweep:270,
+                  riserTarget:STD.riserTarget, rise:0, steps:st.steps, radius:0.95, sweep:270,
                   landing:1.1, gap:0.1, railing:true}});
       }
       for(const f of res.fixtures){
