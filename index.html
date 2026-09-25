@@ -459,7 +459,7 @@ function newWall(x1,z1,x2,z2,t,h){
 }
 function newOpening(type,at,width){
   return { id:uid('o'), type:type||'door', at, width:width||0.8,
-           sill:type==='window'?STD.sillH:0, head:STD.doorH,
+           sill:isWindowType(type)?STD.sillH:0, head:STD.doorH,
            hinge:'L', swing:1 };          // engsel kiri, ayun ke muka +Z dinding
 }
 const L = ()=>PROJECT.levels[PROJECT.active];
@@ -880,7 +880,7 @@ function buildWallGroup(w, lv){
   for(const o of ops){
     if(o.s>cur+1e-4) panels.push([cur,o.s,0,h]);
     const head=Math.min(o.head||STD.doorH, h);
-    const sill=o.type==='window' ? clamp(o.sill||STD.sillH,0,head-0.2) : 0;
+    const sill=isWindowType(o.type) ? clamp(o.sill??STD.sillH,0,head-0.15) : 0;
     if(sill>0.01) panels.push([o.s,o.e,0,sill]);           // dinding bawah jendela
     if(head<h-0.01) panels.push([o.s,o.e,head,h]);          // lintel / ambang atas
     addOpeningDetail(g,o,sill,head,t,len);
@@ -908,48 +908,200 @@ function buildWallGroup(w, lv){
   return g;
 }
 
+/* ---------------------------------------------------------------------
+   JENIS BUKAAN
+   Ukuran bawaan mengikuti kebiasaan gambar kerja rumah tinggal: pintu kamar
+   80 cm, pintu utama ganda 140 cm, pintu garasi 280 cm setinggi 240 cm,
+   ambang jendela 90 cm, jendela nako di atas 120 cm supaya tidak terjangkau
+   dari luar, dan bovenlicht di atas kusen pintu (210–245 cm) untuk
+   pertukaran udara. w = [terkecil, terbesar, bawaan].
+   --------------------------------------------------------------------- */
+const OPENING={
+  door        :{l:'Pintu ayun',              j:'pintu',   w:[0.6,1.1,0.8], sill:0,    head:2.1,  ayun:1, engsel:1},
+  door_glass  :{l:'Pintu kaca',              j:'pintu',   w:[0.7,1.2,0.9], sill:0,    head:2.1,  ayun:1, engsel:1},
+  door2       :{l:'Pintu ganda (kupu-kupu)', j:'pintu',   w:[1.1,2.2,1.4], sill:0,    head:2.1,  ayun:1},
+  slider      :{l:'Pintu geser',             j:'pintu',   w:[1.0,4.0,1.6], sill:0,    head:2.1},
+  folding     :{l:'Pintu lipat',             j:'pintu',   w:[1.4,6.0,2.4], sill:0,    head:2.1,  ayun:1, engsel:1},
+  garage      :{l:'Pintu garasi (rolling)',  j:'pintu',   w:[2.2,6.0,2.8], sill:0,    head:2.4},
+  opening     :{l:'Bukaan bebas',            j:'pintu',   w:[0.5,8.0,1.2], sill:0,    head:2.4},
+  window      :{l:'Jendela mati',            j:'jendela', w:[0.3,6.0,1.2], sill:0.9,  head:2.1},
+  casement    :{l:'Jendela ayun',            j:'jendela', w:[0.4,2.4,1.2], sill:0.9,  head:2.1,  ayun:1},
+  window_slide:{l:'Jendela geser',           j:'jendela', w:[0.8,3.6,1.6], sill:0.9,  head:2.1},
+  louver      :{l:'Jendela nako',            j:'jendela', w:[0.3,1.2,0.6], sill:1.2,  head:2.1},
+  vent        :{l:'Bovenlicht / ventilasi',  j:'jendela', w:[0.3,3.0,0.8], sill:2.15, head:2.45}
+};
+const isWindowType = t => OPENING[t] ? OPENING[t].j==='jendela' : t==='window';
+function setOpeningType(o,t){
+  const d=OPENING[t]; if(!d) return;
+  o.type=t;
+  if(!(o.width>=d.w[0] && o.width<=d.w[1])) o.width=d.w[2];
+  o.sill=d.sill; o.head=d.head;
+  if(d.engsel && !o.hinge) o.hinge='L';
+  if(d.ayun && !o.swing) o.swing=1;
+}
+
+/* kusen keliling; bawah=false untuk pintu (tanpa ambang bawah) */
+function kusen(g,cx,ow,y0,y1,t,fr,mat,bawah){
+  const h=y1-y0, dz=t*0.6;
+  g.add(box(fr,h,dz,mat, cx-ow/2+fr/2,(y0+y1)/2,0));
+  g.add(box(fr,h,dz,mat, cx+ow/2-fr/2,(y0+y1)/2,0));
+  g.add(box(ow,fr,dz,mat, cx,y1-fr/2,0));
+  if(bawah) g.add(box(ow,fr,dz,mat, cx,y0+fr/2,0));
+}
+function kaca(w,h,x,y,z){ const k=box(w,h,0.012,MAT.glass,x,y,z); k.castShadow=false; return k; }
+/* Daun pintu menjulur dari engsel ke arah +x (arah=1) atau −x (arah=−1).
+   Gaya 'kaca' berupa bingkai berkaca; bawaannya daun panel masif. */
+function daunPintu(w,h,gaya,arah){
+  const d=new THREE.Group(), X=v=>v*arah;
+  if(gaya==='kaca'){
+    const b=0.08;
+    d.add(box(w,b,0.04,MAT.frame, X(w/2), h/2-b/2,0));
+    d.add(box(w,b*1.8,0.04,MAT.frame, X(w/2),-h/2+b*0.9,0));
+    d.add(box(b,h,0.04,MAT.frame, X(b/2),0,0));
+    d.add(box(b,h,0.04,MAT.frame, X(w-b/2),0,0));
+    d.add(kaca(w-2*b,h-2.8*b, X(w/2), b*0.4, 0));
+  } else {
+    d.add(box(w,h,0.035,MAT.door, X(w/2),0,0));
+    for(const [yy,hh] of [[h*0.22,h*0.34],[-h*0.24,h*0.3]])        // panel timbul
+      d.add(box(w*0.64,hh,0.045,MAT.door, X(w/2),yy,0));
+  }
+  d.add(cyl(0.022,0.022,0.09,MAT.metal, X(w-0.07),-0.06,0.05,10));  // gagang
+  return d;
+}
+/* engsel di hx, daun menjulur ke arah hs, terbuka `sudut` ke muka sw */
+function pasangDaun(g,daun,hx,yMid,hs,sw,sudut){
+  const pv=new THREE.Group();
+  pv.position.set(hx,yMid,0);
+  pv.add(daun);
+  pv.rotation.y=-sudut*D2R*sw*hs;
+  g.add(pv);
+}
+
 /* daun pintu / kaca jendela + kusen */
 function addOpeningDetail(g,o,sill,head,t,len){
   const cx=(o.s+o.e)/2-len/2, ow=o.e-o.s;
   const fr=0.05;
-  if(o.type==='window'){
-    const gh=head-sill;
-    const pane=box(ow-fr*2, gh-fr*2, t*0.22, MAT.glass, cx, sill+gh/2, 0);
-    pane.castShadow=false; g.add(pane);
-    // kusen keliling
-    g.add(box(ow, fr, t*0.55, MAT.frame, cx, sill+fr/2, 0));
-    g.add(box(ow, fr, t*0.55, MAT.frame, cx, head-fr/2, 0));
-    g.add(box(fr, gh, t*0.55, MAT.frame, cx-ow/2+fr/2, sill+gh/2, 0));
-    g.add(box(fr, gh, t*0.55, MAT.frame, cx+ow/2-fr/2, sill+gh/2, 0));
-    // sill menonjol
-    g.add(box(ow+0.06, 0.03, t*1.25, MAT.white, cx, sill-0.015, 0));
-  } else if(o.type==='door'){
-    // kusen
-    g.add(box(fr*0.8, head, t*0.75, MAT.frame, cx-ow/2+fr*0.4, head/2, 0));
-    g.add(box(fr*0.8, head, t*0.75, MAT.frame, cx+ow/2-fr*0.4, head/2, 0));
-    g.add(box(ow, fr*0.8, t*0.75, MAT.frame, cx, head-fr*0.4, 0));
-    // Daun pintu terbuka 75°. Engsel dan arah ayun ikut data bukaan: hinge 'R'
-    // memindah engsel ke sisi seberang, swing −1 membalik daun ke muka dinding
-    // yang lain. Keduanya cuma membalik tanda, jadi geometrinya tetap satu.
-    const hs = o.hinge==='R' ? -1 : 1;
-    const sw = o.swing===-1 ? -1 : 1;
-    const leafW=ow-0.06, leafH=head-0.08;
-    const pivot=new THREE.Group();
-    pivot.position.set(cx+hs*(-ow/2+0.03), leafH/2+0.02, 0);
-    pivot.add(box(leafW,leafH,0.035,MAT.door, hs*leafW/2,0,0));
-    pivot.add(cyl(0.022,0.022,0.09,MAT.metal, hs*(leafW-0.07), 0, 0.05,10));
-    pivot.rotation.y=-75*D2R*sw*hs;
-    g.add(pivot);
+  const hs = o.hinge==='R' ? -1 : 1;
+  const sw = o.swing===-1 ? -1 : 1;
+  const ambangLuar=()=>g.add(box(ow+0.06,0.03,t*1.25,MAT.white, cx,sill-0.015,0));
+
+  switch(o.type){
+  case 'window': {
+    // jendela mati, dibagi tiang kusen tiap ±90 cm seperti kaca lebar sungguhan
+    const gh=head-sill, n=Math.max(1,Math.round((ow-2*fr)/0.9));
+    kusen(g,cx,ow,sill,head,t,fr,MAT.frame,true);
+    const lb=(ow-2*fr)/n;
+    for(let i=0;i<n;i++) g.add(kaca(lb-0.01,gh-2*fr, cx-ow/2+fr+lb*(i+0.5), sill+gh/2, 0));
+    for(let i=1;i<n;i++) g.add(box(0.04,gh-2*fr,t*0.45,MAT.frame, cx-ow/2+fr+lb*i, sill+gh/2, 0));
+    ambangLuar();
+    break;
   }
-  else if(o.type==='slider'){
-    // pintu geser: dua bilah di muka dinding yang berseberangan, tanpa busur
+  case 'casement': {
+    // jendela ayun: satu atau dua daun, terbuka 35° ke muka luar
+    const gh=head-sill, n=ow>0.8?2:1, dw=(ow-2*fr)/n, dh=gh-2*fr, b=0.045;
+    kusen(g,cx,ow,sill,head,t,fr,MAT.frame,true);
+    for(let i=0;i<n;i++){
+      const kiri = n===1 ? hs>0 : i===0;
+      const arah = kiri?1:-1;
+      const daun=new THREE.Group(), X=v=>v*arah;
+      daun.add(box(dw,b,0.035,MAT.frame, X(dw/2), dh/2-b/2,0));
+      daun.add(box(dw,b,0.035,MAT.frame, X(dw/2),-dh/2+b/2,0));
+      daun.add(box(b,dh,0.035,MAT.frame, X(b/2),0,0));
+      daun.add(box(b,dh,0.035,MAT.frame, X(dw-b/2),0,0));
+      daun.add(kaca(dw-2*b,dh-2*b, X(dw/2),0,0));
+      const hx = kiri ? cx-ow/2+fr : cx+ow/2-fr;
+      pasangDaun(g,daun,hx,sill+gh/2,arah,sw,35);
+    }
+    ambangLuar();
+    break;
+  }
+  case 'window_slide': {
+    // jendela geser: dua daun di dua rel, saling menumpuk di tengah
+    const gh=head-sill, dw=(ow-2*fr)*0.53, dh=gh-2*fr, b=0.045;
+    kusen(g,cx,ow,sill,head,t,fr,MAT.frame,true);
+    for(const [sisi,zz] of [[-1,t*0.1],[1,-t*0.1]]){
+      const x=cx+sisi*((ow-2*fr)/2-dw/2);
+      g.add(box(dw,b,0.03,MAT.frame, x,head-fr-b/2,zz));
+      g.add(box(dw,b,0.03,MAT.frame, x,sill+fr+b/2,zz));
+      g.add(box(b,dh,0.03,MAT.frame, x-dw/2+b/2,sill+gh/2,zz));
+      g.add(box(b,dh,0.03,MAT.frame, x+dw/2-b/2,sill+gh/2,zz));
+      g.add(kaca(dw-2*b,dh-2*b, x,sill+gh/2,zz));
+    }
+    ambangLuar();
+    break;
+  }
+  case 'louver': {
+    // jendela nako: bilah kaca miring 25° bertumpuk tiap 9 cm
+    const gh=head-sill;
+    kusen(g,cx,ow,sill,head,t,fr,MAT.frame,true);
+    const n=Math.max(2,Math.floor((gh-2*fr)/0.09));
+    for(let i=0;i<n;i++){
+      const bl=kaca(ow-2*fr-0.02,0.1, cx, sill+fr+0.045+i*(gh-2*fr)/n, 0);
+      bl.rotation.x=25*D2R; g.add(bl);
+    }
+    for(const sx of [-1,1]) g.add(box(0.015,gh-2*fr,0.06,MAT.metal, cx+sx*(ow/2-fr-0.01),sill+gh/2,0));
+    ambangLuar();
+    break;
+  }
+  case 'vent': {
+    // bovenlicht: lubang angin berkaca dengan jeruji tegak
+    const gh=head-sill;
+    kusen(g,cx,ow,sill,head,t,fr*0.8,MAT.frame,true);
+    g.add(kaca(ow-2*fr,gh-2*fr, cx,sill+gh/2,0));
+    const n=Math.max(2,Math.round(ow/0.12));
+    for(let i=1;i<n;i++) g.add(cyl(0.008,0.008,gh-2*fr,MAT.metal, cx-ow/2+ow*i/n, sill+gh/2, 0.03,6));
+    break;
+  }
+  case 'door':
+  case 'door_glass': {
+    kusen(g,cx,ow,0,head,t*1.25,fr*0.8,MAT.frame,false);
+    const lw=ow-0.06, lh=head-0.08;
+    pasangDaun(g, daunPintu(lw,lh,o.type==='door_glass'?'kaca':'masif',hs),
+               cx+hs*(-ow/2+0.03), lh/2+0.02, hs, sw, 75);
+    break;
+  }
+  case 'door2': {
+    // pintu ganda: dua daun berengsel di kedua kusen, membuka ke muka yang sama
+    kusen(g,cx,ow,0,head,t*1.25,fr*0.8,MAT.frame,false);
+    const lw=(ow-0.06)/2-0.005, lh=head-0.08;
+    pasangDaun(g, daunPintu(lw,lh,'masif', 1), cx-ow/2+0.03, lh/2+0.02,  1, sw, 75);
+    pasangDaun(g, daunPintu(lw,lh,'masif',-1), cx+ow/2-0.03, lh/2+0.02, -1, sw, 75);
+    break;
+  }
+  case 'slider': {
+    // pintu geser: dua daun kaca berbingkai di dua rel, tanpa busur ayun
     g.add(box(ow, fr*0.6, t*0.75, MAT.frame, cx, head-fr*0.3, 0));
     g.add(box(ow, fr*0.5, t*0.75, MAT.frame, cx, fr*0.25, 0));
-    const lw=ow/2-0.02, lh=head-0.08;
-    g.add(box(lw, lh, 0.04, MAT.door, cx-ow/2+lw/2, lh/2+0.04,  t*0.32));
-    g.add(box(lw, lh, 0.04, MAT.door, cx+ow/2-lw/2, lh/2+0.04, -t*0.32));
+    const lw=ow/2+0.02, lh=head-0.08;
+    const a=daunPintu(lw,lh,'kaca',1);  a.position.set(cx-ow/2,lh/2+0.04, t*0.2); g.add(a);
+    const b=daunPintu(lw,lh,'kaca',-1); b.position.set(cx+ow/2,lh/2+0.04,-t*0.2); g.add(b);
+    break;
   }
-  // type 'opening' = bukaan bebas tanpa daun
+  case 'folding': {
+    // pintu lipat: panel ±50 cm terlipat seperti akordeon di sisi engsel
+    kusen(g,cx,ow,0,head,t*1.25,fr*0.8,MAT.frame,false);
+    const n=Math.max(2,Math.round(ow/0.5)), pw=(ow-0.06)/n, lh=head-0.08, a=70*D2R;
+    const x0=cx+hs*(-ow/2+0.03);
+    for(let i=0;i<n;i++){
+      const pnl=box(pw,lh,0.035,MAT.door, x0+hs*(i+0.5)*pw*Math.cos(a), lh/2+0.02, sw*pw*Math.sin(a)/2);
+      pnl.rotation.y = hs*sw*(i%2 ? a : -a);
+      g.add(pnl);
+    }
+    break;
+  }
+  case 'garage': {
+    // pintu garasi gulung: rel di kedua sisi, kotak gulungan di atas, dan
+    // tirai bilah yang baru turun seperlima — masih bisa dilewati
+    const h=head;
+    for(const sx of [-1,1]) g.add(box(0.06,h,t*0.9,MAT.metal, cx+sx*(ow/2-0.03),h/2,0));
+    const kotak=cyl(0.2,0.2,ow,MAT.metal, cx,h-0.2,t*0.5+0.1,20);
+    kotak.rotation.z=Math.PI/2; g.add(kotak);
+    const turun=h*0.2, n=Math.round(turun/0.08);
+    for(let i=0;i<n;i++) g.add(box(ow-0.12,0.07,0.03,MAT.metal, cx,h-0.4-0.04-i*0.08,t*0.35));
+    break;
+  }
+  // 'opening' = bukaan bebas tanpa daun
+  }
 }
 
 /* tutup sudut/pertemuan dinding agar siku rapat (kaidah sambungan) */
@@ -1457,23 +1609,35 @@ function tableTop(w,d,h,mat){
     g.add(box(0.06,h-0.05,0.06,MAT.woodDark,sx*(w/2-0.07),(h-0.05)/2,sz*(d/2-0.07)));
   return g;
 }
+/* Kursi menghadap +Z: sandarannya di sisi −Z. Siapa pun yang menaruhnya
+   harus memutarnya supaya sandaran menjauhi meja. */
 function chair(){
   const g=new THREE.Group();
-  g.add(box(0.44,0.05,0.44,MAT.wood,0,0.45,0));
-  g.add(box(0.44,0.48,0.05,MAT.wood,0,0.71,-0.2));
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    g.add(box(0.045,0.45,0.045,MAT.woodDark,sx*0.18,0.225,sz*0.18));
+  g.add(box(0.44,0.05,0.42,MAT.wood,0,0.45,0.01));                 // dudukan
+  for(const sx of [-1,1]){
+    g.add(box(0.04,0.45,0.04,MAT.woodDark,sx*0.19,0.225,0.17));    // kaki depan
+    g.add(box(0.04,0.92,0.04,MAT.woodDark,sx*0.19,0.46,-0.19));    // kaki belakang menerus jadi tiang sandaran
+  }
+  g.add(box(0.38,0.2,0.03,MAT.wood,0,0.8,-0.19));                  // papan sandaran
+  g.add(box(0.38,0.04,0.03,MAT.wood,0,0.58,-0.19));                // palang sandaran
   return g;
 }
+/* Meja makan: kursi menghadap meja dan terselip sedikit di bawah tepinya,
+   seperti meja yang sedang tidak dipakai. Jatah tiap orang ±60 cm sepanjang
+   meja; kursi di ujung meja dipakai bila sisi panjangnya tidak cukup. */
 function diningSet(w,d,seats){
   const g=new THREE.Group();
   g.add(tableTop(w,d,0.75));
-  const perSide=Math.ceil(seats/2);
+  const selip=0.18;                                   // pusat dudukan dari tepi meja
+  const perSide=Math.min(Math.floor(seats/2), Math.max(1,Math.floor(w/0.6)));
+  const ujung=seats-perSide*2;                         // sisanya di kepala meja
   for(let i=0;i<perSide;i++){
     const x=-w/2+w*(i+0.5)/perSide;
-    const c1=chair(); c1.position.set(x,0,d/2+0.32); g.add(c1);
-    if(i*2+1<seats){ const c2=chair(); c2.position.set(x,0,-d/2-0.32); c2.rotation.y=Math.PI; g.add(c2); }
+    const depan=chair(); depan.position.set(x,0, d/2+selip); depan.rotation.y=Math.PI; g.add(depan);
+    const blk=chair();   blk.position.set(x,0,-d/2-selip);                            g.add(blk);
   }
+  if(ujung>0){ const c=chair(); c.position.set(-w/2-selip,0,0); c.rotation.y= Math.PI/2; g.add(c); }
+  if(ujung>1){ const c=chair(); c.position.set( w/2+selip,0,0); c.rotation.y=-Math.PI/2; g.add(c); }
   return g;
 }
 function wardrobe(w){
@@ -1676,14 +1840,36 @@ function vanityTable(){
   g.add(box(0.36,0.14,0.36,MAT.fabric,0.28,0.82,0.05));
   return g;
 }
+/* Sofa L sudut. Kedua deretnya bersandar ke sisi LUAR — punggung menempel
+   ke dua dinding sudut ruangan — dan sayapnya menjulur ke DEPAN, searah
+   hadap dudukan. Sudut dalam di pojok belakang-kiri. */
 function sofaL(){
-  const g=new THREE.Group(), w=2.4, d=1.6;
-  g.add(box(w,0.32,0.88,MAT.fabric,0,0.2,d/2-0.44));
-  g.add(box(w,0.46,0.18,MAT.fabric,0,0.45,d/2-0.79));
-  g.add(box(0.88,0.32,d-0.88,MAT.fabric,-w/2+0.44,0.2,-0.44));
-  g.add(box(0.18,0.46,d-0.88,MAT.fabric,-w/2+0.09,0.45,-0.44));
-  g.add(box(0.16,0.34,0.88,MAT.fabric,w/2-0.08,0.43,d/2-0.44));
-  for(let i=0;i<3;i++) g.add(box(0.7,0.14,0.62,MAT.fabric2,-w/2+0.45+i*0.78,0.43,d/2-0.42));
+  const g=new THREE.Group(), W=2.4, D=1.6, dalam=0.88, sand=0.18, lengan=0.16;
+  const x0=-W/2, z0=-D/2;                                   // pojok belakang-kiri
+  // badan: deret belakang sepanjang W, sayap kiri sampai ke depan
+  g.add(box(W,0.32,dalam,MAT.fabric, 0,0.2, z0+dalam/2));
+  g.add(box(dalam,0.32,D-dalam,MAT.fabric, x0+dalam/2,0.2, z0+dalam+(D-dalam)/2));
+  // sandaran: menerus di belakang dan di sisi kiri
+  g.add(box(W,0.46,sand,MAT.fabric, 0,0.45, z0+sand/2));
+  g.add(box(sand,0.46,D-sand,MAT.fabric, x0+sand/2,0.45, z0+sand+(D-sand)/2));
+  // lengan: ujung kanan deret belakang dan ujung depan sayap
+  g.add(box(lengan,0.34,dalam-sand,MAT.fabric, W/2-lengan/2,0.43, z0+sand+(dalam-sand)/2));
+  g.add(box(dalam-sand,0.34,lengan,MAT.fabric, x0+sand+(dalam-sand)/2,0.43, D/2-lengan/2));
+  // bantal dudukan: deret belakang dari sandaran kiri sampai lengan kanan
+  const a=x0+sand, b=W/2-lengan, n=3, lb=(b-a)/n;
+  for(let i=0;i<n;i++)
+    g.add(box(lb-0.03,0.14,dalam-sand-0.04,MAT.fabric2, a+lb*(i+0.5),0.43, z0+sand+(dalam-sand)/2));
+  // bantal sayap: dari deret belakang sampai lengan depan
+  const za=z0+dalam, zb=D/2-lengan;
+  g.add(box(dalam-sand-0.04,0.14,zb-za-0.03,MAT.fabric2, x0+sand+(dalam-sand)/2,0.43,(za+zb)/2));
+  // bantal punggung
+  for(let i=0;i<n;i++)
+    g.add(box(lb-0.06,0.34,0.14,MAT.fabric2, a+lb*(i+0.5),0.66, z0+sand+0.07,0));
+  g.add(box(0.14,0.34,zb-za-0.06,MAT.fabric2, x0+sand+0.07,0.66,(za+zb)/2));
+  // kaki
+  for(const [x,z] of [[x0+0.08,z0+0.08],[W/2-0.08,z0+0.08],[W/2-0.08,z0+dalam-0.08],
+                      [x0+0.08,D/2-0.08],[x0+dalam-0.08,D/2-0.08],[x0+dalam-0.08,z0+dalam-0.08]])
+    g.add(cyl(0.03,0.03,0.06,MAT.woodDark,x,0.03,z,8));
   return g;
 }
 function sideTable(){
@@ -2131,9 +2317,17 @@ function renderInspector(){
     d.openings.slice().sort((a,b)=>a.at-b.at).forEach(o=>{
       const it=el('div','op-item');
       const top=el('div','top');
-      top.appendChild(selInput([['door','Pintu ayun'],['slider','Pintu geser'],['window','Jendela'],['opening','Bukaan bebas']],o.type,v=>{
-        o.type=v; o.sill=v==='window'?STD.sillH:0; renderInspector(); rebuildScene();
-      }));
+      const sel=document.createElement('select');
+      for(const [grp,j] of [['Pintu','pintu'],['Jendela','jendela']]){
+        const og=document.createElement('optgroup'); og.label=grp;
+        for(const [k,v] of Object.entries(OPENING)) if(v.j===j){
+          const op=document.createElement('option'); op.value=k; op.textContent=v.l; og.appendChild(op);
+        }
+        sel.appendChild(og);
+      }
+      sel.value=OPENING[o.type]?o.type:'opening';
+      sel.addEventListener('change',()=>{ setOpeningType(o,sel.value); renderInspector(); rebuildScene(); });
+      top.appendChild(sel);
       const x=el('button','x','×');
       x.onclick=()=>{ d.openings=d.openings.filter(q=>q.id!==o.id); renderInspector(); rebuildScene(); };
       top.appendChild(x); it.appendChild(top);
@@ -2144,13 +2338,20 @@ function renderInspector(){
       mk('Ambang',o.sill,0.05,v=>{ o.sill=clamp(v,0,2); rebuildScene(); });
       mk('Tinggi',o.head,0.05,v=>{ o.head=clamp(v,0.5,5); rebuildScene(); });
       it.appendChild(grid);
-      if(o.type==='door'){
+      const def=OPENING[o.type]||{};
+      if(def.engsel||def.ayun){
         const row=el('div','row');
-        const bh=el('button','btn sm ghost','⇄ Balik engsel');
-        bh.onclick=()=>{ o.hinge = o.hinge==='R'?'L':'R'; rebuildScene(); };
-        const bs=el('button','btn sm ghost','⇅ Balik ayun');
-        bs.onclick=()=>{ o.swing = o.swing===-1?1:-1; rebuildScene(); };
-        row.appendChild(bh); row.appendChild(bs); it.appendChild(row);
+        if(def.engsel){
+          const bh=el('button','btn sm ghost', o.type==='folding'?'⇄ Balik sisi lipatan':'⇄ Balik engsel');
+          bh.onclick=()=>{ o.hinge = o.hinge==='R'?'L':'R'; rebuildScene(); };
+          row.appendChild(bh);
+        }
+        if(def.ayun){
+          const bs=el('button','btn sm ghost','⇅ Balik ayun');
+          bs.onclick=()=>{ o.swing = o.swing===-1?1:-1; rebuildScene(); };
+          row.appendChild(bs);
+        }
+        it.appendChild(row);
       }
       wrap.appendChild(it);
     });
@@ -4039,9 +4240,9 @@ function drawOverlay(res){
     for(const o of wl.openings){
       const ax=wl.x1+ux*(o.at-o.width/2), az=wl.z1+uz*(o.at-o.width/2);
       const bx=wl.x1+ux*(o.at+o.width/2), bz=wl.z1+uz*(o.at+o.width/2);
-      ctx2d.strokeStyle= o.type==='window'?'#1b8ad6'
-                       : o.type==='door'?'#17a673'
-                       : o.type==='slider'?'#d4a017':'#9b59b6';
+      ctx2d.strokeStyle= isWindowType(o.type)?'#1b8ad6'
+                       : o.type==='slider'?'#d4a017'
+                       : o.type==='opening'?'#9b59b6':'#17a673';
       ctx2d.lineWidth=Math.max(3,wl.thickness*pxm*1.1);
       ctx2d.beginPath();
       ctx2d.moveTo(ax*pxm+w/2,az*pxm+h/2); ctx2d.lineTo(bx*pxm+w/2,bz*pxm+h/2); ctx2d.stroke();
@@ -4075,8 +4276,8 @@ function updateStatsBar(){
   const lv=L();
   const total=lv.walls.reduce((s,w)=>s+wallLen(w),0);
   const ops=lv.walls.reduce((s,w)=>s+w.openings.length,0);
-  const doors=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>o.type==='door').length,0);
-  const wins=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>o.type==='window').length,0);
+  const doors=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>!isWindowType(o.type)&&o.type!=='opening').length,0);
+  const wins=lv.walls.reduce((s,w)=>s+w.openings.filter(o=>isWindowType(o.type)).length,0);
   const struct=lv.walls.filter(isStructural).length;
   const voidN=lv.objects.filter(o=>o.kind==='void').length;
   let area=0;
@@ -4587,7 +4788,7 @@ function fpsResolveWalls(px,pz,feetY){
         const d=Math.hypot(px-cx,pz-cz), rad=w.thickness/2+FPS.r;
         if(d>=rad) continue;
         const along=t*Math.sqrt(L2);
-        const lewat=w.openings.some(o=>o.type!=='window'
+        const lewat=w.openings.some(o=>!isWindowType(o.type)
           && Math.abs(along-o.at) < o.width/2-0.04
           && (o.sill||0) < 0.15
           && (o.head||STD.doorH) > FPS.eye*0.6);
