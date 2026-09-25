@@ -134,6 +134,11 @@ details#adv>*:not(summary){margin-bottom:8px}
 #arInfo{padding:8px 12px;border-top:1px solid var(--line);background:#141419;color:var(--muted);font-size:.7rem;line-height:1.55}
 #arInfo b{color:var(--txt)}
 #viewport.dropping::after{content:'Lepaskan berkas di sini';position:absolute;inset:10px;border:2px dashed var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:.9rem;background:rgba(10,12,14,.55);pointer-events:none;z-index:35}
+/* ---------- mode jalan-jalan ---------- */
+#fpsbar{top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:7px 12px;font-size:.72rem;color:var(--muted)}
+#fpsbar b{color:var(--txt)}
+#fpsStick{position:absolute;width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);z-index:36;pointer-events:none;touch-action:none}
+#fpsKnob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(78,201,176,.5);border:1px solid rgba(78,201,176,.8)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -333,10 +338,16 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button id="dupBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
       <button id="delBtn" title="Hapus (Del)">Hapus</button>
       <div class="sep"></div>
+      <button id="walkBtn" title="Jalan-jalan di dalam ruangan (orang pertama)">Jalan</button>
       <button id="arBtn" title="Lihat model di AR / 3D viewer">AR</button>
     </div>
     <div class="float" id="levelbar"></div>
     <div class="float" id="inspector" hidden></div>
+    <div class="float" id="fpsbar" hidden>
+      <span id="fpsinfo"></span>
+      <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
+    </div>
+    <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
     <div class="float" id="hint">Upload denah lalu <b>Generate</b>, atau gambar dinding manual dengan <b>+ Dinding</b>.</div>
     <div id="loader"><div class="spinner"></div><span id="loader-txt">Memproses denah…</span></div>
     <div id="toast"></div>
@@ -497,7 +508,19 @@ addEventListener('resize',()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(viewport.clientWidth, viewport.clientHeight);
 });
-(function animate(){ requestAnimationFrame(animate); orbit.update(); if(selBox)selBox.update(); renderer.render(scene,camera); })();
+/* Keadaan mode jalan-jalan dideklarasikan di sini, bukan di modulnya jauh di
+   bawah: loop render langsung berjalan begitu baris ini dilewati, sehingga ia
+   tidak boleh menyentuh const yang belum sempat dibuat. */
+const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:1.4, run:2.6,
+            vy:0, feet:0, keys:new Set(), look:null, move:null, save:null };
+const clock=new THREE.Clock();
+(function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
+  if(FPS.on) fpsStep(dt); else orbit.update();
+  if(selBox)selBox.update();
+  renderer.render(scene,camera);
+})();
 
 /* --------------------------- material --------------------------- */
 const MAT={
@@ -2059,6 +2082,7 @@ function pickObject(e){
 
 renderer.domElement.addEventListener('pointerdown',e=>{ e.target._downXY=[e.clientX,e.clientY]; });
 renderer.domElement.addEventListener('pointerup',e=>{
+  if(FPS.on) return;
   const d0=e.target._downXY;
   if(d0 && (Math.abs(e.clientX-d0[0])>4||Math.abs(e.clientY-d0[1])>4)) return; // drag orbit
   if(gizmo.dragging) return;
@@ -3888,6 +3912,207 @@ $('#snapshotBtn').onclick=()=>{
   renderer.render(scene,camera);
   renderer.domElement.toBlob(b=>{ download(b,(PROJECT.name||'render')+'.png'); toast('Gambar disimpan'); });
 };
+/* ======================================================================
+   MODE JALAN-JALAN (orang pertama)
+   Tinggi mata 1,60 m dan langkah 1,4 m/detik — ukuran orang dewasa berjalan
+   santai. Yang membuat mode ini berguna bukan kameranya, melainkan dua
+   aturan ruang: badan tidak bisa menembus dinding kecuali lewat pintu, dan
+   kaki selalu menapak permukaan yang benar-benar ada di bawahnya. Keduanya
+   dihitung dari denah, bukan dari tabrakan geometri kasar.
+   ====================================================================== */
+function fpsLevelAt(feetY){
+  // lantai tempat kaki berpijak: yang elevasinya paling dekat di bawah kaki
+  let best=0, bd=1e9;
+  PROJECT.levels.forEach((lv,i)=>{
+    const d=Math.abs(feetY-levelElevation(i));
+    if(d<bd){ bd=d; best=i; }
+  });
+  return best;
+}
+/* Dinding menghalangi; bukaan setinggi lantai (pintu, bukaan bebas) tidak.
+   Jendela tetap menghalangi karena ada ambangnya. */
+function fpsResolveWalls(px,pz,feetY){
+  const idx=fpsLevelAt(feetY);
+  for(let pass=0; pass<3; pass++){
+    let moved=false;
+    for(const lv of [PROJECT.levels[idx]]){
+      if(!lv) continue;
+      for(const w of lv.walls){
+        const dx=w.x2-w.x1, dz=w.z2-w.z1, L2=dx*dx+dz*dz;
+        if(L2<1e-6) continue;
+        let t=((px-w.x1)*dx+(pz-w.z1)*dz)/L2;
+        t=clamp(t,0,1);
+        const cx=w.x1+t*dx, cz=w.z1+t*dz;
+        const d=Math.hypot(px-cx,pz-cz), rad=w.thickness/2+FPS.r;
+        if(d>=rad) continue;
+        const along=t*Math.sqrt(L2);
+        const lewat=w.openings.some(o=>o.type!=='window'
+          && Math.abs(along-o.at) < o.width/2-0.04
+          && (o.sill||0) < 0.15
+          && (o.head||STD.doorH) > FPS.eye*0.6);
+        if(lewat) continue;
+        const nx=d>1e-6?(px-cx)/d:1, nz=d>1e-6?(pz-cz)/d:0;
+        px=cx+nx*rad; pz=cz+nz*rad; moved=true;
+      }
+    }
+    if(!moved) break;
+  }
+  return [px,pz];
+}
+/* Permukaan pijakan dicari dengan menembak sinar ke bawah dari lutut: anak
+   tangga, pelat lantai, dan bordes terbaca apa adanya, dan di atas void
+   memang tidak ada apa-apa — jadi orangnya jatuh, seperti seharusnya. */
+const fpsRay=new THREE.Raycaster();
+function fpsGround(px,pz,feetY){
+  fpsRay.set(new THREE.Vector3(px,feetY+0.6,pz), new THREE.Vector3(0,-1,0));
+  fpsRay.far=8;
+  const hits=fpsRay.intersectObject(worldRoot,true);
+  for(const h of hits){
+    if(h.object.userData.noExport) continue;       // penanda void bukan lantai
+    let o=h.object, tampak=true;
+    while(o && o!==worldRoot){ if(!o.visible){ tampak=false; break; } o=o.parent; }
+    if(!tampak) continue;                          // lantai yang disembunyikan tidak dipijak
+    return h.point.y;
+  }
+  return null;
+}
+function fpsStep(dt){
+  // arah pandang
+  const dir=new THREE.Vector3(Math.sin(FPS.yaw)*Math.cos(FPS.pitch), Math.sin(FPS.pitch),
+                              Math.cos(FPS.yaw)*Math.cos(FPS.pitch));
+  camera.lookAt(camera.position.clone().add(dir));
+
+  // arah jalan di bidang datar
+  let f=0,s=0;
+  if(FPS.keys.has('w')||FPS.keys.has('arrowup')) f+=1;
+  if(FPS.keys.has('s')||FPS.keys.has('arrowdown')) f-=1;
+  if(FPS.keys.has('a')||FPS.keys.has('arrowleft')) s-=1;
+  if(FPS.keys.has('d')||FPS.keys.has('arrowright')) s+=1;
+  if(FPS.move){ f+=FPS.move.f; s+=FPS.move.s; }
+  const mag=Math.hypot(f,s);
+  if(mag>1){ f/=mag; s/=mag; }
+  const cepat=(FPS.keys.has('shift')?FPS.run:FPS.speed)*dt;
+  const fx=Math.sin(FPS.yaw), fz=Math.cos(FPS.yaw);
+  let px=camera.position.x + (fx*f + fz*s)*cepat;
+  let pz=camera.position.z + (fz*f - fx*s)*cepat;
+
+  [px,pz]=fpsResolveWalls(px,pz,FPS.feet);
+
+  // pijakan: naik tangga sampai setinggi satu optrede, selebihnya jatuh
+  const g=fpsGround(px,pz,FPS.feet);
+  if(g!=null && g<=FPS.feet+STD.riserMax+0.02){
+    if(g>=FPS.feet-0.02){ FPS.feet=g; FPS.vy=0; }
+    else {
+      FPS.vy-=9.8*dt; FPS.feet+=FPS.vy*dt;
+      if(FPS.feet<=g){ FPS.feet=g; FPS.vy=0; }
+    }
+  } else {
+    FPS.vy-=9.8*dt; FPS.feet+=FPS.vy*dt;
+  }
+  // di luar bangunan masih ada tanah: turun dari teras atau jatuh lewat void
+  // berhenti di permukaan tanah, bukan melayang terus ke bawah
+  const tanah=levelElevation(0);
+  if(FPS.feet<tanah){ FPS.feet=tanah; FPS.vy=0; }
+
+  camera.position.set(px, FPS.feet+FPS.eye, pz);
+  const lv=PROJECT.levels[fpsLevelAt(FPS.feet)];
+  $('#fpsinfo').innerHTML = `Jalan-jalan · <b>${lv?lv.name:'-'}</b> · mata ${fmt(FPS.eye,2)} m`
+    + ` · <b>W A S D</b> geser, <b>Shift</b> lari, <b>Esc</b> keluar`;
+}
+
+function enterFPS(){
+  if(FPS.on) return;
+  const lv=L();
+  if(!lv.walls.length) return toast('Belum ada ruangan untuk dijelajahi.');
+  FPS.save={pos:camera.position.clone(), target:orbit.target.clone(), tool:TOOL};
+  // berdiri di tengah denah lantai aktif
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2);
+                            z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  FPS.feet=levelElevation(PROJECT.active);
+  FPS.vy=0; FPS.yaw=0; FPS.pitch=0; FPS.keys.clear(); FPS.move=null; FPS.look=null;
+  let [px,pz]=fpsResolveWalls((x0+x1)/2,(z0+z1)/2,FPS.feet);
+  const g=fpsGround(px,pz,FPS.feet+0.5);
+  if(g!=null && Math.abs(g-FPS.feet)<1.5) FPS.feet=g;
+  camera.position.set(px,FPS.feet+FPS.eye,pz);
+  FPS.on=true;
+  select(null); setTool('select');
+  orbit.enabled=false;
+  $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true;
+  $('#levelbar').hidden=true;
+  viewport.style.cursor='none';
+  if(renderer.domElement.requestPointerLock && !('ontouchstart' in window))
+    renderer.domElement.requestPointerLock();
+  toast('Mode jalan-jalan — Esc untuk keluar');
+}
+function exitFPS(){
+  if(!FPS.on) return;
+  FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
+  $('#fpsStick').hidden=true;
+  if(document.exitPointerLock) document.exitPointerLock();
+  orbit.enabled=true;
+  if(FPS.save){ camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); orbit.update(); }
+  $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false;
+  $('#levelbar').hidden=false;
+  viewport.style.cursor='';
+}
+$('#walkBtn').onclick=enterFPS;
+$('#fpsExit').onclick=exitFPS;
+document.addEventListener('pointerlockchange',()=>{
+  if(FPS.on && document.pointerLockElement!==renderer.domElement && !('ontouchstart' in window)) exitFPS();
+});
+addEventListener('keydown',e=>{
+  if(!FPS.on) return;
+  const k=e.key.toLowerCase();
+  if(k==='escape'){ exitFPS(); return; }
+  FPS.keys.add(k==='shift'?'shift':k);
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+});
+addEventListener('keyup',e=>{ if(FPS.on) FPS.keys.delete(e.key.toLowerCase()); });
+addEventListener('mousemove',e=>{
+  if(!FPS.on || document.pointerLockElement!==renderer.domElement) return;
+  FPS.yaw   -= e.movementX*0.0022;
+  FPS.pitch  = clamp(FPS.pitch - e.movementY*0.0022, -1.35, 1.35);
+});
+/* Sentuhan: separuh kiri layar jadi stik jalan, separuh kanan untuk menengok —
+   tata letak yang sudah lazim, jadi tidak perlu dipelajari. */
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(!FPS.on) return;
+  e.preventDefault();
+  const r=renderer.domElement.getBoundingClientRect();
+  if(e.clientX-r.left < r.width*0.45 && e.pointerType!=='mouse'){
+    FPS.move={id:e.pointerId, ox:e.clientX, oy:e.clientY, f:0, s:0};
+    const st=$('#fpsStick');
+    st.hidden=false;
+    st.style.left=(e.clientX-r.left-66)+'px';
+    st.style.top =(e.clientY-r.top -66)+'px';
+    $('#fpsKnob').style.transform='translate(0,0)';
+  } else {
+    FPS.look={id:e.pointerId, x:e.clientX, y:e.clientY};
+  }
+},true);
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!FPS.on) return;
+  if(FPS.move && e.pointerId===FPS.move.id){
+    const dx=e.clientX-FPS.move.ox, dy=e.clientY-FPS.move.oy, max=60;
+    const d=Math.min(Math.hypot(dx,dy),max), a=Math.atan2(dy,dx);
+    const kx=Math.cos(a)*d, ky=Math.sin(a)*d;
+    FPS.move.s= Math.abs(kx)<8?0:kx/max;
+    FPS.move.f= Math.abs(ky)<8?0:-ky/max;
+    $('#fpsKnob').style.transform=`translate(${kx}px,${ky}px)`;
+  } else if(FPS.look && e.pointerId===FPS.look.id){
+    FPS.yaw   -= (e.clientX-FPS.look.x)*0.005;
+    FPS.pitch  = clamp(FPS.pitch - (e.clientY-FPS.look.y)*0.005, -1.35, 1.35);
+    FPS.look.x=e.clientX; FPS.look.y=e.clientY;
+  }
+},true);
+for(const ev of ['pointerup','pointercancel'])
+  renderer.domElement.addEventListener(ev,e=>{
+    if(!FPS.on) return;
+    if(FPS.move && e.pointerId===FPS.move.id){ FPS.move=null; $('#fpsStick').hidden=true; }
+    if(FPS.look && e.pointerId===FPS.look.id) FPS.look=null;
+  },true);
+
 /* ======================================================================
    AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
    ====================================================================== */
