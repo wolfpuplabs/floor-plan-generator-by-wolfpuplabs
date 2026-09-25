@@ -59,6 +59,18 @@ button.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
 
 #preview-box{width:100%;aspect-ratio:4/3;background:#fff;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 #preview-box .ph{color:#8a8a8a;font-size:.72rem;text-align:center;padding:10px}
+#plan-layers{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.pl-chip{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 8px 4px 4px;cursor:pointer;color:inherit;font:inherit;font-size:.72rem}
+.pl-chip.active{border-color:var(--accent);background:#1c2a28}
+.pl-chip .th{width:34px;height:26px;border-radius:3px;background:#fff center/contain no-repeat;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#9a9a9a;font-size:.6rem}
+.pl-chip .tx{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.pl-chip .tx small{color:var(--muted);font-size:.62rem}
+.pl-chip.add{padding:4px 10px;color:var(--accent)}
+.nudge{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-width:220px;margin:4px 0 8px}
+.nudge [data-nudge="0,-1"]{grid-column:2}
+.nudge [data-nudge="-1,0"]{grid-column:1}
+.nudge [data-nudge="0,1"]{grid-column:2}
+.nudge select{padding:2px}
 #canvas2d{max-width:100%;max-height:100%;object-fit:contain;display:none}
 details#adv{border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--panel2)}
 details#adv>summary{cursor:pointer;font-size:.72rem;color:var(--muted);font-weight:600;list-style:none}
@@ -185,14 +197,19 @@ details#adv>*:not(summary){margin-bottom:8px}
 
     <!-- ============ TAB DENAH ============ -->
     <div class="tab-body" data-panel="plan">
+      <div class="section-title">Layer denah per lantai</div>
+      <div id="plan-layers"></div>
+      <p class="hint">Tiap lantai punya gambar denahnya sendiri. Pilih lantai di atas, lalu upload denahnya — lantai 2 boleh desain yang berbeda dari lantai 1.</p>
       <div class="group">
-        <label>1. Upload gambar denah</label>
+        <label>1. Upload gambar denah untuk <b id="plan-lvname">Lantai 1</b></label>
         <input type="file" id="upload" accept="image/*">
+        <input type="file" id="uploadNew" accept="image/*" hidden>
       </div>
       <div id="preview-box">
         <div class="ph">Pratinjau denah &amp; hasil deteksi<br>akan tampil di sini</div>
         <canvas id="canvas2d"></canvas>
       </div>
+      <label class="chk"><input type="checkbox" id="showBelow" checked><span>Tampilkan dinding lantai bawah di pratinjau</span></label>
 
       <div class="section-title">2. Skala Denah</div>
       <div class="group">
@@ -261,9 +278,26 @@ details#adv>*:not(summary){margin-bottom:8px}
         <div class="group"><label>Ambang jendela (m)</label><input type="number" id="sillH" value="0.9" min="0.2" max="1.5" step="0.05"></div>
       </div>
 
+      <label class="chk"><input type="checkbox" id="alignBelow" checked><span>Sejajarkan otomatis dengan lantai bawah (dinding atas menumpu dinding bawah)</span></label>
       <button class="btn" id="generateBtn">Generate Dinding 3D</button>
       <button class="btn ghost sm" id="generateNewBtn">Generate ke lantai baru</button>
       <div id="stats">Belum ada denah diproses.</div>
+
+      <div class="section-title">5. Posisi Lantai Ini</div>
+      <p class="hint">Geser seluruh dinding, bukaan, dan objek lantai aktif bila belum pas di atas lantai bawahnya.</p>
+      <div class="nudge">
+        <button class="btn sm ghost" data-nudge="0,-1" title="Geser ke belakang (−Z)">▲</button>
+        <button class="btn sm ghost" data-nudge="-1,0" title="Geser ke kiri (−X)">◀</button>
+        <select id="nudgeStep" title="Langkah geser">
+          <option value="0.05">5 cm</option>
+          <option value="0.25" selected>25 cm</option>
+          <option value="1">1 m</option>
+        </select>
+        <button class="btn sm ghost" data-nudge="1,0" title="Geser ke kanan (+X)">▶</button>
+        <button class="btn sm ghost" data-nudge="0,1" title="Geser ke depan (+Z)">▼</button>
+      </div>
+      <button class="btn sm ghost" id="alignNowBtn">Sejajarkan ke lantai bawah</button>
+      <span class="val" id="align-info"></span>
     </div>
 
     <!-- ============ TAB LANTAI ============ -->
@@ -470,6 +504,7 @@ const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
 
 /* --------------------------- state --------------------------- */
 const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{},
+  plans:{},                       // gambar denah per lantai: { [levelId]: {img,w,h,realWidth,unit,dx,dz} }
   // finishing dinding dibedakan muka dalam dan muka luar, seperti gambar kerja
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' } };
 
@@ -4316,29 +4351,113 @@ function updatePxm(){
     ? fmt(LAST_RESULT.pxm,1)+' px/m'
     : (SRC_IMG ? 'skala dihitung saat generate' : '– px/m');
 }
-$('#upload').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
+/* ---------- layer denah: tiap lantai menyimpan gambar denahnya sendiri ----------
+   Gambar disimpan di PROJECT.plans (di luar levels) agar catatan undo tetap ringan. */
+const PLAN_IMG=new Map(), PLAN_RES=new Map();
+let PLAN_SHOWN=null;
+const planOf = lv => lv ? PROJECT.plans[lv.id] : null;
+function showPlanImage(img,pl){
+  canvas2d.width=pl.w; canvas2d.height=pl.h;
+  SRC_IMG=img;
+  canvas2d.style.display='block';
+  const ph=$('#preview-box .ph'); if(ph) ph.style.display='none';
+  drawOverlay(LAST_RESULT);
+  updatePxm();
+}
+function renderPlanLayers(){
+  const box=$('#plan-layers'); if(!box) return;
+  box.innerHTML='';
+  PROJECT.levels.forEach((lv,i)=>{
+    const pl=planOf(lv);
+    const b=el('button','pl-chip'+(i===PROJECT.active?' active':''));
+    b.type='button';
+    const th=el('span','th', pl?'':'—');
+    if(pl) th.style.backgroundImage=`url(${pl.img})`;
+    const tx=el('span','tx');
+    tx.appendChild(el('b',null,'L'+(i+1)+' · '+lv.name));
+    tx.appendChild(el('small',null, pl ? (PLAN_RES.has(lv.id)||lv.walls.length?'denah ✓':'denah, belum generate') : 'belum ada denah'));
+    b.appendChild(th); b.appendChild(tx);
+    b.title = pl ? `${lv.name}: ${pl.name||'denah'}` : `${lv.name}: belum ada gambar denah`;
+    b.onclick=()=>{ if(i!==PROJECT.active) setActiveLevel(i); };
+    box.appendChild(b);
+  });
+  const add=el('button','pl-chip add','+ Lantai baru & upload denah');
+  add.type='button';
+  add.title='Tambah lantai di atas lalu pilih gambar denahnya';
+  add.onclick=()=>{ $('#uploadNew').value=''; $('#uploadNew').click(); };
+  box.appendChild(add);
+  $('#plan-lvname').textContent=L()?L().name:'';
+}
+/* samakan panel denah dengan lantai aktif */
+function syncPlanPanel(force){
+  const lv=L(); if(!lv) return;
+  renderPlanLayers();
+  const pl=planOf(lv);
+  const key=lv.id+'|'+(pl?pl.img.length+':'+pl.w:'-');
+  if(!force && PLAN_SHOWN===key) return;
+  PLAN_SHOWN=key;
+  SRC_IMG=null;
+  LAST_RESULT=PLAN_RES.get(lv.id)||null;
+  const ph=$('#preview-box .ph');
+  if(!pl){
+    canvas2d.style.display='none';
+    if(ph){ ph.style.display=''; ph.innerHTML=`<b>${lv.name}</b> belum punya gambar denah.<br>Upload denah khusus lantai ini di atas.`; }
+    updatePxm();
+    return;
+  }
+  $('#realWidth').value=pl.realWidth; $('#unit').value=pl.unit||'m';
+  const img=PLAN_IMG.get(lv.id);
+  if(img&&img.complete&&img.naturalWidth) return showPlanImage(img,pl);
+  const im=new Image();
+  im.onload=()=>{ PLAN_IMG.set(lv.id,im); if(L()&&L().id===lv.id&&PROJECT.plans[lv.id]===pl) showPlanImage(im,pl); };
+  im.src=pl.img;
+}
+function loadPlanFile(f,toNewLevel){
+  if(!f) return;
   const rd=new FileReader();
   rd.onload=ev=>{
     const img=new Image();
     img.onload=()=>{
+      if(toNewLevel){
+        const src=L();
+        const lv=newLevel('Lantai '+(PROJECT.levels.length+1), src?src.height:3.2);
+        PROJECT.levels.push(lv);
+        PROJECT.active=PROJECT.levels.length-1;
+        SEL=null; HIST.label='Tambah lantai';
+      }
+      const lv=L();
       let w=img.width,h=img.height;
       const k=PROC_MAX/Math.max(w,h);
       if(k<1){ w=Math.round(w*k); h=Math.round(h*k); }
       canvas2d.width=w; canvas2d.height=h;
       ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
       ctx2d.drawImage(img,0,0,w,h);
-      SRC_IMG=img;
-      canvas2d.style.display='block';
-      const ph=$('#preview-box .ph'); if(ph) ph.style.display='none';
-      updatePxm();
-      toast(`Denah dimuat (${w}×${h} px)`);
-      setHint('Atur <b>skala</b> lalu klik <b>Generate Dinding 3D</b>.');
+      // yang disimpan versi seukuran kanvas proses: cukup untuk deteksi ulang, berkas proyek tetap kecil
+      const stored=new Image(); stored.src=canvas2d.toDataURL('image/png');
+      PROJECT.plans[lv.id]={ img:stored.src, w, h, name:f.name||'denah',
+        realWidth:parseFloat($('#realWidth').value)||12, unit:$('#unit').value, dx:0, dz:0 };
+      PLAN_IMG.set(lv.id,stored);
+      PLAN_RES.delete(lv.id);
+      LAST_RESULT=null; SRC_IMG=stored;
+      PLAN_SHOWN=null;
+      if(toNewLevel){ renderLevels(); rebuildScene(); }
+      else syncPlanPanel(true);
+      toast(`Denah ${lv.name} dimuat (${w}×${h} px)`);
+      setHint(`Atur <b>skala</b> lalu klik <b>Generate Dinding 3D</b> untuk <b>${lv.name}</b>.`);
     };
     img.src=ev.target.result;
   };
   rd.readAsDataURL(f);
-});
+}
+$('#upload').addEventListener('change',e=>loadPlanFile(e.target.files[0],false));
+$('#uploadNew').addEventListener('change',e=>loadPlanFile(e.target.files[0],true));
+/* skala disimpan per lantai: lantai atas boleh lebih kecil dari lantai bawah */
+function storePlanScale(){
+  const pl=planOf(L()); if(!pl) return;
+  pl.realWidth=parseFloat($('#realWidth').value)||12; pl.unit=$('#unit').value;
+}
+$('#realWidth').addEventListener('input',storePlanScale);
+$('#unit').addEventListener('change',storePlanScale);
 $('#realWidth').addEventListener('input',updatePxm);
 $('#unit').addEventListener('change',updatePxm);
 
@@ -4358,8 +4477,23 @@ function drawOverlay(res){
   const w=canvas2d.width,h=canvas2d.height;
   ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
   ctx2d.drawImage(SRC_IMG,0,0,w,h);
-  if(!$('#showOverlay').checked || !res) return;
+  if(!res) return;
   const pxm=pxPerMeter();
+  // dinding lantai bawah, dipetakan ke koordinat gambar lantai ini (memperhitungkan geseran)
+  const below=levelBelow(PROJECT.active), pl=planOf(L());
+  if(below && $('#showBelow').checked){
+    const ox=pl?pl.dx||0:0, oz=pl?pl.dz||0:0;
+    ctx2d.save();
+    ctx2d.globalAlpha=0.7; ctx2d.strokeStyle='#1aa3c9'; ctx2d.lineWidth=2; ctx2d.setLineDash([6,4]);
+    for(const wl of below.walls){
+      ctx2d.beginPath();
+      ctx2d.moveTo((wl.x1-ox)*pxm+w/2,(wl.z1-oz)*pxm+h/2);
+      ctx2d.lineTo((wl.x2-ox)*pxm+w/2,(wl.z2-oz)*pxm+h/2);
+      ctx2d.stroke();
+    }
+    ctx2d.restore();
+  }
+  if(!$('#showOverlay').checked) return;
   ctx2d.save();
   ctx2d.globalAlpha=0.55;
   for(const wl of res.walls){
@@ -4430,12 +4564,15 @@ function updateStatsBar(){
 }
 
 function runGenerate(toNewLevel){
-  if(!SRC_IMG) return toast('Upload gambar denah dulu.');
+  if(!SRC_IMG) return toast(`Upload gambar denah untuk ${L().name} dulu.`);
   $('#loader').classList.add('on');
   $('#loader-txt').textContent='Vektorisasi dinding…';
   setTimeout(()=>{
     try{
       const w=canvas2d.width,h=canvas2d.height;
+      // baca dari gambar bersih, bukan dari kanvas yang sudah bertumpuk overlay
+      ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
+      ctx2d.drawImage(SRC_IMG,0,0,w,h);
       const data=ctx2d.getImageData(0,0,w,h).data;
       const lvH=parseFloat($('#wallH').value)||3.2;
       // null = hitung sendiri dari gambar
@@ -4462,13 +4599,22 @@ function runGenerate(toNewLevel){
         toast('Tidak ada dinding terdeteksi — coba naikkan threshold atau turunkan panjang minimum.');
       }
       if(toNewLevel){
+        const srcPl=planOf(L());
         const lv=newLevel('Lantai '+(PROJECT.levels.length+1), lvH);
         PROJECT.levels.push(lv);
         PROJECT.active=PROJECT.levels.length-1;
+        if(srcPl){ PROJECT.plans[lv.id]={...srcPl, dx:0, dz:0}; PLAN_IMG.set(lv.id,SRC_IMG); }
       }
       const lv=L();
+      const pl=planOf(lv);
+      // objek buatan pengguna ikut geseran lama; kembalikan dulu lalu geser ulang bersama dinding baru
+      if(pl&&(pl.dx||pl.dz)){
+        for(const o of lv.objects) if(!o.fromPlan){ o.x-=pl.dx; o.z-=pl.dz; }
+      }
+      if(pl){ pl.dx=0; pl.dz=0; }
       lv.height=lvH;
-      lv.walls=res.walls;
+      // salinan: hasil deteksi tetap di koordinat gambar untuk overlay, lantai boleh digeser
+      lv.walls=JSON.parse(JSON.stringify(res.walls));
       HIST.label = toNewLevel ? 'Generate ke lantai baru' : 'Generate denah';
       // objek hasil pembacaan simbol; yang lama dibuang agar tidak menumpuk
       lv.objects=lv.objects.filter(o=>!o.fromPlan);
@@ -4487,8 +4633,15 @@ function runGenerate(toNewLevel){
       }
       PROJECT.pxPerMeter=res.pxm;
       LAST_RESULT=res;
+      PLAN_RES.set(lv.id,res);
+      let alignMsg='';
+      if($('#alignBelow').checked){
+        const a=alignLevel(lv);
+        if(a) alignMsg=a.msg;
+      }
       updatePxm();
       SEL=null;
+      PLAN_SHOWN=null;
       renderLevels();
       rebuildScene();
       drawOverlay(res);
@@ -4502,7 +4655,8 @@ function runGenerate(toNewLevel){
       toast(`${res.walls.length} dinding · ${res.nDoor} pintu · ${res.nWin} jendela`
         + (res.nSlide?` · ${res.nSlide} geser`:'')
         + (res.stairs.length?` · ${res.stairs.length} tangga`:'')
-        + (res.fixtures.length?` · ${res.fixtures.length} sanitair`:''));
+        + (res.fixtures.length?` · ${res.fixtures.length} sanitair`:'')
+        + (alignMsg?' · '+alignMsg:''));
       const autoMode = $('#autoDetect').checked || $('#autoCal').checked;
       $('#cal-info').innerHTML = (!autoMode ? 'Kalibrasi manual aktif. ' :
         `Terbaca: ambang hitam <b>${res.thr}</b>, goresan tebal <b>${fmt(res.cal.strokeP90,1)} px</b> → `
@@ -4525,6 +4679,114 @@ function runGenerate(toNewLevel){
 $('#generateBtn').onclick=()=>runGenerate(false);
 $('#generateNewBtn').onclick=()=>runGenerate(true);
 $('#showOverlay').addEventListener('change',()=>drawOverlay(LAST_RESULT));
+$('#showBelow').addEventListener('change',()=>drawOverlay(LAST_RESULT));
+
+/* ---------- penyejajaran antar lantai ----------
+   Kaidah struktur: dinding lantai atas menumpu dinding lantai bawah. Dicari geseran (dx,dz)
+   yang membuat panjang dinding atas yang berdiri di atas dinding bawah sebesar mungkin. */
+function levelBelow(i){
+  for(let k=i-1;k>=0;k--) if(PROJECT.levels[k].walls.length) return PROJECT.levels[k];
+  return null;
+}
+function shiftLevel(lv,dx,dz){
+  if(dx||dz){
+    for(const w of lv.walls){ w.x1+=dx; w.x2+=dx; w.z1+=dz; w.z2+=dz; }
+    for(const o of lv.objects){ o.x+=dx; o.z+=dz; }
+  }
+  const pl=PROJECT.plans[lv.id];
+  if(pl){ pl.dx=(pl.dx||0)+dx; pl.dz=(pl.dz||0)+dz; }
+}
+function bboxOf(walls){
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(const w of walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  return {x0,x1,z0,z1};
+}
+function bestAlignOffset(upWalls,downWalls){
+  const segs=ws=>ws.map(w=>{
+    const len=wallLen(w); if(len<0.3) return null;
+    return {w,len,tx:(w.x2-w.x1)/len,tz:(w.z2-w.z1)/len};
+  }).filter(Boolean);
+  const U=segs(upWalls), D=segs(downWalls);
+  if(!U.length||!D.length) return null;
+  const TOL=0.15;
+  const score=(dx,dz)=>{
+    let s=0;
+    for(const u of U){
+      let m=0;
+      const mx=(u.w.x1+u.w.x2)/2+dx, mz=(u.w.z1+u.w.z2)/2+dz;
+      for(const d of D){
+        if(Math.abs(u.tx*d.tz-u.tz*d.tx)>0.05) continue;              // tidak sejajar
+        if(Math.abs((mx-d.w.x1)*-d.tz+(mz-d.w.z1)*d.tx)>TOL) continue; // tidak segaris
+        const a1=(u.w.x1+dx-d.w.x1)*d.tx+(u.w.z1+dz-d.w.z1)*d.tz;
+        const a2=(u.w.x2+dx-d.w.x1)*d.tx+(u.w.z2+dz-d.w.z1)*d.tz;
+        const o=Math.min(Math.max(a1,a2),d.len)-Math.max(Math.min(a1,a2),0);
+        if(o>0) m+=o;
+      }
+      s+=Math.min(m,u.len);
+    }
+    return s;
+  };
+  // kandidat dari pasangan dinding tegak (→dx) dan mendatar (→dz), dikelompokkan per 5 cm
+  const hx=new Map(), hz=new Map();
+  const vote=(h,v,wt)=>{ const k=Math.round(v/0.05); const e=h.get(k)||{s:0,w:0}; e.s+=v*wt; e.w+=wt; h.set(k,e); };
+  for(const u of U) for(const d of D){
+    const wt=Math.min(u.len,d.len);
+    if(Math.abs(u.tx)<0.05&&Math.abs(d.tx)<0.05) vote(hx,(d.w.x1+d.w.x2)/2-(u.w.x1+u.w.x2)/2,wt);
+    else if(Math.abs(u.tz)<0.05&&Math.abs(d.tz)<0.05) vote(hz,(d.w.z1+d.w.z2)/2-(u.w.z1+u.w.z2)/2,wt);
+  }
+  const top=h=>[...h.values()].sort((a,b)=>b.w-a.w).slice(0,12).map(e=>e.s/e.w);
+  const bu=bboxOf(upWalls), bd=bboxOf(downWalls);
+  const cx=(bd.x0+bd.x1)/2-(bu.x0+bu.x1)/2, cz=(bd.z0+bd.z1)/2-(bu.z0+bu.z1)/2;
+  const DX=[0,cx,bd.x0-bu.x0,bd.x1-bu.x1,...top(hx)], DZ=[0,cz,bd.z0-bu.z0,bd.z1-bu.z1,...top(hz)];
+  const total=U.reduce((a,u)=>a+u.len,0);
+  let best={dx:cx,dz:cz,score:score(cx,cz)};
+  for(const dx of DX) for(const dz of DZ){
+    const sc=score(dx,dz);
+    const better = sc>best.score+1e-6 ||
+      (Math.abs(sc-best.score)<=1e-6 && Math.hypot(dx-cx,dz-cz)<Math.hypot(best.dx-cx,best.dz-cz));
+    if(better) best={dx,dz,score:sc};
+  }
+  best.total=total; best.base=score(0,0);
+  best.ratio=total?best.score/total:0;
+  return best;
+}
+/* sejajarkan lantai lv ke lantai di bawahnya; mengembalikan ringkasan atau null */
+function alignLevel(lv){
+  const i=PROJECT.levels.indexOf(lv);
+  const below=levelBelow(i);
+  if(!below||!lv.walls.length) return null;
+  const b=bestAlignOffset(lv.walls,below.walls);
+  if(!b) return null;
+  const dx=Math.round(b.dx*1000)/1000, dz=Math.round(b.dz*1000)/1000;
+  shiftLevel(lv,dx,dz);
+  const pct=Math.round(b.ratio*100);
+  const msg = b.ratio>=0.05
+    ? `disejajarkan dengan ${below.name} (${pct}% dinding menumpu)`
+    : `dipusatkan di atas ${below.name}`;
+  $('#align-info').textContent=`${lv.name}: ${msg}. Geseran total x ${fmt((planOf(lv)||{dx}).dx,2)} m, z ${fmt((planOf(lv)||{dz}).dz,2)} m.`;
+  return {dx,dz,pct,msg};
+}
+$$('[data-nudge]').forEach(b=>b.onclick=()=>{
+  const lv=L(); if(!lv.walls.length&&!lv.objects.length) return toast('Lantai ini masih kosong.');
+  const st=parseFloat($('#nudgeStep').value)||0.25;
+  const [ax,az]=b.dataset.nudge.split(',').map(Number);
+  shiftLevel(lv,ax*st,az*st);
+  HIST.label='Geser lantai';
+  rebuildScene(); drawOverlay(LAST_RESULT);
+  const pl=planOf(lv);
+  $('#align-info').textContent = `${lv.name} digeser ${fmt(ax*st,2)} m, ${fmt(az*st,2)} m`
+    + (pl?` · geseran total x ${fmt(pl.dx,2)} m, z ${fmt(pl.dz,2)} m`:'');
+});
+$('#alignNowBtn').onclick=()=>{
+  const lv=L();
+  if(!levelBelow(PROJECT.active)) return toast('Tidak ada lantai berdinding di bawah lantai ini.');
+  if(!lv.walls.length) return toast('Lantai ini belum punya dinding.');
+  const a=alignLevel(lv);
+  if(!a) return;
+  HIST.label='Sejajarkan lantai';
+  rebuildScene(); drawOverlay(LAST_RESULT);
+  toast(`${lv.name} ${a.msg}`);
+};
 $('#autoCal').addEventListener('change',e=>{ $('#manual-cal').hidden=e.target.checked; });
 
 /* ======================================================================
@@ -4577,6 +4839,7 @@ function renderLevels(){
   const add=el('button',null,'+'); add.title='Tambah lantai';
   add.onclick=()=>addLevel(false); bar.appendChild(add);
   updateStatsBar();
+  syncPlanPanel();
 }
 function addLevel(copy){
   const src=L();
@@ -4724,7 +4987,9 @@ function download(content,name,type){
 }
 $('#projName').addEventListener('change',e=>PROJECT.name=e.target.value||'Denah 3D');
 $('#saveBtn').onclick=()=>{
-  download(JSON.stringify({v:2, ...PROJECT},null,1), (PROJECT.name||'denah')+'.json','application/json');
+  const ids=new Set(PROJECT.levels.map(l=>l.id));
+  const plans=Object.fromEntries(Object.entries(PROJECT.plans).filter(([k])=>ids.has(k)));
+  download(JSON.stringify({v:3, ...PROJECT, plans},null,1), (PROJECT.name||'denah')+'.json','application/json');
   toast('Proyek disimpan');
 };
 $('#loadInput').addEventListener('change',e=>{
@@ -4744,6 +5009,8 @@ $('#loadInput').addEventListener('change',e=>{
       }));
       PROJECT.active=clamp(j.active||0,0,PROJECT.levels.length-1);
       PROJECT.assets=j.assets||{};
+      PROJECT.plans=j.plans||{};
+      PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
       PROJECT.finish=Object.assign({in:'cat',out:'plester',floor:'keramik',
                                     inColor:'#efece5',outColor:'#d9d3c7'}, j.finish||{});
       renderFinishUI();
@@ -5392,7 +5659,8 @@ $('#exportGlbBtn').onclick=async()=>{
 
 $('#clearLevelBtn').onclick=()=>{
   const lv=L();
-  if((lv.walls.length||lv.objects.length) && !confirm(`Kosongkan ${lv.name}? Semua dinding dan objek di lantai ini akan dihapus.`)) return; lv.walls=[]; lv.objects=[]; SEL=null; LAST_RESULT=null;
+  if((lv.walls.length||lv.objects.length) && !confirm(`Kosongkan ${lv.name}? Semua dinding dan objek di lantai ini akan dihapus.`)) return; lv.walls=[]; lv.objects=[]; SEL=null; LAST_RESULT=null; PLAN_RES.delete(lv.id);
+  if(PROJECT.plans[lv.id]){ PROJECT.plans[lv.id].dx=0; PROJECT.plans[lv.id].dz=0; }
   HIST.label='Kosongkan lantai';
   rebuildScene(); drawOverlay(null); toast(lv.name+' dikosongkan');
 };
@@ -5400,6 +5668,7 @@ $('#resetBtn').onclick=()=>{
   if(!confirm('Reset seluruh proyek? Semua lantai, dinding, dan objek akan hilang.')) return;
   PROJECT.levels=[newLevel('Lantai 1',parseFloat($('#wallH').value)||3.2)];
   PROJECT.active=0; SEL=null; LAST_RESULT=null;
+  PROJECT.plans={}; PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
   renderLevels(); rebuildScene(); drawOverlay(null);
   resetHistory('Proyek baru'); toast('Proyek direset');
 };
