@@ -381,7 +381,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button id="delBtn" title="Hapus (Del)">Hapus</button>
       <div class="sep"></div>
       <button id="wallModeBtn" title="Tembok solid atau tembus pandang (G)">Tembok: Solid</button>
-      <button id="walkBtn" title="Jalan-jalan di dalam ruangan (orang pertama)">Jalan</button>
+      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam ruangan (orang pertama)">Walk</button>
       <button id="arBtn" title="Lihat model di AR / 3D viewer">AR</button>
     </div>
     <div class="float" id="levelbar"></div>
@@ -564,7 +564,7 @@ if(window.ResizeObserver) new ResizeObserver(fitViewport).observe(viewport);
 /* Keadaan mode jalan-jalan dideklarasikan di sini, bukan di modulnya jauh di
    bawah: loop render langsung berjalan begitu baris ini dilewati, sehingga ia
    tidak boleh menyentuh const yang belum sempat dibuat. */
-const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:1.4, run:2.6,
+const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:1.8, run:3.2,
             vy:0, feet:0, keys:new Set(), look:null, move:null, save:null };
 const clock=new THREE.Clock();
 (function animate(){
@@ -897,6 +897,11 @@ function buildWallGroup(w, lv){
     .sort((a,b)=>a.s-b.s)
     .filter((o,i,arr)=> i===0 || o.s >= arr[i-1].e-1e-6);
 
+  // UV diukur sepanjang dinding dalam koordinat dunia, jadi nat bata dan
+  // papan kayu bersambung melewati jendela dan pintu
+  const ang=wallAngle(w), m0=wallMid(w);
+  const sepanjang=m0.x*Math.cos(ang)+m0.z*Math.sin(ang);
+
   const panels=[]; // [x0,x1,y0,y1]
   let cur=0;
   for(const o of ops){
@@ -905,15 +910,11 @@ function buildWallGroup(w, lv){
     const sill=isWindowType(o.type) ? clamp(o.sill??STD.sillH,0,head-0.15) : 0;
     if(sill>0.01) panels.push([o.s,o.e,0,sill]);           // dinding bawah jendela
     if(head<h-0.01) panels.push([o.s,o.e,head,h]);          // lintel / ambang atas
-    addOpeningDetail(g,o,sill,head,t,len);
+    addOpeningDetail(g,o,sill,head,t,len,{mat,sepanjang});
     cur=o.e;
   }
   if(cur<len-1e-4) panels.push([cur,len,0,h]);
 
-  // UV diukur sepanjang dinding dalam koordinat dunia, jadi nat bata dan
-  // papan kayu bersambung melewati jendela dan pintu
-  const ang=wallAngle(w), m0=wallMid(w);
-  const sepanjang=m0.x*Math.cos(ang)+m0.z*Math.sin(ang);
   for(const [x0,x1,y0,y1] of panels){
     const pw=x1-x0, ph=y1-y0;
     if(pw<0.004||ph<0.004) continue;
@@ -999,22 +1000,119 @@ function pasangDaun(g,daun,hx,yMid,hs,sw,sudut){
   g.add(pv);
 }
 
+/* ---------------------------------------------------------------------
+   PEMBAGI KACA (mullion / muntin)
+   Tiang kusen membagi bidang kaca besar; kisi kecil (muntin) membagi tiap
+   daun menjadi kotak-kotak kaca. Polanya dipilih per jendela.
+   --------------------------------------------------------------------- */
+const PEMBAGI={
+  otomatis:{l:'Otomatis (tiap ±90 cm)'},
+  tanpa   :{l:'Tanpa pembagi'},
+  tegak   :{l:'Tegak (±45 cm)'},
+  kisi    :{l:'Kisi (±45 cm)'},
+  kolonial:{l:'Kolonial (kotak kecil ±30 cm)'},
+  atas    :{l:'Bovenlicht atas (palang datar)'}
+};
+const KEPALA={
+  datar   :{l:'Datar'},
+  setengah:{l:'Lengkung setengah lingkaran'},
+  segmen  :{l:'Lengkung segmen (landai)'}
+};
+/* garis-garis pembagi di atas bidang kaca selebar w x h berpusat (x,y,z) */
+function kisiKaca(g,x,y,z,w,h,pola,tebal){
+  if(!pola||pola==='tanpa') return;
+  const bar=(bw,bh,px,py)=>g.add(box(bw,bh,tebal||0.03,MAT.frame,px,py,z));
+  let nv=1, nh=1, b=0.025;
+  if(pola==='otomatis'){ nv=Math.max(1,Math.round(w/0.9)); b=0.04; }
+  if(pola==='tegak')   { nv=Math.max(2,Math.round(w/0.45)); }
+  if(pola==='kisi')    { nv=Math.max(2,Math.round(w/0.45)); nh=Math.max(2,Math.round(h/0.45)); }
+  if(pola==='kolonial'){ nv=Math.max(2,Math.round(w/0.3));  nh=Math.max(2,Math.round(h/0.3)); b=0.018; }
+  if(pola==='atas')    { bar(w,0.045,x,y+h/2-h*0.3); return; }
+  for(let i=1;i<nv;i++) bar(b,h,x-w/2+w*i/nv,y);
+  for(let j=1;j<nh;j++) bar(w,b,x,y-h/2+h*j/nh);
+}
+/* Busur di atas garis pegas yS: tinggi naik `naik`, setengah lebar a.
+   Setengah lingkaran bila naik = a; lebih kecil dari itu jadi busur segmen. */
+function titikBusur(cx,yS,a,naik,n){
+  const R=(a*a+naik*naik)/(2*naik), cy=yS+naik-R, pts=[];
+  for(let i=0;i<=n;i++){
+    const x=-a+2*a*i/n;
+    pts.push([cx+x, cy+Math.sqrt(Math.max(0,R*R-x*x))]);
+  }
+  return pts;                                   // dari kiri ke kanan
+}
+/* Kepala lengkung: bidang dinding di kedua sudut atas diisi material dinding
+   (dua lapis tipis supaya muka dalam dan luar tetap boleh berbeda), lalu
+   lubang lengkungnya diberi kaca, kusen lengkung, dan palang di garis pegas.
+   Mengembalikan tinggi garis pegas — bagian jendela di bawahnya digambar
+   seperti biasa. */
+function kepalaLengkung(g,o,cx,ow,sill,head,t,dinding,fr){
+  const a=ow/2, tinggi=head-sill;
+  const naik = o.arch==='setengah' ? Math.min(a,tinggi*0.8) : Math.min(ow*0.18,tinggi*0.5);
+  if(naik<0.05) return head;
+  const yS=head-naik;
+  const busur=titikBusur(cx,yS,a,naik,28);
+  // bidang dinding: persegi garis pegas s.d. kepala dikurangi busur
+  const sh=new THREE.Shape();
+  sh.moveTo(cx-a,yS); sh.lineTo(cx-a,head); sh.lineTo(cx+a,head); sh.lineTo(cx+a,yS);
+  for(let i=busur.length-1;i>=0;i--) sh.lineTo(busur[i][0],busur[i][1]);
+  const mats=[].concat(dinding.mat);
+  for(const [z0,mi] of [[0,4],[-t/2,5]]){               // muka +Z lalu muka −Z
+    const m=mats.length===6?mats[mi]:mats[0];
+    const geo=new THREE.ExtrudeGeometry(sh,{depth:t/2,bevelEnabled:false,curveSegments:1});
+    geo.translate(0,0,z0);
+    planarUV(geo,dinding.sepanjang,0,0);
+    const isi=new THREE.Mesh(geo,m);
+    isi.castShadow=true; isi.receiveShadow=true; isi.userData.wallPanel=true;
+    g.add(isi);
+  }
+  // kaca lengkung
+  const kc=new THREE.Shape();
+  kc.moveTo(busur[0][0]+fr,yS);
+  for(const [x,y] of busur.slice(1,-1)) kc.lineTo(x+(x<cx?fr:-fr)*0.4,y-fr*0.8);
+  kc.lineTo(busur.at(-1)[0]-fr,yS);
+  const kg=new THREE.Mesh(new THREE.ShapeGeometry(kc),MAT.glass);
+  kg.castShadow=false; g.add(kg);
+  // kusen lengkung: potongan-potongan pendek menyusuri busur
+  for(let i=0;i<busur.length-1;i++){
+    const [x1,y1]=busur[i], [x2,y2]=busur[i+1];
+    const seg=box(Math.hypot(x2-x1,y2-y1)+0.01,fr,t*0.6,MAT.frame,(x1+x2)/2,(y1+y2)/2,0);
+    seg.rotation.z=Math.atan2(y2-y1,x2-x1);
+    g.add(seg);
+  }
+  // palang di garis pegas + jari-jari matahari bila jendelanya berpembagi
+  g.add(box(ow,fr*0.8,t*0.6,MAT.frame,cx,yS,0));
+  if(o.mullion && o.mullion!=='tanpa'){
+    for(const f of [0.25,0.5,0.75]){                        // tiga jari-jari "matahari"
+      const ujung=busur[Math.round(f*(busur.length-1))];
+      const dx=ujung[0]-cx, dy=ujung[1]-yS, L=Math.hypot(dx,dy);
+      const jr=box(L,0.02,0.03,MAT.frame,cx+dx/2,yS+dy/2,0);
+      jr.rotation.z=Math.atan2(dy,dx); g.add(jr);
+    }
+  }
+  return yS;
+}
+
 /* daun pintu / kaca jendela + kusen */
-function addOpeningDetail(g,o,sill,head,t,len){
+function addOpeningDetail(g,o,sill,head,t,len,dinding){
   const cx=(o.s+o.e)/2-len/2, ow=o.e-o.s;
   const fr=0.05;
   const hs = o.hinge==='R' ? -1 : 1;
   const sw = o.swing===-1 ? -1 : 1;
   const ambangLuar=()=>g.add(box(ow+0.06,0.03,t*1.25,MAT.white, cx,sill-0.015,0));
+  // jendela berkepala lengkung: bagian atasnya digambar di sini, lalu jendela
+  // di bawah garis pegas digambar seperti jendela berkepala datar
+  if(isWindowType(o.type) && o.type!=='vent' && o.arch && o.arch!=='datar' && dinding)
+    head=kepalaLengkung(g,o,cx,ow,sill,head,t,dinding,fr);
+  const pola = o.mullion || 'otomatis';
 
   switch(o.type){
   case 'window': {
-    // jendela mati, dibagi tiang kusen tiap ±90 cm seperti kaca lebar sungguhan
-    const gh=head-sill, n=Math.max(1,Math.round((ow-2*fr)/0.9));
+    // jendela mati; pembaginya mengikuti pola yang dipilih
+    const gh=head-sill;
     kusen(g,cx,ow,sill,head,t,fr,MAT.frame,true);
-    const lb=(ow-2*fr)/n;
-    for(let i=0;i<n;i++) g.add(kaca(lb-0.01,gh-2*fr, cx-ow/2+fr+lb*(i+0.5), sill+gh/2, 0));
-    for(let i=1;i<n;i++) g.add(box(0.04,gh-2*fr,t*0.45,MAT.frame, cx-ow/2+fr+lb*i, sill+gh/2, 0));
+    g.add(kaca(ow-2*fr,gh-2*fr, cx, sill+gh/2, 0));
+    kisiKaca(g,cx,sill+gh/2,0,ow-2*fr,gh-2*fr,pola,t*0.45);
     ambangLuar();
     break;
   }
@@ -1031,6 +1129,7 @@ function addOpeningDetail(g,o,sill,head,t,len){
       daun.add(box(b,dh,0.035,MAT.frame, X(b/2),0,0));
       daun.add(box(b,dh,0.035,MAT.frame, X(dw-b/2),0,0));
       daun.add(kaca(dw-2*b,dh-2*b, X(dw/2),0,0));
+      if(pola!=='otomatis') kisiKaca(daun,X(dw/2),0,0,dw-2*b,dh-2*b,pola,0.03);
       const hx = kiri ? cx-ow/2+fr : cx+ow/2-fr;
       pasangDaun(g,daun,hx,sill+gh/2,arah,sw,35);
     }
@@ -1048,6 +1147,7 @@ function addOpeningDetail(g,o,sill,head,t,len){
       g.add(box(b,dh,0.03,MAT.frame, x-dw/2+b/2,sill+gh/2,zz));
       g.add(box(b,dh,0.03,MAT.frame, x+dw/2-b/2,sill+gh/2,zz));
       g.add(kaca(dw-2*b,dh-2*b, x,sill+gh/2,zz));
+      if(pola!=='otomatis') kisiKaca(g,x,sill+gh/2,zz,dw-2*b,dh-2*b,pola,0.03);
     }
     ambangLuar();
     break;
@@ -2365,6 +2465,14 @@ function renderInspector(){
       mk('Ambang',o.sill,0.05,v=>{ o.sill=clamp(v,0,2); rebuildScene(); });
       mk('Tinggi',o.head,0.05,v=>{ o.head=clamp(v,0.5,5); rebuildScene(); });
       it.appendChild(grid);
+      if(isWindowType(o.type) && o.type!=='vent'){
+        const g2=el('div','f-grid');
+        const baris=(lb,node)=>{ const c=el('div','f-row'); const l=el('label',null,lb); l.style.width='56px'; c.appendChild(l); c.appendChild(node); g2.appendChild(c); };
+        if(o.type!=='louver')
+          baris('Pembagi',selInput(Object.entries(PEMBAGI).map(([k,v])=>[k,v.l]),o.mullion||'otomatis',v=>{ o.mullion=v; rebuildScene(); }));
+        baris('Kepala',selInput(Object.entries(KEPALA).map(([k,v])=>[k,v.l]),o.arch||'datar',v=>{ o.arch=v; rebuildScene(); }));
+        it.appendChild(g2);
+      }
       const def=OPENING[o.type]||{};
       if(def.engsel||def.ayun){
         const row=el('div','row');
