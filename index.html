@@ -83,7 +83,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 #viewport{flex:1;position:relative;background:#0a0a0c;overflow:hidden}
 #viewport canvas{display:block}
 .float{position:absolute;background:rgba(23,23,27,.94);border:1px solid var(--line);border-radius:8px;backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.5)}
-#toolbar{top:12px;left:12px;display:flex;gap:2px;padding:5px}
+#toolbar{top:12px;left:12px;display:flex;flex-wrap:wrap;gap:2px;padding:5px;max-width:calc(100% - 150px)}
 #toolbar button{background:none;border:none;color:var(--muted);padding:7px 9px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit}
 #toolbar button:hover{background:#2a2a33;color:var(--txt)}
 #toolbar button.active{background:var(--accent);color:#06201b}
@@ -139,6 +139,8 @@ details#adv>*:not(summary){margin-bottom:8px}
 #fpsbar b{color:var(--txt)}
 #fpsStick{position:absolute;width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);z-index:36;pointer-events:none;touch-action:none}
 #fpsKnob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(78,201,176,.5);border:1px solid rgba(78,201,176,.8)}
+#app.nosidebar #sidebar{display:none}
+#toolbar button.on{background:#2a3d39;color:var(--accent)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -265,6 +267,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="f-row"><label>Muka luar</label><select id="finOut"></select></div>
       <div class="f-row" id="finOutColorRow" hidden><label>Warna luar</label><input type="color" id="finOutColor" value="#d9d3c7"></div>
       <div class="f-row"><label>Lantai</label><select id="finFloor"></select></div>
+      <label class="chk"><input type="checkbox" id="finTex" checked><span>Tekstur material (bata, kayu, keramik…)</span></label>
       <p class="hint">Muka luar hanya dikenakan pada dinding yang berada di keliling bangunan; dinding sekat di dalam memakai finishing dalam pada kedua mukanya.</p>
       <div class="section-title">Render</div>
       <div class="f-row"><label>Kualitas</label><select id="rq">
@@ -339,6 +342,8 @@ details#adv>*:not(summary){margin-bottom:8px}
 
   <main id="viewport">
     <div class="float" id="toolbar">
+      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)">☰</button>
+      <div class="sep"></div>
       <button id="undoBtn" title="Urung (Ctrl+Z)" disabled>↶</button>
       <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" disabled>↷</button>
       <div class="sep"></div>
@@ -353,6 +358,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button id="dupBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
       <button id="delBtn" title="Hapus (Del)">Hapus</button>
       <div class="sep"></div>
+      <button id="wallModeBtn" title="Tembok solid atau tembus pandang (G)">Tembok: Solid</button>
       <button id="walkBtn" title="Jalan-jalan di dalam ruangan (orang pertama)">Jalan</button>
       <button id="arBtn" title="Lihat model di AR / 3D viewer">AR</button>
     </div>
@@ -360,6 +366,8 @@ details#adv>*:not(summary){margin-bottom:8px}
     <div class="float" id="inspector" hidden></div>
     <div class="float" id="fpsbar" hidden>
       <span id="fpsinfo"></span>
+      <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
+      <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
       <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
@@ -520,11 +528,17 @@ const groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
 const raycaster=new THREE.Raycaster();
 const pointer=new THREE.Vector2();
 
-addEventListener('resize',()=>{
-  camera.aspect=viewport.clientWidth/viewport.clientHeight;
+function fitViewport(){
+  const w=viewport.clientWidth, h=viewport.clientHeight;
+  if(!w||!h) return;
+  camera.aspect=w/h;
   camera.updateProjectionMatrix();
-  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
-});
+  renderer.setSize(w,h);
+}
+addEventListener('resize',fitViewport);
+// panel samping disembunyikan, layar penuh, rotasi iPad: semuanya mengubah
+// ukuran viewport tanpa selalu memicu 'resize' pada jendela
+if(window.ResizeObserver) new ResizeObserver(fitViewport).observe(viewport);
 /* Keadaan mode jalan-jalan dideklarasikan di sini, bukan di modulnya jauh di
    bawah: loop render langsung berjalan begitu baris ini dilewati, sehingga ia
    tidak boleh menyentuh const yang belum sempat dibuat. */
@@ -563,18 +577,205 @@ const LANTAI={
   beton   :{l:'Beton poles',  warna:0x8b8880, kasar:.5,  logam:.05},
   teraso  :{l:'Teraso',       warna:0xc9c6bd, kasar:.4,  logam:0}
 };
+/* ---------------------------------------------------------------------
+   TEKSTUR
+   Digambar sendiri di kanvas, bukan diunduh: tidak ada berkas gambar yang
+   perlu dilisensikan, tidak bergantung pada jaringan, dan ukurannya bisa
+   dibuat mengikuti satuan bangunan sungguhan. Tiap tekstur mewakili ukuran
+   nyata (tw x th meter) — bata 23 x 6,5 cm dengan nat 1 cm, keramik 60 x 60,
+   papan parket 12 cm — dan koordinat UV permukaan dihitung dalam meter,
+   jadi satu bata tetap berukuran bata di dinding sepanjang apa pun.
+   --------------------------------------------------------------------- */
+let TEXTURE_ON=true;
+function acak(seed){ let s=seed>>>0; return ()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296); }
+function nada(hex,f){
+  const c=new THREE.Color(hex);
+  c.r=clamp(c.r*f,0,1); c.g=clamp(c.g*f,0,1); c.b=clamp(c.b*f,0,1);
+  return '#'+c.getHexString();
+}
+function bintik(ctx,S,R,n,alpha,uk){
+  for(let i=0;i<n;i++){
+    const a=alpha*R();
+    ctx.fillStyle = R()<.5 ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
+    ctx.fillRect(R()*S,R()*S,uk*(0.5+R()),uk*(0.5+R()));
+  }
+}
+function belang(ctx,S,R,n,alpha,rmin,rmax){           // noda lebar, untuk beton & plester
+  for(let i=0;i<n;i++){
+    const x=R()*S, y=R()*S, r=rmin+R()*(rmax-rmin);
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    const gelap=R()<.5;
+    g.addColorStop(0,gelap?`rgba(0,0,0,${alpha})`:`rgba(255,255,255,${alpha})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;
+    for(const dx of [-S,0,S]) for(const dy of [-S,0,S]){ ctx.save(); ctx.translate(dx,dy); ctx.fillRect(x-r,y-r,2*r,2*r); ctx.restore(); }
+  }
+}
+const TEXDEF={
+  W_cat:{tw:1,th:1,draw(c,S,b,R){ c.fillStyle=nada(b,1); c.fillRect(0,0,S,S); bintik(c,S,R,5000,.035,2); }},
+  W_plester:{tw:1,th:1,draw(c,S,b,R){
+    c.fillStyle=nada(b,1); c.fillRect(0,0,S,S);
+    belang(c,S,R,60,.025,20,80); bintik(c,S,R,14000,.07,2);
+  }},
+  W_bata:{tw:0.96,th:0.9,draw(c,S,b,R){
+    const kx=S/0.96, ky=S/0.9, baris=12, tb=0.075, pb=0.24, nat=0.01;
+    c.fillStyle='#b9ab98'; c.fillRect(0,0,S,S);
+    for(let r=0;r<baris;r++){
+      const off = r%2 ? pb/2 : 0;
+      for(let k=-1;k<5;k++){
+        const x0=(k*pb+off)*kx, y0=r*tb*ky;
+        c.fillStyle=nada(b,0.82+R()*0.3);
+        c.fillRect(x0+nat*kx/2, y0+nat*ky/2, (pb-nat)*kx, (tb-nat)*ky);
+      }
+    }
+    bintik(c,S,R,9000,.12,2);
+  }},
+  W_beton:{tw:2.4,th:1.2,draw(c,S,b,R){
+    const kx=S/2.4, ky=S/1.2;
+    c.fillStyle=nada(b,1); c.fillRect(0,0,S,S);
+    belang(c,S,R,90,.07,15,80); bintik(c,S,R,12000,.08,2);
+    c.strokeStyle='rgba(0,0,0,.22)'; c.lineWidth=2;
+    for(const x of [0,1.2]) { c.beginPath(); c.moveTo(x*kx+1,0); c.lineTo(x*kx+1,S); c.stroke(); }
+    c.beginPath(); c.moveTo(0,1); c.lineTo(S,1); c.stroke();
+    c.beginPath(); c.moveTo(0,0.6*ky); c.lineTo(S,0.6*ky); c.stroke();
+    c.fillStyle='rgba(30,30,30,.55)';
+    for(const px of [0.3,0.9,1.5,2.1]) for(const py of [0.3,0.9]){
+      c.beginPath(); c.arc(px*kx,py*ky,4,0,Math.PI*2); c.fill();
+    }
+  }},
+  W_kayu:{tw:0.96,th:2.4,draw(c,S,b,R){
+    const kx=S/0.96, lebar=0.12;
+    for(let i=0;i<8;i++){
+      c.fillStyle=nada(b,0.8+R()*0.35); c.fillRect(i*lebar*kx,0,lebar*kx,S);
+      for(let g=0;g<14;g++){
+        const x=(i*lebar+R()*lebar)*kx;
+        c.strokeStyle=`rgba(40,20,5,${0.05+R()*0.1})`; c.lineWidth=1+R()*1.5;
+        c.beginPath(); c.moveTo(x,0);
+        for(let y=0;y<=S;y+=32) c.lineTo(x+Math.sin(y*0.02+g)*3,y);
+        c.stroke();
+      }
+      c.fillStyle='rgba(20,10,0,.55)'; c.fillRect(i*lebar*kx,0,2,S);
+    }
+  }},
+  W_batu:{tw:1.2,th:1.2,draw(c,S,b,R){
+    const k=S/1.2, nat=0.012;
+    c.fillStyle='#4a4640'; c.fillRect(0,0,S,S);
+    let y=0;
+    while(y<1.2-1e-6){
+      let h=0.14+R()*0.16; if(1.2-y-h<0.12) h=1.2-y;
+      let x=-R()*0.2;
+      while(x<1.2){
+        const w=0.2+R()*0.28;
+        c.fillStyle=nada(b,0.75+R()*0.5);
+        c.fillRect((x+nat)*k,(y+nat)*k,(w-2*nat)*k,(h-2*nat)*k);
+        x+=w;
+      }
+      y+=h;
+    }
+    bintik(c,S,R,9000,.14,2);
+  }},
+  L_keramik:{tw:1.2,th:1.2,draw(c,S,b,R){
+    const k=S/1.2;
+    c.fillStyle='#b8b4ac'; c.fillRect(0,0,S,S);
+    for(let i=0;i<2;i++) for(let j=0;j<2;j++){
+      c.fillStyle=nada(b,0.97+R()*0.05);
+      c.fillRect(i*0.6*k+1.5, j*0.6*k+1.5, 0.6*k-3, 0.6*k-3);
+    }
+    belang(c,S,R,30,.03,20,70); bintik(c,S,R,3000,.03,2);
+  }},
+  L_keramik2:{tw:0.8,th:0.8,draw(c,S,b,R){
+    const k=S/0.8;
+    c.fillStyle='#6d6b67'; c.fillRect(0,0,S,S);
+    for(let i=0;i<2;i++) for(let j=0;j<2;j++){
+      c.fillStyle=nada(b,0.94+R()*0.1);
+      c.fillRect(i*0.4*k+2, j*0.4*k+2, 0.4*k-4, 0.4*k-4);
+    }
+    bintik(c,S,R,6000,.06,2);
+  }},
+  L_parket:{tw:0.96,th:1.8,draw(c,S,b,R){
+    const kx=S/0.96, ky=S/1.8, lebar=0.12, pj=0.9;
+    for(let i=0;i<8;i++){
+      const off=R()*pj;
+      for(let n=-1;n<3;n++){
+        const y0=(off+n*pj)*ky;
+        c.fillStyle=nada(b,0.78+R()*0.4); c.fillRect(i*lebar*kx,y0,lebar*kx,pj*ky);
+        for(let g=0;g<6;g++){
+          const x=(i*lebar+0.01+R()*(lebar-0.02))*kx;
+          c.strokeStyle=`rgba(40,20,5,${0.06+R()*0.08})`; c.lineWidth=1;
+          c.beginPath(); c.moveTo(x,y0); c.lineTo(x+(R()-.5)*4,y0+pj*ky); c.stroke();
+        }
+        c.fillStyle='rgba(20,10,0,.5)'; c.fillRect(i*lebar*kx,y0,lebar*kx,2);
+      }
+      c.fillStyle='rgba(20,10,0,.45)'; c.fillRect(i*lebar*kx,0,2,S);
+    }
+  }},
+  L_beton:{tw:2,th:2,draw(c,S,b,R){
+    c.fillStyle=nada(b,1); c.fillRect(0,0,S,S);
+    belang(c,S,R,80,.06,20,110); bintik(c,S,R,9000,.05,2);
+  }},
+  L_teraso:{tw:1,th:1,draw(c,S,b,R){
+    c.fillStyle=nada(b,1); c.fillRect(0,0,S,S);
+    const warna=['#2f2e2c','#f4f1ea','#8c7b64','#5c5850','#b9a78a'];
+    for(let i=0;i<2600;i++){
+      c.fillStyle=warna[Math.floor(R()*warna.length)];
+      c.globalAlpha=0.7+R()*0.3;
+      c.beginPath(); c.arc(R()*S,R()*S,1+R()*4,0,Math.PI*2); c.fill();
+    }
+    c.globalAlpha=1;
+  }}
+};
+const TEXCACHE=new Map();
+function finTex(kunciTex,warna){
+  const id=kunciTex+'_'+warna;
+  if(TEXCACHE.has(id)) return TEXCACHE.get(id);
+  const def=TEXDEF[kunciTex], S=512;
+  const cv=document.createElement('canvas'); cv.width=cv.height=S;
+  let seed=0; for(const ch of kunciTex) seed=seed*31+ch.charCodeAt(0);
+  def.draw(cv.getContext('2d'),S,warna,acak(seed));
+  const t=new THREE.CanvasTexture(cv);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.format=THREE.RGBFormat;          // tanpa alfa: GLB/AR menyimpannya sebagai JPEG, jauh lebih kecil
+  t.repeat.set(1/def.tw,1/def.th);
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  TEXCACHE.set(id,t);
+  return t;
+}
+/* UV dalam meter, diproyeksikan dari posisi titik menurut arah mukanya:
+   muka tegak memakai (sepanjang, tinggi), muka datar memakai (x, z). */
+function planarUV(geo,ox=0,oy=0,oz=0){
+  const p=geo.attributes.position, n=geo.attributes.normal;
+  if(!p||!n) return;
+  let uv=geo.attributes.uv;
+  if(!uv){ uv=new THREE.Float32BufferAttribute(new Float32Array(p.count*2),2); geo.setAttribute('uv',uv); }
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i)+ox, y=p.getY(i)+oy, z=p.getZ(i)+oz;
+    const ax=Math.abs(n.getX(i)), ay=Math.abs(n.getY(i)), az=Math.abs(n.getZ(i));
+    if(ay>=ax&&ay>=az) uv.setXY(i,x,z);
+    else if(ax>=az) uv.setXY(i,z,y);
+    else uv.setXY(i,x,y);
+  }
+  uv.needsUpdate=true;
+}
+
 const FINMAT=new Map();          // kunci -> material, dibuat sekali lalu dipakai ulang
 function finMat(tabel,kunci,warnaCustom){
   const def=tabel[kunci]||tabel[Object.keys(tabel)[0]];
   const warna=(kunci==='warna'&&warnaCustom)?new THREE.Color(warnaCustom).getHex():def.warna;
-  const id=kunci+'_'+warna;
-  if(!FINMAT.has(id)) FINMAT.set(id,new THREE.MeshStandardMaterial(
-    {color:warna, roughness:def.kasar, metalness:def.logam}));
+  const kunciTex=(tabel===LANTAI?'L_':'W_')+kunci;
+  const tex = TEXTURE_ON && kunci!=='warna' && TEXDEF[kunciTex];
+  const id=kunciTex+'_'+warna+(tex?'_t':'');
+  if(!FINMAT.has(id)) FINMAT.set(id,new THREE.MeshStandardMaterial(tex
+    ? {map:finTex(kunciTex,warna), color:0xffffff, roughness:def.kasar, metalness:def.logam}
+    : {color:warna, roughness:def.kasar, metalness:def.logam}));
   return FINMAT.get(id);
 }
 const matDalam = ()=>finMat(FINISH,PROJECT.finish.in ,PROJECT.finish.inColor);
 const matLuar  = ()=>finMat(FINISH,PROJECT.finish.out,PROJECT.finish.outColor);
 const matLantai= ()=>finMat(LANTAI,PROJECT.finish.floor);
+// tepi dan sisi bawah pelat adalah beton yang diplester, bukan lantai —
+// parket atau keramik yang terlihat di tepi pelat keliru secara konstruksi
+const matTepiPelat=()=>finMat(FINISH,'plester');
+const matPelat  = ()=>[matTepiPelat(),matTepiPelat(),matLantai(),matTepiPelat(),matTepiPelat(),matTepiPelat()];
 
 const MAT={
   wall      : new THREE.MeshStandardMaterial({color:0xefece5, roughness:.92, metalness:0}),
@@ -595,6 +796,19 @@ const MAT={
   water     : new THREE.MeshPhysicalMaterial({color:0x8fd0e8, roughness:.1, transparent:true, opacity:.55})
 };
 const ghostCache=new Map();
+/* Tembok tembus pandang untuk lantai aktif: lebih pekat daripada lantai lain
+   yang dihantukan, supaya dindingnya masih terasa ada. */
+let WALL_GHOST=false;
+const ghostWallCache=new Map();
+function ghostWall(mat){
+  if(Array.isArray(mat)) return mat.map(ghostWall);
+  if(!ghostWallCache.has(mat.uuid)){
+    const m=mat.clone();
+    m.transparent=true; m.opacity=.3; m.depthWrite=false;
+    ghostWallCache.set(mat.uuid,m);
+  }
+  return ghostWallCache.get(mat.uuid);
+}
 function ghost(mat){
   if(Array.isArray(mat)) return mat.map(ghost);   // dinding dua muka
   if(!ghostCache.has(mat.uuid)){
@@ -674,10 +888,17 @@ function buildWallGroup(w, lv){
   }
   if(cur<len-1e-4) panels.push([cur,len,0,h]);
 
+  // UV diukur sepanjang dinding dalam koordinat dunia, jadi nat bata dan
+  // papan kayu bersambung melewati jendela dan pintu
+  const ang=wallAngle(w), m0=wallMid(w);
+  const sepanjang=m0.x*Math.cos(ang)+m0.z*Math.sin(ang);
   for(const [x0,x1,y0,y1] of panels){
     const pw=x1-x0, ph=y1-y0;
     if(pw<0.004||ph<0.004) continue;
-    g.add(box(pw,ph,t,mat, x0+pw/2-len/2, y0+ph/2, 0));
+    const pnl=box(pw,ph,t,mat, x0+pw/2-len/2, y0+ph/2, 0);
+    planarUV(pnl.geometry, pnl.position.x+sepanjang, pnl.position.y, 0);
+    pnl.userData.wallPanel=true;
+    g.add(pnl);
   }
 
   const mid=wallMid(w);
@@ -744,9 +965,22 @@ function buildJunctions(lv){
       nd.t=Math.max(nd.t,w.thickness); nd.h=Math.max(nd.h,wallH(w,lv)); nd.n++;
     }
   }
+  const bb=levelBBox(lv), tepi=0.6;
+  const mi=matDalam(), mo=matLuar();
   for(const nd of nodes.values()){
     if(nd.n<2) continue;
-    const m=box(nd.t,nd.h,nd.t,MAT.wall, nd.x, nd.h/2, nd.z);
+    // Tiap muka tiang dipilih sendiri: hanya muka yang menghadap ke luar
+    // bangunan yang memakai finishing luar. Kalau seluruh tiang disamakan,
+    // mukanya yang sebidang dengan dinding dalam ikut berkedip bata di sudut
+    // ruangan.
+    const mat = bb ? [
+      Math.abs(nd.x-bb.x1)<tepi?mo:mi, Math.abs(nd.x-bb.x0)<tepi?mo:mi,   // +x, −x
+      mi, mi,                                                             // atas, bawah
+      Math.abs(nd.z-bb.z1)<tepi?mo:mi, Math.abs(nd.z-bb.z0)<tepi?mo:mi    // +z, −z
+    ] : mi;
+    const m=box(nd.t,nd.h,nd.t,mat, nd.x, nd.h/2, nd.z);
+    planarUV(m.geometry, nd.x, nd.h/2, nd.z);
+    m.userData.wallPanel=true;
     g.add(m);
   }
   return g;
@@ -921,13 +1155,14 @@ function xorIntervals(A,B){
   return out;
 }
 function slabGeometry(strips,T,insideFn){
-  const pos=[];
+  const atas=[], lain=[];
+  let pos=atas;                                       // tutup atas dikumpulkan terpisah
   const tri=(a,b,c)=>pos.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
   const quad=(a,b,c,d)=>{ tri(a,b,c); tri(a,c,d); };
-  // tutup atas & bawah
+  for(const st of strips) for(const [za0,za1,zb0,zb1] of st.free)
+    quad([st.xa,0,za0],[st.xa,0,za1],[st.xb,0,zb1],[st.xb,0,zb0]);   // normal +Y
+  pos=lain;
   for(const st of strips) for(const [za0,za1,zb0,zb1] of st.free){
-    const A=[st.xa,0,za0], B=[st.xa,0,za1], C=[st.xb,0,zb1], D=[st.xb,0,zb0];
-    quad(A,B,C,D);                                    // normal +Y
     const a=[st.xa,-T,za0], b=[st.xa,-T,za1], c=[st.xb,-T,zb1], d=[st.xb,-T,zb0];
     quad(a,d,c,b);                                    // normal −Y
   }
@@ -958,8 +1193,11 @@ function slabGeometry(strips,T,insideFn){
     for(const [lo,hi] of xorIntervals(e.L,e.R)) wall(x,lo,x,hi);
 
   const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(atas.concat(lain),3));
+  geo.addGroup(0,atas.length/3,0);                // permukaan lantai
+  geo.addGroup(atas.length/3,lain.length/3,1);    // sisi bawah dan tepi pelat
   geo.computeVertexNormals();
+  planarUV(geo);                                  // posisinya sudah koordinat lantai
   return geo;
 }
 
@@ -973,8 +1211,9 @@ function buildSlab(lv){
   const pad=0.25, T=STD.slabT;
   const voids=lv.objects.filter(o=>o.kind==='void');
   if(!voids.length){
-    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, matLantai(),
+    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, matPelat(),
                 (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
+    planarUV(m.geometry, m.position.x, m.position.y, m.position.z);
     m.castShadow=false; m.userData.slab=true;
     return m;
   }
@@ -988,7 +1227,7 @@ function buildSlab(lv){
     for(const p of polys) if(pointInPoly(x,z,p)) return false;
     return true;
   };
-  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),matLantai());
+  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),[matLantai(),matTepiPelat()]);
   m.castShadow=false; m.receiveShadow=true; m.userData.slab=true;
   return m;
 }
@@ -1757,6 +1996,10 @@ function rebuildScene(){
 
     if(idx!==PROJECT.active){
       lg.traverse(m=>{ if(m.isMesh){ m.material=ghost(m.material); m.castShadow=false; m.receiveShadow=false; } });
+    } else if(WALL_GHOST){
+      // hanya badan dinding yang dibuat tembus pandang; kusen, daun pintu,
+      // dan kaca tetap padat supaya letak bukaan masih terbaca
+      lg.traverse(m=>{ if(m.isMesh && m.userData.wallPanel){ m.material=ghostWall(m.material); m.castShadow=false; } });
     }
     worldRoot.add(lg);
     levelGroups[idx]=lg;
@@ -2435,6 +2678,11 @@ addEventListener('keydown',e=>{
   if(typeof AR!=='undefined' && AR.open){ if(e.key==='Escape') closeAR(); return; }
   if(/input|select|textarea/i.test(e.target.tagName)) return;
   const k=e.key.toLowerCase();
+  // saat berjalan, W A S D dan kawan-kawan milik mode jalan — jangan sampai
+  // ikut mengganti alat edit atau memindah kamera
+  if(FPS.on){ if(k==='g') toggleWallGhost(); return; }
+  if(k==='h' && !e.ctrlKey && !e.metaKey){ toggleSidebar(); return; }
+  if(k==='g' && !e.ctrlKey && !e.metaKey){ toggleWallGhost(); return; }
   if(k==='q') setTool('select');
   else if(k==='w') setTool('translate');
   else if(k==='e') setTool('rotate');
@@ -4276,6 +4524,36 @@ $('#renderShot').onclick=()=>{
 };
 
 /* ======================================================================
+   PANEL SAMPING, TEMBOK GHOST/SOLID, TEKSTUR
+   ====================================================================== */
+function setSidebar(tampil){
+  $('#app').classList.toggle('nosidebar',!tampil);
+  $('#sideBtn').classList.toggle('on',!tampil);
+  $('#sideBtn').title = tampil ? 'Sembunyikan panel samping (H)' : 'Tampilkan panel samping (H)';
+  fitViewport();
+}
+function toggleSidebar(){ setSidebar($('#app').classList.contains('nosidebar')); }
+$('#sideBtn').onclick=toggleSidebar;
+
+function toggleWallGhost(){
+  WALL_GHOST=!WALL_GHOST;
+  const t='Tembok: '+(WALL_GHOST?'Ghost':'Solid');
+  $('#wallModeBtn').textContent=t;
+  $('#wallModeBtn').classList.toggle('on',WALL_GHOST);
+  $('#fpsWall').textContent=t;
+  rebuildScene();
+  toast(WALL_GHOST?'Tembok tembus pandang — kusen dan pintu tetap padat':'Tembok padat');
+}
+$('#wallModeBtn').onclick=toggleWallGhost;
+
+$('#finTex').onchange=e=>{
+  TEXTURE_ON=e.target.checked;
+  FINMAT.clear(); ghostCache.clear(); ghostWallCache.clear();
+  rebuildScene();
+  toast(TEXTURE_ON?'Tekstur material aktif':'Tekstur dimatikan — warna polos, lebih ringan');
+};
+
+/* ======================================================================
    MODE JALAN-JALAN (orang pertama)
    Tinggi mata 1,60 m dan langkah 1,4 m/detik — ukuran orang dewasa berjalan
    santai. Yang membuat mode ini berguna bukan kameranya, melainkan dua
@@ -4340,6 +4618,10 @@ function fpsGround(px,pz,feetY){
   return null;
 }
 function fpsStep(dt){
+  if(FPS.paused){
+    $('#fpsinfo').innerHTML='Dijeda · <b>klik layar</b> untuk lanjut · <b>Esc</b> keluar';
+    return;
+  }
   // arah pandang
   const dir=new THREE.Vector3(Math.sin(FPS.yaw)*Math.cos(FPS.pitch), Math.sin(FPS.pitch),
                               Math.cos(FPS.yaw)*Math.cos(FPS.pitch));
@@ -4398,7 +4680,9 @@ function enterFPS(){
   const g=fpsGround(px,pz,FPS.feet+0.5);
   if(g!=null && Math.abs(g-FPS.feet)<1.5) FPS.feet=g;
   camera.position.set(px,FPS.feet+FPS.eye,pz);
-  FPS.on=true;
+  FPS.on=true; FPS.paused=false;
+  FPS.sidebarWas=!$('#app').classList.contains('nosidebar');
+  setSidebar(false);                         // jalan-jalan memakai seluruh layar
   select(null); setTool('select');
   orbit.enabled=false;
   $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true;
@@ -4418,11 +4702,38 @@ function exitFPS(){
   $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false;
   $('#levelbar').hidden=false;
   viewport.style.cursor='';
+  if(FPS.sidebarWas) setSidebar(true);
+  if(document.fullscreenElement||document.webkitFullscreenElement) keluarLayarPenuh();
 }
+function masukLayarPenuh(){
+  const el=document.documentElement;
+  const f=el.requestFullscreen||el.webkitRequestFullscreen;
+  if(!f) return toast('Peramban ini tidak mengizinkan layar penuh — panel samping sudah disembunyikan.');
+  try{ const r=f.call(el); if(r&&r.catch) r.catch(()=>toast('Layar penuh ditolak peramban.')); }
+  catch(e){ toast('Layar penuh ditolak peramban.'); }
+}
+function keluarLayarPenuh(){
+  const f=document.exitFullscreen||document.webkitExitFullscreen;
+  if(f) try{ const r=f.call(document); if(r&&r.catch) r.catch(()=>{}); }catch(e){}
+}
+$('#fpsFull').onclick=()=>{
+  if(document.fullscreenElement||document.webkitFullscreenElement) keluarLayarPenuh();
+  else masukLayarPenuh();
+};
+$('#fpsWall').onclick=()=>toggleWallGhost();
 $('#walkBtn').onclick=enterFPS;
 $('#fpsExit').onclick=exitFPS;
+/* Pointer lock bisa lepas karena banyak hal — Esc pertama, pindah jendela,
+   masuk layar penuh. Kalau itu langsung dianggap keluar, mode jalan terasa
+   rapuh. Jadi dijeda saja: klik layar untuk lanjut, Esc sekali lagi keluar. */
 document.addEventListener('pointerlockchange',()=>{
-  if(FPS.on && document.pointerLockElement!==renderer.domElement && !('ontouchstart' in window)) exitFPS();
+  if(!FPS.on || ('ontouchstart' in window)) return;
+  FPS.paused = document.pointerLockElement!==renderer.domElement;
+  viewport.style.cursor = FPS.paused ? '' : 'none';
+  if(FPS.paused) FPS.keys.clear();
+});
+renderer.domElement.addEventListener('click',()=>{
+  if(FPS.on && FPS.paused && renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
 });
 addEventListener('keydown',e=>{
   if(!FPS.on) return;
@@ -4553,8 +4864,47 @@ function arUsdzLib(){
       .then(m=>m.USDZExporter);
   return AR.usdzLib;
 }
+/* USDZExporter r128 hanya mengenal satu material per mesh, sedangkan dinding
+   (muka dalam & luar) dan pelat (lantai & tepi) memakai beberapa. Mesh seperti
+   itu dipecah per grup dulu. Sekalian skala tekstur dileburkan ke UV, sebab
+   Quick Look tidak membaca pengulangan tekstur — tanpa itu bata tampil dengan
+   ukuran yang salah. */
+function splitForUSDZ(root){
+  const ganti=[];
+  root.traverse(m=>{ if(m.isMesh) ganti.push(m); });
+  for(const m of ganti){
+    const multi=Array.isArray(m.material);
+    const mats=multi?m.material:[m.material];
+    const src=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();
+    const groups = multi && src.groups.length ? src.groups
+                 : [{start:0,count:src.attributes.position.count,materialIndex:0}];
+    const parts=[];
+    for(const gr of groups){
+      const mat=mats[gr.materialIndex]||mats[0];
+      const geo=new THREE.BufferGeometry();
+      for(const nama of ['position','normal','uv']){
+        const a=src.attributes[nama]; if(!a) continue;
+        const arr=a.array.slice(gr.start*a.itemSize,(gr.start+gr.count)*a.itemSize);
+        if(nama==='uv' && mat && mat.map){
+          for(let i=0;i<arr.length;i+=2){ arr[i]*=mat.map.repeat.x; arr[i+1]*=mat.map.repeat.y; }
+        }
+        geo.setAttribute(nama,new THREE.BufferAttribute(arr,a.itemSize));
+      }
+      if(!geo.attributes.normal) geo.computeVertexNormals();
+      if(!geo.attributes.uv) geo.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(gr.count*2),2));
+      parts.push(new THREE.Mesh(geo,mat));
+    }
+    const holder=new THREE.Group();
+    holder.position.copy(m.position); holder.quaternion.copy(m.quaternion); holder.scale.copy(m.scale);
+    for(const q of parts) holder.add(q);
+    const parent=m.parent;
+    parent.add(holder); parent.remove(m);
+  }
+  root.updateMatrixWorld(true);
+}
 async function arUSDZ(wrap){
   const Exporter=await arUsdzLib();
+  splitForUSDZ(wrap);
   const out=await new Exporter().parse(wrap);
   return new Blob([out],{type:'model/vnd.usdz+zip'});
 }
