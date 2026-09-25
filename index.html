@@ -133,6 +133,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 #arFallback.on{display:flex}
 #arInfo{padding:8px 12px;border-top:1px solid var(--line);background:#141419;color:var(--muted);font-size:.7rem;line-height:1.55}
 #arInfo b{color:var(--txt)}
+#viewport.dropping::after{content:'Lepaskan berkas di sini';position:absolute;inset:10px;border:2px dashed var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:.9rem;background:rgba(10,12,14,.55);pointer-events:none;z-index:35}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -271,9 +272,10 @@ details#adv>*:not(summary){margin-bottom:8px}
       <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
       <div class="section-title">Model Sendiri (.glb)</div>
       <div class="group"><label>Unggah model</label>
-        <input type="file" id="glbInput" accept=".glb,model/gltf-binary" multiple></div>
+        <input type="file" id="glbInput" multiple></div>
       <div id="model-list" class="group"></div>
-      <p class="hint">Model glTF biner (.glb) ikut tersimpan di dalam berkas proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas.</p>
+      <p class="hint">Terima <b>.glb</b> (glTF biner) dan <b>.gltf</b> yang sudah memuat datanya sendiri. Berkasnya ikut tersimpan di dalam proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas. Berkas juga bisa dijatuhkan langsung ke viewport.</p>
+      <p class="hint">Di iPhone/iPad, pilih berkasnya lewat <b>Browse</b> di aplikasi Files — daftar berkas sengaja tidak disaring, sebab iOS mengunci berkas .glb bila penyaringnya dipasang.</p>
       <div class="section-title">Furnitur &amp; Sanitair</div>
       <div class="row"><select id="furn-filter">
         <option value="all">Semua kategori</option>
@@ -1836,12 +1838,19 @@ function prepareAssetObject(root){
 function parseAsset(id,buf){
   return new Promise((res,rej)=>{
     if(typeof THREE.GLTFLoader!=='function')
-      return rej(new Error('Pustaka GLTFLoader belum termuat — periksa koneksi internet.'));
-    new THREE.GLTFLoader().parse(buf,'',gltf=>{
-      const r=prepareAssetObject(gltf.scene||gltf.scenes[0]);
-      ASSET_OBJ.set(id,r.obj);
-      res(r);
-    },err=>rej(new Error(err&&err.message?err.message:'berkas .glb tidak terbaca')));
+      return rej(new Error('pustaka GLTFLoader belum termuat — periksa koneksi internet'));
+    let data=buf;
+    if(sniffGLTF(buf)==='gltf') data=new TextDecoder().decode(new Uint8Array(buf));
+    try{
+      new THREE.GLTFLoader().parse(data,'',gltf=>{
+        const root=gltf.scene||(gltf.scenes&&gltf.scenes[0]);
+        if(!root) return rej(new Error('berkas tidak memuat scene'));
+        const r=prepareAssetObject(root);
+        if(!r.dims[0]&&!r.dims[1]&&!r.dims[2]) return rej(new Error('modelnya kosong'));
+        ASSET_OBJ.set(id,r.obj);
+        res(r);
+      },err=>rej(new Error(err&&err.message?err.message:'berkas glTF tidak terbaca')));
+    }catch(err){ rej(new Error(err.message||'berkas glTF tidak terbaca')); }
   });
 }
 async function loadProjectAssets(){
@@ -1854,9 +1863,24 @@ async function loadProjectAssets(){
   }
   return {total:ids.length, gagal};
 }
+/* Berkas diperiksa dari ISINYA, bukan dari namanya: penyaring berdasarkan
+   akhiran nama membuat iOS mengunci seluruh daftar berkas di Files, dan nama
+   berkas toh bisa apa saja. */
+function sniffGLTF(buf){
+  const h=new Uint8Array(buf,0,Math.min(4,buf.byteLength));
+  if(h[0]===0x67&&h[1]===0x6c&&h[2]===0x54&&h[3]===0x46) return 'glb';   // 'glTF'
+  try{
+    const txt=new TextDecoder().decode(new Uint8Array(buf,0,Math.min(buf.byteLength,4096)));
+    if(/^\s*\{[\s\S]*"asset"/.test(txt)) return 'gltf';
+  }catch(e){}
+  return null;
+}
 async function importAssetFile(file){
-  if(file.size>ASSET_MAX) throw new Error(`Berkas ${fmt(file.size/1048576,1)} MB melebihi batas 20 MB.`);
+  if(file.size>ASSET_MAX) throw new Error(`berkas ${fmt(file.size/1048576,1)} MB melebihi batas 20 MB`);
+  if(!file.size) throw new Error('berkas kosong');
   const buf=await file.arrayBuffer();
+  const kind=sniffGLTF(buf);
+  if(!kind) throw new Error('isinya bukan glTF — perlu .glb, atau .gltf yang memuat datanya sendiri');
   const id=uid('as');
   const r=await parseAsset(id,buf);
   PROJECT.assets[id]={ name:file.name.replace(/\.glb$/i,''), size:file.size,
@@ -3726,8 +3750,8 @@ function renderCatalogs(){
   }
 }
 $('#furn-filter').addEventListener('change',renderCatalogs);
-$('#glbInput').addEventListener('change',async e=>{
-  const files=[...e.target.files]; e.target.value='';
+async function importModelFiles(files){
+  let ok=0, gagal=0;
   for(const f of files){
     try{
       $('#loader-txt').textContent='Membaca '+f.name+'…';
@@ -3735,14 +3759,43 @@ $('#glbInput').addEventListener('change',async e=>{
       const r=await importAssetFile(f);
       $('#loader').classList.remove('on');
       renderCatalogs();
+      ok++;
       const d=r.dims.map(v=>fmt(v,2)).join(' × ');
       toast(`${PROJECT.assets[r.id].name} dimuat — ${d} m`
         + (r.fit!==1 ? ' (diskalakan otomatis)' : '')
         + (f.size>5*1048576 ? ' · berkas besar, proyek ikut membesar' : ''));
     }catch(err){
       $('#loader').classList.remove('on');
+      gagal++;
       toast('Gagal memuat '+f.name+': '+err.message);
+      console.warn('impor model gagal:',f.name,err);
     }
+  }
+  if(files.length>1) toast(`${ok} model dimuat${gagal?`, ${gagal} gagal`:''}`);
+  return {ok,gagal};
+}
+$('#glbInput').addEventListener('change',async e=>{
+  const files=[...e.target.files]; e.target.value='';
+  await importModelFiles(files);
+});
+/* berkas yang dijatuhkan ke viewport: model masuk pustaka, gambar jadi denah */
+['dragenter','dragover'].forEach(ev=>viewport.addEventListener(ev,e=>{
+  if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); e.dataTransfer.dropEffect='copy';
+  viewport.classList.add('dropping');
+}));
+['dragleave','drop'].forEach(ev=>viewport.addEventListener(ev,()=>viewport.classList.remove('dropping')));
+viewport.addEventListener('drop',async e=>{
+  const files=[...(e.dataTransfer?.files||[])];
+  if(!files.length) return;
+  e.preventDefault();
+  const img=files.filter(f=>/^image\//.test(f.type));
+  const rest=files.filter(f=>!/^image\//.test(f.type));
+  if(rest.length) await importModelFiles(rest);
+  if(img.length){
+    const dt=new DataTransfer(); dt.items.add(img[0]);
+    $('#upload').files=dt.files;
+    $('#upload').dispatchEvent(new Event('change'));
   }
 });
 
