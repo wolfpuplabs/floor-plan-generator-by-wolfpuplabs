@@ -259,6 +259,21 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div id="lvl-props" class="group"></div>
       <button class="btn sm ghost" id="autoVoidBtn">Lubangi Pelat dari Tangga Lantai Bawah</button>
       <p class="hint">Membuat void di pelat lantai ini tepat di tempat ruang bebas kepala tangga di bawahnya kurang dari 2,00 m.</p>
+      <div class="section-title">Material Finishing</div>
+      <div class="f-row"><label>Muka dalam</label><select id="finIn"></select></div>
+      <div class="f-row" id="finInColorRow" hidden><label>Warna dalam</label><input type="color" id="finInColor" value="#efece5"></div>
+      <div class="f-row"><label>Muka luar</label><select id="finOut"></select></div>
+      <div class="f-row" id="finOutColorRow" hidden><label>Warna luar</label><input type="color" id="finOutColor" value="#d9d3c7"></div>
+      <div class="f-row"><label>Lantai</label><select id="finFloor"></select></div>
+      <p class="hint">Muka luar hanya dikenakan pada dinding yang berada di keliling bangunan; dinding sekat di dalam memakai finishing dalam pada kedua mukanya.</p>
+      <div class="section-title">Render</div>
+      <div class="f-row"><label>Kualitas</label><select id="rq">
+        <option value="cepat">Cepat — hemat baterai</option>
+        <option value="halus" selected>Halus — bawaan</option>
+        <option value="tinggi">Tinggi — bayangan &amp; tepi terhalus</option>
+      </select></div>
+      <button class="btn ghost sm" id="renderShot">Render Gambar Tinggi (.png)</button>
+      <p class="hint" id="rqNote"></p>
       <div class="section-title">Tampilan</div>
       <label class="chk"><input type="checkbox" id="ghostOther" checked><span>Tampilkan lantai lain transparan</span></label>
       <label class="chk"><input type="checkbox" id="showSlab" checked><span>Tampilkan pelat lantai</span></label>
@@ -424,7 +439,9 @@ const STD = {
 const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
 
 /* --------------------------- state --------------------------- */
-const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{} };
+const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{},
+  // finishing dinding dibedakan muka dalam dan muka luar, seperti gambar kerja
+  finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' } };
 
 function newLevel(name,height){
   return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
@@ -523,6 +540,42 @@ const clock=new THREE.Clock();
 })();
 
 /* --------------------------- material --------------------------- */
+/* ---------------------------------------------------------------------
+   MATERIAL FINISHING
+   Dinding punya dua muka: yang menghadap ke dalam bangunan dan yang
+   menghadap keluar. Di gambar kerja keduanya memang disebut terpisah —
+   acian-cat di dalam, plester atau batu di luar — jadi di sini pun
+   dipisah, bukan disamakan demi mudahnya.
+   --------------------------------------------------------------------- */
+const FINISH={
+  cat     :{l:'Cat halus',    warna:0xefece5, kasar:.92, logam:0},
+  plester :{l:'Plester aci',  warna:0xd9d3c7, kasar:.97, logam:0},
+  bata    :{l:'Bata ekspos',  warna:0xa85c3c, kasar:.95, logam:0},
+  beton   :{l:'Beton ekspos', warna:0x9d9a94, kasar:.88, logam:0},
+  kayu    :{l:'Kayu',         warna:0x9a6a3c, kasar:.7,  logam:0},
+  batu    :{l:'Batu alam',    warna:0x6f6a62, kasar:.98, logam:0},
+  warna   :{l:'Warna sendiri',warna:0xefece5, kasar:.9,  logam:0}
+};
+const LANTAI={
+  keramik :{l:'Keramik putih',warna:0xe8e6e1, kasar:.28, logam:0},
+  keramik2:{l:'Keramik abu',  warna:0xa9a7a2, kasar:.35, logam:0},
+  parket  :{l:'Parket kayu',  warna:0x8d5f34, kasar:.62, logam:0},
+  beton   :{l:'Beton poles',  warna:0x8b8880, kasar:.5,  logam:.05},
+  teraso  :{l:'Teraso',       warna:0xc9c6bd, kasar:.4,  logam:0}
+};
+const FINMAT=new Map();          // kunci -> material, dibuat sekali lalu dipakai ulang
+function finMat(tabel,kunci,warnaCustom){
+  const def=tabel[kunci]||tabel[Object.keys(tabel)[0]];
+  const warna=(kunci==='warna'&&warnaCustom)?new THREE.Color(warnaCustom).getHex():def.warna;
+  const id=kunci+'_'+warna;
+  if(!FINMAT.has(id)) FINMAT.set(id,new THREE.MeshStandardMaterial(
+    {color:warna, roughness:def.kasar, metalness:def.logam}));
+  return FINMAT.get(id);
+}
+const matDalam = ()=>finMat(FINISH,PROJECT.finish.in ,PROJECT.finish.inColor);
+const matLuar  = ()=>finMat(FINISH,PROJECT.finish.out,PROJECT.finish.outColor);
+const matLantai= ()=>finMat(LANTAI,PROJECT.finish.floor);
+
 const MAT={
   wall      : new THREE.MeshStandardMaterial({color:0xefece5, roughness:.92, metalness:0}),
   wallStruct: new THREE.MeshStandardMaterial({color:0xdedad0, roughness:.95, metalness:0}),
@@ -543,6 +596,7 @@ const MAT={
 };
 const ghostCache=new Map();
 function ghost(mat){
+  if(Array.isArray(mat)) return mat.map(ghost);   // dinding dua muka
   if(!ghostCache.has(mat.uuid)){
     const m=mat.clone();
     m.transparent=true; m.opacity=.14; m.depthWrite=false;
@@ -571,11 +625,34 @@ function cyl(rt,rb,h,mat,x=0,y=0,z=0,seg=16){
    panel padat (bawah ambang / atas kusen) sesuai kaidah: pintu 2.1 m,
    jendela ambang 0.9 m, di atas bukaan selalu ada balok lintel.
    ====================================================================== */
+function levelBBox(lv){
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2);
+                            z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  return lv.walls.length?{x0,x1,z0,z1}:null;
+}
+/* Muka mana yang menghadap keluar dihitung dari letak dinding terhadap kotak
+   bangunan — kaidah yang sama dipakai saat membaca denah. Dinding sekat di
+   dalam rumah tidak punya muka luar, jadi kedua mukanya finishing dalam. */
+function wallFinishMats(w,lv){
+  const mi=matDalam(), mo=matLuar();
+  const bb=levelBBox(lv);
+  if(!bb) return mi;
+  const m=wallMid(w), tepi=0.6;
+  const luar = Math.abs(m.x-bb.x0)<tepi || Math.abs(m.x-bb.x1)<tepi
+            || Math.abs(m.z-bb.z0)<tepi || Math.abs(m.z-bb.z1)<tepi;
+  if(!luar) return mi;
+  const a=wallAngle(w), nx=-Math.sin(a), nz=Math.cos(a);   // arah +Z lokal
+  const cx=(bb.x0+bb.x1)/2, cz=(bb.z0+bb.z1)/2;
+  const keDalam=(cx-m.x)*nx + (cz-m.z)*nz > 0;             // +Z menghadap ke dalam?
+  return [mi,mi,mi,mi, keDalam?mi:mo, keDalam?mo:mi];       // +x,-x,+y,-y,+z,-z
+}
+
 function buildWallGroup(w, lv){
   const g=new THREE.Group();
   const len=wallLen(w), h=wallH(w,lv), t=w.thickness;
   if(len<0.02) return g;
-  const mat=isStructural(w)?MAT.wallStruct:MAT.wall;
+  const mat=wallFinishMats(w,lv);
 
   // bukaan yang valid: tidak keluar dinding, tidak saling tumpang tindih
   const ops=w.openings
@@ -896,9 +973,9 @@ function buildSlab(lv){
   const pad=0.25, T=STD.slabT;
   const voids=lv.objects.filter(o=>o.kind==='void');
   if(!voids.length){
-    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, MAT.slab,
+    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, matLantai(),
                 (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
-    m.castShadow=false;
+    m.castShadow=false; m.userData.slab=true;
     return m;
   }
   const x0=minX-pad, x1=maxX+pad, z0=minZ-pad, z1=maxZ+pad;
@@ -911,8 +988,8 @@ function buildSlab(lv){
     for(const p of polys) if(pointInPoly(x,z,p)) return false;
     return true;
   };
-  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),MAT.slab);
-  m.castShadow=false; m.receiveShadow=true;
+  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),matLantai());
+  m.castShadow=false; m.receiveShadow=true; m.userData.slab=true;
   return m;
 }
 
@@ -1312,6 +1389,199 @@ function counterIsland(){
 }
 
 /* katalog: id → {label, ikon, kategori, footprint, generator} */
+/* ---------------------------------------------------------------------
+   TAMBAHAN PERABOT
+   Ukurannya memakai patokan yang lazim dipakai di gambar kerja: tinggi meja
+   75 cm, meja dapur 85 cm, kursi 45 cm, lemari 60 cm dalam, mobil kecil
+   4,2 x 1,7 m. Bentuknya sengaja sederhana — yang dipakai di denah adalah
+   tapak dan tingginya, bukan detail talinya.
+   --------------------------------------------------------------------- */
+function bunkBed(){
+  const g=new THREE.Group(), w=1.0, l=2.0;
+  for(const y of [0.35,1.35]){
+    g.add(box(w,0.1,l,MAT.woodDark,0,y,0));
+    g.add(box(w-0.06,0.16,l-0.08,MAT.fabric2,0,y+0.13,0));
+  }
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    g.add(box(0.07,1.85,0.07,MAT.wood,sx*(w/2-0.04),0.93,sz*(l/2-0.04)));
+  for(const sz of [-1,1]) g.add(box(w,0.05,0.05,MAT.wood,0,1.75,sz*(l/2-0.04)));
+  for(let i=0;i<4;i++) g.add(box(w*0.5,0.04,0.04,MAT.wood,-w*0.2,0.55+i*0.25,l/2-0.1));
+  return g;
+}
+function crib(){
+  const g=new THREE.Group(), w=0.7, l=1.3;
+  g.add(box(w,0.08,l,MAT.wood,0,0.45,0));
+  g.add(box(w-0.06,0.12,l-0.06,MAT.fabric2,0,0.55,0));
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    g.add(box(0.06,0.95,0.06,MAT.wood,sx*(w/2-0.03),0.475,sz*(l/2-0.03)));
+  for(let i=0;i<9;i++){
+    const t=-l/2+0.1+i*(l-0.2)/8;
+    for(const sx of [-1,1]) g.add(cyl(0.012,0.012,0.45,MAT.wood,sx*(w/2-0.03),0.72,t,6));
+  }
+  return g;
+}
+function dresser(){
+  const g=new THREE.Group(), w=1.2;
+  g.add(box(w,0.8,0.5,MAT.wood,0,0.4,0));
+  for(let i=0;i<3;i++){
+    g.add(box(w-0.06,0.22,0.03,MAT.woodDark,0,0.17+i*0.25,0.26));
+    g.add(cyl(0.012,0.012,0.16,MAT.metal,0,0.17+i*0.25,0.29,8));
+  }
+  return g;
+}
+function vanityTable(){
+  const g=new THREE.Group();
+  g.add(tableTop(1.0,0.45,0.75,MAT.wood));
+  g.add(box(0.7,0.9,0.03,MAT.glass,0,1.3,-0.2));
+  g.add(box(0.76,0.96,0.02,MAT.woodDark,0,1.3,-0.22));
+  g.add(box(0.36,0.14,0.36,MAT.fabric,0.28,0.82,0.05));
+  return g;
+}
+function sofaL(){
+  const g=new THREE.Group(), w=2.4, d=1.6;
+  g.add(box(w,0.32,0.88,MAT.fabric,0,0.2,d/2-0.44));
+  g.add(box(w,0.46,0.18,MAT.fabric,0,0.45,d/2-0.79));
+  g.add(box(0.88,0.32,d-0.88,MAT.fabric,-w/2+0.44,0.2,-0.44));
+  g.add(box(0.18,0.46,d-0.88,MAT.fabric,-w/2+0.09,0.45,-0.44));
+  g.add(box(0.16,0.34,0.88,MAT.fabric,w/2-0.08,0.43,d/2-0.44));
+  for(let i=0;i<3;i++) g.add(box(0.7,0.14,0.62,MAT.fabric2,-w/2+0.45+i*0.78,0.43,d/2-0.42));
+  return g;
+}
+function sideTable(){
+  const g=new THREE.Group();
+  g.add(cyl(0.25,0.25,0.04,MAT.wood,0,0.52,0,20));
+  g.add(cyl(0.04,0.04,0.5,MAT.woodDark,0,0.25,0,10));
+  g.add(cyl(0.2,0.2,0.03,MAT.woodDark,0,0.02,0,16));
+  return g;
+}
+function floorLamp(){
+  const g=new THREE.Group();
+  g.add(cyl(0.16,0.2,0.03,MAT.dark,0,0.015,0,18));
+  g.add(cyl(0.018,0.018,1.5,MAT.metal,0,0.76,0,10));
+  g.add(cyl(0.2,0.14,0.28,MAT.white,0,1.62,0,20));
+  return g;
+}
+function buffet(){
+  const g=new THREE.Group(), w=1.6;
+  g.add(box(w,0.8,0.45,MAT.wood,0,0.42,0));
+  for(const sx of [-1,1]) g.add(box(w/2-0.04,0.7,0.03,MAT.woodDark,sx*w/4,0.42,0.23));
+  for(const sx of [-1,1]) g.add(cyl(0.012,0.012,0.14,MAT.metal,sx*0.08,0.42,0.26,8));
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    g.add(box(0.05,0.12,0.05,MAT.woodDark,sx*(w/2-0.08),0.06,sz*0.16));
+  return g;
+}
+function barStool(){
+  const g=new THREE.Group();
+  g.add(cyl(0.18,0.18,0.05,MAT.woodDark,0,0.72,0,18));
+  g.add(cyl(0.03,0.03,0.7,MAT.metal,0,0.37,0,10));
+  g.add(cyl(0.2,0.22,0.03,MAT.metal,0,0.02,0,18));
+  const injak=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.012,6,18),MAT.metal);
+  injak.position.set(0,0.22,0); injak.rotation.x=Math.PI/2;
+  injak.castShadow=true; g.add(injak);
+  return g;
+}
+function kitchenL(){
+  const g=new THREE.Group();
+  g.add(kitchenCounter(2.4));
+  const sisi=kitchenCounter(1.6);
+  sisi.rotation.y=-Math.PI/2;
+  sisi.position.set(-1.2+0.3,0,0.8+0.2);
+  g.add(sisi);
+  return g;
+}
+function upperCabinet(){
+  const g=new THREE.Group(), w=1.2;
+  g.add(box(w,0.7,0.35,MAT.white,0,1.75,0));
+  for(const sx of [-1,1]) g.add(box(w/2-0.02,0.66,0.02,MAT.fabric2,sx*w/4,1.75,0.18));
+  return g;
+}
+function washingMachine(){
+  const g=new THREE.Group();
+  g.add(box(0.6,0.85,0.6,MAT.white,0,0.425,0));
+  g.add(box(0.62,0.06,0.62,MAT.fabric2,0,0.88,0));
+  const pintu=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.04,22),MAT.glass);
+  pintu.rotation.x=Math.PI/2; pintu.position.set(0,0.45,0.31); g.add(pintu);
+  const bingkai=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.02,6,22),MAT.dark);
+  bingkai.position.set(0,0.45,0.3); bingkai.castShadow=true; g.add(bingkai);
+  return g;
+}
+function vanityUnit(){
+  const g=new THREE.Group(), w=1.2;
+  g.add(box(w,0.75,0.5,MAT.wood,0,0.375,0));
+  g.add(box(w+0.04,0.06,0.54,MAT.white,0,0.78,0));
+  const bak=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.16,0.12,20),MAT.white);
+  bak.position.set(0,0.76,0); bak.scale.z=0.8; g.add(bak);
+  g.add(cyl(0.02,0.02,0.24,MAT.metal,0,0.92,-0.16,10));
+  g.add(box(w,0.9,0.03,MAT.glass,0,1.45,-0.24));
+  for(const sx of [-1,1]) g.add(box(w/2-0.05,0.6,0.03,MAT.woodDark,sx*w/4,0.37,0.26));
+  return g;
+}
+function showerBox(){
+  const g=new THREE.Group(), w=0.9;
+  g.add(box(w,0.06,w,MAT.white,0,0.03,0));
+  g.add(box(w,2.0,0.02,MAT.glass,0,1.0,w/2-0.01));
+  g.add(box(0.02,2.0,w,MAT.glass,w/2-0.01,1.0,0));
+  for(const [x,z] of [[w/2,w/2],[w/2,-w/2],[-w/2,w/2]])
+    g.add(cyl(0.015,0.015,2.0,MAT.metal,x*0.98,1.0,z*0.98,8));
+  g.add(cyl(0.015,0.015,0.3,MAT.metal,-w/2+0.06,2.0,-w/2+0.2,8));
+  g.add(cyl(0.09,0.09,0.03,MAT.metal,-w/2+0.06,1.86,-w/2+0.2,16));
+  return g;
+}
+function filingCabinet(){
+  const g=new THREE.Group();
+  g.add(box(0.45,1.32,0.6,MAT.fabric2,0,0.66,0));
+  for(let i=0;i<4;i++){
+    g.add(box(0.42,0.3,0.02,MAT.dark,0,0.2+i*0.32,0.31));
+    g.add(box(0.12,0.03,0.02,MAT.metal,0,0.2+i*0.32,0.33));
+  }
+  return g;
+}
+function acSplit(){
+  const g=new THREE.Group();
+  g.add(box(0.9,0.3,0.22,MAT.white,0,2.45,0));
+  g.add(box(0.86,0.06,0.02,MAT.fabric2,0,2.33,0.11));
+  return g;
+}
+function car(){
+  const g=new THREE.Group(), w=1.7, l=4.2;
+  g.add(box(w,0.55,l,MAT.fabric,0,0.62,0));
+  g.add(box(w-0.14,0.5,l*0.46,MAT.glass,0,1.1,-0.15));
+  g.add(box(w-0.12,0.16,l*0.44,MAT.fabric,0,1.32,-0.15));
+  for(const sx of [-1,1]) for(const sz of [-1,1]){
+    const roda=new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.33,0.2,18),MAT.dark);
+    roda.rotation.z=Math.PI/2;
+    roda.position.set(sx*(w/2-0.03),0.33,sz*(l/2-0.85));
+    roda.castShadow=true; g.add(roda);
+  }
+  for(const sx of [-1,1]) g.add(box(0.28,0.12,0.06,MAT.white,sx*(w/2-0.3),0.68,-l/2+0.02));
+  for(const sx of [-1,1]) g.add(box(0.28,0.12,0.06,MAT.door,sx*(w/2-0.3),0.68,l/2-0.02));
+  return g;
+}
+function motorcycle(){
+  const g=new THREE.Group(), l=1.9;
+  g.add(box(0.28,0.3,0.9,MAT.fabric,0,0.66,0));
+  g.add(box(0.3,0.12,0.5,MAT.dark,0,0.82,0.16));
+  for(const sz of [-1,1]){
+    const roda=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.12,18),MAT.dark);
+    roda.rotation.z=Math.PI/2; roda.position.set(0,0.28,sz*(l/2-0.3));
+    roda.castShadow=true; g.add(roda);
+  }
+  g.add(cyl(0.02,0.02,0.6,MAT.metal,0,0.72,-l/2+0.34,8));
+  g.add(box(0.62,0.05,0.05,MAT.metal,0,1.0,-l/2+0.34));
+  return g;
+}
+function plantBig(){
+  const g=new THREE.Group();
+  g.add(cyl(0.3,0.22,0.5,MAT.woodDark,0,0.25,0,16));
+  g.add(cyl(0.05,0.07,1.3,MAT.plant,0,1.15,0,8));
+  for(let i=0;i<11;i++){
+    const a=i/11*Math.PI*2, r=0.42+(i%3)*0.08;
+    const leaf=box(0.52,0.04,0.22,MAT.plant,Math.cos(a)*r,1.5+(i%4)*0.16,Math.sin(a)*r,-a);
+    leaf.rotation.z=0.3; g.add(leaf);
+  }
+  return g;
+}
+
 const FURN={
   bed_single  :{l:'Ranjang 1',   i:'🛏️', c:'kamar',       f:[1.0,2.0], b:()=>bed(1.0,2.0)},
   bed_double  :{l:'Ranjang 2',   i:'🛏️', c:'kamar',       f:[1.6,2.0], b:()=>bed(1.6,2.0)},
@@ -1339,7 +1609,28 @@ const FURN={
   desk        :{l:'Meja Kerja',  i:'💻', c:'kerja',       f:[1.4,0.7], b:desk},
   office_chair:{l:'Kursi Kerja', i:'🪑', c:'kerja',       f:[0.5,0.5], b:officeChair},
   bookshelf   :{l:'Rak Buku',    i:'📚', c:'kerja',       f:[0.9,0.32],b:bookshelf},
-  plant       :{l:'Tanaman',     i:'🪴', c:'lain',        f:[0.5,0.5], b:plant}
+  plant       :{l:'Tanaman',     i:'🪴', c:'lain',        f:[0.5,0.5], b:plant},
+  bunk        :{l:'Ranjang Susun',i:'🛏️', c:'kamar',       f:[1.0,2.0], b:bunkBed},
+  crib        :{l:'Boks Bayi',   i:'🧸', c:'kamar',       f:[0.7,1.3], b:crib},
+  dresser     :{l:'Lemari Laci', i:'🗃️', c:'kamar',       f:[1.2,0.5], b:dresser},
+  vanity_table:{l:'Meja Rias',   i:'💄', c:'kamar',       f:[1.0,0.45],b:vanityTable},
+  wardrobe3   :{l:'Lemari 3 Pintu',i:'🚪',c:'kamar',      f:[2.4,0.6], b:()=>wardrobe(2.4)},
+  sofa_l      :{l:'Sofa L',      i:'🛋️', c:'ruang',       f:[2.4,1.6], b:sofaL},
+  side_table  :{l:'Meja Sudut',  i:'⭕', c:'ruang',       f:[0.5,0.5], b:sideTable},
+  floor_lamp  :{l:'Lampu Berdiri',i:'💡',c:'ruang',       f:[0.4,0.4], b:floorLamp},
+  dining8     :{l:'Meja Makan 8',i:'🍽️', c:'makan',       f:[2.4,1.0], b:()=>diningSet(2.4,1.0,8)},
+  buffet      :{l:'Bufet',       i:'🗄️', c:'makan',       f:[1.6,0.45],b:buffet},
+  bar_stool   :{l:'Kursi Bar',   i:'🥤', c:'makan',       f:[0.4,0.4], b:barStool},
+  kitchen_l   :{l:'Kitchen Set L',i:'🍳',c:'dapur',       f:[2.4,2.0], b:kitchenL},
+  upper_cab   :{l:'Kabinet Gantung',i:'🗄️',c:'dapur',    f:[1.2,0.35],b:upperCabinet},
+  washer      :{l:'Mesin Cuci',  i:'🧺', c:'dapur',       f:[0.6,0.6], b:washingMachine},
+  vanity      :{l:'Wastafel Meja',i:'🪞',c:'kamar_mandi', f:[1.2,0.5], b:vanityUnit},
+  shower_box  :{l:'Shower Kaca', i:'🚿', c:'kamar_mandi', f:[0.9,0.9], b:showerBox},
+  filing      :{l:'Lemari Arsip',i:'🗂️', c:'kerja',       f:[0.45,0.6],b:filingCabinet},
+  ac_split    :{l:'AC Split',    i:'❄️', c:'lain',        f:[0.9,0.22],b:acSplit},
+  car         :{l:'Mobil',       i:'🚗', c:'lain',        f:[1.7,4.2], b:car},
+  motorcycle  :{l:'Motor',       i:'🏍️', c:'lain',        f:[0.7,1.9], b:motorcycle},
+  plant_big   :{l:'Tanaman Besar',i:'🌴',c:'lain',        f:[0.9,0.9], b:plantBig}
 };
 const STAIRS={
   straight:{l:'Lurus',    i:'📐'},
@@ -3869,6 +4160,9 @@ $('#loadInput').addEventListener('change',e=>{
       }));
       PROJECT.active=clamp(j.active||0,0,PROJECT.levels.length-1);
       PROJECT.assets=j.assets||{};
+      PROJECT.finish=Object.assign({in:'cat',out:'plester',floor:'keramik',
+                                    inColor:'#efece5',outColor:'#d9d3c7'}, j.finish||{});
+      renderFinishUI();
       SEL=null; $('#projName').value=PROJECT.name;
       renderLevels(); renderCatalogs(); rebuildScene();
       resetHistory('Proyek dimuat');
@@ -3912,6 +4206,75 @@ $('#snapshotBtn').onclick=()=>{
   renderer.render(scene,camera);
   renderer.domElement.toBlob(b=>{ download(b,(PROJECT.name||'render')+'.png'); toast('Gambar disimpan'); });
 };
+/* ======================================================================
+   MATERIAL FINISHING & MUTU RENDER
+   ====================================================================== */
+function isiPilihan(sel,tabel,nilai){
+  sel.innerHTML='';
+  for(const [k,v] of Object.entries(tabel)){
+    const o=document.createElement('option');
+    o.value=k; o.textContent=v.l; if(k===nilai) o.selected=true;
+    sel.appendChild(o);
+  }
+}
+function renderFinishUI(){
+  isiPilihan($('#finIn'),FINISH,PROJECT.finish.in);
+  isiPilihan($('#finOut'),FINISH,PROJECT.finish.out);
+  isiPilihan($('#finFloor'),LANTAI,PROJECT.finish.floor);
+  $('#finInColor').value=PROJECT.finish.inColor||'#efece5';
+  $('#finOutColor').value=PROJECT.finish.outColor||'#d9d3c7';
+  $('#finInColorRow').hidden = PROJECT.finish.in!=='warna';
+  $('#finOutColorRow').hidden= PROJECT.finish.out!=='warna';
+}
+const ubahFinish=(k,v)=>{ PROJECT.finish[k]=v; HIST.label='Ganti material'; renderFinishUI(); rebuildScene(); };
+$('#finIn').onchange   =e=>ubahFinish('in',e.target.value);
+$('#finOut').onchange  =e=>ubahFinish('out',e.target.value);
+$('#finFloor').onchange=e=>ubahFinish('floor',e.target.value);
+$('#finInColor').oninput =e=>ubahFinish('inColor',e.target.value);
+$('#finOutColor').oninput=e=>ubahFinish('outColor',e.target.value);
+
+/* Peranti seperti DLSS tidak tersedia untuk halaman web — yang bisa dipakai
+   di sini adalah menggambar pada resolusi lebih tinggi lalu mengecilkannya
+   (supersampling), peta bayangan yang lebih rapat, dan pemetaan nada ACES
+   supaya sorot cahaya tidak gosong. Itu yang diatur di sini. */
+const RQ={
+  cepat :{lipat:1, batas:1, bayang:1024, tone:THREE.NoToneMapping,        exp:1.0,
+           n:'Satu piksel gambar per piksel layar. Paling hemat baterai.'},
+  halus :{lipat:1, batas:2, bayang:2048, tone:THREE.ACESFilmicToneMapping, exp:1.0,
+           n:'Mengikuti kerapatan layar, bayangan 2048, pemetaan nada ACES.'},
+  tinggi:{lipat:2, batas:3, bayang:4096, tone:THREE.ACESFilmicToneMapping, exp:1.05,
+           n:'Digambar dua kali lipat lalu dikecilkan — tepi paling halus, paling berat.'}
+};
+function setRenderQuality(k){
+  const q=RQ[k]||RQ.halus;
+  renderer.setPixelRatio(Math.min(devicePixelRatio*q.lipat, q.batas));
+  renderer.toneMapping=q.tone; renderer.toneMappingExposure=q.exp;
+  sun.shadow.mapSize.set(q.bayang,q.bayang);
+  if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
+  scene.traverse(m=>{ if(m.isMesh&&m.material) [].concat(m.material).forEach(x=>x.needsUpdate=true); });
+  $('#rqNote').textContent=q.n+` Piksel sekarang ${fmt(renderer.getPixelRatio(),2)}×.`;
+}
+$('#rq').onchange=e=>{ setRenderQuality(e.target.value); toast('Kualitas render: '+e.target.selectedOptions[0].textContent.split('—')[0].trim()); };
+/* Render gambar: sesaat digambar pada resolusi jauh lebih tinggi lalu
+   dikembalikan, jadi hasil simpanannya tajam tanpa membebani pemakaian
+   sehari-hari. */
+$('#renderShot').onclick=()=>{
+  const ps=renderer.getPixelRatio();
+  // dinaikkan secukupnya saja: sisi terpanjang dibatasi 4096 piksel supaya
+  // peramban tidak kehabisan memori tekstur di perangkat kecil
+  const sisi=Math.max(viewport.clientWidth,viewport.clientHeight);
+  const naik=Math.max(1, Math.min(4, ps*2, 4096/sisi));
+  renderer.setPixelRatio(naik);
+  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+  renderer.render(scene,camera);
+  renderer.domElement.toBlob(b=>{
+    download(b,(PROJECT.name||'render')+'-render.png');
+    renderer.setPixelRatio(ps);
+    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    toast(`Render ${fmt(naik,2)}× (${Math.round(viewport.clientWidth*naik)}×${Math.round(viewport.clientHeight*naik)} px) disimpan`);
+  });
+};
+
 /* ======================================================================
    MODE JALAN-JALAN (orang pertama)
    Tinggi mata 1,60 m dan langkah 1,4 m/detik — ukuran orang dewasa berjalan
@@ -4350,6 +4713,8 @@ $('#wallH').addEventListener('change',e=>{
 
 /* ------------------------------ init ------------------------------ */
 renderCatalogs();
+renderFinishUI();
+setRenderQuality('halus');
 renderLevels();
 setTool('select');
 rebuildScene();
