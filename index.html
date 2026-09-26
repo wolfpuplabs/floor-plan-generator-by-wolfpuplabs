@@ -423,6 +423,7 @@ details#adv>*:not(summary){margin-bottom:8px}
         <option value="dapur">Dapur</option>
         <option value="kamar_mandi">Kamar Mandi</option>
         <option value="kerja">Ruang Kerja</option>
+        <option value="audio">Audio &amp; Musik</option>
         <option value="lain">Lainnya</option>
       </select></div>
       <div class="cat-grid" id="cat-furn"></div>
@@ -818,7 +819,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); }   // setelah semua modul selesai dimuat
+  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   BAYANG_JEDA-=dt;
   if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
@@ -2869,7 +2870,8 @@ Object.assign(MAT,{
    bahan-bahan ini selalu diberi lingkungan studio, walau PBR dimatikan. */
 function pasangPantulanLogam(env){
   env=env||studioEnv();
-  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8]]){ m.envMap=env; m.envMapIntensity=k; m.needsUpdate=true; }
+  const lain=[[MAT.silver,0.9],[MAT.cdDisc,1],[MAT.vinylRec,0.6],[MAT.smoke,0.8]].filter(([m])=>m);   // perangkat audio (dibuat belakangan)
+  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8],...lain]){ m.envMap=env; m.envMapIntensity=k; m.needsUpdate=true; }
 }
 const BUKU=[0x8e3b2e,0x2f4858,0xd9a441,0x7d8f69,0xe9e1d3,0x3d3a36,0xb89b72].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
 function books(n,x0,y,z,R){ const g=new THREE.Group(); let x=x0;
@@ -3335,10 +3337,19 @@ const FURN={
   piano       :{l:'Piano Tegak',        i:'🎹', c:'ruang',   f:[1.5,1.0],   b:piano,          wall:1, back:0.3},
   room_divider:{l:'Partisi Lipat',      i:'🪟', c:'ruang',   f:[1.4,0.5],   b:roomDivider},
   coat_rack   :{l:'Gantungan Baju',     i:'🧥', c:'ruang',   f:[0.5,0.5],   b:coatRack},
-  floor_vase  :{l:'Vas Lantai + Pampas',i:'🏺', c:'ruang',   f:[0.6,0.6],   b:floorVase}
+  floor_vase  :{l:'Vas Lantai + Pampas',i:'🏺', c:'ruang',   f:[0.6,0.6],   b:floorVase},
+  // AUDIO — bisa diputar di mode jalan (E / ketuk), musiknya diacak tiap kali
+  music_box      :{l:'Kotak Musik + Meja',  i:'🎠', c:'audio', f:[0.4,0.4],   b:musicBox},
+  vinyl_player   :{l:'Piringan Hitam + Lemari',i:'💿', c:'audio', f:[1.05,0.42], b:vinylPlayer, wall:1, back:0.21},
+  cassette_player:{l:'Boombox Kaset + Meja',i:'📼', c:'audio', f:[0.6,0.4],   b:cassettePlayer},
+  cd_player      :{l:'Hi-Fi CD + Speaker',  i:'🎵', c:'audio', f:[1.3,0.42],  b:cdPlayer, wall:1, back:0.21}
 };
 /* KAIDAH penempatan — ditampilkan di inspector saat objeknya dipilih */
 const KAIDAH={
+  music_box:'Diletakkan di meja samping/nakas setinggi ±60 cm, dekat tempat duduk atau ranjang — bunyinya lirih, dinikmati dari dekat.',
+  vinyl_player:'Turntable di atas perabot yang kokoh dan datar (±60–75 cm), jauh dari speaker agar getarannya tidak membuat jarum melompat. Rak piringan: kedalaman ≥ 32 cm, piringan berdiri tegak.',
+  cassette_player:'Boombox cukup di meja samping; beri ruang ±10 cm di belakangnya. Kaset disimpan jauh dari panas dan magnet.',
+  cd_player:'Speaker kiri-kanan dan posisi duduk membentuk segitiga sama sisi (jarak 1,5–3 m); tweeter setinggi telinga duduk, ±20–50 cm dari dinding belakang.',
   art_canvas:'Pusat lukisan ±150 cm dari lantai. Di atas sofa/meja: sisi bawah bingkai 20–25 cm di atasnya, lebar ±2/3 lebar perabot di bawahnya.',
   art_triptych:'Tiga panel dibaca sebagai satu karya: jarak antarpanel 5–8 cm, pusat ±150 cm, lebar total ±2/3 perabot di bawahnya.',
   gallery_wall:'Jarak antarbingkai 5–8 cm, pusat kelompok ±150 cm. Susun dari bingkai terbesar, jaga satu garis tepi (atas atau bawah) tetap rata.',
@@ -3453,7 +3464,8 @@ function buildColumn(o,lv){
 const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table_lamp:'lampu',night_lamp:'lampu',
   arc_lamp:'lampu',wall_sconce:'lampu',floor_lamp:'lampu',
   kitchen_line:'lampu',kitchen_l2:'lampu',kitchen_u:'lampu',kitchen_par:'lampu',kitchen_isl:'lampu',
-  fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden'};
+  fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
+  music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio'};
 const KUAT_LAMPU={chandelier:1.6,pendant:1.1,pendant_trio:1.4,table_lamp:0.6,night_lamp:0.6,arc_lamp:0.9,wall_sconce:0.55,
   floor_lamp:0.8,kitchen_line:0.8,kitchen_l2:0.8,kitchen_u:0.8,kitchen_par:0.8,kitchen_isl:0.9,fire_modern:1.3,fire_classic:1.3,wood_stove:0.9};
 const MATI=new Set(), TV_NYALA=new Set(), GORDEN_BUKA=new Set();
@@ -3503,6 +3515,7 @@ function hiasNyala(g,o){
   }
   if(jenis==='tv') terapkanTV(g,TV_NYALA.has(o.id));
   if(jenis==='gorden') terapkanGorden(g,GORDEN_BUKA.has(o.id));
+  if(jenis==='audio') g.userData.audioJenis=o.type;
 }
 function terapkanNyala(g,on){
   g.traverse(m=>{
@@ -3521,6 +3534,522 @@ function terapkanGorden(g,buka){
   g.traverse(m=>{ if(m.isMesh && m.userData.kain){ const w=m.userData.kain;
     m.scale.x = buka?0.26:1; m.position.x = buka? -w/2*(1-0.26) : 0; } });
 }
+/* =====================================================================
+   AUDIO — kotak musik, CD, kaset, piringan hitam
+   Musiknya dibuat saat itu juga dengan Web Audio (tanpa berkas rekaman,
+   tanpa lisensi, tanpa unduhan): tiap kali diputar, lagu baru diacak —
+   nada dasar, tangga nada, tempo, progresi akor, dan melodinya. Karakter
+   bunyi mengikuti alatnya. Suaranya diletakkan di ruang 3D: makin dekat
+   makin keras, dan teredam bila terhalang dinding.
+   ===================================================================== */
+Object.assign(MAT,{
+  vinylRec : new THREE.MeshStandardMaterial({color:0x111113, roughness:.28, metalness:.1}),
+  cdDisc   : new THREE.MeshStandardMaterial({color:0xdfe6ee, roughness:.12, metalness:.95}),
+  cone     : new THREE.MeshStandardMaterial({color:0x2b2b2e, roughness:.85}),
+  grille   : new THREE.MeshStandardMaterial({color:0x3a3a3f, roughness:.95}),
+  smoke    : new THREE.MeshStandardMaterial({color:0x202226, roughness:.1, transparent:true, opacity:.45}),
+  labelRed : new THREE.MeshStandardMaterial({color:0xb23a2e, roughness:.6}),
+  labelCrm : new THREE.MeshStandardMaterial({color:0xe8dcc0, roughness:.7}),
+  silver   : new THREE.MeshStandardMaterial({color:0xb9bcc0, roughness:.35, metalness:.8}),
+  ledOff   : new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:.5}),
+  ledHijau : new THREE.MeshStandardMaterial({color:0x103018, emissive:0x3dff7a, emissiveIntensity:1.6, roughness:.5}),
+  ledAmber : new THREE.MeshStandardMaterial({color:0x3a2208, emissive:0xffa530, emissiveIntensity:1.5, roughness:.5}),
+  ledBiru  : new THREE.MeshStandardMaterial({color:0x0b1c33, emissive:0x55c8ff, emissiveIntensity:1.5, roughness:.5}),
+  pinkSatin: new THREE.MeshStandardMaterial({color:0xf2c4cf, roughness:.6})
+});
+/* penanda bagian bergerak: diputar (putar), berpindah pose (pose), kerucut
+   speaker yang berdenyut ikut musik (kerucut), dan lampu indikator (led) */
+const putar=(n,sumbu,kec)=>{ n.userData.putar={sumbu,kec}; return n; };
+const pose=(n,path,off,on)=>{ n.userData.pose={path,off,on}; n[path[0]][path[1]]=off; return n; };
+const led=(m,warna)=>{ m.userData.led=warna; m.castShadow=false; return m; };
+function kerucut(g,r,x,y,z){                        // kerucut woofer menghadap +z
+  const k=cyl(r*0.35,r,0.02,MAT.cone,x,y,z,24); k.rotation.x=Math.PI/2; k.userData.kerucut=z; g.add(k);
+  const dop=sph(r*0.28,MAT.dark,x,y,z+0.012,0.5,12); dop.rotation.x=Math.PI/2; dop.userData.kerucut=z+0.012; g.add(dop);
+  const ring=cyl(r*1.08,r*1.08,0.012,MAT.dark,x,y,z-0.006,24); ring.rotation.x=Math.PI/2; g.add(ring);
+}
+function speakerRak(x,y,z,w=0.18,h=0.3,d=0.22,kayu=MAT.woodDark){   // speaker rak buku, alas di y
+  const g=new THREE.Group(); g.position.set(x,y,z);
+  g.add(box(w,h,d,kayu,0,h/2,0));
+  g.add(box(w-0.02,h-0.02,0.004,MAT.dark,0,h/2,d/2+0.001));
+  kerucut(g,w*0.34,0,h*0.36,d/2+0.006);
+  const tw=sph(w*0.1,MAT.silver,0,h*0.78,d/2+0.006,0.6,12); tw.rotation.x=Math.PI/2; g.add(tw);
+  return g;
+}
+function kakiMeja(g,w,d,h,mat,t=0.035){
+  for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]) g.add(box(t,h,t,mat,sx*(w/2-t),h/2,sz*(d/2-t)));
+}
+/* ---------- KOTAK MUSIK di atas meja tiang ---------- */
+function musicBox(){
+  const g=new THREE.Group();
+  g.add(cyl(0.2,0.2,0.03,MAT.wood,0,0.62,0,32));          // meja bundar
+  g.add(cyl(0.03,0.035,0.58,MAT.woodDark,0,0.32,0,12));
+  g.add(cyl(0.16,0.18,0.03,MAT.woodDark,0,0.015,0,28));
+  const y0=0.635, W=0.22, H=0.09, D=0.15;
+  // badan berongga: alas + empat sisi, dasar beludru di dalam
+  const t=0.012, lantai=y0+0.03;
+  g.add(box(W,0.03,D,MAT.woodDark,0,y0+0.015,0));
+  for(const sz of [-1,1]) g.add(box(W,H-0.03,t,MAT.woodDark,0,lantai+(H-0.03)/2,sz*(D/2-t/2)));
+  for(const sx of [-1,1]) g.add(box(t,H-0.03,D-2*t,MAT.woodDark,sx*(W/2-t/2),lantai+(H-0.03)/2,0));
+  g.add(box(W+0.004,0.008,D+0.004,MAT.brass,0,y0+0.012,0));
+  g.add(box(W-2*t,0.003,D-2*t,MAT.velvet2,0,lantai+0.0015,0));
+  // silinder berpaku + sisir baja
+  const drum=new THREE.Group(); drum.position.set(-0.03,lantai+0.024,-0.025);
+  const silinder=cyl(0.016,0.016,0.1,MAT.brass,0,0,0,16); silinder.rotation.z=Math.PI/2; drum.add(silinder);
+  for(let i=0;i<14;i++){ const a=i*2.4, px=-0.045+i*0.007; drum.add(box(0.003,0.006,0.003,MAT.steel,px,Math.cos(a)*0.018,Math.sin(a)*0.018)); }
+  g.add(putar(drum,'x',2.2));
+  g.add(box(0.1,0.004,0.03,MAT.steel,-0.03,lantai+0.018,0.005));
+  g.add(box(0.1,0.02,0.03,MAT.brass,-0.03,lantai+0.01,0.012));
+  // penari balet yang muncul dan berputar
+  const balet=new THREE.Group(); balet.position.set(0.055,0,0.02);
+  const badan=new THREE.Group();
+  badan.add(cyl(0.001,0.022,0.018,MAT.pinkSatin,0,0.03,0,16));
+  badan.add(cyl(0.004,0.006,0.024,MAT.pinkSatin,0,0.05,0,8));
+  badan.add(sph(0.006,MAT.ceramic,0,0.068,0,1,10));
+  badan.add(box(0.034,0.002,0.002,MAT.ceramic,0,0.058,0));
+  badan.add(cyl(0.0015,0.0015,0.03,MAT.ceramic,0,0.012,0,6));
+  balet.add(putar(badan,'y',2.6));
+  g.add(pose(balet,['position','y'],lantai-0.012,y0+H-0.008));
+  // tutup berengsel di belakang dengan cermin
+  const tutup=new THREE.Group(); tutup.position.set(0,y0+H,-D/2);
+  tutup.add(box(W,0.018,D,MAT.woodDark,0,0.009,D/2));
+  tutup.add(box(W-0.03,0.003,D-0.03,MAT.steel,0,-0.001,D/2));
+  tutup.add(box(0.06,0.004,0.004,MAT.brass,0,0.019,D-0.02));
+  g.add(pose(tutup,['rotation','x'],0,-1.95));
+  // kunci pemutar di samping
+  const kunci=new THREE.Group(); kunci.position.set(W/2+0.012,y0+H*0.45,0);
+  const as=cyl(0.004,0.004,0.02,MAT.brass,0,0,0,8); as.rotation.z=Math.PI/2; kunci.add(as);
+  kunci.add(box(0.004,0.035,0.012,MAT.brass,0.012,0,0));
+  g.add(putar(kunci,'x',0.9));
+  return g;
+}
+/* ---------- HI-FI CD: konsol + amplifier + pemutar CD top-loading + speaker ---------- */
+function cdPlayer(){
+  const g=new THREE.Group(), W=1.3, D=0.42, T=0.5;
+  g.add(box(W,0.06,D,MAT.woodDark,0,T-0.03,0));
+  g.add(box(W,0.3,D-0.02,MAT.woodDark,0,T-0.22,0));
+  for(const x of [-W/3,0,W/3]) g.add(box(W/3-0.02,0.26,0.012,MAT.wood,x,T-0.22,D/2-0.005));
+  kakiMeja(g,W-0.1,D-0.1,T-0.37,MAT.blackMetal,0.025);
+  // amplifier
+  const ax=-0.12, ay=T;
+  g.add(box(0.43,0.1,0.32,MAT.dark,ax,ay+0.05,-0.02));
+  g.add(box(0.43,0.1,0.01,MAT.silver,ax,ay+0.05,0.145));
+  for(const [kx,r] of [[-0.14,0.03],[0.14,0.03],[0.06,0.015],[-0.06,0.015]]){ const k=cyl(r,r,0.02,MAT.silver,ax+kx,ay+0.05,0.155,20); k.rotation.x=Math.PI/2; g.add(k); }
+  for(const sx of [-0.035,0.035]){ g.add(led(box(0.055,0.03,0.004,MAT.ledOff,ax+sx,ay+0.065,0.152),'ledAmber')); }   // meter VU
+  // pemutar CD di atasnya, tutup kaca asap, cakram terlihat berputar
+  const cy=ay+0.1;
+  g.add(box(0.43,0.07,0.3,MAT.silver,ax,cy+0.035,-0.02));
+  g.add(box(0.43,0.07,0.01,MAT.dark,ax,cy+0.035,0.135));
+  g.add(led(box(0.12,0.022,0.003,MAT.ledOff,ax+0.1,cy+0.035,0.141),'ledBiru'));
+  for(let i=0;i<4;i++) g.add(box(0.018,0.01,0.006,MAT.silver,ax-0.14+i*0.028,cy+0.03,0.142));
+  const cakram=new THREE.Group(); cakram.position.set(ax-0.05,cy+0.072,-0.03);
+  cakram.add(cyl(0.06,0.06,0.0015,MAT.cdDisc,0,0,0,40));
+  cakram.add(cyl(0.02,0.02,0.002,MAT.labelCrm,0,0.0005,0,20));
+  cakram.add(box(0.03,0.0025,0.004,MAT.labelRed,0.03,0.001,0));   // penanda agar putarannya terlihat
+  g.add(putar(cakram,'y',9));
+  const kaca=cyl(0.07,0.07,0.004,MAT.smoke,ax-0.05,cy+0.075,-0.03,40); kaca.castShadow=false; g.add(kaca);
+  // speaker di kedua ujung
+  g.add(speakerRak(-W/2+0.12,T,0,0.18,0.32,0.24));
+  g.add(speakerRak(W/2-0.12,T,0,0.18,0.32,0.24));
+  // beberapa CD bertumpuk
+  for(let i=0;i<5;i++) g.add(box(0.125,0.01,0.14,i%2?MAT.labelCrm:MAT.smoke,0.25,T+0.005+i*0.0105,-0.02));
+  return g;
+}
+/* ---------- BOOMBOX KASET di atas meja samping ---------- */
+function cassettePlayer(){
+  const g=new THREE.Group(), T=0.52;
+  g.add(box(0.6,0.03,0.4,MAT.wood,0,T-0.015,0));
+  kakiMeja(g,0.56,0.36,T-0.03,MAT.wood,0.03);
+  g.add(box(0.52,0.012,0.32,MAT.wood,0,0.16,0));
+  const W=0.5, H=0.24, D=0.12, by=T;
+  g.add(box(W,H,D,MAT.silver,0,by+H/2,0));
+  g.add(box(W-0.01,H-0.05,0.004,MAT.dark,0,by+H/2-0.01,D/2+0.001));
+  for(const sx of [-1,1]){
+    const gr=cyl(0.078,0.078,0.004,MAT.grille,sx*0.165,by+0.1,D/2+0.003,28); gr.rotation.x=Math.PI/2; g.add(gr);
+    kerucut(g,0.06,sx*0.165,by+0.1,D/2+0.006);
+  }
+  // jendela kaset + dua gulungan pita
+  g.add(box(0.13,0.075,0.004,MAT.smoke,0,by+0.11,D/2+0.004));
+  g.add(box(0.12,0.068,0.003,MAT.labelCrm,0,by+0.11,D/2+0.0015));
+  for(const sx of [-0.028,0.028]){
+    const rol=new THREE.Group(); rol.position.set(sx,by+0.112,D/2+0.0035);
+    const pita=cyl(0.018,0.018,0.003,MAT.woodDark,0,0,0,20); pita.rotation.x=Math.PI/2; rol.add(pita);
+    for(let k=0;k<3;k++){ const j=box(0.024,0.003,0.004,MAT.white,0,0,0.001); j.rotation.z=k*Math.PI/3; rol.add(j); }
+    g.add(putar(rol,'z',sx<0?-3.2:-3.2));
+  }
+  for(let i=0;i<6;i++) g.add(box(0.026,0.012,0.03,i===0?MAT.labelRed:MAT.dark,-0.08+i*0.032,by+H+0.006,0.02));   // tombol piano
+  g.add(led(box(0.05,0.008,0.003,MAT.ledOff,0,by+0.185,D/2+0.003),'ledHijau'));
+  g.add(tube([[-0.2,by+H,0],[-0.19,by+H+0.07,0],[0.19,by+H+0.07,0],[0.2,by+H,0]],0.008,MAT.dark,16));   // pegangan
+  const ant=cyl(0.003,0.003,0.3,MAT.steel,0.21,by+H+0.14,-0.03,6); ant.rotation.z=-0.35; g.add(ant);
+  for(let i=0;i<3;i++) g.add(box(0.1,0.016,0.064,[MAT.labelRed,MAT.labelCrm,MAT.dark][i],-0.12+i*0.02,0.175+i*0.017,0.05));   // kaset di rak bawah
+  return g;
+}
+/* ---------- PIRINGAN HITAM di atas lemari piringan ---------- */
+function vinylPlayer(){
+  const g=new THREE.Group(), W=1.05, D=0.42, T=0.62;
+  g.add(box(W,0.04,D,MAT.wood,0,T-0.02,0));
+  g.add(box(W,T-0.2,0.02,MAT.wood,0,0.18+(T-0.2)/2-0.02,-D/2+0.01));
+  for(const x of [-W/2+0.01,0,W/2-0.01]) g.add(box(0.02,T-0.2,D,MAT.wood,x,0.18+(T-0.2)/2-0.02,0));
+  g.add(box(W,0.02,D,MAT.wood,0,0.17,0));
+  kakiMeja(g,W-0.08,D-0.08,0.16,MAT.blackMetal,0.025);
+  // koleksi piringan di kedua rak: sampul berwarna berdiri berjajar
+  const warna=[MAT.labelRed,MAT.labelCrm,MAT.velvet,MAT.dark,MAT.velvet2,MAT.terracotta,MAT.cabinet];
+  for(const [x0,n] of [[-W/2+0.03,22],[0.03,18]])
+    for(let i=0;i<n;i++){ const s=box(0.009,0.31,0.31,warna[(i*5+n)%warna.length],x0+i*0.021,0.18+0.155,0.02); s.rotation.z=(i===n-1)?-0.25:0; g.add(s); }
+  // turntable
+  const tx=-0.22, ty=T;
+  g.add(box(0.46,0.09,0.36,MAT.woodDark,tx,ty+0.045,0));
+  for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]) g.add(cyl(0.018,0.02,0.02,MAT.dark,tx+sx*0.2,ty-0.004,sz*0.15,12));
+  const piring=new THREE.Group(); piring.position.set(tx-0.05,ty+0.09,0);
+  piring.add(cyl(0.152,0.152,0.018,MAT.silver,0,0.009,0,48));
+  piring.add(cyl(0.148,0.148,0.003,MAT.vinylRec,0,0.0195,0,48));
+  for(const r of [0.13,0.1,0.075]){ const alur=new THREE.Mesh(new THREE.RingGeometry(r-0.0015,r,48),MAT.dark); alur.rotation.x=-Math.PI/2; alur.position.y=0.0212; piring.add(alur); }
+  piring.add(cyl(0.05,0.05,0.0035,MAT.labelRed,0,0.0199,0,32));
+  piring.add(box(0.03,0.004,0.008,MAT.labelCrm,0.02,0.0205,0));
+  piring.add(cyl(0.0035,0.0035,0.02,MAT.steel,0,0.028,0,8));
+  g.add(putar(piring,'y',3.49));                       // 33⅓ rpm
+  // lengan jarum: berayun ke atas piringan saat diputar
+  const lengan=new THREE.Group(); lengan.position.set(tx+0.16,ty+0.09,-0.1);
+  lengan.add(cyl(0.02,0.022,0.03,MAT.silver,0,0.015,0,16));
+  const bobot=cyl(0.012,0.012,0.028,MAT.dark,0,0.042,-0.035,12); bobot.rotation.x=Math.PI/2; lengan.add(bobot);   // pemberat di belakang poros
+  lengan.add(tube([[0,0.042,-0.02],[0,0.042,0.05],[-0.03,0.042,0.2],[-0.05,0.036,0.235]],0.0035,MAT.silver,20));
+  const kepala=box(0.018,0.008,0.03,MAT.dark,-0.05,0.032,0.24); kepala.rotation.y=-0.3; lengan.add(kepala);
+  g.add(pose(lengan,['rotation','y'],0,-0.5));         // −0,5 rad: jarum tepat di atas alur piringan
+  g.add(led(box(0.012,0.005,0.012,MAT.ledOff,tx+0.19,ty+0.091,0.15),'ledAmber'));
+  const pitch=cyl(0.012,0.012,0.012,MAT.silver,tx+0.19,ty+0.095,0.1,12); g.add(pitch);
+  // speaker
+  g.add(speakerRak(0.3,T,0,0.17,0.28,0.22,MAT.wood));
+  g.add(speakerRak(0.455,T,0,0.13,0.2,0.2,MAT.wood));
+  return g;
+}
+
+/* ---------------------------- mesin musik ---------------------------- */
+const AUDIO_JENIS={music_box:'kotak musik', cd_player:'CD', cassette_player:'kaset', vinyl_player:'piringan hitam'};
+const AUDIO={ctx:null, main:new Map(), grup:new Map(), occT:0};
+const SKALA={mayor:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10], mixolidia:[0,2,4,5,7,9,10]};
+const NAMA_NADA=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const PROGRESI={
+  mayor:[[0,4,5,3],[0,5,3,4],[0,3,4,4],[5,3,0,4],[0,3,5,4],[1,4,0,5],[0,2,3,4]],
+  minor:[[0,5,2,6],[0,3,4,0],[0,6,5,4],[0,3,6,2],[0,5,3,4]],
+  dorian:[[0,3,0,3],[0,6,3,4],[1,4,0,0],[0,3,6,4]],
+  mixolidia:[[0,6,3,0],[0,4,6,3]]
+};
+const GAYA_MUSIK={
+  music_box:      {nama:'waltz kotak musik', bpm:[76,100], birama:3, skala:['mayor','mayor','minor'], ayun:0.5, istirahat:0.05, mel:72},
+  vinyl_player:   {nama:'jazz santai',       bpm:[96,132], birama:4, skala:['mayor','dorian','mixolidia','minor'], ayun:0.64, istirahat:0.18, mel:67},
+  cassette_player:{nama:'lo-fi',             bpm:[72,90],  birama:4, skala:['dorian','minor','mayor'], ayun:0.58, istirahat:0.3, mel:67},
+  cd_player:      {nama:'balada pop',        bpm:[82,104], birama:4, skala:['mayor','mayor','minor','mixolidia'], ayun:0.5, istirahat:0.1, mel:72}
+};
+const RITME3=[[1,1,1],[2,1],[1.5,0.5,1],[1,0.5,0.5,1],[0.5,0.5,1,1],[3]];
+const RITME4=[[1,1,1,1],[1.5,0.5,2],[0.5,0.5,1,2],[1,0.5,0.5,1,1],[2,1,1],[1,1,2],[0.5,1,0.5,2],[1.5,0.5,1,1],[0.5,0.5,0.5,0.5,2]];
+const pilih=a=>a[Math.floor(Math.random()*a.length)];
+const md=d=>((d%7)+7)%7;
+function dekatAkor(deg,nada){                        // derajat terdekat yang termasuk nada akor
+  let best=deg, bd=99;
+  for(let d=deg-4; d<=deg+4; d++) if(nada.includes(md(d)) && Math.abs(d-deg)<bd){ bd=Math.abs(d-deg); best=d; }
+  return best;
+}
+function buatFrasa(G,prog,akhir){
+  const pats=G.birama===3?RITME3:RITME4, bars=[];
+  let deg=pilih([2,4,7]);
+  const motif=[pilih(pats),pilih(pats)];
+  for(let i=0;i<4;i++){
+    const akar=prog[i], akor=[akar,akar+2,akar+4].map(md);
+    if(i===2){                                           // bar 3 mengulang motif bar 1, digeser mengikuti akornya
+      let geser=prog[2]-prog[0]; if(geser>3) geser-=7; if(geser<-3) geser+=7;
+      bars.push(bars[0].map(n=>({...n, deg:dekatAkor(n.deg+geser, n.b===0?akor:[0,1,2,3,4,5,6])})));
+      deg=bars[2][bars[2].length-1].deg; continue;
+    }
+    const pat = i<2 ? motif[i] : (G.birama===3 ? pilih([[2,1],[1,2],[3]]) : pilih([[2,2],[1,1,2],[1,3]]));
+    const notes=[]; let b=0;
+    pat.forEach((d,k)=>{
+      if(k===0) deg=dekatAkor(deg,akor);
+      else { deg+=pilih([-2,-1,-1,1,1,2,0,-3,3,1,-1]); deg=clamp(deg,-2,10); }
+      if(i===3 && k===pat.length-1) deg=dekatAkor(deg,[md(akhir)]);
+      notes.push({b, d, deg, rest: k>0 && i!==3 && Math.random()<G.istirahat}); b+=d;
+    });
+    bars.push(notes);
+  }
+  return bars;
+}
+function buatLagu(gaya){
+  const G=GAYA_MUSIK[gaya];
+  const skalaNama=pilih(G.skala), prog=PROGRESI[skalaNama];
+  const progA=pilih(prog), progB=pilih(prog.filter(p=>p!==progA).concat([progA]));
+  const A=buatFrasa(G,progA,4), A2=buatFrasa(G,progA,0), B=buatFrasa(G,progB,4);
+  A2[0]=A[0]; A2[1]=A[1];                                // jawaban: awal sama, ujungnya pulang ke tonika
+  const kunci=Math.floor(Math.random()*12), bpm=Math.round(G.bpm[0]+Math.random()*(G.bpm[1]-G.bpm[0]));
+  return {gaya, G, skala:SKALA[skalaNama], skalaNama, kunci, bpm, spb:60/bpm,
+          bagian:[[A,progA],[A2,progA],[B,progB],[A2,progA]], bar:0, putaran:0};
+}
+/* ---- alat bunyi ---- */
+const mf=m=>440*Math.pow(2,(m-69)/12);
+function audioSiap(){
+  if(!AUDIO.ctx){
+    const C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
+    const ctx=AUDIO.ctx=new C();
+    const komp=ctx.createDynamicsCompressor(); komp.threshold.value=-16; komp.ratio.value=3; komp.connect(ctx.destination);
+    AUDIO.master=ctx.createGain(); AUDIO.master.gain.value=1.2; AUDIO.master.connect(komp);
+    // derau putih bersama (drum, desis pita, kresek piringan)
+    const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), d=nb.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    AUDIO.derau=nb;
+    // gema ruangan: impuls derau yang meluruh 1,6 detik
+    const L=Math.floor(ctx.sampleRate*1.6), ib=ctx.createBuffer(2,L,ctx.sampleRate);
+    for(let c=0;c<2;c++){ const x=ib.getChannelData(c); for(let i=0;i<L;i++) x[i]=(Math.random()*2-1)*Math.pow(1-i/L,3.2); }
+    AUDIO.gema=ctx.createConvolver(); AUDIO.gema.buffer=ib;
+    const gg=ctx.createGain(); gg.gain.value=0.35; AUDIO.gema.connect(gg); gg.connect(AUDIO.master);
+    AUDIO.timer=setInterval(jadwalSemua,90);
+  }
+  const ctx=AUDIO.ctx;
+  if(ctx.state==='suspended' && ctx.resume) ctx.resume().catch(()=>{});
+  // iOS lama baru "terbuka" setelah memutar sesuatu di dalam sentuhan
+  const s=ctx.createBufferSource(); s.buffer=ctx.createBuffer(1,1,22050); s.connect(ctx.destination); s.start(0);
+  return ctx;
+}
+function envGain(ctx,dest,t,a,puncak,luruh,lama){
+  const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(Math.max(puncak,0.0002),t+a);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+a+luruh);
+  g.connect(dest); return g;
+}
+function osc(ctx,tipe,f,t,stop,dest){ const o=ctx.createOscillator(); o.type=tipe; o.frequency.setValueAtTime(f,t); o.connect(dest); o.start(t); o.stop(stop); return o; }
+function derau(ctx,t,lama,dest){ const s=ctx.createBufferSource(); s.buffer=AUDIO.derau; s.connect(dest); s.start(t,Math.random()*1.5,lama+0.05); return s; }
+const ALAT={
+  tine(ctx,d,t,m,dur,v){                               // sisir baja kotak musik: parsial tak harmonis, luruh cepat
+    const f=mf(m);
+    for(const [k,a,l] of [[1,1,1.8],[2.0,0.22,0.6],[4.16,0.1,0.25],[6.8,0.04,0.12]]) osc(ctx,'sine',f*k,t,t+l+0.05,envGain(ctx,d,t,0.002,a*v,l));
+    const bp=ctx.createBiquadFilter(); bp.type='highpass'; bp.frequency.value=5000; bp.connect(d);
+    derau(ctx,t,0.012,envGain(ctx,bp,t,0.001,v*0.04,0.01));
+  },
+  epiano(ctx,d,t,m,dur,v){                             // piano listrik FM (Rhodes)
+    const f=mf(m), g=envGain(ctx,d,t,0.006,v,Math.max(dur,0.4)+1.2);
+    const c=osc(ctx,'sine',f,t,t+dur+1.4,g);
+    const mod=ctx.createOscillator(); mod.frequency.value=f; const mg=ctx.createGain();
+    mg.gain.setValueAtTime(f*1.6,t); mg.gain.exponentialRampToValueAtTime(f*0.15,t+0.9);
+    mod.connect(mg); mg.connect(c.frequency); mod.start(t); mod.stop(t+dur+1.4);
+    osc(ctx,'sine',f*4,t,t+0.3,envGain(ctx,d,t,0.002,v*0.06,0.25));
+  },
+  vibes(ctx,d,t,m,dur,v){
+    const f=mf(m), g=envGain(ctx,d,t,0.004,v,1.6);
+    const trem=ctx.createGain(); trem.gain.value=1; trem.connect(g);
+    const lfo=ctx.createOscillator(); lfo.frequency.value=5.2; const lg=ctx.createGain(); lg.gain.value=0.25;
+    lfo.connect(lg); lg.connect(trem.gain); lfo.start(t); lfo.stop(t+1.7);
+    osc(ctx,'sine',f,t,t+1.7,trem); osc(ctx,'sine',f*4,t,t+0.5,envGain(ctx,d,t,0.002,v*0.08,0.4));
+  },
+  piano(ctx,d,t,m,dur,v){
+    const f=mf(m), lp=ctx.createBiquadFilter(); lp.type='lowpass';
+    lp.frequency.setValueAtTime(Math.min(9000,f*9),t); lp.frequency.exponentialRampToValueAtTime(Math.max(300,f*2),t+1.2);
+    const l=Math.min(dur+0.25,2.6), g=envGain(ctx,d,t,0.004,v,l); lp.connect(g);
+    osc(ctx,'triangle',f,t,t+l+0.1,lp); osc(ctx,'sine',f*2,t,t+l+0.1,envGain(ctx,lp,t,0.003,0.35,l*0.6));
+    const o2=osc(ctx,'triangle',f,t,t+l+0.1,lp); o2.detune.value=4;
+  },
+  pad(ctx,d,t,ms,dur,v){
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1100; lp.Q.value=0.4;
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+0.35);
+    g.gain.setValueAtTime(v,t+dur-0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.6); lp.connect(g); g.connect(d);
+    for(const m of ms) for(const dt of [-7,7]){ const o=osc(ctx,'sawtooth',mf(m),t,t+dur+0.7,lp); o.detune.value=dt; }
+  },
+  lead(ctx,d,t,m,dur,v){
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1600;
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+0.02);
+    g.gain.setValueAtTime(v*0.8,t+dur*0.9); g.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.12); lp.connect(g); g.connect(d);
+    const o=osc(ctx,'square',mf(m),t,t+dur+0.15,lp);
+    const lfo=ctx.createOscillator(); lfo.frequency.value=5.5; const lg=ctx.createGain();
+    lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(10,t+0.25); lfo.connect(lg); lg.connect(o.detune); lfo.start(t); lfo.stop(t+dur+0.15);
+  },
+  bass(ctx,d,t,m,dur,v,tipe){
+    const f=mf(m), l=Math.max(0.15,dur*0.95);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+0.012);
+    g.gain.exponentialRampToValueAtTime(v*0.45,t+0.25); g.gain.setValueAtTime(v*0.45,t+l); g.gain.exponentialRampToValueAtTime(0.0001,t+l+0.12);
+    if(tipe==='square'){ const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520; lp.connect(g); osc(ctx,'square',f,t,t+l+0.15,lp); }
+    else { osc(ctx,tipe||'triangle',f,t,t+l+0.15,g); osc(ctx,'sine',f/2,t,t+l+0.15,envGain(ctx,g,t,0.01,0.5,l)); }
+    g.connect(d);
+  },
+  kick(ctx,d,t,v){ const g=envGain(ctx,d,t,0.002,v,0.34); const o=osc(ctx,'sine',140,t,t+0.4,g); o.frequency.exponentialRampToValueAtTime(44,t+0.12); },
+  snare(ctx,d,t,v){
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1900; bp.Q.value=0.7; bp.connect(envGain(ctx,d,t,0.001,v,0.17));
+    derau(ctx,t,0.2,bp); osc(ctx,'triangle',190,t,t+0.12,envGain(ctx,d,t,0.001,v*0.5,0.08));
+  },
+  hat(ctx,d,t,v,buka){ const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=7000; hp.connect(envGain(ctx,d,t,0.001,v,buka?0.22:0.045)); derau(ctx,t,buka?0.25:0.06,hp); },
+  brush(ctx,d,t,v){ const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2600; bp.Q.value=0.5; bp.connect(envGain(ctx,d,t,0.05,v,0.22)); derau(ctx,t,0.3,bp); },
+  klik(ctx,d,t,v){ const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1500; hp.connect(envGain(ctx,d,t,0.0005,v,0.004)); derau(ctx,t,0.006,hp); }
+};
+/* ---- satu pemutar: rantai efek sesuai alat → peredam dinding → panner 3D ---- */
+function buatPemutar(id,gaya){
+  const ctx=audioSiap(); if(!ctx) return null;
+  const P={id, gaya, lagu:buatLagu(gaya), nodes:[]};
+  const bus=ctx.createGain(); bus.gain.value=0.0001; P.bus=bus;
+  let ujung=bus;
+  const sambung=n=>{ ujung.connect(n); ujung=n; P.nodes.push(n); return n; };
+  const lpf=f=>{ const b=ctx.createBiquadFilter(); b.type='lowpass'; b.frequency.value=f; return b; };
+  const goyang=(dasar,lambat,dalam,cepat,dalam2)=>{     // wow & flutter: tunda termodulasi → nada bergoyang
+    const dl=ctx.createDelay(0.05); dl.delayTime.value=dasar; sambung(dl);
+    for(const [fq,dp] of [[lambat,dalam],[cepat,dalam2]]){ if(!dp) continue;
+      const l=ctx.createOscillator(); l.frequency.value=fq; const lg=ctx.createGain(); lg.gain.value=dp; l.connect(lg); lg.connect(dl.delayTime); l.start(); P.nodes.push(l); }
+  };
+  const derauLoop=(fHp,vol)=>{ const s=ctx.createBufferSource(); s.buffer=AUDIO.derau; s.loop=true;
+    const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=fHp; const g=ctx.createGain(); g.gain.value=vol;
+    s.connect(hp); hp.connect(g); s.start(); P.nodes.push(s); return g; };
+  if(gaya==='vinyl_player'){ goyang(0.006,0.55,0.0005); sambung(lpf(6500)); P.kresek=derauLoop(3200,0.006); }
+  else if(gaya==='cassette_player'){
+    goyang(0.006,0.7,0.0011,6.5,0.00012);
+    const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=110; sambung(hp); sambung(lpf(4200));
+    const ws=ctx.createWaveShaper(), cv=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/511.5-1; cv[i]=Math.tanh(x*1.6)/Math.tanh(1.6); } ws.curve=cv; sambung(ws);
+    P.kresek=derauLoop(5500,0.004);
+  }
+  else if(gaya==='music_box'){ const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=280; sambung(hp);
+    const pk=ctx.createBiquadFilter(); pk.type='peaking'; pk.frequency.value=2400; pk.gain.value=4; sambung(pk); }
+  const occ=lpf(18000); sambung(occ); P.occ=occ;
+  if(P.kresek) P.kresek.connect(occ);
+  const vol=ctx.createGain(); vol.gain.value=1; occ.connect(vol); P.vol=vol;
+  const pan=ctx.createPanner(); pan.panningModel='HRTF'; pan.distanceModel='inverse';
+  pan.refDistance=1.2; pan.rolloffFactor=1.0; pan.maxDistance=40; P.pan=pan;
+  vol.connect(pan); pan.connect(AUDIO.master);
+  const kirim=ctx.createGain(); kirim.gain.value=gaya==='cd_player'?0.35:0.22; occ.connect(kirim); kirim.connect(AUDIO.gema); P.kirim=kirim;
+  const an=ctx.createAnalyser(); an.fftSize=256; vol.connect(an); P.an=an; P.buf=new Float32Array(256); P.level=0;
+  bus.gain.setValueAtTime(0.0001,ctx.currentTime); bus.gain.exponentialRampToValueAtTime(gaya==='music_box'?0.32:0.26,ctx.currentTime+0.4);
+  P.t=ctx.currentTime+0.15;
+  return P;
+}
+function waktuKetuk(b,ayun){ const k=Math.floor(b), f=b-k; return k + (Math.abs(f-0.5)<1e-6 ? ayun : f); }
+function jadwalBar(P){
+  const ctx=AUDIO.ctx, S=P.lagu, G=S.G, d=P.bus, t0=P.t, spb=S.spb, B=G.birama;
+  const [frasa,prog]=S.bagian[Math.floor(S.bar/4)%4], i=S.bar%4, akar=prog[i], akarBerikut=prog[(i+1)%4];
+  const m=(deg,dasar)=>S.kunci+dasar+12*Math.floor(deg/7)+S.skala[md(deg)];
+  const akor=(dasar,n)=>{ const out=[]; for(let k=0;k<n;k++){ let x=m(akar+k*2,dasar); while(x>=dasar+S.kunci+15) x-=12; out.push(x); } return out; };
+  const tk=b=>t0+waktuKetuk(b,G.ayun)*spb;
+  const intro = S.putaran===0 && S.bar<4;
+  // melodi
+  const alatMel={music_box:'tine', vinyl_player:'vibes', cassette_player:'lead', cd_player:'piano'}[P.gaya];
+  const vMel={music_box:0.5, vinyl_player:0.3, cassette_player:0.12, cd_player:0.34}[P.gaya];
+  if(!(intro && P.gaya!=='music_box'))
+    for(const n of frasa[i]) if(!n.rest) ALAT[alatMel](ctx,d,tk(n.b),m(n.deg,G.mel),n.d*spb*0.95,vMel*(n.b===0?1:0.82));
+  if(P.gaya==='music_box'){                          // om-pa-pa: bas di ketuk 1, akor di 2 dan 3
+    ALAT.tine(ctx,d,tk(0),m(akar,48),spb,0.34);
+    const a=akor(60,3);
+    ALAT.tine(ctx,d,tk(1),a[1],spb,0.16); ALAT.tine(ctx,d,tk(1),a[2],spb,0.12);
+    ALAT.tine(ctx,d,tk(2),a[1],spb,0.14); ALAT.tine(ctx,d,tk(2),a[2],spb,0.1);
+  } else if(P.gaya==='vinyl_player'){               // jazz: Rhodes, bas berjalan, sapu & ride
+    const a=akor(52,4);
+    for(const x of a.slice(1)) ALAT.epiano(ctx,d,tk(0),x,spb*1.5,0.1);
+    if(Math.random()<0.6) for(const x of a.slice(1)) ALAT.epiano(ctx,d,tk(2.5),x,spb,0.07);
+    const r=m(akar,36), tuju=m(akarBerikut,36);
+    const jalan=[r, m(akar+pilih([2,4]),36), m(akar+pilih([4,5,3]),36), tuju+pilih([-1,1])];
+    jalan.forEach((x,k)=>ALAT.bass(ctx,d,tk(k),x,spb*0.9,0.32,'triangle'));
+    if(!intro){
+      for(const b of [0,1,1.5,2,3,3.5]) ALAT.hat(ctx,d,tk(b),b%1?0.03:0.045,b===1||b===3);
+      ALAT.brush(ctx,d,tk(1),0.1); ALAT.brush(ctx,d,tk(3),0.1); ALAT.kick(ctx,d,tk(0),0.18);
+    }
+    for(let k=0;k<3;k++) if(Math.random()<0.5) ALAT.klik(ctx,P.occ,t0+Math.random()*B*spb,0.12+Math.random()*0.2);   // kresek debu
+  } else if(P.gaya==='cassette_player'){            // lo-fi: pad hangat, bas, drum renyah
+    ALAT.pad(ctx,d,tk(0),akor(55,4),B*spb,0.035);
+    ALAT.bass(ctx,d,tk(0),m(akar,36),spb*1.4,0.3,'square');
+    ALAT.bass(ctx,d,tk(2.5),m(akar,36),spb*0.9,0.24,'square');
+    if(!intro){
+      ALAT.kick(ctx,d,tk(0),0.5); if(Math.random()<0.6) ALAT.kick(ctx,d,tk(2.5),0.35);
+      ALAT.snare(ctx,d,tk(1),0.2); ALAT.snare(ctx,d,tk(3),0.2);
+      for(let b=0;b<4;b+=0.5) ALAT.hat(ctx,d,tk(b),b%1?0.03:0.05,false);
+    }
+  } else {                                          // CD: piano arpeggio, bas, drum lembut
+    const a=akor(52,3).concat([m(akar+7,52)]);
+    [0,1,2,3,2,1,0,2].forEach((k,j)=>ALAT.piano(ctx,d,tk(j*0.5),a[k],spb*0.6,0.09));
+    ALAT.bass(ctx,d,tk(0),m(akar,36),spb*1.8,0.28,'sine'); ALAT.bass(ctx,d,tk(2),m(akar,36),spb*1.8,0.24,'sine');
+    if(!intro){
+      ALAT.kick(ctx,d,tk(0),0.32); ALAT.kick(ctx,d,tk(2),0.26); ALAT.snare(ctx,d,tk(1),0.11); ALAT.snare(ctx,d,tk(3),0.11);
+      for(let b=0;b<4;b+=0.5) ALAT.hat(ctx,d,tk(b),0.025,false);
+    }
+  }
+  P.t=t0+B*spb;
+  S.bar++;
+  if(S.bar>=16){ S.bar=0; S.putaran++;
+    if(S.putaran>=2){ P.lagu=buatLagu(P.gaya); P.t+=spb; if(FPS.on) toast('♪ Lagu berikutnya — '+judulLagu(P.lagu)); } }
+}
+function jadwalSemua(){
+  if(!AUDIO.ctx) return;
+  const batas=AUDIO.ctx.currentTime+0.6;
+  for(const P of AUDIO.main.values()){ let n=0; while(P.t<batas && n++<4) jadwalBar(P); }
+}
+function judulLagu(S){ return `${S.G.nama}, ${NAMA_NADA[S.kunci]} ${S.skalaNama} · ${S.bpm} bpm`; }
+function mulaiMusik(id){
+  const info=AUDIO.grup.get(id); if(!info) return;
+  const P=buatPemutar(id,info.jenis); if(!P) return toast('Peramban ini tidak mendukung Web Audio');
+  const p=info.titik; P.pan.positionX ? (P.pan.positionX.value=p.x, P.pan.positionY.value=p.y, P.pan.positionZ.value=p.z) : P.pan.setPosition(p.x,p.y,p.z);
+  AUDIO.main.set(id,P); jadwalSemua();
+  terapkanAudio(info.g,true);
+  toast('♪ '+AUDIO_JENIS[info.jenis][0].toUpperCase()+AUDIO_JENIS[info.jenis].slice(1)+' — '+judulLagu(P.lagu));
+}
+function hentikanMusik(id){
+  const P=AUDIO.main.get(id); if(!P) return;
+  AUDIO.main.delete(id);
+  const ctx=AUDIO.ctx, t=ctx.currentTime;
+  P.bus.gain.cancelScheduledValues(t); P.bus.gain.setValueAtTime(Math.max(P.bus.gain.value,0.0001),t); P.bus.gain.exponentialRampToValueAtTime(0.0001,t+0.35);
+  if(P.kresek) P.kresek.gain.setTargetAtTime(0,t,0.08);
+  setTimeout(()=>{ try{ P.vol.disconnect(); P.kirim.disconnect(); for(const n of P.nodes){ if(n.stop) try{ n.stop(); }catch(e){} } }catch(e){} },700);
+  const info=AUDIO.grup.get(id); if(info) terapkanAudio(info.g,false);
+}
+/* iOS/iPadOS baru mengizinkan audio pada akhir sentuhan (touchend/click), bukan
+   pointerdown tempat tombol aksi bekerja — konteks dilanjutkan di sana juga */
+for(const ev of ['touchend','pointerup','click','keydown'])
+  addEventListener(ev,()=>{ const c=AUDIO.ctx; if(c && c.state!=='running' && AUDIO.main.size){ c.resume().catch(()=>{});
+    const s=c.createBufferSource(); s.buffer=c.createBuffer(1,1,22050); s.connect(c.destination); s.start(0); } },{passive:true,capture:true});
+function hentikanSemuaMusik(){ for(const id of [...AUDIO.main.keys()]) hentikanMusik(id); }
+function terapkanAudio(g,on){
+  g.traverse(m=>{ if(m.isMesh && m.userData.led) m.material = on ? MAT[m.userData.led] : MAT.ledOff; });
+}
+/* dikumpulkan tiap scene dibangun: bagian bergerak dan titik suara tiap alat */
+function kumpulkanAudio(){
+  AUDIO.grup.clear();
+  worldRoot.updateMatrixWorld(true);
+  worldRoot.traverse(n=>{
+    if(n.userData.kind!=='obj' || n.userData.nyalaJenis!=='audio') return;
+    const info={g:n, jenis:n.userData.audioJenis, putar:[], pose:[], kerucut:[]};
+    n.traverse(c=>{ if(c.userData.putar) info.putar.push(c); if(c.userData.pose) info.pose.push(c); if(c.userData.kerucut!=null) info.kerucut.push(c); });
+    const bb=new THREE.Box3().setFromObject(n); info.titik=new THREE.Vector3((bb.min.x+bb.max.x)/2, bb.max.y-0.15, (bb.min.z+bb.max.z)/2);
+    AUDIO.grup.set(n.userData.id,info);
+    const main=AUDIO.main.has(n.userData.id);
+    for(const c of info.pose){ const p=c.userData.pose; c[p.path[0]][p.path[1]] = main?p.on:p.off; }
+    terapkanAudio(n,main);
+  });
+  for(const id of [...AUDIO.main.keys()]) if(!AUDIO.grup.has(id)) hentikanMusik(id);   // alatnya dihapus
+}
+const audioRay=new THREE.Raycaster();
+function stepAudio(dt){
+  if(!AUDIO.grup.size) return;
+  let gerak=false;
+  for(const [id,info] of AUDIO.grup){
+    const P=AUDIO.main.get(id), main=!!P;
+    if(main) for(const c of info.putar) c.rotation[c.userData.putar.sumbu]+=c.userData.putar.kec*dt;
+    for(const c of info.pose){
+      const p=c.userData.pose, tuju=main?p.on:p.off, o=c[p.path[0]], kini=o[p.path[1]];
+      if(Math.abs(kini-tuju)>1e-4){ o[p.path[1]] = kini+(tuju-kini)*Math.min(1,dt*4); gerak=true; }
+    }
+    // kerucut speaker berdenyut mengikuti kerasnya musik
+    let lv=0;
+    if(P){ P.an.getFloatTimeDomainData(P.buf); let s=0; for(let k=0;k<P.buf.length;k++) s+=P.buf[k]*P.buf[k]; lv=Math.sqrt(s/P.buf.length); }
+    info.lv=(info.lv||0)*0.6+lv*0.4;
+    for(const c of info.kerucut) c.position.z=c.userData.kerucut+Math.min(0.006,info.lv*0.04);
+  }
+  if(gerak) bayangKotor();
+  if(!AUDIO.ctx || !AUDIO.main.size) return;
+  // pendengar = kamera
+  const L=AUDIO.ctx.listener, p=camera.position, f=new THREE.Vector3(); camera.getWorldDirection(f);
+  if(L.positionX){ L.positionX.value=p.x; L.positionY.value=p.y; L.positionZ.value=p.z;
+    L.forwardX.value=f.x; L.forwardY.value=f.y; L.forwardZ.value=f.z; L.upX.value=0; L.upY.value=1; L.upZ.value=0; }
+  else { L.setPosition(p.x,p.y,p.z); L.setOrientation(f.x,f.y,f.z,0,1,0); }
+  // dinding di antara pendengar dan alat meredam suara (frekuensi tinggi dulu)
+  AUDIO.occT-=dt; if(AUDIO.occT>0) return; AUDIO.occT=0.25;
+  for(const [id,P] of AUDIO.main){
+    const info=AUDIO.grup.get(id); if(!info) continue;
+    const arah=info.titik.clone().sub(p), jarak=arah.length(); arah.normalize();
+    audioRay.set(p,arah); audioRay.far=Math.max(0,jarak-0.3);
+    let tembok=0;
+    for(const h of audioRay.intersectObject(worldRoot,true)){ let n=h.object; while(n&&n!==worldRoot){ if(n.userData.kind==='wall'){ tembok++; break; } n=n.parent; } if(tembok>=2) break; }
+    const t=AUDIO.ctx.currentTime;
+    P.occ.frequency.setTargetAtTime(tembok?(tembok>1?450:900):18000,t,0.15);
+    P.vol.gain.setTargetAtTime(tembok?(tembok>1?0.3:0.55):1,t,0.15);
+  }
+}
+
 /* titik cahaya tiap lampu yang terpasang — dikumpulkan tiap scene dibangun */
 let LAMPU_PASANG=[];
 function kumpulkanLampu(){
@@ -3668,6 +4197,7 @@ function rebuildScene(){
   ANIM.clear(); OPS.clear(); REG=true;
   try{ rebuildScene0(); } finally { REG=false; }
   kumpulkanLampu();
+  kumpulkanAudio();
   rebuildDims();
   pasBayangMatahari();
 }
@@ -7692,6 +8222,7 @@ function labelAksi(t){
   if(t.jenis==='api')   return MATI.has(t.id)?'Nyalakan api':'Padamkan api';
   if(t.jenis==='tv')    return TV_NYALA.has(t.id)?'Matikan TV':'Nyalakan TV';
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
+  if(t.jenis==='audio') return (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   return '';
 }
 function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind==='obj' && n.userData.id===id) out.push(n); }); return out; }
@@ -7705,6 +8236,7 @@ function pakai(t){
   }
   else if(t.jenis==='tv'){ if(TV_NYALA.has(t.id)) TV_NYALA.delete(t.id); else TV_NYALA.add(t.id); for(const g of grupObjek(t.id)) terapkanTV(g,TV_NYALA.has(t.id)); }
   else if(t.jenis==='gorden'){ if(GORDEN_BUKA.has(t.id)) GORDEN_BUKA.delete(t.id); else GORDEN_BUKA.add(t.id); for(const g of grupObjek(t.id)) terapkanGorden(g,GORDEN_BUKA.has(t.id)); }
+  else if(t.jenis==='audio'){ if(AUDIO.main.has(t.id)) hentikanMusik(t.id); else mulaiMusik(t.id); }
   AIM_T=0;
 }
 function stepBidik(dt){
@@ -7760,6 +8292,7 @@ function enterFPS(){
 }
 function exitFPS(){
   if(!FPS.on) return;
+  hentikanSemuaMusik();                      // musik hanya bagian dari mode jalan
   FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
   rebuildScene();                            // kembali ke tampilan editor
   terapkanLangit();
