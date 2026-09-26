@@ -373,6 +373,12 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="section-title">Furnitur &amp; Sanitair</div>
       <div class="row"><select id="furn-filter">
         <option value="all">Semua kategori</option>
+        <option value="dekor">Dekorasi Dinding</option>
+        <option value="lampu">Pencahayaan</option>
+        <option value="tanaman">Tanaman</option>
+        <option value="karpet">Karpet</option>
+        <option value="simpan">Lemari &amp; Kabinet</option>
+        <option value="perapian">Perapian</option>
         <option value="kamar">Kamar Tidur</option>
         <option value="ruang">Ruang Keluarga</option>
         <option value="makan">Ruang Makan</option>
@@ -2301,6 +2307,488 @@ function plantBig(){
   return g;
 }
 
+/* ======================================================================
+   BUILDER — INTERIOR: DEKORASI, PENCAHAYAAN, TANAMAN, KARPET, PENYIMPANAN,
+   DAPUR LENGKAP, PERAPIAN
+   Ukuran dan ketinggian pasang mengikuti kaidah desain interior:
+   - pusat karya seni di dinding ±1,50 m dari lantai (garis pandang galeri),
+     jarak antarbingkai pada galeri 5–8 cm;
+   - lampu gantung meja makan 75–85 cm di atas daun meja, di atas island
+     75–90 cm di atas meja; chandelier di area lalu-lalang terbawah ≥ 2,10 m;
+   - lampu dinding (sconce) ±1,65 m; pusat layar TV setinggi mata duduk ±1,10 m;
+   - meja dapur 85–90 cm, kabinet atas 55–65 cm di atas meja, hood 65–75 cm
+     di atas kompor, lorong kerja 1,0–1,2 m;
+   - perapian: hearth menjorok ≥ 45 cm, rak mantel ±1,20 m.
+   Benda yang digantung di plafon membaca tinggi lantai tempatnya dipasang.
+   ====================================================================== */
+let BUILD_LV=null;
+const ceilH=()=>((BUILD_LV&&BUILD_LV.height)||3.2)-STD.slabT;
+function msh(geo,mat,x=0,y=0,z=0){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; return m; }
+function sph(r,mat,x=0,y=0,z=0,sy=1,seg=16){ const m=msh(new THREE.SphereGeometry(r,seg,Math.max(8,seg>>1)),mat,x,y,z); m.scale.y=sy; return m; }
+function tube(pts,r,mat,seg=24){ return msh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p))),seg,r,8,false),mat); }
+function flat(m){ m.castShadow=false; return m; }
+
+/* tekstur kecil yang digambar sendiri (karya seni, karpet, api) */
+const DECOTEX=new Map();
+function decoTex(key,S,draw){
+  if(DECOTEX.has(key)) return DECOTEX.get(key);
+  const c=document.createElement('canvas'); c.width=c.height=S;
+  draw(c.getContext('2d'),S,acak([...key].reduce((a,ch)=>a*31+ch.charCodeAt(0),7)));
+  const t=new THREE.CanvasTexture(c); t.format=THREE.RGBFormat;
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  DECOTEX.set(key,t); return t;
+}
+const PALET_SENI=[['#e9e1d3','#c0673f','#2f4858','#d9a441','#7d8f69'],
+                  ['#f2ede4','#1f2a36','#b89b72','#8e3b2e','#dcd3c1'],
+                  ['#ece6da','#5b7560','#a8b59c','#c9a27e','#3d3a36']];
+function artTex(gaya){
+  return decoTex('seni_'+gaya,512,(c,S,R)=>{
+    const p=PALET_SENI[gaya%3];
+    c.fillStyle=p[0]; c.fillRect(0,0,S,S);
+    if(gaya%3===0){                       // abstrak: lingkaran & busur bertumpuk
+      for(let i=0;i<7;i++){ c.fillStyle=p[1+i%4]; c.globalAlpha=0.85;
+        c.beginPath(); c.arc(R()*S,R()*S,S*(0.08+R()*0.22),0,Math.PI*2); c.fill(); }
+      c.globalAlpha=1; c.strokeStyle=p[2]; c.lineWidth=S*0.012;
+      c.beginPath(); c.arc(S*0.5,S*0.95,S*0.45,Math.PI,2*Math.PI); c.stroke();
+    } else if(gaya%3===1){                // lanskap garis: bukit berlapis dan matahari
+      c.fillStyle=p[3]; c.beginPath(); c.arc(S*0.7,S*0.32,S*0.1,0,Math.PI*2); c.fill();
+      for(let k=0;k<4;k++){ c.fillStyle=p[[1,2,4,1][k]]; c.globalAlpha=0.55+k*0.12; c.beginPath(); c.moveTo(0,S);
+        for(let x=0;x<=S;x+=8) c.lineTo(x,S*(0.55+k*0.1)+Math.sin(x/S*Math.PI*(2+k)+k)*S*0.05);
+        c.lineTo(S,S); c.fill(); }
+      c.globalAlpha=1;
+    } else {                              // botani: siluet daun
+      for(let i=0;i<9;i++){ c.save(); c.translate(S*(0.2+R()*0.6),S*(0.2+R()*0.6)); c.rotate(R()*Math.PI*2);
+        c.fillStyle=p[1+i%4]; c.beginPath(); c.ellipse(0,0,S*0.05,S*0.16,0,0,Math.PI*2); c.fill();
+        c.strokeStyle=p[0]; c.lineWidth=2; c.beginPath(); c.moveTo(0,-S*0.15); c.lineTo(0,S*0.15); c.stroke(); c.restore(); }
+    }
+  });
+}
+function rugTex(gaya){
+  return decoTex('karpet_'+gaya,512,(c,S,R)=>{
+    const bintik=(n,a,col)=>{ c.fillStyle=col; for(let i=0;i<n;i++){ c.globalAlpha=a*R(); c.fillRect(R()*S,R()*S,2,2);} c.globalAlpha=1; };
+    if(gaya==='berber'){ c.fillStyle='#e8dfcf'; c.fillRect(0,0,S,S); c.strokeStyle='#3b3531'; c.lineWidth=5;
+      for(let k=-8;k<16;k++){ c.beginPath(); c.moveTo(k*64,0); c.lineTo(k*64+S,S); c.stroke(); c.beginPath(); c.moveTo(k*64+S,0); c.lineTo(k*64,S); c.stroke(); }
+      bintik(9000,.25,'#8a8172'); }
+    else if(gaya==='persia'){ c.fillStyle='#7d2a25'; c.fillRect(0,0,S,S);
+      c.strokeStyle='#1d2c47'; c.lineWidth=S*0.06; c.strokeRect(S*0.06,S*0.06,S*0.88,S*0.88);
+      c.strokeStyle='#d9b77e'; c.lineWidth=S*0.012; c.strokeRect(S*0.11,S*0.11,S*0.78,S*0.78);
+      c.fillStyle='#1d2c47'; c.beginPath(); c.moveTo(S/2,S*0.22); c.lineTo(S*0.72,S/2); c.lineTo(S/2,S*0.78); c.lineTo(S*0.28,S/2); c.fill();
+      c.fillStyle='#d9b77e'; c.beginPath(); c.arc(S/2,S/2,S*0.08,0,Math.PI*2); c.fill();
+      for(const [x,y] of [[.2,.2],[.8,.2],[.2,.8],[.8,.8]]){ c.beginPath(); c.arc(S*x,S*y,S*0.04,0,Math.PI*2); c.fill(); }
+      bintik(12000,.3,'#2a0f0c'); }
+    else if(gaya==='garis'){ const w=['#d8d2c4','#51605a','#d8d2c4','#b87a55','#d8d2c4'];
+      for(let i=0;i<16;i++){ c.fillStyle=w[i%5]; c.fillRect(0,i*S/16,S,S/16); } bintik(9000,.25,'#433d37'); }
+    else if(gaya==='abstrak'){ c.fillStyle='#d9cfc0'; c.fillRect(0,0,S,S);
+      for(let i=0;i<6;i++){ c.fillStyle=['#9c6b4e','#5f7470','#c9a97f','#2f3437'][i%4]; c.globalAlpha=.8;
+        c.beginPath(); c.ellipse(R()*S,R()*S,S*(0.08+R()*0.2),S*(0.05+R()*0.12),R()*3,0,Math.PI*2); c.fill(); }
+      c.globalAlpha=1; bintik(9000,.25,'#6b6258'); }
+    else { c.fillStyle='#b9b0a2'; c.fillRect(0,0,S,S); bintik(26000,.35,'#7d7466'); bintik(12000,.3,'#e6dfd3'); }
+  });
+}
+function fireTex(){
+  return decoTex('api',256,(c,S,R)=>{
+    c.fillStyle='#120a05'; c.fillRect(0,0,S,S);
+    for(let i=0;i<46;i++){
+      const x=R()*S, h=S*(0.35+R()*0.55), w=S*(0.05+R()*0.08);
+      const g=c.createLinearGradient(0,S,0,S-h);
+      g.addColorStop(0,'rgba(255,240,180,0.95)'); g.addColorStop(0.35,'rgba(255,150,40,0.8)'); g.addColorStop(1,'rgba(160,30,0,0)');
+      c.fillStyle=g; c.beginPath(); c.moveTo(x-w,S); c.quadraticCurveTo(x-w*0.3,S-h*0.6,x,S-h); c.quadraticCurveTo(x+w*0.3,S-h*0.6,x+w,S); c.fill();
+    }
+  });
+}
+const dekoMat=(key,opt)=>{ if(!DECOTEX.has('m_'+key)) DECOTEX.set('m_'+key,new THREE.MeshStandardMaterial(opt)); return DECOTEX.get('m_'+key); };
+Object.assign(MAT,{
+  brass     : new THREE.MeshStandardMaterial({color:0xc9a25a, roughness:.3,  metalness:.9}),
+  blackMetal: new THREE.MeshStandardMaterial({color:0x1f1f22, roughness:.45, metalness:.7}),
+  steel     : new THREE.MeshStandardMaterial({color:0xc7cbcf, roughness:.28, metalness:.85}),
+  terracotta: new THREE.MeshStandardMaterial({color:0xb8643f, roughness:.85}),
+  ceramic   : new THREE.MeshStandardMaterial({color:0xf1efe9, roughness:.35}),
+  ceramicDk : new THREE.MeshStandardMaterial({color:0x3b3a38, roughness:.4}),
+  rattan    : new THREE.MeshStandardMaterial({color:0xc49a5c, roughness:.8}),
+  linen     : new THREE.MeshStandardMaterial({color:0xe9e2d4, roughness:.95, side:THREE.DoubleSide}),
+  velvet    : new THREE.MeshStandardMaterial({color:0x3e5a4f, roughness:.9}),
+  velvet2   : new THREE.MeshStandardMaterial({color:0xb46a4c, roughness:.9}),
+  stone     : new THREE.MeshStandardMaterial({color:0x8c877f, roughness:.9}),
+  marble    : new THREE.MeshStandardMaterial({color:0xeeeae4, roughness:.22}),
+  quartz    : new THREE.MeshStandardMaterial({color:0xdcd8d0, roughness:.3}),
+  cabinet   : new THREE.MeshStandardMaterial({color:0x6f7c73, roughness:.6}),     // sage matte
+  cabinet2  : new THREE.MeshStandardMaterial({color:0xefece6, roughness:.5}),
+  leaf      : new THREE.MeshStandardMaterial({color:0x2f6b3a, roughness:.65, side:THREE.DoubleSide}),
+  leafLight : new THREE.MeshStandardMaterial({color:0x5b8f3c, roughness:.65, side:THREE.DoubleSide}),
+  leafDark  : new THREE.MeshStandardMaterial({color:0x284d2c, roughness:.6,  side:THREE.DoubleSide}),
+  bark      : new THREE.MeshStandardMaterial({color:0x6b4a2f, roughness:.9}),
+  soil      : new THREE.MeshStandardMaterial({color:0x3a2a1e, roughness:1}),
+  glow      : new THREE.MeshStandardMaterial({color:0xfff6e5, emissive:0xffd9a0, emissiveIntensity:1.3, roughness:.5}),
+  shade     : new THREE.MeshStandardMaterial({color:0xf2eadb, emissive:0xffcf8a, emissiveIntensity:.35, roughness:.9, side:THREE.DoubleSide}),
+  mirror    : new THREE.MeshStandardMaterial({color:0xe6edf0, roughness:.03, metalness:.95}),
+  firebox   : new THREE.MeshStandardMaterial({color:0x151311, roughness:1}),
+  screen    : new THREE.MeshStandardMaterial({color:0x0c0d10, roughness:.15, metalness:.2}),
+  felt      : new THREE.MeshStandardMaterial({color:0x2d2d2f, roughness:1})
+});
+/* Logam mengilap dan cermin tidak punya warna sendiri — yang terlihat adalah
+   pantulannya. Tanpa lingkungan untuk dipantulkan ia tampak hitam, jadi
+   bahan-bahan ini selalu diberi lingkungan studio, walau PBR dimatikan. */
+function pasangPantulanLogam(){
+  const env=studioEnv();
+  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8]]){ m.envMap=env; m.envMapIntensity=k; m.needsUpdate=true; }
+}
+const BUKU=[0x8e3b2e,0x2f4858,0xd9a441,0x7d8f69,0xe9e1d3,0x3d3a36,0xb89b72].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
+function books(n,x0,y,z,R){ const g=new THREE.Group(); let x=x0;
+  for(let i=0;i<n;i++){ const t=0.025+R()*0.025, h=0.18+R()*0.08; g.add(box(t,h,0.16,BUKU[i%BUKU.length],x+t/2,y+h/2,z)); x+=t+0.002; }
+  return g; }
+function vase(x,y,z,h,mat){ const g=new THREE.Group();
+  const pts=[[0,0],[h*0.22,0.01],[h*0.3,h*0.35],[h*0.18,h*0.8],[h*0.14,h]].map(([r,yy])=>new THREE.Vector2(r,yy));
+  g.add(msh(new THREE.LatheGeometry(pts,20),mat||MAT.ceramic)); g.position.set(x,y,z); return g; }
+
+/* ---------- DEKORASI DINDING (punggung di z = −d/2, muka ke +z) ---------- */
+function framedArt(w,h,gaya,cy,frameMat){
+  const g=new THREE.Group(), f=0.03, d=0.04, z=0;
+  const kanvas=dekoMat('seni'+gaya,{map:artTex(gaya),roughness:.9});
+  g.add(box(w,h,0.02,kanvas,0,cy,z));
+  const fm=frameMat||MAT.woodDark;
+  g.add(box(w+2*f,f,d,fm,0,cy+h/2+f/2,z), box(w+2*f,f,d,fm,0,cy-h/2-f/2,z),
+        box(f,h,d,fm,-w/2-f/2,cy,z), box(f,h,d,fm,w/2+f/2,cy,z));
+  return g;
+}
+function artCanvas(){ return framedArt(0.9,0.6,0,1.5); }
+function artTriptych(){ const g=new THREE.Group();
+  for(const i of [-1,0,1]){ const a=framedArt(0.42,0.62,1,1.5,MAT.blackMetal); a.position.x=i*0.5; g.add(a); } return g; }
+function galleryWall(){
+  // tepi atas & bawah kelompok rata, jarak antar bingkai ±7 cm, pusat kelompok 1,5 m
+  const g=new THREE.Group();
+  const set=[[-0.62,1.52,0.46,0.62,2],[-0.07,1.66,0.5,0.34,0],[-0.07,1.3,0.5,0.3,1],[0.45,1.52,0.4,0.62,0],[0.86,1.62,0.28,0.4,2],[0.86,1.25,0.28,0.26,1]];
+  for(const [x,y,w,h,k] of set){ const a=framedArt(w,h,k,y,[MAT.woodDark,MAT.brass,MAT.blackMetal][k]); a.position.x=x; g.add(a); }
+  return g;
+}
+function mirrorRound(){ const g=new THREE.Group(), r=0.4, cy=1.5;
+  const bingkai=msh(new THREE.TorusGeometry(r,0.022,10,48),MAT.brass,0,cy,0.01); g.add(bingkai);
+  const kaca=msh(new THREE.CircleGeometry(r,48),MAT.mirror,0,cy,0.012); g.add(kaca);
+  g.add(box(0.1,0.1,0.02,MAT.brass,0,cy,-0.005)); return g; }
+function archShape(w,h){ const s=new THREE.Shape(), r=w/2;
+  s.moveTo(-r,0); s.lineTo(r,0); s.lineTo(r,h-r); s.absarc(0,h-r,r,0,Math.PI,false); s.lineTo(-r,0); return s; }
+function mirrorArch(){ const g=new THREE.Group(), w=0.62, h=1.25, y0=0.85;
+  const fr=msh(new THREE.ExtrudeGeometry(archShape(w+0.06,h+0.03),{depth:0.03,bevelEnabled:false,curveSegments:24}),MAT.blackMetal,0,y0-0.03,-0.02);
+  const kc=msh(new THREE.ShapeGeometry(archShape(w,h),24),MAT.mirror,0,y0,0.0125);
+  g.add(fr,kc); return g; }
+function mirrorFloor(){ const g=new THREE.Group(), w=0.62, h=1.8, t=-0.1;
+  const p=new THREE.Group(); p.add(box(w,h,0.03,MAT.woodDark,0,h/2,0)); p.add(flat(box(w-0.06,h-0.06,0.005,MAT.mirror,0,h/2,0.017)));
+  p.rotation.x=t; p.position.z=0.15; g.add(p); return g; }   // kaki menjorok, puncak bersandar ke dinding
+function wallShelf(){ const g=new THREE.Group(), w=1.0, R=acak(11);
+  for(const [y,isi] of [[1.3,0],[1.68,1]]){
+    g.add(box(w,0.03,0.22,MAT.wood,0,y,0));
+    if(isi===0){ g.add(books(7,-0.45,y+0.015,0,R)); g.add(vase(0.28,y+0.015,0,0.26,MAT.terracotta)); }
+    else { g.add(vase(-0.3,y+0.015,0,0.18,MAT.ceramicDk)); g.add(books(4,0.05,y+0.015,0,R));
+           const pt=cyl(0.06,0.05,0.1,MAT.ceramic,0.38,y+0.065,0); g.add(pt); for(let i=0;i<5;i++){ const l=box(0.03,0.16,0.01,MAT.leafLight,0.38+Math.cos(i)*0.03,y+0.18,Math.sin(i)*0.03); l.rotation.z=(i-2)*0.3; g.add(l);} }
+  }
+  return g; }
+function wallClock(){ const g=new THREE.Group(), cy=1.9, r=0.2;
+  const d=msh(new THREE.CylinderGeometry(r,r,0.03,40),MAT.ceramic,0,cy,0); d.rotation.x=Math.PI/2; g.add(d);
+  const rim=msh(new THREE.TorusGeometry(r,0.012,8,40),MAT.blackMetal,0,cy,0.015); g.add(rim);
+  const j1=box(0.012,0.11,0.005,MAT.blackMetal,0,cy+0.045,0.02), j2=box(0.008,0.15,0.005,MAT.blackMetal,0.04,cy+0.03,0.022);
+  j2.rotation.z=-0.9; g.add(j1,j2);
+  for(let i=0;i<12;i++){ const a=i/12*Math.PI*2; g.add(box(0.008,0.025,0.004,MAT.blackMetal,Math.sin(a)*0.17,cy+Math.cos(a)*0.17,0.017)); }
+  return g; }
+function slatPanel(w,h,z0){ const g=new THREE.Group(); g.add(box(w,h,0.012,MAT.felt,0,h/2,z0||0));
+  const n=Math.round(w/0.075); for(let i=0;i<n;i++) g.add(box(0.045,h,0.025,MAT.wood,-w/2+(i+0.5)*w/n,h/2,(z0||0)+0.018)); return g; }
+function tvWall(){
+  const g=new THREE.Group(), H=Math.min(2.6,ceilH());
+  g.add(slatPanel(2.4,H,-0.02));
+  g.add(box(1.8,0.34,0.4,MAT.cabinet2,0,0.42,0.2));                    // konsol melayang
+  for(const sx of [-1,0,1]) g.add(box(0.58,0.3,0.01,MAT.cabinet2,sx*0.6,0.42,0.405));
+  const layar=box(1.23,0.71,0.025,MAT.screen,0,1.1,0.037); layar.receiveShadow=false; g.add(layar);   // TV 55", pusat setinggi mata duduk
+  g.add(box(1.25,0.73,0.02,MAT.blackMetal,0,1.1,0.012));
+  g.add(vase(0.65,0.59,0.2,0.22,MAT.ceramicDk)); return g; }
+function acousticSlat(){ return slatPanel(1.2,Math.min(2.6,ceilH())); }
+function curtain(){
+  const g=new THREE.Group(), w=2.4, top=ceilH()-0.04, h=top-0.02;
+  const s=new THREE.Shape(), n=48, amp=0.04, per=0.16, T=0.012;
+  const zf=x=>amp*Math.sin(2*Math.PI*x/per);
+  s.moveTo(-w/2,zf(-w/2));
+  for(let i=1;i<=n;i++){ const x=-w/2+w*i/n; s.lineTo(x,zf(x)); }
+  for(let i=n;i>=0;i--){ const x=-w/2+w*i/n; s.lineTo(x,zf(x)+T); }
+  const geo=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2);
+  g.add(msh(geo,MAT.linen,0,0.02,0.02));
+  const rel=cyl(0.012,0.012,w+0.3,MAT.brass,0,top+0.02,0.02); rel.rotation.z=Math.PI/2; g.add(rel);
+  return g; }
+
+/* ---------- PENCAHAYAAN ---------- */
+function pendantAt(g,x,z,bottom,top,tipe){
+  g.add(cyl(0.004,0.004,top-bottom-0.18,MAT.blackMetal,x,(top+bottom+0.18)/2,z,6));
+  g.add(cyl(0.05,0.05,0.02,MAT.blackMetal,x,top-0.01,z,16));
+  if(tipe==='kubah'){
+    const k=msh(new THREE.SphereGeometry(0.22,28,12,0,Math.PI*2,0,Math.PI/2),MAT.blackMetal,x,bottom,z); k.material=MAT.blackMetal; g.add(k);
+    const in_=msh(new THREE.SphereGeometry(0.215,28,12,0,Math.PI*2,0,Math.PI/2),MAT.shade,x,bottom,z); g.add(in_);
+    g.add(sph(0.05,MAT.glow,x,bottom+0.04,z));
+  } else {                                        // bola kaca berkerangka kuningan
+    g.add(sph(0.13,MAT.glow,x,bottom+0.13,z,1,20));
+    const r=msh(new THREE.TorusGeometry(0.135,0.005,6,32),MAT.brass,x,bottom+0.13,z); r.rotation.x=Math.PI/2; g.add(r);
+    g.add(cyl(0.02,0.02,0.05,MAT.brass,x,bottom+0.28,z,10));
+  }
+}
+function pendant(){ const g=new THREE.Group(); pendantAt(g,0,0,1.55,ceilH(),'kubah'); return g; }
+function pendantTrio(){ const g=new THREE.Group(), H=ceilH(); for(const x of [-0.65,0,0.65]) pendantAt(g,x,0,1.65,H,'bola'); return g; }
+function chandelier(){
+  const g=new THREE.Group(), H=ceilH(), y=Math.max(2.25,H-0.55);
+  g.add(cyl(0.012,0.012,H-y,MAT.brass,0,(H+y)/2,0,8)); g.add(cyl(0.07,0.07,0.03,MAT.brass,0,H-0.015,0,16));
+  const ring=msh(new THREE.TorusGeometry(0.42,0.015,8,48),MAT.brass,0,y,0); ring.rotation.x=Math.PI/2; g.add(ring);
+  for(let i=0;i<8;i++){ const a=i/8*Math.PI*2, x=Math.cos(a)*0.42, z=Math.sin(a)*0.42;
+    g.add(cyl(0.02,0.02,0.08,MAT.ceramic,x,y+0.05,z,10)); g.add(sph(0.03,MAT.glow,x,y+0.12,z,1.4,10));
+    const arm=box(0.42,0.01,0.01,MAT.brass,x/2,y,z/2); arm.rotation.y=-a; g.add(arm); }
+  g.add(sph(0.06,MAT.brass,0,y,0)); return g; }
+function tableLamp(){ const g=new THREE.Group();
+  g.add(vase(0,0,0,0.28,MAT.ceramicDk));
+  g.add(cyl(0.008,0.008,0.14,MAT.brass,0,0.34,0,8));
+  g.add(msh(new THREE.CylinderGeometry(0.13,0.17,0.2,32,1,true),MAT.shade,0,0.46,0));
+  g.add(sph(0.035,MAT.glow,0,0.42,0)); return g; }
+function nightLampSet(){ const g=new THREE.Group();
+  g.add(box(0.45,0.55,0.4,MAT.wood,0,0.275,0)); g.add(box(0.41,0.2,0.02,MAT.woodDark,0,0.38,0.21));
+  g.add(box(0.1,0.012,0.02,MAT.brass,0,0.4,0.225));
+  const l=tableLamp(); l.position.set(0.05,0.55,-0.03); g.add(l); return g; }
+function arcLamp(){ const g=new THREE.Group();
+  g.add(cyl(0.16,0.17,0.07,MAT.marble,0,0.035,0,28));
+  g.add(tube([[0,0.07,0],[0,1.2,0.05],[0,1.95,0.45],[0,2.0,1.05],[0,1.78,1.5]],0.012,MAT.brass,40));
+  const k=msh(new THREE.SphereGeometry(0.2,28,12,0,Math.PI*2,0,Math.PI/2),MAT.blackMetal,0,1.58,1.5); g.add(k);
+  g.add(msh(new THREE.SphereGeometry(0.195,28,12,0,Math.PI*2,0,Math.PI/2),MAT.shade,0,1.58,1.5));
+  g.add(sph(0.045,MAT.glow,0,1.62,1.5)); return g; }
+function wallSconce(){ const g=new THREE.Group(), y=1.65;
+  g.add(box(0.1,0.16,0.02,MAT.brass,0,y,-0.04));
+  g.add(box(0.015,0.015,0.14,MAT.brass,0,y,0.03));
+  g.add(msh(new THREE.CylinderGeometry(0.07,0.09,0.14,24,1,true),MAT.shade,0,y+0.06,0.1));
+  g.add(sph(0.03,MAT.glow,0,y+0.04,0.1)); return g; }
+
+/* ---------- TANAMAN ---------- */
+function leafGeo(len,wid,tipe){
+  const s=new THREE.Shape(), n=28, pts=[];
+  for(let i=0;i<=n;i++){ const t=i/n, a=t*Math.PI;
+    const y=len*(1-Math.cos(a))/2;
+    let r=wid/2*Math.sin(a)*(tipe==='biola'?(0.6+0.5*t):1);
+    pts.push([r,y]); }
+  const sisi=[...pts];
+  if(tipe==='monstera'){                             // belahan khas monstera
+    const out=[]; sisi.forEach(([r,y],i)=>{ out.push([r,y]); if(i%5===2&&i>2&&i<n-2) out.push([r*0.35,y+len*0.02]); });
+    sisi.length=0; sisi.push(...out);
+  }
+  s.moveTo(0,0); for(const [r,y] of sisi) s.lineTo(r,y); for(let i=sisi.length-1;i>=0;i--) s.lineTo(-sisi[i][0],sisi[i][1]);
+  return new THREE.ShapeGeometry(s);
+}
+function leafAt(g,geo,mat,x,y,z,yaw,tilt,roll){
+  const p=new THREE.Group(); p.position.set(x,y,z); p.rotation.set(0,yaw,0);
+  const m=new THREE.Mesh(geo,mat); m.rotation.set(tilt,0,roll||0); m.castShadow=true; p.add(m); g.add(p);
+}
+function pot(g,r,h,mat){ g.add(cyl(r,r*0.8,h,mat,0,h/2,0,24)); g.add(cyl(r*0.93,r*0.93,0.02,MAT.soil,0,h-0.02,0,20)); }
+function monstera(){ const g=new THREE.Group(), R=acak(5); pot(g,0.22,0.36,MAT.terracotta);
+  const lg=leafGeo(0.42,0.36,'monstera');
+  for(let i=0;i<10;i++){ const a=i/10*Math.PI*2+R()*0.4, L=0.35+R()*0.45, tilt=0.5+R()*0.6;
+    const ex=Math.sin(a)*L*0.45, ez=Math.cos(a)*L*0.45, ey=0.36+L*0.8;
+    g.add(tube([[0,0.34,0],[ex*0.4,0.34+L*0.5,ez*0.4],[ex,ey,ez]],0.008,MAT.leafLight,8));
+    leafAt(g,lg,MAT.leaf,ex,ey,ez,a,tilt,(R()-0.5)*0.4); }
+  return g; }
+function fiddleLeaf(){ const g=new THREE.Group(), R=acak(9); pot(g,0.2,0.4,MAT.ceramic);
+  g.add(tube([[0,0.38,0],[0.03,1.0,0.02],[-0.02,1.7,0]],0.022,MAT.bark,10));
+  const lg=leafGeo(0.3,0.22,'biola');
+  for(let i=0;i<22;i++){ const t=i/22, y=0.95+t*0.85, a=i*2.4, r=0.05+R()*0.12;
+    leafAt(g,lg,[MAT.leaf,MAT.leafDark][i%2],Math.cos(a)*r,y,Math.sin(a)*r,a,0.5+R()*0.7,(R()-0.5)*0.5); }
+  return g; }
+function snakePlant(){ const g=new THREE.Group(), R=acak(3); pot(g,0.16,0.32,MAT.ceramicDk);
+  for(let i=0;i<11;i++){ const a=i/11*Math.PI*2, L=0.55+R()*0.45, r=0.02+R()*0.07;
+    leafAt(g,leafGeo(L,0.07+R()*0.03),[MAT.leafDark,MAT.leaf][i%2],Math.cos(a)*r,0.3,Math.sin(a)*r,Math.atan2(Math.cos(a),Math.sin(a)),0.04+R()*0.2,0); }
+  return g; }
+function hangingPlant(){ const g=new THREE.Group(), R=acak(21), H=ceilH(), y=Math.max(1.9,H-0.7);
+  for(const a of [0,2.1,4.2]) g.add(tube([[0,H,0],[Math.cos(a)*0.14,y+0.18,Math.sin(a)*0.14]],0.004,MAT.linen,4));
+  g.add(sph(0.15,MAT.ceramic,0,y+0.08,0,0.8,20)); g.add(cyl(0.13,0.13,0.02,MAT.soil,0,y+0.18,0,16));
+  const lg=leafGeo(0.07,0.06);
+  for(let v=0;v<7;v++){ const a=v/7*Math.PI*2+R(), L=0.5+R()*0.7, x=Math.cos(a)*0.14, z=Math.sin(a)*0.14;
+    const pts=[[x,y+0.18,z],[x*1.6,y+0.05,z*1.6],[x*1.8+(R()-0.5)*0.1,y-L,z*1.8+(R()-0.5)*0.1]];
+    g.add(tube(pts,0.003,MAT.leafLight,10));
+    for(let k=1;k<7;k++){ const t=k/7; leafAt(g,lg,MAT.leafLight,x*(1+0.8*t),y+0.12-(L+0.12)*t,z*(1+0.8*t),a+k,0.8,0); } }
+  return g; }
+function cactus(){ const g=new THREE.Group(); pot(g,0.18,0.3,MAT.terracotta);
+  const lengan=(x,y0,h,r)=>{ g.add(cyl(r,r,h,MAT.leaf,x,y0+h/2,0,14)); g.add(sph(r,MAT.leaf,x,y0+h,0,1,14)); };
+  lengan(0,0.28,1.0,0.09);
+  g.add(tube([[0.05,0.75,0],[0.2,0.75,0],[0.22,0.9,0]],0.06,MAT.leaf,10)); lengan(0.22,0.88,0.3,0.06);
+  g.add(tube([[-0.05,0.95,0],[-0.18,0.95,0],[-0.2,1.05,0]],0.055,MAT.leaf,10)); lengan(-0.2,1.03,0.22,0.055);
+  return g; }
+
+/* ---------- KARPET ---------- */
+function rugMat(gaya,rx,rz){
+  const key='karpet_'+gaya+'_'+rx+'_'+rz;
+  if(DECOTEX.has('m_'+key)) return DECOTEX.get('m_'+key);
+  const t=rugTex(gaya).clone(); t.needsUpdate=true; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,rz);
+  return dekoMat(key,{map:t,roughness:1});
+}
+function rugRect(w,d,gaya){ const g=new THREE.Group(); g.add(flat(box(w,0.015,d,rugMat(gaya,1,1),0,0.0075,0))); return g; }
+function rugRound(){ const g=new THREE.Group(); g.add(flat(msh(new THREE.CylinderGeometry(1.0,1.0,0.015,64),rugMat('abstrak',1,1),0,0.0075,0))); return g; }
+function rugOval(){ const g=new THREE.Group(); const m=flat(msh(new THREE.CylinderGeometry(1.2,1.2,0.015,64),rugMat('berber',1,1),0,0.0075,0)); m.scale.z=0.67; g.add(m); return g; }
+function rugOrganic(){ const g=new THREE.Group(), s=new THREE.Shape(), w=2.6, d=1.8, pts=[];
+  const R=acak(17); for(let i=0;i<9;i++){ const a=i/9*Math.PI*2, k=0.82+R()*0.18; pts.push(new THREE.Vector2(Math.cos(a)*w/2*k,Math.sin(a)*d/2*k)); }
+  s.setFromPoints(new THREE.SplineCurve([...pts,pts[0]]).getPoints(80));
+  const geo=new THREE.ExtrudeGeometry(s,{depth:0.015,bevelEnabled:false}); geo.rotateX(-Math.PI/2);
+  const t=rugTex('polos').clone(); t.needsUpdate=true; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1/w,1/d);
+  g.add(flat(msh(geo,dekoMat('karpetOrganik',{map:t,roughness:1,color:0xc9bfae})))); return g; }
+
+/* ---------- LEMARI & KABINET ---------- */
+function doorFront(g,w,h,x,y,z,mat,pegangan){
+  g.add(box(w-0.006,h-0.006,0.018,mat,x,y,z));
+  if(pegangan) g.add(box(0.012,Math.min(0.2,h*0.4),0.02,MAT.brass,x+(pegangan>0?w/2-0.05:-w/2+0.05),y,z+0.015));
+}
+function displayCabinet(){ const g=new THREE.Group(), w=1.0, h=2.0, d=0.4, R=acak(4);
+  g.add(box(w,0.04,d,MAT.woodDark,0,h-0.02,0), box(w,0.08,d,MAT.woodDark,0,0.04,0),
+        box(0.04,h,d,MAT.woodDark,-w/2+0.02,h/2,0), box(0.04,h,d,MAT.woodDark,w/2-0.02,h/2,0), box(w,h,0.015,MAT.woodDark,0,h/2,-d/2+0.008));
+  for(const y of [0.5,0.9,1.3,1.65]){ g.add(box(w-0.08,0.015,d-0.04,MAT.glass,0,y,0)); }
+  g.add(vase(-0.25,0.08,0,0.3,MAT.ceramic)); g.add(books(6,0.05,0.5,0,R)); g.add(vase(0.2,0.9,0,0.2,MAT.terracotta)); g.add(books(5,-0.4,1.3,0,R)); g.add(vase(-0.1,1.65,0,0.22,MAT.ceramicDk));
+  for(const sx of [-1,1]){ g.add(box(w/2-0.04,h-0.14,0.01,MAT.glass,sx*w/4,h/2,d/2)); g.add(box(0.012,0.25,0.02,MAT.brass,sx*0.04,1.0,d/2+0.015)); }
+  return g; }
+function shoeCabinet(){ const g=new THREE.Group(), w=1.0, h=1.0, d=0.35;
+  g.add(box(w,h-0.1,d,MAT.cabinet2,0,0.1+(h-0.1)/2,0)); g.add(box(w,0.03,d+0.02,MAT.wood,0,h+0.015,0));
+  for(const sx of [-1,1]) for(const y of [0.33,0.77]) doorFront(g,w/2,0.42,sx*w/4,y,d/2+0.009,MAT.cabinet2,sx);
+  for(const sx of [-1,1]) g.add(box(0.03,0.1,0.03,MAT.wood,sx*(w/2-0.05),0.05,0));
+  g.add(vase(0.3,h+0.03,0,0.22,MAT.ceramicDk)); return g; }
+function consoleTable(){ const g=new THREE.Group(), w=1.2, d=0.35, h=0.8, R=acak(8);
+  g.add(box(w,0.03,d,MAT.marble,0,h-0.015,0));
+  for(const sx of [-1,1]){ g.add(box(0.02,h-0.03,0.02,MAT.brass,sx*(w/2-0.04),(h-0.03)/2,d/2-0.04)); g.add(box(0.02,h-0.03,0.02,MAT.brass,sx*(w/2-0.04),(h-0.03)/2,-d/2+0.04)); }
+  g.add(box(w-0.08,0.02,d-0.06,MAT.brass,0,0.15,0));
+  g.add(vase(-0.35,h,0,0.35,MAT.ceramic)); g.add(books(3,0.15,h,0,R)); return g; }
+function tvConsole(){ const g=new THREE.Group(), w=1.8, d=0.45, h=0.5;
+  g.add(box(w,h-0.12,d,MAT.wood,0,0.12+(h-0.12)/2,0));
+  for(let i=0;i<3;i++){ const x=-w/2+w*(i+0.5)/3; for(let k=0;k<10;k++) g.add(box(w/3/10-0.006,h-0.16,0.012,MAT.woodDark,x-w/6+(k+0.5)*w/30,0.12+(h-0.12)/2,d/2+0.006)); }
+  for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(cyl(0.015,0.02,0.12,MAT.blackMetal,sx*(w/2-0.08),0.06,sz*(d/2-0.06),8));
+  return g; }
+function pantry(){ const g=new THREE.Group(), w=0.6, d=0.6, h=2.2;
+  g.add(box(w,h-0.1,d,MAT.cabinet,0,0.1+(h-0.1)/2,0)); g.add(box(w-0.04,0.1,d-0.06,MAT.dark,0,0.05,-0.02));
+  doorFront(g,w,1.35,0,0.1+0.675,d/2+0.009,MAT.cabinet,-1); doorFront(g,w,0.72,0,1.45+0.36+0.02,d/2+0.009,MAT.cabinet,-1);
+  return g; }
+
+/* ---------- DAPUR LENGKAP ----------
+   Satu deret = modul-modul selebar standar sepanjang x lokal, punggung di
+   z = −0,3: base 60 cm (tinggi total 90 cm), kabinet atas 35 cm mulai 55 cm
+   di atas meja, hood 70 cm di atas kompor. */
+function kitchenRun(mods,opt){
+  opt=opt||{}; const g=new THREE.Group(), H=ceilH(), len=mods.reduce((a,m)=>a+m[1],0);
+  const bm=opt.mat||MAT.cabinet, top=0.9, atasY0=top+0.55, atasY1=Math.min(H-0.05,atasY0+0.75);
+  let x=-len/2;
+  for(const [t,w] of mods){
+    const cx=x+w/2;
+    if(t==='kulkas'){ g.add(box(w-0.01,2.0,0.65,MAT.steel,cx,1.0,0.02)); g.add(box(0.015,0.5,0.03,MAT.dark,cx-w/2+0.06,1.2,0.36)); g.add(box(w-0.02,0.005,0.01,MAT.dark,cx,0.85,0.35));
+      if(!opt.tanpaAtas && atasY1>2.05) g.add(box(w,atasY1-2.05,0.6,bm,cx,(2.05+atasY1)/2,0)); x+=w; continue; }
+    if(t==='tinggi'){ g.add(box(w-0.01,atasY1-0.1,0.6,bm,cx,0.1+(atasY1-0.1)/2,0)); g.add(box(w-0.1,0.3,0.02,MAT.screen,cx,1.1,0.305)); g.add(box(w-0.1,0.4,0.02,MAT.screen,cx,0.62,0.305)); x+=w; continue; }
+    g.add(box(w,0.1,0.54,MAT.dark,cx,0.05,-0.03));                 // plint masuk ke dalam
+    g.add(box(w,top-0.14,0.58,bm,cx,0.1+(top-0.14)/2,-0.01));
+    if(t==='sink'){ doorFront(g,w/2,top-0.16,cx-w/4,0.1+(top-0.14)/2,0.29,bm,1); doorFront(g,w/2,top-0.16,cx+w/4,0.1+(top-0.14)/2,0.29,bm,-1); }
+    else if(t==='kompor'){ g.add(box(w-0.02,0.58,0.02,MAT.screen,cx,0.45,0.29)); g.add(box(w-0.1,0.02,0.02,MAT.steel,cx,0.7,0.31)); g.add(box(w-0.02,0.12,0.02,bm,cx,0.84,0.29)); }
+    else if(t==='laci'){ for(const [yy,hh] of [[0.24,0.28],[0.53,0.28],[0.76,0.16]]) doorFront(g,w,hh,cx,yy,0.29,bm,0), g.add(box(w*0.4,0.012,0.02,MAT.brass,cx,yy+hh/2-0.04,0.305)); }
+    else doorFront(g,w,top-0.16,cx,0.1+(top-0.14)/2,0.29,bm,1);
+    x+=w;
+  }
+  g.add(box(len+0.02,0.04,0.62,MAT.quartz,0,top-0.02,0));        // daun meja utuh
+  x=-len/2;
+  for(const [t,w] of mods){
+    const cx=x+w/2;
+    if(t==='sink'){ g.add(box(w-0.2,0.012,0.42,MAT.steel,cx,top+0.002,0)); g.add(box(w-0.26,0.01,0.36,MAT.dark,cx,top+0.004,0));
+      g.add(cyl(0.015,0.015,0.3,MAT.steel,cx,top+0.15,-0.24,10)); g.add(box(0.02,0.02,0.2,MAT.steel,cx,top+0.3,-0.15)); }
+    if(t==='kompor'){ g.add(box(w-0.04,0.008,0.5,MAT.screen,cx,top+0.004,0));
+      for(const [dx,dz,r] of [[-0.14,-0.12,0.09],[0.14,-0.12,0.07],[-0.14,0.12,0.07],[0.14,0.12,0.09]]){ const t2=msh(new THREE.TorusGeometry(r,0.004,4,24),MAT.steel,cx+dx,top+0.01,dz); t2.rotation.x=Math.PI/2; g.add(t2); }
+      if(!opt.tanpaAtas){ const hy=top+0.7;
+        g.add(msh(hoodGeo(w,0.5,0.28),MAT.steel,cx,hy+0.14,-0.05));
+        g.add(box(0.26,Math.max(0.1,H-hy-0.28),0.24,MAT.steel,cx,(hy+0.28+H)/2,-0.18)); } }
+    if(!opt.tanpaAtas && t!=='kulkas' && t!=='tinggi' && t!=='kompor' && atasY1-atasY0>0.3){
+      g.add(box(w,atasY1-atasY0,0.35,opt.atas||MAT.cabinet2,cx,(atasY0+atasY1)/2,-0.125));
+      doorFront(g,w,atasY1-atasY0,cx,(atasY0+atasY1)/2,0.055,opt.atas||MAT.cabinet2,0);
+      g.add(box(w,0.02,0.3,MAT.glow,cx,atasY0-0.01,-0.13));      // lampu bawah kabinet (task lighting)
+    }
+    x+=w;
+  }
+  if(!opt.tanpaAtas) g.add(flat(box(len,atasY0-top-0.02,0.01,MAT.ceramic,0,(top+atasY0)/2,-0.3)));  // backsplash
+  return g;
+}
+/* tudung hood: limas terpancung persegi panjang — diputar di geometri dulu,
+   baru diskalakan, supaya tidak jadi belah ketupat */
+function hoodGeo(wb,db,h){ const g=new THREE.CylinderGeometry(0.1/Math.SQRT2*2,Math.SQRT2*wb/2,h,4,1); g.rotateY(Math.PI/4); g.scale(1,1,db/wb); return g; }
+const place=(o,x,z,ry)=>{ o.position.set(x,0,z); o.rotation.y=ry||0; return o; };
+function kitchenLinear(){ return kitchenRun([['kulkas',0.7],['laci',0.5],['sink',0.8],['biasa',0.4],['kompor',0.6],['laci',0.6]]); }
+function kitchenL2(){ const g=new THREE.Group();
+  g.add(place(kitchenRun([['kulkas',0.7],['laci',0.6],['sink',0.9],['biasa',0.8]]),0,0));
+  g.add(place(kitchenRun([['biasa',0.6],['kompor',0.6],['laci',0.6]]),1.5-0.3,0.3+0.9,-Math.PI/2)); return g; }
+function kitchenU(){ const g=new THREE.Group();
+  g.add(place(kitchenRun([['biasa',0.5],['sink',0.9],['laci',0.8],['biasa',0.6]]),0,0));
+  g.add(place(kitchenRun([['kulkas',0.7],['laci',1.1]]),-1.4+0.3,0.3+0.9,Math.PI/2));
+  g.add(place(kitchenRun([['laci',0.6],['kompor',0.6],['biasa',0.6]]),1.4-0.3,0.3+0.9,-Math.PI/2)); return g; }
+function kitchenGalley(){ const g=new THREE.Group();
+  g.add(place(kitchenRun([['kulkas',0.7],['laci',0.8],['sink',0.9],['biasa',0.6]]),0,-0.9));
+  g.add(place(kitchenRun([['biasa',0.6],['kompor',0.6],['laci',0.6],['tinggi',0.6],['biasa',0.6]]),0,0.9,Math.PI)); return g; }
+function kitchenIsland(){ const g=new THREE.Group();
+  g.add(place(kitchenRun([['kulkas',0.7],['laci',0.5],['kompor',0.6],['laci',0.8],['tinggi',0.6],['biasa',0.4]]),0,-1.85));
+  const is=new THREE.Group();                                   // island: sink + tempat duduk menjorok 30 cm
+  is.add(place(kitchenRun([['laci',0.6],['sink',0.8],['biasa',0.6]],{tanpaAtas:true}),0,0,Math.PI));
+  is.add(box(2.06,0.04,0.35,MAT.quartz,0,0.88,0.47));          // menjorok ke sisi duduk, menjauhi dapur
+  for(const x of [-0.65,0,0.65]){ const s=barStool(); s.position.set(x,0,0.78); is.add(s); }
+  g.add(is); return g; }
+function rangeHood(){ const g=new THREE.Group(), H=ceilH(), hy=1.6;
+  g.add(msh(hoodGeo(0.9,0.5,0.3),MAT.steel,0,hy+0.15,0.07));
+  g.add(box(0.28,Math.max(0.1,H-hy-0.3),0.25,MAT.steel,0,(hy+0.3+H)/2,-0.05)); return g; }
+
+/* ---------- PERAPIAN ---------- */
+function fireMat(){ return dekoMat('api',{map:fireTex(),emissive:0xffffff,emissiveMap:fireTex(),emissiveIntensity:1.5,roughness:1}); }
+function brickMat(){ return finMat(FINISH,'bata'); }
+function boxUV(w,h,d,mat,x,y,z){ const m=box(w,h,d,mat,x,y,z); planarUV(m.geometry,x,y,z); return m; }
+function fireplaceModern(){ const g=new THREE.Group(), H=ceilH(), w=2.0, d=0.45;
+  g.add(boxUV(w,H,d,finMat(FINISH,'beton'),0,H/2,0));
+  g.add(box(1.4,0.5,0.02,MAT.firebox,0,0.75,d/2+0.001));
+  g.add(box(1.34,0.36,0.01,fireMat(),0,0.72,d/2+0.012));
+  for(let i=0;i<12;i++) g.add(sph(0.03,MAT.stone,-0.6+i*0.11,0.53,d/2+0.02,0.6,8));
+  g.add(box(1.4,0.5,0.01,MAT.glass,0,0.75,d/2+0.03));
+  g.add(box(w+0.2,0.08,0.55,MAT.stone,0,0.04,d/2+0.275-0.1));   // hearth menjorok 45 cm
+  return g; }
+function fireplaceClassic(){ const g=new THREE.Group(), H=ceilH(), d=0.5;
+  g.add(boxUV(1.8,H,d-0.1,finMat(FINISH,'plester'),0,H/2,-0.05));
+  g.add(boxUV(1.5,1.15,0.1,brickMat(),0,0.575,d/2-0.05));
+  g.add(box(0.8,0.7,0.02,MAT.firebox,0,0.45,d/2+0.001));
+  g.add(box(0.72,0.5,0.01,fireMat(),0,0.38,d/2+0.012));
+  for(const [x,z,r] of [[-0.12,0,0.2],[0.12,0,-0.2],[0,0.05,0]]){ const l=cyl(0.045,0.045,0.55,MAT.bark,x,0.16,d/2-0.05+z*0.1,10); l.rotation.z=Math.PI/2; l.rotation.y=r; g.add(l); }
+  g.add(box(1.85,0.08,0.3,MAT.woodDark,0,1.19,d/2-0.02));       // rak mantel ±1,2 m
+  g.add(box(1.7,0.05,0.5,MAT.stone,0,0.025,d/2+0.2));           // hearth
+  g.add(vase(-0.6,1.23,d/2-0.05,0.25,MAT.ceramic)); g.add(cyl(0.025,0.025,0.18,MAT.ceramic,0.6,1.32,d/2-0.05,10)); g.add(sph(0.012,MAT.glow,0.6,1.43,d/2-0.05,1.6,8));
+  const seni=framedArt(0.8,0.55,1,1.75); seni.position.z=d/2-0.08; g.add(seni);
+  return g; }
+function woodStove(){ const g=new THREE.Group(), H=ceilH();
+  g.add(box(1.0,0.02,0.9,MAT.stone,0,0.01,0.1));
+  for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.04,0.18,0.04,MAT.blackMetal,sx*0.22,0.11,sz*0.18));
+  g.add(box(0.55,0.6,0.45,MAT.blackMetal,0,0.5,0));
+  g.add(box(0.36,0.3,0.01,fireMat(),0,0.48,0.226)); g.add(box(0.38,0.32,0.01,MAT.glass,0,0.48,0.232));
+  g.add(cyl(0.075,0.075,H-0.8,MAT.blackMetal,0,0.8+(H-0.8)/2,-0.05,18)); return g; }
+
+/* ---------- LAIN-LAIN ---------- */
+function ottoman(){ const g=new THREE.Group(); g.add(cyl(0.3,0.3,0.36,MAT.velvet2,0,0.24,0,32)); g.add(cyl(0.3,0.26,0.06,MAT.woodDark,0,0.03,0,32)); return g; }
+function bench(){ const g=new THREE.Group(); g.add(box(1.2,0.05,0.4,MAT.wood,0,0.43,0)); g.add(box(1.14,0.06,0.36,MAT.linen,0,0.48,0));
+  for(const sx of [-1,1]) g.add(box(0.04,0.41,0.36,MAT.woodDark,sx*0.55,0.205,0)); return g; }
+function rattanChair(){ const g=new THREE.Group();
+  // cangkang rotan terbuka di depan (+z); sandaran melingkar di belakang
+  g.add(msh(new THREE.CylinderGeometry(0.42,0.36,0.62,40,1,true,Math.PI*0.28,Math.PI*1.44),dekoMat('rotanDS',{color:0xc49a5c,roughness:.8,side:THREE.DoubleSide}),0,0.51,0));
+  g.add(cyl(0.36,0.36,0.1,MAT.linen,0,0.42,0.02,32)); g.add(cyl(0.3,0.26,0.25,MAT.rattan,0,0.13,0,32)); return g; }
+function piano(){ const g=new THREE.Group(), w=1.5, d=0.6, h=1.25;
+  g.add(box(w,h,0.38,MAT.dark,0,h/2,-d/2+0.19)); g.add(box(w,0.08,0.26,MAT.dark,0,0.72,0.06));
+  g.add(box(w-0.14,0.02,0.16,MAT.white,0,0.77,0.08));
+  for(let i=0;i<30;i++) if(i%7!==2&&i%7!==6) g.add(box(0.012,0.012,0.09,MAT.dark,-0.65+i*0.045,0.785,0.05));
+  for(const sx of [-1,1]) g.add(box(0.06,0.7,0.06,MAT.dark,sx*(w/2-0.05),0.35,0.15));
+  const kursi=new THREE.Group(); kursi.add(box(0.8,0.06,0.35,MAT.dark,0,0.48,0)); for(const sx of [-1,1]) kursi.add(box(0.05,0.45,0.3,MAT.dark,sx*0.35,0.225,0));
+  kursi.position.z=0.6; g.add(kursi); return g; }
+function roomDivider(){ const g=new THREE.Group(), pw=0.5, h=1.8;
+  for(let i=0;i<3;i++){ const p=new THREE.Group(); p.add(box(pw,h,0.03,MAT.rattan,0,h/2+0.03,0)); p.add(box(pw-0.08,h-0.1,0.035,MAT.linen,0,h/2+0.03,0));
+    p.position.set((i-1)*pw*0.87,0,i===1?0.12:0); p.rotation.y=i===1?0:(i===0?0.5:-0.5); g.add(p); }
+  return g; }
+function coatRack(){ const g=new THREE.Group(); g.add(cyl(0.025,0.03,1.75,MAT.wood,0,0.875,0,12));
+  for(let i=0;i<3;i++){ const a=i/3*Math.PI*2; const k=box(0.02,0.02,0.45,MAT.wood,Math.sin(a)*0.13,0.17,Math.cos(a)*0.13); k.rotation.y=a; k.rotation.x=0.9; g.add(k); }
+  for(let i=0;i<4;i++){ const a=i/4*Math.PI*2+0.4; const k=cyl(0.01,0.01,0.16,MAT.brass,Math.sin(a)*0.07,1.65,Math.cos(a)*0.07,6); k.rotation.x=Math.cos(a)*0.8; k.rotation.z=-Math.sin(a)*0.8; g.add(k); }
+  return g; }
+function floorVase(){ const g=new THREE.Group(), R=acak(31); g.add(vase(0,0,0,0.75,MAT.terracotta));
+  for(let i=0;i<9;i++){ const a=i/9*Math.PI*2, r=0.06+R()*0.05, tx=Math.cos(a)*(0.25+R()*0.2), tz=Math.sin(a)*(0.25+R()*0.2), ty=1.35+R()*0.35;
+    g.add(tube([[Math.cos(a)*r*0.3,0.7,Math.sin(a)*r*0.3],[tx*0.5,ty*0.8,tz*0.5],[tx,ty,tz]],0.004,MAT.rattan,8));
+    g.add(sph(0.05,MAT.linen,tx,ty+0.08,tz,2.6,10)); }
+  return g; }
+function diningRound(){ const g=new THREE.Group();
+  g.add(cyl(0.55,0.55,0.04,MAT.wood,0,0.73,0,40)); g.add(cyl(0.07,0.1,0.7,MAT.woodDark,0,0.36,0,16)); g.add(cyl(0.3,0.32,0.04,MAT.woodDark,0,0.02,0,24));
+  for(let i=0;i<4;i++){ const a=i/4*Math.PI*2+Math.PI/4, c=chair(); c.position.set(Math.sin(a)*0.78,0,Math.cos(a)*0.78); c.rotation.y=a+Math.PI; g.add(c); }
+  return g; }
+
 const FURN={
   bed_single  :{l:'Ranjang 1',   i:'🛏️', c:'kamar',       f:[1.0,2.0], b:()=>bed(1.0,2.0)},
   bed_double  :{l:'Ranjang 2',   i:'🛏️', c:'kamar',       f:[1.6,2.0], b:()=>bed(1.6,2.0)},
@@ -2312,7 +2800,7 @@ const FURN={
   armchair    :{l:'Kursi Santai',i:'💺', c:'ruang',       f:[0.9,0.88],b:()=>sofa(0.9)},
   coffee_table:{l:'Meja Tamu',   i:'🪑', c:'ruang',       f:[1.1,0.6], b:coffeeTable},
   tv_set      :{l:'Set TV',      i:'📺', c:'ruang',       f:[1.6,0.42],b:tvSet},
-  rug         :{l:'Karpet',      i:'🟫', c:'ruang',       f:[2.4,1.6], b:()=>rug(2.4,1.6)},
+  rug         :{l:'Karpet',      i:'🟫', c:'karpet',      f:[2.4,1.6], b:()=>rug(2.4,1.6)},
   dining4     :{l:'Meja Makan 4',i:'🍽️', c:'makan',       f:[1.2,0.8], b:()=>diningSet(1.2,0.8,4)},
   dining6     :{l:'Meja Makan 6',i:'🍽️', c:'makan',       f:[1.8,0.9], b:()=>diningSet(1.8,0.9,6)},
   chair       :{l:'Kursi',       i:'🪑', c:'makan',       f:[0.44,0.44],b:chair},
@@ -2328,7 +2816,7 @@ const FURN={
   desk        :{l:'Meja Kerja',  i:'💻', c:'kerja',       f:[1.4,0.7], b:desk},
   office_chair:{l:'Kursi Kerja', i:'🪑', c:'kerja',       f:[0.5,0.5], b:officeChair},
   bookshelf   :{l:'Rak Buku',    i:'📚', c:'kerja',       f:[0.9,0.32],b:bookshelf},
-  plant       :{l:'Tanaman',     i:'🪴', c:'lain',        f:[0.5,0.5], b:plant},
+  plant       :{l:'Tanaman',     i:'🪴', c:'tanaman',      f:[0.5,0.5], b:plant},
   bunk        :{l:'Ranjang Susun',i:'🛏️', c:'kamar',       f:[1.0,2.0], b:bunkBed},
   crib        :{l:'Boks Bayi',   i:'🧸', c:'kamar',       f:[0.7,1.3], b:crib},
   dresser     :{l:'Lemari Laci', i:'🗃️', c:'kamar',       f:[1.2,0.5], b:dresser},
@@ -2336,7 +2824,7 @@ const FURN={
   wardrobe3   :{l:'Lemari 3 Pintu',i:'🚪',c:'kamar',      f:[2.4,0.6], b:()=>wardrobe(2.4)},
   sofa_l      :{l:'Sofa L',      i:'🛋️', c:'ruang',       f:[2.4,1.6], b:sofaL},
   side_table  :{l:'Meja Sudut',  i:'⭕', c:'ruang',       f:[0.5,0.5], b:sideTable},
-  floor_lamp  :{l:'Lampu Berdiri',i:'💡',c:'ruang',       f:[0.4,0.4], b:floorLamp},
+  floor_lamp  :{l:'Lampu Berdiri',i:'💡',c:'lampu',       f:[0.4,0.4], b:floorLamp},
   dining8     :{l:'Meja Makan 8',i:'🍽️', c:'makan',       f:[2.4,1.0], b:()=>diningSet(2.4,1.0,8)},
   buffet      :{l:'Bufet',       i:'🗄️', c:'makan',       f:[1.6,0.45],b:buffet},
   bar_stool   :{l:'Kursi Bar',   i:'🥤', c:'makan',       f:[0.4,0.4], b:barStool},
@@ -2349,8 +2837,149 @@ const FURN={
   ac_split    :{l:'AC Split',    i:'❄️', c:'lain',        f:[0.9,0.22],b:acSplit},
   car         :{l:'Mobil',       i:'🚗', c:'lain',        f:[1.7,4.2], b:car},
   motorcycle  :{l:'Motor',       i:'🏍️', c:'lain',        f:[0.7,1.9], b:motorcycle},
-  plant_big   :{l:'Tanaman Besar',i:'🌴',c:'lain',        f:[0.9,0.9], b:plantBig}
+  plant_big   :{l:'Tanaman Besar',i:'🌴',c:'tanaman',      f:[0.9,0.9], b:plantBig},
+  // --- dekorasi dinding (menempel dinding; back = jarak titik asal ke bidang punggung)
+  art_canvas  :{l:'Lukisan Kanvas',     i:'🖼️', c:'dekor',   f:[0.96,0.05], b:artCanvas,    wall:1, back:0.02},
+  art_triptych:{l:'Lukisan Triptych',   i:'🖼️', c:'dekor',   f:[1.44,0.05], b:artTriptych,  wall:1, back:0.02},
+  gallery_wall:{l:'Galeri Bingkai',     i:'🖼️', c:'dekor',   f:[1.9,0.05],  b:galleryWall,  wall:1, back:0.02},
+  mirror_round:{l:'Cermin Bulat',       i:'🪞', c:'dekor',   f:[0.85,0.05], b:mirrorRound,  wall:1, back:0.02},
+  mirror_arch :{l:'Cermin Lengkung',    i:'🪞', c:'dekor',   f:[0.7,0.05],  b:mirrorArch,   wall:1, back:0.02},
+  mirror_floor:{l:'Cermin Berdiri',     i:'🪞', c:'dekor',   f:[0.65,0.35], b:mirrorFloor,  wall:1, back:0.03},
+  wall_shelf  :{l:'Rak Dinding Melayang',i:'📚',c:'dekor',   f:[1.0,0.22],  b:wallShelf,    wall:1, back:0.11},
+  wall_clock  :{l:'Jam Dinding',        i:'🕰️', c:'dekor',   f:[0.42,0.05], b:wallClock,    wall:1, back:0.015},
+  tv_wall     :{l:'Backdrop TV + Konsol',i:'📺',c:'dekor',   f:[2.4,0.45],  b:tvWall,       wall:1, back:0.03},
+  slat_panel  :{l:'Panel Kisi Akustik', i:'🎚️', c:'dekor',   f:[1.2,0.05],  b:acousticSlat, wall:1, back:0.01},
+  curtain     :{l:'Gorden',             i:'🪟', c:'dekor',   f:[2.4,0.1],   b:curtain,      wall:1, back:0.0},
+  // --- pencahayaan
+  pendant     :{l:'Lampu Gantung',      i:'💡', c:'lampu',   f:[0.45,0.45], b:pendant},
+  pendant_trio:{l:'Lampu Gantung Trio', i:'💡', c:'lampu',   f:[1.6,0.3],   b:pendantTrio},
+  chandelier  :{l:'Chandelier',         i:'🕯️', c:'lampu',   f:[0.9,0.9],   b:chandelier},
+  table_lamp  :{l:'Lampu Meja',         i:'🛋️', c:'lampu',   f:[0.35,0.35], b:tableLamp},
+  night_lamp  :{l:'Nakas + Lampu',      i:'🛏️', c:'lampu',   f:[0.45,0.4],  b:nightLampSet},
+  arc_lamp    :{l:'Lampu Lengkung',     i:'💡', c:'lampu',   f:[0.4,1.7],   b:arcLamp},
+  wall_sconce :{l:'Lampu Dinding',      i:'💡', c:'lampu',   f:[0.2,0.2],   b:wallSconce,   wall:1, back:0.05},
+  // --- tanaman
+  monstera    :{l:'Monstera',           i:'🌿', c:'tanaman', f:[1.2,1.2],   b:monstera},
+  fiddle_leaf :{l:'Pohon Biola',        i:'🌳', c:'tanaman', f:[0.8,0.8],   b:fiddleLeaf},
+  snake_plant :{l:'Lidah Mertua',       i:'🌱', c:'tanaman', f:[0.4,0.4],   b:snakePlant},
+  hanging_plant:{l:'Tanaman Gantung',   i:'🪴', c:'tanaman', f:[0.6,0.6],   b:hangingPlant},
+  cactus      :{l:'Kaktus Tiang',       i:'🌵', c:'tanaman', f:[0.5,0.5],   b:cactus},
+  // --- karpet
+  rug_round   :{l:'Karpet Bulat',       i:'⭕', c:'karpet',  f:[2.0,2.0],   b:rugRound},
+  rug_oval    :{l:'Karpet Oval',        i:'🥚', c:'karpet',  f:[2.4,1.6],   b:rugOval},
+  rug_runner  :{l:'Karpet Runner',      i:'🟫', c:'karpet',  f:[0.8,2.6],   b:()=>rugRect(0.8,2.6,'garis')},
+  rug_organic :{l:'Karpet Organik',     i:'🫧', c:'karpet',  f:[2.6,1.8],   b:rugOrganic},
+  rug_persia  :{l:'Karpet Persia',      i:'🟥', c:'karpet',  f:[3.0,2.0],   b:()=>rugRect(3.0,2.0,'persia')},
+  rug_berber  :{l:'Karpet Berber',      i:'⬜', c:'karpet',  f:[2.4,1.7],   b:()=>rugRect(2.4,1.7,'berber')},
+  // --- lemari & kabinet
+  display_cab :{l:'Lemari Pajang Kaca', i:'🗄️', c:'simpan',  f:[1.0,0.4],   b:displayCabinet, wall:1, back:0.2},
+  shoe_cab    :{l:'Rak Sepatu',         i:'👟', c:'simpan',  f:[1.0,0.35],  b:shoeCabinet,    wall:1, back:0.175},
+  console_tbl :{l:'Meja Konsol',        i:'🪑', c:'simpan',  f:[1.2,0.35],  b:consoleTable,   wall:1, back:0.175},
+  tv_console  :{l:'Kabinet TV Rendah',  i:'📺', c:'simpan',  f:[1.8,0.45],  b:tvConsole,      wall:1, back:0.225},
+  pantry      :{l:'Lemari Pantry',      i:'🥫', c:'dapur',   f:[0.6,0.6],   b:pantry,         wall:1, back:0.3},
+  // --- dapur lengkap
+  kitchen_line:{l:'Kitchen Set Lengkap',i:'🍳', c:'dapur',   f:[3.6,0.65],  b:kitchenLinear,  wall:1, back:0.3},
+  kitchen_l2  :{l:'Kitchen Set L Lengkap',i:'🍳',c:'dapur',  f:[3.0,2.1],   b:kitchenL2,      wall:1, back:0.3},
+  kitchen_u   :{l:'Kitchen Set U',      i:'🍳', c:'dapur',   f:[2.8,2.1],   b:kitchenU,       wall:1, back:0.3},
+  kitchen_par :{l:'Kitchen Set Paralel',i:'🍳', c:'dapur',   f:[3.2,2.4],   b:kitchenGalley},
+  kitchen_isl :{l:'Kitchen Set + Island',i:'🍳',c:'dapur',   f:[3.6,3.2],   b:kitchenIsland,  wall:1, back:2.15},
+  range_hood  :{l:'Cooker Hood',        i:'💨', c:'dapur',   f:[0.9,0.5],   b:rangeHood,      wall:1, back:0.18},
+  // --- perapian
+  fire_modern :{l:'Perapian Modern',    i:'🔥', c:'perapian',f:[2.2,0.95],  b:fireplaceModern, wall:1, back:0.225},
+  fire_classic:{l:'Perapian Klasik Bata',i:'🔥',c:'perapian',f:[1.85,0.95], b:fireplaceClassic,wall:1, back:0.25},
+  wood_stove  :{l:'Tungku Kayu',        i:'🔥', c:'perapian',f:[1.0,0.9],   b:woodStove},
+  // --- lain-lain
+  dining_round:{l:'Meja Makan Bulat 4', i:'🍽️', c:'makan',   f:[1.8,1.8],   b:diningRound},
+  ottoman     :{l:'Puf / Ottoman',      i:'🟤', c:'ruang',   f:[0.6,0.6],   b:ottoman},
+  bench       :{l:'Bangku',             i:'🪑', c:'ruang',   f:[1.2,0.4],   b:bench},
+  rattan_chair:{l:'Kursi Rotan',        i:'🪑', c:'ruang',   f:[0.84,0.84], b:rattanChair},
+  piano       :{l:'Piano Tegak',        i:'🎹', c:'ruang',   f:[1.5,1.0],   b:piano,          wall:1, back:0.3},
+  room_divider:{l:'Partisi Lipat',      i:'🪟', c:'ruang',   f:[1.4,0.5],   b:roomDivider},
+  coat_rack   :{l:'Gantungan Baju',     i:'🧥', c:'ruang',   f:[0.5,0.5],   b:coatRack},
+  floor_vase  :{l:'Vas Lantai + Pampas',i:'🏺', c:'ruang',   f:[0.6,0.6],   b:floorVase}
 };
+/* KAIDAH penempatan — ditampilkan di inspector saat objeknya dipilih */
+const KAIDAH={
+  art_canvas:'Pusat lukisan ±150 cm dari lantai. Di atas sofa/meja: sisi bawah bingkai 20–25 cm di atasnya, lebar ±2/3 lebar perabot di bawahnya.',
+  art_triptych:'Tiga panel dibaca sebagai satu karya: jarak antarpanel 5–8 cm, pusat ±150 cm, lebar total ±2/3 perabot di bawahnya.',
+  gallery_wall:'Jarak antarbingkai 5–8 cm, pusat kelompok ±150 cm. Susun dari bingkai terbesar, jaga satu garis tepi (atas atau bawah) tetap rata.',
+  mirror_round:'Pusat ±150 cm. Di atas wastafel/meja konsol, lebar cermin ±70–80 % lebar mejanya.',
+  mirror_arch:'Pusat setinggi mata (±150 cm). Pasang berhadapan dengan jendela secara menyamping agar memantulkan cahaya, bukan menyilaukan.',
+  mirror_floor:'Sandarkan dengan kemiringan 5–7°. Posisi tegak lurus jendela memantulkan cahaya siang ke dalam ruang.',
+  wall_shelf:'Rak dipasang 25–40 cm di atas meja/sofa, jarak antarrak 30–40 cm. Letakkan beban berat di dekat angkur.',
+  wall_clock:'Pasang ±180–200 cm, atau pusatnya ±25 cm di atas perabot di bawahnya.',
+  tv_wall:'Pusat layar setinggi mata duduk ±110 cm. Jarak pandang ±1,5–2,5 × diagonal layar (TV 55" → 2,1–3,5 m).',
+  slat_panel:'Kisi kayu di atas felt menyerap gema; efektif di dinding yang berhadapan dengan sumber suara (TV/speaker).',
+  curtain:'Rel dipasang dekat plafon dan melebar 15–25 cm di tiap sisi jendela agar jendela tampak lebih tinggi dan lebar. Kain jatuh ±1 cm di atas lantai.',
+  pendant:'Di atas meja makan: sisi bawah kap 75–85 cm di atas daun meja (±155 cm dari lantai). Diameter kap ±1/2–2/3 lebar meja.',
+  pendant_trio:'Di atas island: 75–90 cm di atas meja, jarak antarlampu 60–75 cm, lampu terluar ±15 cm dari ujung meja.',
+  chandelier:'Di area lalu-lalang sisi terbawah ≥ 210 cm. Diameter (cm) ≈ (panjang + lebar ruangan dalam meter) × 10.',
+  table_lamp:'Naikkan Y setinggi mejanya (nakas ±55 cm). Sisi bawah kap setinggi dagu saat duduk, ±100–105 cm dari lantai.',
+  night_lamp:'Nakas setinggi kasur (±55 cm), 5–10 cm dari sisi ranjang. Lampu di kedua sisi untuk kamar bersama.',
+  arc_lamp:'Pangkal di belakang/samping sofa, kap menjangkau di atas meja tamu setinggi ±170–180 cm.',
+  wall_sconce:'Pasang ±160–170 cm. Di samping ranjang ±120–150 cm; mengapit cermin setinggi mata, 75–100 cm terpisah.',
+  floor_lamp:'Di sudut ruang atau di samping kursi baca; kap sejajar bahu saat duduk.',
+  monstera:'Cahaya terang tidak langsung, 1–2 m dari jendela. Tanaman besar di sudut menyeimbangkan perabot yang rendah.',
+  fiddle_leaf:'Butuh cahaya terang dekat jendela dan tidak suka dipindah-pindah. Tinggi 1,5–2 m cocok sebagai titik fokus di sudut.',
+  snake_plant:'Tahan cahaya rendah dan menyaring udara — cocok untuk kamar tidur dan sudut minim cahaya.',
+  hanging_plant:'Gantung dekat jendela; di area lalu-lalang sisi bawah pot ≥ 190 cm.',
+  cactus:'Butuh matahari langsung beberapa jam sehari: dekat jendela timur/barat.',
+  plant:'Kelompokkan tanaman dalam jumlah ganjil dengan tinggi berbeda agar tampak alami.',
+  plant_big:'Tanaman besar di sudut kosong mengisi ruang vertikal dan melunakkan sudut ruangan.',
+  rug:'Ruang tamu: kaki depan sofa dan kursi di atas karpet, sisakan 30–45 cm lantai ke dinding.',
+  rug_round:'Di bawah meja makan/meja tamu bulat, lebih lebar ±60 cm dari meja di tiap sisi.',
+  rug_oval:'Melunakkan ruang yang didominasi garis lurus; kaki depan perabot di atas karpet.',
+  rug_runner:'Untuk lorong dan dapur: sisakan 10–15 cm lantai di kiri-kanan dan ±30 cm di ujungnya.',
+  rug_organic:'Bentuk bebas sebagai aksen di ruang santai; hindari di bawah meja makan (kursi tersangkut).',
+  rug_persia:'Ruang makan: karpet ≥ 60–75 cm lebih lebar dari meja di tiap sisi agar kursi tetap di atas karpet saat ditarik.',
+  rug_berber:'Kamar: karpet menjorok ±60 cm dari sisi dan kaki ranjang, mulai di depan nakas.',
+  display_cab:'Letakkan di dinding yang terlihat dari pintu masuk; beri lampu di dalamnya untuk menonjolkan isi.',
+  shoe_cab:'Di dekat pintu masuk, sisakan ruang 90 cm di depannya untuk duduk dan berganti alas kaki.',
+  console_tbl:'Tinggi 75–85 cm di foyer/belakang sofa; cermin di atasnya ±2/3 lebar meja.',
+  tv_console:'Lebar kabinet ≥ lebar TV + 20–30 cm, tinggi 40–60 cm.',
+  pantry:'Letakkan di ujung deret dapur dekat kulkas, bukan di tengah permukaan kerja.',
+  kitchen_line:'Urutan kerja kulkas → sink → kompor. Meja 85–90 cm, kabinet atas 55–65 cm di atas meja, hood 65–75 cm di atas kompor.',
+  kitchen_l2:'Segitiga kerja kulkas–sink–kompor: tiap sisi 1,2–2,7 m, total 4–8 m. Sudut L diisi kabinet sudut, bukan kompor.',
+  kitchen_u:'Ruang kerja di tengah U minimal 1,2 m. Sink di deret tengah, kompor dan kulkas di kaki U.',
+  kitchen_par:'Lorong antarderet 1,0–1,2 m (1,2 m bila dipakai dua orang).',
+  kitchen_isl:'Jarak island ke deret belakang 1,0–1,2 m. Tempat duduk menjorok 25–30 cm, 60 cm per orang.',
+  range_hood:'Sisi bawah hood 65–75 cm di atas kompor, lebar ≥ lebar kompor, saluran buang sependek mungkin.',
+  fire_modern:'Hearth menjorok ≥ 45 cm dari muka perapian, ruang bebas 90 cm di depannya. TV di atas perapian ≥ 30 cm di atas bukaan.',
+  fire_classic:'Rak mantel ±120 cm. Material tidak mudah terbakar ≥ 15–30 cm di sekeliling bukaan api.',
+  wood_stove:'Jarak ke dinding yang mudah terbakar ≥ 45 cm; alas tahan api menjorok ≥ 45 cm di depan pintu tungku.',
+  dining_round:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik, 120 cm bila menjadi jalur lalu-lalang.',
+  dining4:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik; 60 cm lebar meja per orang.',
+  dining6:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik; 60 cm lebar meja per orang.',
+  dining8:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik; 60 cm lebar meja per orang.',
+  ottoman:'Tinggi setara dudukan sofa; bisa berfungsi ganda sebagai meja tamu dengan nampan.',
+  bench:'Di foyer atau kaki ranjang: sisakan 60 cm di depannya.',
+  rattan_chair:'Kursi aksen di sudut baca: pasangkan dengan lampu berdiri dan meja sudut.',
+  piano:'Di dinding dalam, jauh dari jendela, AC, dan perapian — suhu dan kelembapan stabil.',
+  room_divider:'Membagi ruang tanpa memutus cahaya; sisakan jalur ≥ 90 cm di ujungnya.',
+  coat_rack:'Di dekat pintu masuk, di luar jalur buka daun pintu.',
+  floor_vase:'Kelompokkan dengan tanaman atau perabot rendah; tinggi total 1/3–2/3 tinggi dinding di belakangnya terasa seimbang.',
+  sofa2:'Jarak sofa ke meja tamu 40–45 cm; jalur lalu-lalang di belakang/samping ≥ 90 cm.',
+  sofa3:'Jarak sofa ke meja tamu 40–45 cm; jalur lalu-lalang di belakang/samping ≥ 90 cm.',
+  sofa_l:'Jarak sofa ke meja tamu 40–45 cm; sisi terbuka L menghadap jalur masuk ruangan.',
+  armchair:'Kursi berhadapan dalam jarak ≤ 2,5 m agar percakapan tetap nyaman.',
+  coffee_table:'Tinggi setara dudukan sofa atau ±5 cm lebih rendah; panjang ±2/3 panjang sofa.',
+  tv_set:'Jarak pandang ±1,5–2,5 × diagonal layar; pusat layar setinggi mata duduk ±110 cm.',
+  bed_single:'Sisakan 60–75 cm di sisi ranjang dan 90 cm di kakinya.',
+  bed_double:'Sisakan 60–75 cm di kedua sisi ranjang dan 90 cm di kakinya.',
+  bed_king:'Sisakan 60–75 cm di kedua sisi ranjang dan 90 cm di kakinya.',
+  wardrobe:'Sisakan ±90 cm di depan lemari berpintu ayun, 60 cm untuk pintu geser.',
+  wardrobe3:'Sisakan ±90 cm di depan lemari berpintu ayun, 60 cm untuk pintu geser.',
+  desk:'Tinggi meja 72–75 cm; letakkan tegak lurus jendela agar layar tidak silau.',
+  kitchen:'Meja 85–90 cm, kabinet atas 55–65 cm di atas meja.',
+  kitchen_l:'Segitiga kerja kulkas–sink–kompor total 4–8 m.',
+  island:'Jarak island ke deret dapur 1,0–1,2 m.',
+  bar_stool:'Dudukan 25–30 cm di bawah daun meja, 60 cm per kursi.',
+  toilet:'Ruang bebas 60 cm di depan kloset; as kloset 38–45 cm dari dinding samping.',
+  washbasin:'Tinggi 80–85 cm; cermin di atasnya ±70–80 % lebar wastafel.',
+  ac_split:'Dipasang ±15 cm di bawah plafon, tidak meniup langsung ke ranjang/kursi.'
+};
+for(const [k,t] of Object.entries(KAIDAH)) if(FURN[k]) FURN[k].t=t;
+for(const k of ['upper_cab','ac_split']) if(FURN[k]){ FURN[k].wall=1; FURN[k].back=FURN[k].f[1]/2; }
 const STAIRS={
   straight:{l:'Lurus',    i:'📐'},
   landing :{l:'Bordes',   i:'🪜'},
@@ -2387,7 +3016,9 @@ function buildObject(o, lv){
   }
   else {
     const def=FURN[o.type];
+    BUILD_LV=lv;                      // benda gantung membaca tinggi plafon lantainya
     g = def ? def.b() : new THREE.Group();
+    BUILD_LV=null;
   }
   g.position.set(o.x,o.y||0,o.z);
   g.rotation.y=o.rotY||0;
@@ -2815,6 +3446,14 @@ function renderInspector(){
     fRow(ins,'Jenis',selInput(Object.entries(FURN).map(([k,v])=>[k,v.l]),d.type,v=>{
       d.type=v; rebuildScene(); renderInspector();
     }));
+    if(def && def.t){ const k=el('div','badge ok'); k.textContent='Kaidah: '+def.t; ins.appendChild(k); }
+    const bw=el('button','btn sm ghost','⇲ Tempel ke dinding terdekat');
+    bw.onclick=()=>{
+      const dd=FURN[d.type];
+      if(snapToWall(d,L().walls,dd.back!=null?dd.back:dd.f[1]/2,6)){ HIST.label='Tempel ke dinding'; rebuildScene(); renderInspector(); toast('Punggung objek rapat ke dinding'); }
+      else toast('Tidak ada dinding dalam jarak 6 m');
+    };
+    ins.appendChild(bw);
     addTransformFields(ins,d,true);
   }
 
@@ -3079,6 +3718,24 @@ function autoVoidsFromBelow(){
   toast(`${n} void dibuat di ${L().name} dari tangga ${below.name}`);
 }
 
+/* Menempelkan objek ke dinding terdekat: punggungnya rapat ke muka dinding,
+   mukanya menghadap ke dalam ruang. */
+function snapToWall(o,walls,back,maxD){
+  let best=null;
+  for(const w of walls){
+    const L=wallLen(w); if(L<0.2) continue;
+    const ux=(w.x2-w.x1)/L, uz=(w.z2-w.z1)/L;
+    const t=clamp((o.x-w.x1)*ux+(o.z-w.z1)*uz,0,L);
+    const px=w.x1+ux*t, pz=w.z1+uz*t, d=Math.hypot(o.x-px,o.z-pz);
+    if(d<(best?best.d:(maxD||3))) best={w,px,pz,d,ux,uz};
+  }
+  if(!best) return false;
+  let nx=-best.uz, nz=best.ux;
+  if((o.x-best.px)*nx+(o.z-best.pz)*nz<0){ nx=-nx; nz=-nz; }
+  const off=best.w.thickness/2+(back||0)+0.005;
+  o.x=best.px+nx*off; o.z=best.pz+nz*off; o.rotY=Math.atan2(nx,nz);
+  return true;
+}
 function addObject(kind,type){
   const lv=L();
   const t=orbit.target;
@@ -3095,6 +3752,9 @@ function addObject(kind,type){
   // sendiri yang mengisi lubang itu
   if(kind==='model') o.params={};
   if(kind==='column') o.params={w:0.3, d:0.3};
+  let menempel=false;
+  if(kind==='furn' && FURN[type] && FURN[type].wall)
+    menempel=snapToWall(o,lv.walls,FURN[type].back!=null?FURN[type].back:FURN[type].f[1]/2);
   if(kind==='void') o.params = type==='L'
       ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5, railing:true, railH:STD.guardH, openSides:[] }
       : { shape:'rect', w:1.2, d:3.0, railing:true, railH:STD.guardH, openSides:[] };
@@ -3112,7 +3772,7 @@ function addObject(kind,type){
            : kind==='void'  ? 'Void (lubang pelat)'
            : kind==='model' ? (PROJECT.assets[type]?.name||'Model')
            : (FURN[type]?.l||type);
-  toast(nm+' ditambahkan ke '+lv.name);
+  toast(nm+' ditambahkan ke '+lv.name+(menempel?' — menempel ke dinding terdekat':''));
 }
 
 /* ======================================================================
@@ -6545,6 +7205,7 @@ $('#wallH').addEventListener('change',e=>{
 renderCatalogs();
 renderFinishUI();
 setRenderQuality('halus');
+pasangPantulanLogam();
 renderLevels();
 setTool('select');
 rebuildScene();
