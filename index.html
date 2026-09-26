@@ -122,7 +122,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 #hint{bottom:12px;left:12px;padding:7px 12px;font-size:.72rem;color:var(--muted);max-width:60%}
 #hint b{color:var(--accent)}
 
-#inspector{top:66px;right:12px;width:288px;max-height:calc(100vh - 92px);overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+#inspector{top:66px;right:12px;width:288px;max-height:calc(100% - 78px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 #inspector[hidden]{display:none}
 #inspector h3{font-size:.76rem;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
 #inspector h3 span.tag{background:#2a2a33;color:var(--muted);font-size:.6rem;padding:2px 6px;border-radius:99px;letter-spacing:0;text-transform:none}
@@ -626,7 +626,24 @@ const groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
 const raycaster=new THREE.Raycaster();
 const pointer=new THREE.Vector2();
 
+/* Inspector selalu mulai di bawah toolbar & bar lantai, dan tingginya
+   dihitung dari viewport yang benar-benar tampak — di iPad, 100vh ikut
+   menghitung area di balik bilah peramban sehingga tombol Aksi terpotong. */
+function aturInspector(){
+  const ins=document.getElementById('inspector'); if(!ins) return;
+  const vr=viewport.getBoundingClientRect(); if(!vr.height) return;
+  let atas=12;
+  for(const id of ['toolbar','levelbar']){
+    const e=document.getElementById(id); if(!e||e.hidden) continue;
+    const r=e.getBoundingClientRect();
+    // hanya yang bertumpang secara mendatar dengan kolom inspector
+    if(r.right>vr.right-12-300) atas=Math.max(atas,r.bottom-vr.top+8);
+  }
+  ins.style.top=atas+'px';
+  ins.style.maxHeight=Math.max(160,vr.height-atas-12)+'px';
+}
 function fitViewport(){
+  aturInspector();
   const w=viewport.clientWidth, h=viewport.clientHeight;
   if(!w||!h) return;
   camera.aspect=w/h;
@@ -637,6 +654,7 @@ addEventListener('resize',fitViewport);
 // panel samping disembunyikan, layar penuh, rotasi iPad: semuanya mengubah
 // ukuran viewport tanpa selalu memicu 'resize' pada jendela
 if(window.ResizeObserver) new ResizeObserver(fitViewport).observe(viewport);
+if(window.ResizeObserver) new ResizeObserver(()=>aturInspector()).observe(document.getElementById('toolbar'));
 /* Keadaan mode jalan-jalan dideklarasikan di sini, bukan di modulnya jauh di
    bawah: loop render langsung berjalan begitu baris ini dilewati, sehingga ia
    tidak boleh menyentuh const yang belum sempat dibuat. */
@@ -3515,6 +3533,7 @@ function renderInspector(){
   // saat menggambar dinding panel disembunyikan agar tidak menghalangi klik di viewport
   if(!d || TOOL==='wall'){ ins.hidden=true; return; }
   ins.hidden=false;
+  aturInspector();
 
   if(SEL.kind==='wall' && d.rail){
     const h=el('h3',null,'Railing'); h.appendChild(el('span','tag',RAILING[d.rail]?RAILING[d.rail].l:d.rail)); ins.appendChild(h);
@@ -7069,12 +7088,21 @@ function fpsResolveWalls(px,pz,feetY){
    tangga, pelat lantai, dan bordes terbaca apa adanya, dan di atas void
    memang tidak ada apa-apa — jadi orangnya jatuh, seperti seharusnya. */
 const fpsRay=new THREE.Raycaster();
+/* Tinggi langkah terbesar yang masih bisa dinaiki. Tangga hasil baca denah
+   boleh beroptrede sampai 25 cm (lihat stairCalc), jadi batasnya harus di atas
+   itu — sebelumnya 21 cm, sehingga tangga beroptrede 22–25 cm tak bisa dinaiki. */
+const LANGKAH_MAX=0.27;
 function fpsGround(px,pz,feetY){
   fpsRay.set(new THREE.Vector3(px,feetY+0.6,pz), new THREE.Vector3(0,-1,0));
   fpsRay.far=8;
   const hits=fpsRay.intersectObject(worldRoot,true);
   for(const h of hits){
     if(h.object.userData.noExport) continue;       // penanda void bukan lantai
+    if(h.object.isSprite) continue;
+    // permukaan yang terlalu tinggi untuk dipijak (pelat lantai atas di ujung
+    // tangga, kepala railing) dilewati: yang dicari pijakan tertinggi yang masih
+    // terjangkau, bukan sekadar benda pertama di bawah lutut
+    if(h.point.y > feetY+LANGKAH_MAX+0.01) continue;
     let o=h.object, tampak=true;
     while(o && o!==worldRoot){ if(!o.visible){ tampak=false; break; } o=o.parent; }
     if(!tampak) continue;                          // lantai yang disembunyikan tidak dipijak
@@ -7112,7 +7140,7 @@ function fpsStep(dt){
 
   // pijakan: naik tangga sampai setinggi satu optrede, selebihnya jatuh
   const g=fpsGround(px,pz,FPS.feet);
-  if(g!=null && g<=FPS.feet+STD.riserMax+0.02){
+  if(g!=null && g<=FPS.feet+LANGKAH_MAX){
     if(g>=FPS.feet-0.02){ FPS.feet=g; FPS.vy=0; }
     else {
       FPS.vy-=9.8*dt; FPS.feet+=FPS.vy*dt;
