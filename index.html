@@ -379,6 +379,14 @@ details#adv>*:not(summary){margin-bottom:8px}
       </select></div>
       <p class="hint">Saat jalan-jalan semua lantai selalu padat, karena tangga membawa Anda ke lantai berikutnya.</p>
       <label class="chk"><input type="checkbox" id="showSlab" checked><span>Tampilkan pelat lantai</span></label>
+      <div class="f-row"><label>Plat atap</label><select id="atapMode">
+        <option value="buka" selected>Terbuka</option>
+        <option value="tutup">Tertutup</option>
+      </select></div>
+      <div class="f-row"><label>Tritisan atap</label><select id="atapTritisan">
+        <option value="0">Rata dinding</option><option value="0.3">30 cm</option><option value="0.6" selected>60 cm</option><option value="1">100 cm</option>
+      </select></div>
+      <p class="hint">Dak beton 12 cm di atas lantai teratas, mengikuti tapak bangunan. Tutup untuk melihat bangunan utuh dan cahaya ruang yang wajar saat jalan-jalan; buka untuk menata isi lantai dari atas. Balkon berpagar railing tetap terbuka.</p>
       <label class="chk"><input type="checkbox" id="showGrid" checked><span>Tampilkan grid</span></label>
       <label class="chk"><input type="checkbox" id="showShadow" checked><span>Bayangan</span></label>
       <p class="hint">Elevasi tiap lantai dihitung otomatis dari tinggi lantai di bawahnya. Objek (tangga, furnitur) ikut lantai tempat ia dibuat.</p>
@@ -469,6 +477,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button id="delBtn" title="Hapus (Del)"><span class="ic">✕</span><span class="lb">Hapus</span></button>
       <div class="sep"></div>
       <button id="wallModeBtn" title="Tembok solid atau tembus pandang (G)"><span class="ic">◫</span><span class="lb">Solid</span></button>
+      <button id="roofBtn" title="Plat atap buka / tutup (T)"><span class="ic">⌂</span><span class="lb">Atap</span></button>
       <button id="walkBtn" translate="no" title="Jalan-jalan di dalam ruangan (orang pertama)"><span class="ic">🚶</span><span class="lb">Walk</span></button>
       <button id="arBtn" title="Lihat model di AR / 3D viewer"><span class="ic">◈</span><span class="lb">AR</span></button>
       <button id="helpBtn" title="Pintasan keyboard (?)"><span class="ic">?</span></button>
@@ -484,7 +493,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="kbgrid">
         <kbd>Q</kbd><span>Pilih</span><kbd>W</kbd><span>Geser</span><kbd>E</kbd><span>Putar</span><kbd>R</kbd><span>Skala</span>
         <kbd>L</kbd><span>Gambar dinding</span><kbd>K</kbd><span>Gambar railing</span><kbd>M</kbd><span>Ukur jarak</span><kbd>N</kbd><span>Dimensi</span>
-        <kbd>1–4</kbd><span>3D · Atas · Depan · Iso</span><kbd>F</kbd><span>Fokus ke terpilih</span><kbd>G</kbd><span>Tembok solid/ghost</span><kbd>H</kbd><span>Panel samping</span>
+        <kbd>1–4</kbd><span>3D · Atas · Depan · Iso</span><kbd>F</kbd><span>Fokus ke terpilih</span><kbd>G</kbd><span>Tembok solid/ghost</span><kbd>T</kbd><span>Plat atap buka/tutup</span><kbd>H</kbd><span>Panel samping</span>
         <kbd>Ctrl Z</kbd><span>Urung</span><kbd>Ctrl ⇧ Z</kbd><span>Ulang</span><kbd>Ctrl D</kbd><span>Duplikat</span><kbd>Del</kbd><span>Hapus</span>
         <kbd>Esc</kbd><span>Batal / lepas pilihan</span><kbd>?</kbd><span>Panel ini</span>
       </div>
@@ -500,6 +509,7 @@ details#adv>*:not(summary){margin-bottom:8px}
         <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option><option value="gelap">🌑 Malam gelap</option>
       </select>
       <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
+      <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
       <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
       <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
     </div>
@@ -585,7 +595,8 @@ const nearest=(v,list)=>list.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
 const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{},
   plans:{},                       // gambar denah per lantai: { [levelId]: {img,w,h,realWidth,unit,dx,dz} }
   // finishing dinding dibedakan muka dalam dan muka luar, seperti gambar kerja
-  finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' } };
+  finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
+  atap:{ tritisan:0.6, tebal:0.12 } };             // plat atap (dak) di atas lantai teratas
 
 function newLevel(name,height){
   return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
@@ -1907,6 +1918,96 @@ function slabGeometry(strips,T,insideFn){
   geo.computeVertexNormals();
   planarUV(geo);                                  // posisinya sudah koordinat lantai
   return geo;
+}
+
+/* =====================================================================
+   PLAT ATAP — dak beton di atas lantai teratas. Bentuknya mengikuti tapak
+   bangunan (bukan kotak pembungkus): denah dirasterkan 5 cm, dinding jadi
+   penghalang, lalu bagian luar diisi dari tepi. Yang tidak terjangkau adalah
+   ruang dalam + badan dinding; itu diperlebar sebesar tritisan. Railing
+   balkon tidak ikut menutup, jadi balkon tetap terbuka ke langit.
+   ===================================================================== */
+let ATAP_TUTUP=false;
+function tapakAtap(lv,tritisan){
+  const ws=lv.walls.filter(w=>!w.rail); if(!ws.length) return null;
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(const w of ws){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  const c=0.05, pad=tritisan+0.5;
+  x0-=pad; z0-=pad; x1+=pad; z1+=pad;
+  const nx=Math.ceil((x1-x0)/c), nz=Math.ceil((z1-z0)/c);
+  if(nx*nz>4e6) return null;                       // denah raksasa: lewati saja
+  const G=new Uint8Array(nx*nz);                   // 0 kosong, 1 dinding, 2 luar
+  for(const w of ws){
+    const r=(w.thickness||0.15)/2+0.04, dx=w.x2-w.x1, dz=w.z2-w.z1, L2=dx*dx+dz*dz||1;
+    const i0=Math.max(0,Math.floor((Math.min(w.x1,w.x2)-r-x0)/c)), i1=Math.min(nx-1,Math.ceil((Math.max(w.x1,w.x2)+r-x0)/c));
+    const k0=Math.max(0,Math.floor((Math.min(w.z1,w.z2)-r-z0)/c)), k1=Math.min(nz-1,Math.ceil((Math.max(w.z1,w.z2)+r-z0)/c));
+    for(let i=i0;i<=i1;i++) for(let k=k0;k<=k1;k++){
+      const px=x0+(i+0.5)*c, pz=z0+(k+0.5)*c, t=clamp(((px-w.x1)*dx+(pz-w.z1)*dz)/L2,0,1);
+      if(Math.hypot(px-w.x1-dx*t, pz-w.z1-dz*t)<=r) G[i*nz+k]=1;
+    }
+  }
+  // isi dari tepi: semua yang terjangkau tanpa melewati dinding adalah luar
+  const tumpuk=[];
+  const dorong=(i,k)=>{ const j=i*nz+k; if(G[j]===0){ G[j]=2; tumpuk.push(j); } };
+  for(let i=0;i<nx;i++){ dorong(i,0); dorong(i,nz-1); }
+  for(let k=0;k<nz;k++){ dorong(0,k); dorong(nx-1,k); }
+  while(tumpuk.length){ const j=tumpuk.pop(), i=(j/nz)|0, k=j-i*nz;
+    if(i>0) dorong(i-1,k); if(i<nx-1) dorong(i+1,k); if(k>0) dorong(i,k-1); if(k<nz-1) dorong(i,k+1); }
+  let dalam=0; for(let j=0;j<G.length;j++) if(G[j]===0) dalam++;
+  const T=new Uint8Array(nx*nz);
+  if(dalam<20){
+    // denah tidak tertutup (ada celah): pakai kotak pembungkus dinding
+    for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){ const px=x0+(i+0.5)*c, pz=z0+(k+0.5)*c;
+      if(px>x0+pad-0.1&&px<x1-pad+0.1&&pz>z0+pad-0.1&&pz<z1-pad+0.1) T[i*nz+k]=1; }
+  } else for(let j=0;j<G.length;j++) T[j]=G[j]!==2?1:0;
+  // tritisan: pelebaran persegi (sudut atap tetap siku), dipisah baris & kolom
+  const n=Math.round(tritisan/c);
+  if(n>0){
+    const A=new Uint8Array(nx*nz);
+    for(let i=0;i<nx;i++){ let akhir=-1e9; for(let k=0;k<nz;k++){ if(T[i*nz+k]) akhir=k; if(k-akhir<=n) A[i*nz+k]=1; }
+      akhir=1e9; for(let k=nz-1;k>=0;k--){ if(T[i*nz+k]) akhir=k; if(akhir-k<=n) A[i*nz+k]=1; } }
+    T.fill(0);
+    for(let k=0;k<nz;k++){ let akhir=-1e9; for(let i=0;i<nx;i++){ if(A[i*nz+k]) akhir=i; if(i-akhir<=n) T[i*nz+k]=1; }
+      akhir=1e9; for(let i=nx-1;i>=0;i--){ if(A[i*nz+k]) akhir=i; if(akhir-i<=n) T[i*nz+k]=1; } }
+  }
+  return {T,nx,nz,x0,z0,c};
+}
+function buildAtap(lv){
+  const P=PROJECT.atap||{tritisan:0.6,tebal:0.12};
+  const tp=tapakAtap(lv,P.tritisan); if(!tp) return null;
+  const {T,nx,nz,x0,z0,c}=tp;
+  // kolom-kolom sel dengan selang z yang sama digabung jadi satu pita
+  const selang=i=>{ const out=[]; let a=-1;
+    for(let k=0;k<=nz;k++){ const isi=k<nz&&T[i*nz+k]; if(isi&&a<0) a=k; if(!isi&&a>=0){ out.push([z0+a*c,z0+k*c]); a=-1; } }
+    return out; };
+  const strips=[]; let prev=null, kunciPrev='';
+  for(let i=0;i<nx;i++){
+    const iv=selang(i), kunci=iv.map(v=>v.join(',')).join(';');
+    if(prev && kunci===kunciPrev){ prev.xb=x0+(i+1)*c; continue; }
+    if(iv.length){ prev={xa:x0+i*c, xb:x0+(i+1)*c, iv}; strips.push(prev); } else prev=null;
+    kunciPrev=kunci;
+  }
+  if(!strips.length) return null;
+  for(const st of strips) st.free=st.iv.map(([a,b])=>[a,b,a,b]);
+  const di=(x,z)=>{ const i=Math.floor((x-x0)/c), k=Math.floor((z-z0)/c); return i>=0&&k>=0&&i<nx&&k<nz&&T[i*nz+k]===1; };
+  const m=new THREE.Mesh(slabGeometry(strips,P.tebal,di),[finMat(FINISH,'beton'),finMat(FINISH,'cat')]);
+  let h=lv.height; for(const w of lv.walls) if(!w.rail) h=Math.max(h,wallH(w,lv));
+  m.position.y=h+P.tebal;                           // sisi bawah tepat di puncak dinding tertinggi
+  m.castShadow=true; m.receiveShadow=true; m.userData.atap=true;
+  return m;
+}
+function renderAtapUI(){
+  const P=PROJECT.atap||{};
+  const t=$('#atapTritisan'); if(t) t.value=String(P.tritisan??0.6);
+  const a=$('#atapMode'); if(a) a.value=ATAP_TUTUP?'tutup':'buka';
+  const lbl=ATAP_TUTUP?'Tertutup':'Terbuka';
+  const b=$('#roofBtn'); if(b){ b.classList.toggle('on',ATAP_TUTUP); b.querySelector('.lb').textContent='Atap'; b.title='Plat atap: '+lbl.toLowerCase()+' — ketuk untuk '+(ATAP_TUTUP?'membuka':'menutup')+' (T)'; }
+  const f=$('#fpsRoof'); if(f) f.textContent='Atap: '+lbl;
+}
+function toggleAtap(v){
+  ATAP_TUTUP = v===undefined ? !ATAP_TUTUP : !!v;
+  renderAtapUI(); rebuildScene();
+  toast(ATAP_TUTUP?'Plat atap ditutup — ruangan terlindung dari matahari dan langit':'Plat atap dibuka — isi lantai teratas terlihat dari atas');
 }
 
 function buildSlab(lv){
@@ -3519,6 +3620,7 @@ function rebuildScene0(){
     lg.add(buildJunctions(lv));
     if(lv.slab && showSlabOpt){ const s=buildSlab(lv); if(s) lg.add(s); }
     for(const o of lv.objects) lg.add(buildObject(o,lv));
+    if(ATAP_TUTUP && idx===PROJECT.levels.length-1){ const a=buildAtap(lv); if(a) lg.add(a); }
 
     if(idx!==PROJECT.active && modeLain==='ghost'){
       lg.traverse(m=>{ if(m.isMesh){ m.material=ghost(m.material); m.castShadow=false; m.receiveShadow=false; } });
@@ -4471,9 +4573,10 @@ addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   // saat berjalan, W A S D dan kawan-kawan milik mode jalan — jangan sampai
   // ikut mengganti alat edit atau memindah kamera
-  if(FPS.on){ if(k==='g') toggleWallGhost(); return; }
+  if(FPS.on){ if(k==='g') toggleWallGhost(); else if(k==='t') toggleAtap(); return; }
   if(k==='h' && !e.ctrlKey && !e.metaKey){ toggleSidebar(); return; }
   if(k==='g' && !e.ctrlKey && !e.metaKey){ toggleWallGhost(); return; }
+  if(k==='t' && !e.ctrlKey && !e.metaKey){ toggleAtap(); return; }
   if(k==='q') setTool('select');
   else if(k==='w') setTool('translate');
   else if(k==='e') setTool('rotate');
@@ -7121,7 +7224,8 @@ $('#loadInput').addEventListener('change',e=>{
       PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
       PROJECT.finish=Object.assign({in:'cat',out:'plester',floor:'keramik',
                                     inColor:'#efece5',outColor:'#d9d3c7'}, j.finish||{});
-      renderFinishUI();
+      PROJECT.atap=Object.assign({tritisan:0.6, tebal:0.12}, j.atap||{});
+      renderFinishUI(); renderAtapUI();
       SEL=null; $('#projName').value=PROJECT.name;
       renderLevels(); renderCatalogs(); rebuildScene();
       resetHistory('Proyek dimuat');
@@ -7302,6 +7406,9 @@ function toggleWallGhost(){
   toast(WALL_GHOST?'Tembok tembus pandang — kusen dan pintu tetap padat':'Tembok padat');
 }
 $('#wallModeBtn').onclick=toggleWallGhost;
+$('#roofBtn').onclick=()=>toggleAtap();
+$('#atapMode').onchange=e=>toggleAtap(e.target.value==='tutup');
+$('#atapTritisan').onchange=e=>{ PROJECT.atap=Object.assign({tebal:0.12},PROJECT.atap,{tritisan:+e.target.value}); if(ATAP_TUTUP) rebuildScene(); else toggleAtap(true); };
 
 LAMPU.push(hemiL,ambL);
 $('#pbrOn').onchange=e=>{
@@ -7586,6 +7693,7 @@ $('#fpsFull').onclick=()=>{
   else masukLayarPenuh();
 };
 $('#fpsWall').onclick=()=>toggleWallGhost();
+$('#fpsRoof').onclick=()=>toggleAtap();
 $('#walkBtn').onclick=enterFPS;
 $('#fpsExit').onclick=exitFPS;
 /* Pointer lock bisa lepas karena banyak hal — Esc pertama, pindah jendela,
@@ -7942,6 +8050,7 @@ $('#wallH').addEventListener('change',e=>{
 renderCatalogs();
 renderFinishUI();
 setRenderQuality('halus');
+renderAtapUI();
 pasangPantulanLogam();
 setSuasana('siang');
 window.__siap=true;
