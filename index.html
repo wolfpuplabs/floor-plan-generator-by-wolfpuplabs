@@ -112,6 +112,9 @@ details#adv>*:not(summary){margin-bottom:8px}
 #toolbar .ic{font-size:.95rem;line-height:1;min-width:1em;text-align:center}
 #viewport.sempit #toolbar .lb{display:none}
 #viewport.sempit #toolbar button{padding:7px 8px}
+#viewport.rapat #toolbar{gap:0}
+#viewport.rapat #toolbar button{padding:7px 5px}
+#viewport.rapat #toolbar .sep{margin:4px 2px}
 #viewbar{right:12px;bottom:12px;display:flex;gap:2px;padding:4px}
 #viewbar button{background:none;border:none;color:var(--muted);padding:6px 9px;border-radius:5px;font:600 .68rem/1 inherit;cursor:pointer;min-height:30px}
 #viewbar button.active{background:#2a2a33;color:var(--txt)}
@@ -625,6 +628,12 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(viewport.clientWidth, viewport.clientHeight);
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFShadowMap;      // PCF + radius: tepi bayangan melunak (penumbra)
+// peta bayangan tidak digambar ulang tiap frame: hanya saat bangunan, pintu,
+// matahari, atau posisi lampu berubah. Itu yang membuat bayangan lampu (6 kubus
+// bayangan) terjangkau di iPad.
+renderer.shadowMap.autoUpdate=false;
+let BAYANG_KOTOR=2, BAYANG_JEDA=0;
+function bayangKotor(){ BAYANG_KOTOR=Math.max(BAYANG_KOTOR,1); }
 viewport.appendChild(renderer.domElement);
 
 const orbit=new THREE.OrbitControls(camera, renderer.domElement);
@@ -642,8 +651,30 @@ sun.shadow.radius=3.5; sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.02;
 sun.shadow.camera.near=1; sun.shadow.camera.far=140;
 sun.shadow.camera.left=-45; sun.shadow.camera.right=45;
 sun.shadow.camera.top=45; sun.shadow.camera.bottom=-45;
-sun.shadow.bias=-0.0006;
-scene.add(sun);
+sun.shadow.bias=-0.0005;
+sun.userData.arah=new THREE.Vector3(22,34,16).normalize();
+scene.add(sun, sun.target);
+/* kotak bayangan matahari dipas ke bangunan (bukan 90 × 90 m tetap): satu
+   texel bayangan jadi ±1 cm, tepinya halus alih-alih bergerigi */
+function pasBayangMatahari(){
+  const bb=new THREE.Box3();
+  for(const lg of worldRoot.children) if(lg.visible) bb.expandByObject(lg);
+  if(bb.isEmpty()) bb.set(new THREE.Vector3(-8,0,-8),new THREE.Vector3(8,4,8));
+  bb.expandByScalar(0.6);
+  const c=bb.getCenter(new THREE.Vector3()), R=bb.getSize(new THREE.Vector3()).length()/2;
+  sun.target.position.copy(c); sun.target.updateMatrixWorld();
+  sun.position.copy(c).addScaledVector(sun.userData.arah,R+20);
+  const cam=sun.shadow.camera;
+  cam.position.copy(sun.position); cam.lookAt(c); cam.updateMatrixWorld();
+  const inv=cam.matrixWorldInverse, v=new THREE.Vector3();
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9;
+  for(let i=0;i<8;i++){
+    v.set(i&1?bb.max.x:bb.min.x, i&2?bb.max.y:bb.min.y, i&4?bb.max.z:bb.min.z).applyMatrix4(inv);
+    x0=Math.min(x0,v.x); x1=Math.max(x1,v.x); y0=Math.min(y0,v.y); y1=Math.max(y1,v.y); z0=Math.min(z0,v.z); z1=Math.max(z1,v.z);
+  }
+  cam.left=x0; cam.right=x1; cam.bottom=y0; cam.top=y1; cam.near=Math.max(0.1,-z1-1); cam.far=-z0+1;
+  cam.updateProjectionMatrix(); bayangKotor();
+}
 
 const grid=new THREE.GridHelper(120,120,0x2f4a46,0x1e1e24);
 grid.position.y=-0.005;
@@ -651,7 +682,8 @@ scene.add(grid);
 
 const gizmo=new THREE.TransformControls(camera, renderer.domElement);
 gizmo.setSize(0.85);
-gizmo.addEventListener('dragging-changed', e=>{ orbit.enabled=!e.value; if(!e.value) commitGizmo(); });
+gizmo.addEventListener('dragging-changed', e=>{ orbit.enabled=!e.value; if(!e.value){ commitGizmo(); BAYANG_JEDA=0; bayangKotor(); } });
+gizmo.addEventListener('objectChange', ()=>{ if(BAYANG_JEDA<=0){ bayangKotor(); BAYANG_JEDA=0.12; } });
 gizmo.addEventListener('objectChange', onGizmoChange);
 scene.add(gizmo);
 
@@ -681,6 +713,7 @@ function aturInspector(){
 }
 function fitViewport(){
   viewport.classList.toggle('sempit', viewport.clientWidth<1080);
+  viewport.classList.toggle('rapat', viewport.clientWidth<860);    // iPad dengan panel samping terbuka: tetap satu baris
   aturInspector();
   const w=viewport.clientWidth, h=viewport.clientHeight;
   if(!w||!h) return;
@@ -696,7 +729,7 @@ if(window.ResizeObserver) new ResizeObserver(()=>aturInspector()).observe(docume
 /* Keadaan mode jalan-jalan dideklarasikan di sini, bukan di modulnya jauh di
    bawah: loop render langsung berjalan begitu baris ini dilewati, sehingga ia
    tidak boleh menyentuh const yang belum sempat dibuat. */
-const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:1.8, run:3.2,
+const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:2.3, run:3.9,
             vy:0, feet:0, keys:new Set(), look:null, move:null, save:null };
 const clock=new THREE.Clock();
 (function animate(){
@@ -705,6 +738,8 @@ const clock=new THREE.Clock();
   if(FPS.on) fpsStep(dt); else orbit.update();
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
+  BAYANG_JEDA-=dt;
+  if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
   renderer.render(scene,camera);
 })();
 
@@ -1242,7 +1277,10 @@ function buildWallGroup(w, lv){
   }
   if(cur<len-1e-4) panels.push([cur,len,0,h]);
 
-  for(const [x0,x1,y0,y1] of panels){
+  for(const [x0,x1,y00,y1] of panels){
+    // kaki dinding dibenamkan 6 cm ke pelat: tak terlihat, tetapi peta bayangan
+    // lampu tidak lagi punya celah di pertemuan dinding–lantai (garis cahaya bocor)
+    const y0 = y00<=0.001 ? -0.06 : y00;
     const pw=x1-x0, ph=y1-y0;
     if(pw<0.004||ph<0.004) continue;
     const pnl=box(pw,ph,t,mat, x0+pw/2-len/2, y0+ph/2, 0);
@@ -1447,7 +1485,7 @@ function stepAnim(dt){
     const tgt=bukaan(a.op);
     if(Math.abs(a.cur-tgt)<1e-3) continue;
     const d=tgt-a.cur, lang=dt*1.7;                    // ±0,6 detik untuk membuka penuh
-    a.cur = Math.abs(d)<=lang ? tgt : a.cur+Math.sign(d)*lang;
+    a.cur = Math.abs(d)<=lang ? tgt : a.cur+Math.sign(d)*lang; bayangKotor();
     const e=a.cur<0.5 ? 2*a.cur*a.cur : 1-Math.pow(-2*a.cur+2,2)/2;   // ease in-out
     for(const f of a.fns) f(e);
   }
@@ -1648,8 +1686,8 @@ function buildJunctions(lv){
       mi, mi,                                                             // atas, bawah
       Math.abs(nd.z-bb.z1)<tepi?mo:mi, Math.abs(nd.z-bb.z0)<tepi?mo:mi    // +z, −z
     ] : mi;
-    const m=box(nd.t,nd.h,nd.t,mat, nd.x, nd.h/2, nd.z);
-    planarUV(m.geometry, nd.x, nd.h/2, nd.z);
+    const m=box(nd.t,nd.h+0.06,nd.t,mat, nd.x, (nd.h-0.06)/2, nd.z);
+    planarUV(m.geometry, nd.x, (nd.h-0.06)/2, nd.z);
     m.userData.wallPanel=true;
     g.add(m);
   }
@@ -3282,7 +3320,13 @@ function hiasNyala(g,o){
       sp.userData={noExport:true, halo:true}; sp.raycast=()=>{}; sp.renderOrder=5;
       g.add(sp);
     }
-    if(pts.length){ const c=new THREE.Vector3(); for(const p of pts) c.add(p); c.multiplyScalar(1/pts.length); g.userData.lampuTitik=c; }
+    if(pts.length){ const c=new THREE.Vector3(); for(const p of pts) c.add(p); c.multiplyScalar(1/pts.length); g.userData.lampuTitik=c;
+      // kap, bohlam, dan rumah lampu yang melingkupi titik cahaya tidak ikut
+      // melempar bayangan — kalau ikut, lampunya menggelapkan dirinya sendiri
+      const bx=new THREE.Box3();
+      g.traverse(m=>{ if(!m.isMesh) return;
+        if(m.userData.nyala || bx.setFromObject(m).expandByScalar(0.08).containsPoint(c)) m.castShadow=false; });
+    }
     terapkanNyala(g,!MATI.has(o.id));
   }
   if(jenis==='tv') terapkanTV(g,TV_NYALA.has(o.id));
@@ -3321,8 +3365,14 @@ function kumpulkanLampu(){
   });
   LAMPU_T=0;
 }
-const KOLAM=[];                        // lampu titik tetap: 6 buah, dipakai bergiliran
-for(let i=0;i<6;i++){ const l=new THREE.PointLight(0xffc98a,0,7,2); l.castShadow=false; scene.add(l); KOLAM.push(l); }
+const KOLAM=[];                        // lampu titik tetap: 4 buah berbayang, dipakai bergiliran oleh lampu terdekat
+for(let i=0;i<4;i++){
+  // berbayang: cahaya lampu berhenti di dinding, tidak tembus ke ruang sebelah
+  const l=new THREE.PointLight(0xffc98a,0,7,2); l.castShadow=true;
+  l.shadow.mapSize.set(512,512); l.shadow.bias=-0.0012; l.shadow.normalBias=0.015; l.shadow.radius=4;
+  l.shadow.camera.near=0.08; l.shadow.camera.far=7;
+  scene.add(l); KOLAM.push(l);
+}
 let LAMPU_T=0;
 function stepLampu(dt){
   LAMPU_T-=dt;
@@ -3332,11 +3382,17 @@ function stepLampu(dt){
     const aktif=LAMPU_PASANG.filter(L=>!MATI.has(L.id) && levelGroups[L.idx] && levelGroups[L.idx].visible
                                        && (FPS.on || L.idx===PROJECT.active || $('#otherLevels').value==='solid'))
                             .sort((a,b)=>a.pos.distanceToSquared(ref)-b.pos.distanceToSquared(ref)).slice(0,KOLAM.length);
-    KOLAM.forEach((l,i)=>{ const L=aktif[i]; l.userData.L=L||null;
+    // lampu yang masih termasuk terdekat tetap di slotnya: slot yang berpindah
+    // memaksa peta bayangan digambar ulang, jadi pengacakan urutan dihindari
+    const sisa=aktif.filter(L=>!KOLAM.some(l=>l.userData.L===L));
+    KOLAM.forEach(l=>{ if(l.userData.L && !aktif.includes(l.userData.L)) l.userData.L=null; });
+    KOLAM.forEach(l=>{ if(!l.userData.L && sisa.length){ l.userData.L=sisa.shift(); bayangKotor(); } });
+    KOLAM.forEach(l=>{ const L=l.userData.L;
       if(!L){ l.intensity=0; return; }
+      if(l.position.distanceToSquared(L.pos)>0.01) bayangKotor();
       l.position.copy(L.pos); l.position.y-=0.05;
       l.color.setHex(L.jenis==='api'?0xff9a4a:0xffc98a);
-      l.distance = L.jenis==='api'?6:7; });
+      l.distance = L.jenis==='api'?6:7; l.shadow.camera.far=l.distance; });
   }
   const s=SUASANA[MOOD], tk=performance.now()/1000;
   for(const l of KOLAM){ const L=l.userData.L; if(!L){ l.intensity=0; continue; }
@@ -3440,6 +3496,7 @@ function rebuildScene(){
   try{ rebuildScene0(); } finally { REG=false; }
   kumpulkanLampu();
   rebuildDims();
+  pasBayangMatahari();
 }
 function rebuildScene0(){
   while(worldRoot.children.length){
@@ -3468,8 +3525,13 @@ function rebuildScene0(){
     } else if(WALL_GHOST && (idx===PROJECT.active || FPS.on)){
       // hanya badan dinding yang dibuat tembus pandang; kusen, daun pintu,
       // dan kaca tetap padat supaya letak bukaan masih terbaca
-      lg.traverse(m=>{ if(m.isMesh && m.userData.wallPanel){ m.material=ghostWall(m.material); m.castShadow=false; } });
+      // tetap menghalangi cahaya: tembus pandang untuk mata, bukan untuk lampu
+      lg.traverse(m=>{ if(m.isMesh && m.userData.wallPanel){ m.material=ghostWall(m.material); } });
     }
+    // dinding membayangi dari muka yang menghadap cahaya (bawaan three.js: muka
+    // belakang). Dengan muka belakang, kaki dinding hanya berselisih beberapa cm
+    // dari lantai ruang sebelah sehingga cahaya lampu merembes sebagai garis.
+    lg.traverse(m=>{ if(m.isMesh && m.userData.wallPanel) for(const x of [].concat(m.material)) x.shadowSide=THREE.FrontSide; });
     // penanda void hanya alat bantu editor; saat berjalan ia tampil seperti
     // kaca hijau yang melayang di atas tangga, jadi disembunyikan
     if(FPS.on) lg.traverse(m=>{ if(m.userData.noExport && !m.userData.halo) m.visible=false; });
@@ -7182,6 +7244,7 @@ function setSuasana(k){
   const q=RQ[RQ_KINI]||RQ.halus; renderer.toneMappingExposure=q.exp*s.exp;
   for(const id of ['#mood','#fpsMood']){ const e=$(id); if(e) e.value=MOOD; }
   terapkanLangit(); LAMPU_T=0;
+  sun.userData.arah.set(...s.sunPos).normalize(); pasBayangMatahari();
 }
 function setRenderQuality(k){
   RQ_KINI=RQ[k]?k:'halus';
@@ -7190,6 +7253,9 @@ function setRenderQuality(k){
   renderer.toneMapping=q.tone; renderer.toneMappingExposure=q.exp*((SUASANA[MOOD]||SUASANA.siang).exp);
   sun.shadow.mapSize.set(q.bayang,q.bayang);
   if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
+  for(const l of KOLAM){ const n=q.bayang>=4096?1024:q.bayang>=2048?512:256; l.shadow.mapSize.set(n,n);
+    if(l.shadow.map){ l.shadow.map.dispose(); l.shadow.map=null; } }
+  bayangKotor();
   scene.traverse(m=>{ if(m.isMesh&&m.material) [].concat(m.material).forEach(x=>x.needsUpdate=true); });
   $('#rqNote').textContent=q.n+` Piksel sekarang ${fmt(renderer.getPixelRatio(),2)}×.`;
 }
