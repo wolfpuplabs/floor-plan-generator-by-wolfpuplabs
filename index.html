@@ -102,6 +102,13 @@ details#adv>*:not(summary){margin-bottom:8px}
 .cat-item{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 4px;text-align:center;cursor:pointer;font-size:.63rem;color:var(--muted);line-height:1.25;transition:.15s}
 .cat-item:hover{border-color:var(--accent);color:var(--txt);background:#23232b}
 .cat-item .ic{font-size:1.15rem;display:block;margin-bottom:3px}
+.thumb{display:block;width:92px;height:64px;margin:0 auto 4px;background-repeat:no-repeat;background-position:center;background-size:contain}
+.thumb-latar{display:block;margin:-4px -2px 0;padding-top:2px;border-radius:5px;background:radial-gradient(ellipse 46% 52% at 50% 56%,rgba(255,250,240,.13),rgba(255,250,240,.04) 60%,transparent 75%)}
+.thumb.kosong{background:radial-gradient(circle at 50% 60%,#2e2e38 0 30%,transparent 31%)}
+.model-btn{display:flex;align-items:center;gap:6px;text-align:left}
+.model-btn .thumb-latar{margin:0;padding:0;flex:0 0 46px}
+.model-btn .thumb{width:46px;height:32px;margin:0}
+.model-btn span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- VIEWPORT ---------- */
 #viewport{flex:1;min-width:0;position:relative;background:#0a0a0c;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
@@ -4868,28 +4875,30 @@ function snapToWall(o,walls,back,maxD){
   o.x=best.px+nx*off; o.z=best.pz+nz*off; o.rotY=Math.atan2(nx,nz);
   return true;
 }
+/* parameter awal tiap jenis objek — dipakai saat menambah objek dan saat
+   menggambar thumbnail katalog, supaya keduanya selalu sama */
+function paramsAwal(kind,type){
+  if(kind==='stair')
+    return { variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
+             rise:0, steps:0, radius:type==='curved'?2.0:0.95, sweep:type==='curved'?180:270,
+             inner:0.9, landing:1.1, gap:0.1, railing:true, mirror:false };
+  if(kind==='column') return {w:0.3, d:0.3};
+  // void yang dibuat sendiri adalah lubang terbuka di lantai, jadi pagarnya
+  // langsung dipasang; void dari tangga dibiarkan terbuka karena tangganya
+  // sendiri yang mengisi lubang itu
+  if(kind==='void') return type==='L'
+      ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5, railing:true, railH:STD.guardH, openSides:[] }
+      : { shape:'rect', w:1.2, d:3.0, railing:true, railH:STD.guardH, openSides:[] };
+  return {};
+}
 function addObject(kind,type){
   const lv=L();
   const t=orbit.target;
   const o={ id:uid('ob'), kind, type, x:Math.round(t.x*20)/20, y:0, z:Math.round(t.z*20)/20,
-            rotY:0, sx:1, sy:1, sz:1, params:{} };
-  if(kind==='stair'){
-    o.params={ variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
-               rise:0, steps:0, radius:type==='curved'?2.0:0.95, sweep:type==='curved'?180:270,
-               inner:0.9, landing:1.1, gap:0.1,
-               railing:true, mirror:false };
-  }
-  // void yang dibuat sendiri adalah lubang terbuka di lantai, jadi pagarnya
-  // langsung dipasang; void dari tangga dibiarkan terbuka karena tangganya
-  // sendiri yang mengisi lubang itu
-  if(kind==='model') o.params={};
-  if(kind==='column') o.params={w:0.3, d:0.3};
+            rotY:0, sx:1, sy:1, sz:1, params:paramsAwal(kind,type) };
   let menempel=false;
   if(kind==='furn' && FURN[type] && FURN[type].wall)
     menempel=snapToWall(o,lv.walls,FURN[type].back!=null?FURN[type].back:FURN[type].f[1]/2);
-  if(kind==='void') o.params = type==='L'
-      ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5, railing:true, railH:STD.guardH, openSides:[] }
-      : { shape:'rect', w:1.2, d:3.0, railing:true, railH:STD.guardH, openSides:[] };
   lv.objects.push(o);
   SEL={kind:'obj',id:o.id};
   HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
@@ -7675,21 +7684,21 @@ function renderCatalogs(){
   const cs=$('#cat-stairs'); cs.innerHTML='';
   for(const [k,v] of Object.entries(STAIRS)){
     const b=el('div','cat-item');
-    b.innerHTML=`<span class="ic">${v.i}</span>${v.l}`;
+    b.innerHTML=ikonObjek('stair',k)+v.l;
     b.onclick=()=>addObject('stair',k);
     cs.appendChild(b);
   }
   const ck=$('#cat-struct'); ck.innerHTML='';
   for(const [t,ic,lb] of [['rect','■','Kolom persegi'],['round','●','Kolom bulat']]){
     const b=el('div','cat-item');
-    b.innerHTML=`<span class="ic">${ic}</span>${lb}`;
+    b.innerHTML=ikonObjek('column',t)+lb;
     b.onclick=()=>addObject('column',t);
     ck.appendChild(b);
   }
   const cv=$('#cat-void'); cv.innerHTML='';
   for(const [t,ic,lb] of [['rect','▭','Void persegi'],['L','◣','Void bentuk L']]){
     const bv=el('div','cat-item');
-    bv.innerHTML=`<span class="ic">${ic}</span>${lb}`;
+    bv.innerHTML=ikonObjek('void',t)+lb;
     bv.title='Lubang pada pelat lantai aktif';
     bv.onclick=()=>addObject('void',t);
     cv.appendChild(bv);
@@ -7700,7 +7709,8 @@ function renderCatalogs(){
   if(!ids.length) ml.appendChild(el('p','hint','Belum ada model diunggah.'));
   for(const id of ids){
     const a=PROJECT.assets[id], row=el('div','row');
-    const badd=el('button','btn sm', a.name);
+    const badd=el('button','btn sm model-btn');
+    badd.innerHTML=ikonObjek('model',id)+'<span></span>'; badd.lastChild.textContent=a.name;
     badd.title=`${(a.dims||[]).map(v=>fmt(v,2)).join(' × ')} m · ${fmt(a.size/1024,0)} KB`
              + (ASSET_OBJ.has(id)?'':' · berkas gagal diurai');
     badd.onclick=()=>addObject('model',id);
@@ -7713,17 +7723,122 @@ function renderCatalogs(){
   }
 
   const cf=$('#cat-furn'); cf.innerHTML='';
+  requestAnimationFrame(isiThumbAntri);
   const filt=$('#furn-filter').value;
   for(const [k,v] of Object.entries(FURN)){
     if(filt!=='all'&&v.c!==filt) continue;
     const b=el('div','cat-item');
-    b.innerHTML=`<span class="ic">${v.i}</span>${v.l}`;
+    b.innerHTML=ikonObjek('furn',k)+v.l;
     b.title=`${v.f[0]}×${v.f[1]} m`;
     b.onclick=()=>addObject('furn',k);
     cf.appendChild(b);
   }
 }
 $('#furn-filter').addEventListener('change',renderCatalogs);
+
+/* =====================================================================
+   THUMBNAIL KATALOG — gambar 3D kecil tiap objek, digambar dengan builder
+   yang sama dengan objek sungguhan. Semuanya sudah dirender sekali ke satu
+   atlas (thumbs.webp) sehingga membuka tab Objek tidak membebani iPad sama
+   sekali; objek yang belum ada di atlas (objek baru, model .glb unggahan)
+   digambar di tempat, satu per satu saat senggang.
+   ===================================================================== */
+const THUMB_ATLAS=/*ATLAS*/{"src":"thumbs.webp?v=f0af8263","kol":10,"keys":["stair:straight","stair:landing","stair:l_shape","stair:u_shape","stair:spiral","stair:curved","column:rect","column:round","void:rect","void:L","furn:bed_single","furn:bed_double","furn:bed_king","furn:nightstand","furn:wardrobe","furn:sofa2","furn:sofa3","furn:armchair","furn:coffee_table","furn:tv_set","furn:rug","furn:dining4","furn:dining6","furn:chair","furn:kitchen","furn:island","furn:stove","furn:fridge","furn:sink","furn:toilet","furn:washbasin","furn:bathtub","furn:shower","furn:desk","furn:office_chair","furn:bookshelf","furn:plant","furn:bunk","furn:crib","furn:dresser","furn:vanity_table","furn:wardrobe3","furn:sofa_l","furn:side_table","furn:floor_lamp","furn:dining8","furn:buffet","furn:bar_stool","furn:kitchen_l","furn:upper_cab","furn:washer","furn:vanity","furn:shower_box","furn:filing","furn:ac_split","furn:car","furn:motorcycle","furn:plant_big","furn:art_canvas","furn:art_triptych","furn:gallery_wall","furn:mirror_round","furn:mirror_arch","furn:mirror_floor","furn:wall_shelf","furn:wall_clock","furn:tv_wall","furn:slat_panel","furn:curtain","furn:pendant","furn:pendant_trio","furn:chandelier","furn:table_lamp","furn:night_lamp","furn:arc_lamp","furn:wall_sconce","furn:monstera","furn:fiddle_leaf","furn:snake_plant","furn:hanging_plant","furn:cactus","furn:rug_round","furn:rug_oval","furn:rug_runner","furn:rug_organic","furn:rug_persia","furn:rug_berber","furn:display_cab","furn:shoe_cab","furn:console_tbl","furn:tv_console","furn:pantry","furn:kitchen_line","furn:kitchen_l2","furn:kitchen_u","furn:kitchen_par","furn:kitchen_isl","furn:range_hood","furn:fire_modern","furn:fire_classic","furn:wood_stove","furn:dining_round","furn:ottoman","furn:bench","furn:rattan_chair","furn:piano","furn:room_divider","furn:coat_rack","furn:floor_vase","furn:music_box","furn:vinyl_player","furn:cassette_player","furn:cd_player"]}/*ATLAS*/;
+const THUMB={W:184, H:128, url:new Map(), antri:[], sibuk:false, atlasGagal:false};
+const THUMB_IDX = THUMB_ATLAS ? new Map(THUMB_ATLAS.keys.map((k,i)=>[k,i])) : new Map();
+if(THUMB_ATLAS){ const im=new Image(); im.onerror=()=>{ THUMB.atlasGagal=true; renderCatalogs(); }; im.src=THUMB_ATLAS.src; }
+function ikonObjek(kind,type){
+  const k=kind+':'+type, i=THUMB_IDX.get(k);
+  if(i!=null && !THUMB.atlasGagal && kind!=='model'){
+    const A=THUMB_ATLAS, kol=i%A.kol, bar=Math.floor(i/A.kol), rows=Math.ceil(A.keys.length/A.kol);
+    return `<span class="thumb-latar"><span class="thumb" style="background-image:url(${A.src});background-size:${A.kol*92}px ${rows*64}px;background-position:${-kol*92}px ${-bar*64}px"></span></span>`;
+  }
+  if(THUMB.url.has(k)) return `<span class="thumb-latar"><span class="thumb" style="background-image:url(${THUMB.url.get(k)})"></span></span>`;
+  if(!THUMB.antri.includes(k)) THUMB.antri.push(k);
+  return `<span class="thumb-latar"><span class="thumb kosong" data-thumb="${k}"></span></span>`;
+}
+function isiThumbAntri(){
+  if(THUMB.sibuk || !THUMB.antri.length) return;
+  THUMB.sibuk=true;
+  const langkah=()=>{
+    const k=THUMB.antri.shift();
+    if(k && !THUMB.url.has(k)){
+      const [kind,...r]=k.split(':'), type=r.join(':');
+      const c=gambarThumb(kind,type);
+      if(c){ const u=c.toDataURL('image/png'); THUMB.url.set(k,u);
+        for(const e of document.querySelectorAll(`.thumb[data-thumb="${CSS.escape(k)}"]`)){ e.classList.remove('kosong'); e.style.backgroundImage=`url(${u})`; } }
+    }
+    if(THUMB.antri.length) (window.requestIdleCallback||setTimeout)(langkah,{timeout:120});
+    else THUMB.sibuk=false;
+  };
+  (window.requestIdleCallback||setTimeout)(langkah,{timeout:120});
+}
+function thumbStudio(){
+  if(THUMB.sc) return THUMB.sc;
+  const sc=new THREE.Scene();
+  sc.add(new THREE.HemisphereLight(0xfffaf2,0x857c70,0.8));
+  const kunci=new THREE.DirectionalLight(0xffffff,1.1); kunci.position.set(-2.5,5,3.5); sc.add(kunci);
+  const isi=new THREE.DirectionalLight(0xdce6ff,0.45); isi.position.set(3.5,2,-2); sc.add(isi);
+  const blik=new THREE.DirectionalLight(0xffffff,0.7); blik.position.set(-1,3,-4); sc.add(blik);   // cahaya tepi: benda gelap tetap terbaca di panel gelap
+  sc.environment=studioEnv('siang');
+  // bayangan kontak lembut di bawah benda yang berdiri di lantai
+  const tex=decoTex('bayang_kontak',128,(c,S)=>{ const g=c.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+    g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.55,'rgba(255,255,255,.45)'); g.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle='#000'; c.fillRect(0,0,S,S); c.fillStyle=g; c.fillRect(0,0,S,S); });
+  THUMB.blob=new THREE.Mesh(new THREE.PlaneGeometry(1,1), new THREE.MeshBasicMaterial({color:0x000000, alphaMap:tex, transparent:true, opacity:.45, depthWrite:false}));
+  THUMB.blob.rotation.x=-Math.PI/2; sc.add(THUMB.blob);
+  THUMB.cam=new THREE.PerspectiveCamera(26,THUMB.W/THUMB.H,0.01,200);
+  THUMB.rt=new THREE.WebGLRenderTarget(THUMB.W*2,THUMB.H*2);
+  return THUMB.sc=sc;
+}
+function gambarThumb(kind,type,R=renderer){
+  if(kind==='furn' && !FURN[type]) return null;
+  if(kind==='model' && !ASSET_OBJ.has(type)) return null;
+  const sc=thumbStudio();
+  const o={id:'thumb_'+type, kind, type, x:0, y:0, z:0, rotY:0, sx:1, sy:1, sz:1, params:paramsAwal(kind,type)};
+  let g;
+  try{ g=buildObject(o,{height:3.2, walls:[], objects:[], slab:false}); }catch(e){ return null; }
+  g.traverse(c=>{ if(c.isSprite || c.userData.hit) c.visible=false; });
+  sc.add(g); g.updateMatrixWorld(true);
+  const bb=new THREE.Box3();
+  g.traverse(c=>{ if(c.isMesh && c.visible){ let v=true, n=c; while(n){ if(!n.visible){ v=false; break; } n=n.parent; } if(v) bb.expandByObject(c); } });
+  if(bb.isEmpty()){ sc.remove(g); disposeTree(g); return null; }
+  const uk=bb.getSize(new THREE.Vector3()), lebar=Math.max(uk.x,uk.z,0.2);
+  if(bb.min.y>0.9 && uk.y>1.2*lebar) bb.max.y=bb.min.y+lebar*1.2;       // lampu gantung: kabel panjang tidak ikut dibingkai
+  const c=bb.getCenter(new THREE.Vector3());
+  // bayangan kontak
+  const dilantai=bb.min.y<0.08;
+  THUMB.blob.visible=dilantai;
+  if(dilantai){ THUMB.blob.position.set(c.x,bb.min.y+0.002,c.z); THUMB.blob.scale.set(uk.x*1.35+0.15,uk.z*1.35+0.15,1); }
+  // kamera 3/4 dari depan-kanan-atas, dibingkai pas dengan proyeksi sudut kotak
+  const cam=THUMB.cam, arah=(kind==='stair'?new THREE.Vector3(1,0.5,0.45):new THREE.Vector3(0.62,0.52,1)).normalize();   // tangga dilihat dari samping: larinya terbaca
+  let jarak=bb.getSize(new THREE.Vector3()).length()/2/Math.sin(cam.fov/2*D2R);
+  const v=new THREE.Vector3();
+  for(let it=0;it<3;it++){
+    cam.position.copy(c).addScaledVector(arah,jarak); cam.lookAt(c); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+    let m=0;
+    for(let k=0;k<8;k++){ v.set(k&1?bb.max.x:bb.min.x, k&2?bb.max.y:bb.min.y, k&4?bb.max.z:bb.min.z).project(cam); m=Math.max(m,Math.abs(v.x),Math.abs(v.y)); }
+    jarak*=m/0.84;
+  }
+  cam.near=jarak/50; cam.far=jarak*4; cam.updateProjectionMatrix();
+  // render ke target 2× lalu diperkecil (anti-alias), keadaan renderer utama dipulihkan
+  const warna=R.getClearColor(new THREE.Color()), alfa=R.getClearAlpha(), perlu=R.shadowMap.needsUpdate;
+  R.setRenderTarget(THUMB.rt); R.setClearColor(0x000000,0); R.clear(); R.render(sc,cam); 
+  const W2=THUMB.W*2, H2=THUMB.H*2, px=new Uint8Array(W2*H2*4);
+  R.readRenderTargetPixels(THUMB.rt,0,0,W2,H2,px);
+  R.setRenderTarget(null); R.setClearColor(warna,alfa); R.shadowMap.needsUpdate=perlu;
+  sc.remove(g); disposeTree(g);
+  const besar=document.createElement('canvas'); besar.width=W2; besar.height=H2;
+  const bx=besar.getContext('2d'), img=bx.createImageData(W2,H2);
+  for(let y=0;y<H2;y++) img.data.set(px.subarray((H2-1-y)*W2*4,(H2-y)*W2*4),y*W2*4);   // baris dibalik (WebGL mulai dari bawah)
+  bx.putImageData(img,0,0);
+  const kecil=document.createElement('canvas'); kecil.width=THUMB.W; kecil.height=THUMB.H;
+  const kx=kecil.getContext('2d'); kx.imageSmoothingQuality='high'; kx.drawImage(besar,0,0,THUMB.W,THUMB.H);
+  return kecil;
+}
+/* daftar semua objek katalog, urutannya sama dengan atlas */
+function semuaKunciThumb(){
+  return [...Object.keys(STAIRS).map(k=>'stair:'+k), 'column:rect','column:round', 'void:rect','void:L', ...Object.keys(FURN).map(k=>'furn:'+k)];
+}
 async function importModelFiles(files){
   let ok=0, gagal=0;
   for(const f of files){
