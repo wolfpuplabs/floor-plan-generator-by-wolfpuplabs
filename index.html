@@ -108,7 +108,21 @@ details#adv>*:not(summary){margin-bottom:8px}
 #viewport canvas{display:block}
 .float{position:absolute;background:rgba(23,23,27,.94);border:1px solid var(--line);border-radius:8px;backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.5)}
 #toolbar{top:12px;left:12px;display:flex;flex-wrap:wrap;gap:2px;padding:5px;max-width:calc(100% - 150px)}
-#toolbar button{background:none;border:none;color:var(--muted);padding:7px 9px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit}
+#toolbar button{background:none;border:none;color:var(--muted);padding:7px 9px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;min-height:32px}
+#toolbar .ic{font-size:.95rem;line-height:1;min-width:1em;text-align:center}
+#viewport.sempit #toolbar .lb{display:none}
+#viewport.sempit #toolbar button{padding:7px 8px}
+#viewbar{right:12px;bottom:12px;display:flex;gap:2px;padding:4px}
+#viewbar button{background:none;border:none;color:var(--muted);padding:6px 9px;border-radius:5px;font:600 .68rem/1 inherit;cursor:pointer;min-height:30px}
+#viewbar button.active{background:#2a2a33;color:var(--txt)}
+#helpPanel{left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 18px;z-index:40;max-width:min(520px,calc(100% - 24px))}
+#helpPanel[hidden]{display:none}
+#helpPanel h3{font-size:.76rem;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.ikgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;font-size:.72rem;color:var(--muted)}
+.ikgrid b{display:inline-block;width:20px;text-align:center;color:var(--txt);font-weight:600}
+#helpPanel{max-height:calc(100% - 24px);overflow:auto}
+.kbgrid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px 10px;align-items:center;font-size:.74rem}
+.kbgrid kbd{background:#2a2a33;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 6px;font:600 .68rem/1.3 inherit;color:var(--txt);white-space:nowrap;justify-self:start}
 #toolbar button:hover{background:#2a2a33;color:var(--txt)}
 #toolbar button.active{background:var(--accent);color:#06201b}
 #toolbar button:disabled{opacity:.3;cursor:default}
@@ -349,6 +363,7 @@ details#adv>*:not(summary){margin-bottom:8px}
         <option value="siang" selected>Siang lembut</option>
         <option value="senja">Senja (golden hour)</option>
         <option value="malam">Malam — lampu menyala</option>
+        <option value="gelap">Malam — lampu padam</option>
       </select></div>
       <label class="chk"><input type="checkbox" id="pbrOn"><span>Material PBR — pantulan lingkungan, relief (normal map), dan kekasaran per bagian</span></label>
       <button class="btn ghost sm" id="renderShot">Render Gambar Tinggi (.png)</button>
@@ -431,33 +446,55 @@ details#adv>*:not(summary){margin-bottom:8px}
 
   <main id="viewport">
     <div class="float" id="toolbar">
-      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)">☰</button>
+      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)"><span class="ic">☰</span></button>
       <div class="sep"></div>
-      <button id="undoBtn" title="Urung (Ctrl+Z)" disabled>↶</button>
-      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" disabled>↷</button>
+      <button id="undoBtn" title="Urung (Ctrl+Z)" disabled><span class="ic">↶</span></button>
+      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" disabled><span class="ic">↷</span></button>
       <div class="sep"></div>
-      <button data-tool="select" class="active" title="Pilih (Q)">Pilih</button>
-      <button data-tool="translate" title="Geser (W)">Geser</button>
-      <button data-tool="rotate" title="Putar (E)">Putar</button>
-      <button data-tool="scale" title="Skala (R)">Skala</button>
+      <button data-tool="select" class="active" title="Pilih (Q)"><span class="ic">↖</span><span class="lb">Pilih</span></button>
+      <button data-tool="translate" title="Geser (W)"><span class="ic">✥</span><span class="lb">Geser</span></button>
+      <button data-tool="rotate" title="Putar (E)"><span class="ic">⟳</span><span class="lb">Putar</span></button>
+      <button data-tool="scale" title="Skala (R)"><span class="ic">⤡</span><span class="lb">Skala</span></button>
       <div class="sep"></div>
-      <button data-tool="wall" title="Gambar dinding (L)">+ Dinding</button>
-      <button id="railBtn" title="Gambar railing / pagar balkon">+ Railing</button>
+      <button data-tool="wall" title="Gambar dinding (L)"><span class="ic">▭</span><span class="lb">Dinding</span></button>
+      <button id="railBtn" title="Gambar railing / pagar balkon (K)"><span class="ic">╫</span><span class="lb">Railing</span></button>
+      <button data-tool="measure" title="Ukur jarak (M)"><span class="ic">⟷</span><span class="lb">Ukur</span></button>
       <div class="sep"></div>
-      <button id="snapBtn" class="active" title="Snap ke grid 5 cm / 15°">Snap</button>
-      <button id="dupBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
-      <button id="delBtn" title="Hapus (Del)">Hapus</button>
+      <button id="snapBtn" class="active" title="Snap ke grid 5 cm / 15°"><span class="ic">⌗</span><span class="lb">Snap</span></button>
+      <button id="dimBtn" title="Tampilkan dimensi (N)"><span class="ic">↔</span><span class="lb">Dimensi</span></button>
+      <button id="dupBtn" title="Duplikat (Ctrl+D)"><span class="ic">⧉</span><span class="lb">Duplikat</span></button>
+      <button id="delBtn" title="Hapus (Del)"><span class="ic">✕</span><span class="lb">Hapus</span></button>
       <div class="sep"></div>
-      <button id="wallModeBtn" title="Tembok solid atau tembus pandang (G)">Tembok: Solid</button>
-      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam ruangan (orang pertama)">Walk</button>
-      <button id="arBtn" title="Lihat model di AR / 3D viewer">AR</button>
+      <button id="wallModeBtn" title="Tembok solid atau tembus pandang (G)"><span class="ic">◫</span><span class="lb">Solid</span></button>
+      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam ruangan (orang pertama)"><span class="ic">🚶</span><span class="lb">Walk</span></button>
+      <button id="arBtn" title="Lihat model di AR / 3D viewer"><span class="ic">◈</span><span class="lb">AR</span></button>
+      <button id="helpBtn" title="Pintasan keyboard (?)"><span class="ic">?</span></button>
+    </div>
+    <div class="float" id="viewbar">
+      <button data-view="persp" title="Perspektif (1)">3D</button>
+      <button data-view="atas" title="Tampak atas / denah (2)">Atas</button>
+      <button data-view="depan" title="Tampak depan (3)">Depan</button>
+      <button data-view="iso" title="Isometri (4)">Iso</button>
+    </div>
+    <div class="float" id="helpPanel" hidden>
+      <h3>Pintasan</h3>
+      <div class="kbgrid">
+        <kbd>Q</kbd><span>Pilih</span><kbd>W</kbd><span>Geser</span><kbd>E</kbd><span>Putar</span><kbd>R</kbd><span>Skala</span>
+        <kbd>L</kbd><span>Gambar dinding</span><kbd>K</kbd><span>Gambar railing</span><kbd>M</kbd><span>Ukur jarak</span><kbd>N</kbd><span>Dimensi</span>
+        <kbd>1–4</kbd><span>3D · Atas · Depan · Iso</span><kbd>F</kbd><span>Fokus ke terpilih</span><kbd>G</kbd><span>Tembok solid/ghost</span><kbd>H</kbd><span>Panel samping</span>
+        <kbd>Ctrl Z</kbd><span>Urung</span><kbd>Ctrl ⇧ Z</kbd><span>Ulang</span><kbd>Ctrl D</kbd><span>Duplikat</span><kbd>Del</kbd><span>Hapus</span>
+        <kbd>Esc</kbd><span>Batal / lepas pilihan</span><kbd>?</kbd><span>Panel ini</span>
+      </div>
+      <h3 style="margin-top:12px">Ikon toolbar</h3>
+      <div class="ikgrid" id="ikonLegend"></div>
+      <p class="hint" style="margin-top:10px">Mode Walk: <b>W A S D</b> jalan · <b>Shift</b> lari · <b>E</b> atau klik untuk membuka pintu / menyalakan lampu.</p>
     </div>
     <div class="float" id="levelbar"></div>
     <div class="float" id="inspector" hidden></div>
     <div class="float" id="fpsbar" hidden>
       <span id="fpsinfo"></span>
       <select id="fpsMood" title="Suasana cahaya">
-        <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option>
+        <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option><option value="gelap">🌑 Malam gelap</option>
       </select>
       <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
       <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
@@ -643,6 +680,7 @@ function aturInspector(){
   ins.style.maxHeight=Math.max(160,vr.height-atas-12)+'px';
 }
 function fitViewport(){
+  viewport.classList.toggle('sempit', viewport.clientWidth<1080);
   aturInspector();
   const w=viewport.clientWidth, h=viewport.clientHeight;
   if(!w||!h) return;
@@ -665,7 +703,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  if(window.__siap){ stepAnim(dt); stepLampu(dt); }   // setelah semua modul selesai dimuat
+  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   renderer.render(scene,camera);
 })();
@@ -926,33 +964,45 @@ function pbrMaps(kunciTex,warna,def){
 }
 /* lingkungan pantulan: studio kecil berlampu panel, diolah PMREM bawaan three.js
    (tanpa berkas HDR yang perlu diunduh) */
-let ENV_TEX=null;
-function studioEnv(){
-  if(ENV_TEX) return ENV_TEX;
+const ENV_TEX=new Map();
+function studioEnv(k){
+  k=k||(typeof MOOD!=='undefined'?MOOD:'siang');
+  if(ENV_TEX.has(k)) return ENV_TEX.get(k);
+  const [terang,tint]=ENV_SUASANA[k]||ENV_SUASANA.siang, T=new THREE.Color(tint);
+  const warna=(r,g,b,m)=>new THREE.Color(r*T.r,g*T.g,b*T.b).multiplyScalar(m*terang);
   const sc=new THREE.Scene();
   const ruang=new THREE.Mesh(new THREE.BoxGeometry(24,12,24),
-    new THREE.MeshBasicMaterial({color:new THREE.Color(0.55,0.57,0.6), side:THREE.BackSide}));
+    new THREE.MeshBasicMaterial({color:warna(0.36,0.37,0.4,1), side:THREE.BackSide}));
   ruang.position.y=5; sc.add(ruang);
-  const lantai=new THREE.Mesh(new THREE.PlaneGeometry(24,24), new THREE.MeshBasicMaterial({color:new THREE.Color(0.25,0.24,0.22)}));
+  const lantai=new THREE.Mesh(new THREE.PlaneGeometry(24,24), new THREE.MeshBasicMaterial({color:warna(0.2,0.19,0.18,1)}));
   lantai.rotation.x=-Math.PI/2; lantai.position.y=-0.9; sc.add(lantai);
-  const panel=(w,h,x,y,z,ry,rx,k,warna)=>{
-    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:new THREE.Color(warna||0xffffff).multiplyScalar(k), side:THREE.DoubleSide}));
-    m.position.set(x,y,z); m.rotation.set(rx||0,ry||0,0); sc.add(m);
+  const panel=(w,h,x,y,z,ry,rx,m,hex)=>{
+    const c=new THREE.Color(hex||0xffffff);
+    const mt=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:warna(c.r,c.g,c.b,m), side:THREE.DoubleSide}));
+    mt.position.set(x,y,z); mt.rotation.set(rx||0,ry||0,0); sc.add(mt);
   };
-  panel(10,10,0,10.9,0,0,Math.PI/2,2.2,0xeaf2ff);     // langit-langit terang
-  panel(6,4,-11.8,5,0,Math.PI/2,0,5,0xfff1dc);          // jendela matahari
-  panel(5,3,11.8,4,-4,-Math.PI/2,0,2.5);
-  panel(8,3,0,4,-11.8,0,0,1.8);
+  panel(10,10,0,10.9,0,0,Math.PI/2,1.3,0xeaf2ff);     // langit-langit terang
+  panel(6,4,-11.8,5,0,Math.PI/2,0,3,0xfff1dc);          // jendela matahari
+  panel(5,3,11.8,4,-4,-Math.PI/2,0,1.5);
+  panel(8,3,0,4,-11.8,0,0,1.1);
   const pm=new THREE.PMREMGenerator(renderer);
-  ENV_TEX=pm.fromScene(sc,0.035).texture;
+  const t=pm.fromScene(sc,0.035).texture;
   pm.dispose();
-  return ENV_TEX;
+  ENV_TEX.set(k,t);
+  return t;
+}
+/* satu tempat yang mengatur semua cahaya dasar: matahari/bulan dari suasana,
+   cahaya langit & sekitar diredam bila PBR memakai lingkungan pantulan */
+function terapkanEnv(){
+  const env=studioEnv(MOOD);
+  scene.environment = PBR_ON ? env : null;
+  pasangPantulanLogam(env);
+  for(const l of LAMPU) l.intensity = PBR_ON ? l.userData.base*0.3 : l.userData.base;
 }
 const LAMPU=[];            // cahaya sekitar diredam saat PBR karena lingkungan sudah menerangi
 function setPBR(on){
   PBR_ON=on;
-  scene.environment = on ? studioEnv() : null;
-  for(const l of LAMPU) l.intensity = on ? l.userData.base*0.45 : l.userData.base;
+  terapkanEnv();
   FINMAT.clear(); ghostCache.clear(); ghostWallCache.clear();
   MAT.metal.roughness = on ? 0.22 : 0.35;
   rebuildScene();
@@ -2607,8 +2657,8 @@ Object.assign(MAT,{
 /* Logam mengilap dan cermin tidak punya warna sendiri — yang terlihat adalah
    pantulannya. Tanpa lingkungan untuk dipantulkan ia tampak hitam, jadi
    bahan-bahan ini selalu diberi lingkungan studio, walau PBR dimatikan. */
-function pasangPantulanLogam(){
-  const env=studioEnv();
+function pasangPantulanLogam(env){
+  env=env||studioEnv();
   for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8]]){ m.envMap=env; m.envMapIntensity=k; m.needsUpdate=true; }
 }
 const BUKU=[0x8e3b2e,0x2f4858,0xd9a441,0x7d8f69,0xe9e1d3,0x3d3a36,0xb89b72].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
@@ -3389,6 +3439,7 @@ function rebuildScene(){
   ANIM.clear(); OPS.clear(); REG=true;
   try{ rebuildScene0(); } finally { REG=false; }
   kumpulkanLampu();
+  rebuildDims();
 }
 function rebuildScene0(){
   while(worldRoot.children.length){
@@ -3464,7 +3515,7 @@ function refreshSelectionVisual(){
   renderInspector();
 }
 
-function select(kind,id){ SEL=(kind&&id)?{kind,id}:null; refreshSelectionVisual(); }
+function select(kind,id){ SEL=(kind&&id)?{kind,id}:null; refreshSelectionVisual(); if(DIM.on) rebuildDims(); }
 
 /* --- gizmo → data --- */
 function onGizmoChange(){ if(selBox) selBox.update(); }
@@ -3531,7 +3582,7 @@ function renderInspector(){
   ins.innerHTML='';
   const d=selData();
   // saat menggambar dinding panel disembunyikan agar tidak menghalangi klik di viewport
-  if(!d || TOOL==='wall'){ ins.hidden=true; return; }
+  if(!d || TOOL==='wall' || TOOL==='measure'){ ins.hidden=true; return; }
   ins.hidden=false;
   aturInspector();
 
@@ -4141,6 +4192,21 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(gizmo.dragging) return;
   if(e.button!==0) return;
 
+  if(TOOL==='measure'){
+    const p0=groundPoint(e); if(!p0) return;
+    const p=titikUkur(p0);
+    if(!drawState){ drawState={p1:p}; setHint('Klik titik <b>kedua</b>. <b>Esc</b> batal · <b>Del</b> hapus semua ukuran.'); }
+    else {
+      if(Math.hypot(p.x-drawState.p1.x,p.z-drawState.p1.z)>0.02){
+        DIM.ukur.push({a:drawState.p1,b:p,idx:PROJECT.active});
+        toast('Jarak '+fmt(Math.hypot(p.x-drawState.p1.x,p.z-drawState.p1.z),2)+' m');
+      }
+      drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; }
+      setHint('Klik titik <b>awal</b> untuk mengukur lagi. <b>Del</b> hapus semua ukuran.');
+      rebuildDims();
+    }
+    return;
+  }
   if(TOOL==='wall'){
     const p=groundPoint(e); if(!p) return;
     if(!drawState){
@@ -4169,13 +4235,14 @@ renderer.domElement.addEventListener('pointerup',e=>{
 });
 
 renderer.domElement.addEventListener('pointermove',e=>{
-  if(TOOL!=='wall'||!drawState){
+  if((TOOL!=='wall'&&TOOL!=='measure')||!drawState){
     if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; }
     return;
   }
-  const p=groundPoint(e); if(!p) return;
+  const p0=groundPoint(e); if(!p0) return;
+  const p = TOOL==='measure' ? titikUkur(p0) : p0;
   let {x,z}=p; const a=drawState.p1;
-  if($('#ortho').checked){ if(Math.abs(x-a.x)>Math.abs(z-a.z)) z=a.z; else x=a.x; }
+  if(TOOL==='wall' && $('#ortho').checked){ if(Math.abs(x-a.x)>Math.abs(z-a.z)) z=a.z; else x=a.x; }
   const y=levelElevation(PROJECT.active)+0.02;
   if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); }
   const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x,y,a.z),new THREE.Vector3(x,y,z)]);
@@ -4184,15 +4251,153 @@ renderer.domElement.addEventListener('pointermove',e=>{
   setHint(`Panjang: <b>${fmt(Math.hypot(x-a.x,z-a.z))} m</b> — klik untuk selesai, <b>Esc</b> berhenti.`);
 });
 
+/* =====================================================================
+   DIMENSI & UKUR — label panjang dinding, ukuran total bangunan, ukuran
+   objek terpilih, dan garis ukur bebas. Semuanya di grup terpisah: tidak
+   ikut diekspor, tidak ikut dipilih, tidak dipijak di mode jalan.
+   ===================================================================== */
+const DIM={on:false, grp:new THREE.Group(), ukur:[]};
+DIM.grp.renderOrder=20; scene.add(DIM.grp);
+const DIMMAT=new THREE.LineBasicMaterial({color:0x4ec9b0, depthTest:false, transparent:true, opacity:.85});
+const UKURMAT=new THREE.LineBasicMaterial({color:0xffc15e, depthTest:false, transparent:true, opacity:.95});
+const LABELCACHE=new Map();
+function labelSprite(teks,warna){
+  const key=teks+'|'+warna;
+  let mat=LABELCACHE.get(key);
+  if(!mat){
+    const c=document.createElement('canvas'), g=c.getContext('2d'), H=64;
+    g.font='600 34px -apple-system,Segoe UI,Roboto,sans-serif';
+    const W=Math.ceil(g.measureText(teks).width)+28; c.width=W; c.height=H;
+    g.font='600 34px -apple-system,Segoe UI,Roboto,sans-serif';
+    g.fillStyle='rgba(14,16,20,.86)'; const r=14;
+    g.beginPath(); g.moveTo(r,0); g.arcTo(W,0,W,H,r); g.arcTo(W,H,0,H,r); g.arcTo(0,H,0,0,r); g.arcTo(0,0,W,0,r); g.fill();
+    g.fillStyle=warna; g.textBaseline='middle'; g.fillText(teks,14,H/2+1);
+    const t=new THREE.CanvasTexture(c); t.minFilter=THREE.LinearFilter;
+    mat=new THREE.SpriteMaterial({map:t, depthTest:false, sizeAttenuation:false, transparent:true});
+    mat.userData.rasio=W/H; LABELCACHE.set(key,mat);
+  }
+  const sp=new THREE.Sprite(mat), k=0.03*Math.tan(camera.fov/2*D2R)/Math.tan(22.5*D2R);
+  sp.scale.set(k*mat.userData.rasio,k,1); sp.renderOrder=21; sp.raycast=()=>{};
+  return sp;
+}
+function garisUkur(a,b,y,mat,tick){
+  const dx=b.x-a.x, dz=b.z-a.z, L=Math.hypot(dx,dz)||1, nx=-dz/L*tick, nz=dx/L*tick;
+  const v=[a.x,y,a.z,b.x,y,b.z, a.x-nx,y,a.z-nz,a.x+nx,y,a.z+nz, b.x-nx,y,b.z-nz,b.x+nx,y,b.z+nz];
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+  const l=new THREE.LineSegments(geo,mat); l.renderOrder=20; l.raycast=()=>{}; return l;
+}
+function rebuildDims(){
+  while(DIM.grp.children.length){ const c=DIM.grp.children.pop(); if(c.geometry) c.geometry.dispose(); }
+  DIM.grp.visible=!FPS.on;
+  if(FPS.on) return;
+  const lv=L(); if(!lv) return;
+  const el0=levelElevation(PROJECT.active);
+  const tambah=(a,b,y,teks,mat,warna,tick)=>{
+    DIM.grp.add(garisUkur(a,b,y,mat,tick||0.12));
+    const sp=labelSprite(teks,warna); sp.position.set((a.x+b.x)/2,y+0.12,(a.z+b.z)/2); DIM.grp.add(sp);
+  };
+  if(DIM.on && lv.walls.length){
+    // dinding lengkung tersusun dari banyak ruas pendek: satu label panjang busur
+    // untuk seluruh rantainya, bukan puluhan angka kecil yang saling tumpuk
+    const tinggi=w=>el0+(w.rail?(w.height>0?w.height:1.1):wallH(w,lv))+0.04;
+    const pendek=lv.walls.filter(w=>w.curved||wallLen(w)<1.2), sudah=new Set();
+    const sambung=(p,w)=>Math.hypot(p.x-w.x1,p.z-w.z1)<0.12||Math.hypot(p.x-w.x2,p.z-w.z2)<0.12;
+    for(const w0 of pendek){
+      if(sudah.has(w0)) continue;
+      const rantai=[w0]; sudah.add(w0);
+      for(let i=0;i<rantai.length;i++){ const w=rantai[i];
+        for(const v of pendek) if(!sudah.has(v)&&(sambung({x:w.x1,z:w.z1},v)||sambung({x:w.x2,z:w.z2},v))){ sudah.add(v); rantai.push(v); } }
+      if(rantai.length<3) continue;
+      let tot=0; for(const w of rantai){ tot+=wallLen(w); DIM.grp.add(garisUkur({x:w.x1,z:w.z1},{x:w.x2,z:w.z2},tinggi(w),DIMMAT,0.06)); w.__busur=true; }
+      const m=rantai[Math.floor(rantai.length/2)], sp=labelSprite('⌒ '+fmt(tot,2),'#8ff0da');
+      sp.position.set((m.x1+m.x2)/2,tinggi(m)+0.16,(m.z1+m.z2)/2); DIM.grp.add(sp);
+    }
+    for(const w of lv.walls){
+      const len=wallLen(w); if(w.__busur){ delete w.__busur; continue; } if(len<0.3) continue;
+      tambah({x:w.x1,z:w.z1},{x:w.x2,z:w.z2},tinggi(w),fmt(len,2),DIMMAT,'#8ff0da',0.1);
+    }
+    let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+    for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+    tambah({x:x0,z:z0-1.4},{x:x1,z:z0-1.4},el0+0.03,'↔ '+fmt(x1-x0,2)+' m',DIMMAT,'#ffffff',0.25);
+    tambah({x:x1+1.4,z:z0},{x:x1+1.4,z:z1},el0+0.03,'↕ '+fmt(z1-z0,2)+' m',DIMMAT,'#ffffff',0.25);
+    if(SEL && SEL.kind==='obj'){
+      const g=findGroup('obj',SEL.id);
+      if(g){ const bb=new THREE.Box3().setFromObject(g), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
+        const sp=labelSprite(`${fmt(sz.x,2)} × ${fmt(sz.z,2)} × t ${fmt(sz.y,2)} m`,'#ffffff'); sp.position.set(c.x,bb.max.y+0.3,c.z); DIM.grp.add(sp); }
+    }
+  }
+  for(const u of DIM.ukur){
+    if(u.idx!==PROJECT.active) continue;
+    tambah(u.a,u.b,el0+0.05,fmt(Math.hypot(u.b.x-u.a.x,u.b.z-u.a.z),2)+' m',UKURMAT,'#ffc15e',0.15);
+  }
+}
+function toggleDim(){
+  DIM.on=!DIM.on; $('#dimBtn').classList.toggle('active',DIM.on); rebuildDims();
+  toast(DIM.on?'Dimensi ditampilkan — panjang dinding, ukuran total, dan ukuran objek terpilih':'Dimensi disembunyikan');
+}
+/* titik ukur menempel ke ujung dinding terdekat (≤ 25 cm), selebihnya ke grid 5 cm */
+function titikUkur(p){
+  let best=null, bd=0.25;
+  for(const w of L().walls) for(const [x,z] of [[w.x1,w.z1],[w.x2,w.z2]]){ const d=Math.hypot(p.x-x,p.z-z); if(d<bd){ bd=d; best={x,z}; } }
+  if(best) return best;
+  return SNAP ? {x:Math.round(p.x*20)/20, z:Math.round(p.z*20)/20} : {x:p.x,z:p.z};
+}
+
+/* =====================================================================
+   TAMPILAN CEPAT — 3D, atas (denah), depan, isometri; kamera meluncur halus
+   ===================================================================== */
+const VIEW={anim:null, cur:'persp'};
+function setView(k){
+  const lv=L(); let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  for(const o of lv.objects){ x0=Math.min(x0,o.x); x1=Math.max(x1,o.x); z0=Math.min(z0,o.z); z1=Math.max(z1,o.z); }
+  if(x0>x1){ x0=-5; x1=5; z0=-5; z1=5; }
+  const cx=(x0+x1)/2, cz=(z0+z1)/2, ukuran=Math.max(x1-x0,z1-z0,4), el0=levelElevation(PROJECT.active);
+  const asp=Math.max(0.5,camera.aspect);
+  let fov=45, pos, tgt=new THREE.Vector3(cx,el0+1.0,cz);
+  if(k==='atas'){ fov=28; const d=(ukuran*1.2)/(2*Math.tan(fov/2*D2R))/Math.min(1,asp)+2; pos=new THREE.Vector3(cx,el0+d,cz+0.001); tgt.y=el0; }
+  else {
+    // bola pembungkus bangunan dibingkai utuh, arah pandang miring standar
+    const r=0.5*Math.hypot(x1-x0,z1-z0)+1.2, d=r/Math.sin(fov/2*D2R)/Math.min(1,asp)*0.92;
+    const arah=(k==='iso'?new THREE.Vector3(1,0.82,1):k==='depan'?new THREE.Vector3(0,0.28,1):new THREE.Vector3(0.55,0.62,0.86)).normalize();
+    pos=new THREE.Vector3(cx,el0+1.0,cz).addScaledVector(arah,d);
+  }
+  VIEW.anim={t:0,p0:camera.position.clone(),t0:orbit.target.clone(),p1:pos,t1:tgt,f0:camera.fov,f1:fov};
+  VIEW.cur=k; $$('#viewbar button').forEach(b=>b.classList.toggle('active',b.dataset.view===k));
+}
+function stepView(dt){
+  const a=VIEW.anim; if(!a) return;
+  a.t=Math.min(1,a.t+dt/0.45); const e=a.t<0.5?2*a.t*a.t:1-Math.pow(-2*a.t+2,2)/2;
+  camera.position.lerpVectors(a.p0,a.p1,e); orbit.target.lerpVectors(a.t0,a.t1,e);
+  camera.fov=a.f0+(a.f1-a.f0)*e; camera.updateProjectionMatrix();
+  if(a.t>=1){ VIEW.anim=null; rebuildDims(); }
+}
+$$('#viewbar button').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+$('#dimBtn').onclick=toggleDim;
+function toggleHelp(v){
+  const h=$('#helpPanel'); h.hidden = v===undefined ? !h.hidden : !v;
+  // arti ikon diambil langsung dari toolbar — di layar sentuh tidak ada tooltip
+  const g=$('#ikonLegend');
+  if(!h.hidden && !g.childElementCount) for(const bt of $$('#toolbar button')){
+    const ic=bt.querySelector('.ic'); if(!ic) continue;
+    const d=document.createElement('span'); d.innerHTML='<b></b>'; d.firstChild.textContent=ic.textContent;
+    d.append(' '+({undoBtn:'Urung',redoBtn:'Ulang'}[bt.id]||(bt.title||'').replace(/\s*\([^)]*\)\s*$/,''))); g.appendChild(d);
+  }
+}
+$('#helpBtn').onclick=()=>toggleHelp();
+$('#helpPanel').onclick=()=>toggleHelp(false);
+
 let DRAW_RAIL=false;
 function setTool(t){
   TOOL=t;
   if(t!=='wall') DRAW_RAIL=false;
   $$('#toolbar button[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t && !(t==='wall'&&DRAW_RAIL)));
   const rb=$('#railBtn'); if(rb) rb.classList.toggle('active',t==='wall'&&DRAW_RAIL);
-  if(t!=='wall'){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
+  if(t!=='wall' && t!=='measure'){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
+  if(t==='measure'){ drawState=null; gizmo.detach(); setHint('Klik dua titik untuk mengukur jarak — menempel ke ujung dinding. <b>Del</b> hapus semua ukuran.'); }
   if(t==='wall'){ gizmo.detach(); setHint(DRAW_RAIL ? `Klik titik <b>awal</b> railing (${RAILING[RAIL_LAST].l}) di tepi balkon — jenisnya bisa diganti di inspector.`
                                                   : 'Klik titik <b>awal</b> dinding di viewport.'); }
+  else if(t==='measure'){}
   else if(t==='select') setHint('Klik objek untuk memilih. <b>W</b> geser · <b>E</b> putar · <b>R</b> skala.');
   else setHint(`Mode <b>${t==='translate'?'geser':t==='rotate'?'putar':'skala'}</b> — tarik gizmo pada objek terpilih.`);
   refreshSelectionVisual();
@@ -4212,12 +4417,21 @@ addEventListener('keydown',e=>{
   else if(k==='e') setTool('rotate');
   else if(k==='r') setTool('scale');
   else if(k==='l'){ DRAW_RAIL=false; setTool('wall'); }
+  else if(k==='k'){ DRAW_RAIL=true; setTool('wall'); }
+  else if(k==='m') setTool('measure');
+  else if(k==='n') toggleDim();
+  else if(['1','2','3','4'].includes(k) && !e.ctrlKey && !e.metaKey) setView(['persp','atas','depan','iso'][+k-1]);
+  else if(e.key==='?'){ toggleHelp(); }
   else if(k==='f') focusSelection();
   else if(e.key==='Escape'){
-    if(TOOL==='wall'&&drawState){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
+    if(!$('#helpPanel').hidden) toggleHelp(false);
+    else if((TOOL==='wall'||TOOL==='measure')&&drawState){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
+    else if(TOOL==='measure'){ setTool('select'); }
     else select(null);
   }
-  else if(e.key==='Delete'||e.key==='Backspace'){ if(SEL){ e.preventDefault(); deleteSelection(); } }
+  else if(e.key==='Delete'||e.key==='Backspace'){
+    if(TOOL==='measure'){ e.preventDefault(); DIM.ukur=DIM.ukur.filter(u=>u.idx!==PROJECT.active); rebuildDims(); toast('Ukuran dihapus'); }
+    else if(SEL){ e.preventDefault(); deleteSelection(); } }
   else if(k==='d'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); duplicateSelection(); }
   else if(k==='z'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); e.shiftKey?redo():undo(); }
   else if(k==='y'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); redo(); }
@@ -6937,8 +7151,14 @@ const SUASANA={
   senja:{l:'Senja (golden hour)', sun:[0xffa35a,1.2], sunPos:[34,8,10], hemi:[0xffcc9a,0x3b2a33,0.42], amb:0.13, exp:1.08, lamp:1.0, halo:0.65,
          langit:['#f09a58','#56689a'], kabut:[0xe1ad86,30,140]},
   malam:{l:'Malam — lampu menyala', sun:[0x8ea6db,0.08], sunPos:[-20,30,-12], hemi:[0x2d3957,0x09090d,0.1], amb:0.035, exp:1.2, lamp:2.8, halo:1.0,
-         langit:['#060a16','#18213b'], kabut:[0x0a0f1e,22,110]}
+         langit:['#060a16','#18213b'], kabut:[0x0a0f1e,22,110]},
+  gelap:{l:'Malam — lampu padam', sun:[0x9fb4e6,0.16], sunPos:[-24,26,-8], hemi:[0x33456e,0x07070a,0.12], amb:0.03, exp:1.3, lamp:2.8, halo:1.0,
+         langit:['#04070f','#121a30'], kabut:[0x070b16,18,95], padam:true}
 };
+/* kecerahan lingkungan pantulan (PBR & logam) per suasana — sebelumnya satu
+   studio terang untuk semua waktu, sehingga PBR malah membanjiri ruang dengan
+   cahaya sekitar, apalagi di malam hari */
+const ENV_SUASANA={siang:[1.0,0xffffff], senja:[0.7,0xffc79a], malam:[0.1,0x9fb0d8], gelap:[0.06,0x8fa2d0]};
 let MOOD='siang', RQ_KINI='halus';
 function langitTex(k){
   const s=SUASANA[k];
@@ -6953,7 +7173,11 @@ function setSuasana(k){
   sun.color.setHex(s.sun[0]); sun.intensity=s.sun[1]; sun.position.set(...s.sunPos);
   hemiL.color.setHex(s.hemi[0]); hemiL.groundColor.setHex(s.hemi[1]);
   hemiL.userData.base=s.hemi[2]; ambL.userData.base=s.amb;
-  for(const l of LAMPU) l.intensity = PBR_ON ? l.userData.base*0.45 : l.userData.base;
+  const sebelumnya=setSuasana.last; setSuasana.last=MOOD;
+  if(s.padam){ for(const L of LAMPU_PASANG) if(L.jenis==='lampu') MATI.add(L.id); }
+  else if(sebelumnya && (SUASANA[sebelumnya]||{}).padam) MATI.clear();
+  for(const L of LAMPU_PASANG) terapkanNyala(L.grp,!MATI.has(L.id));
+  if(typeof pasangPantulanLogam==='function' && LAMPU.length) terapkanEnv();
   HALO.lampu.opacity=0.55*s.halo+0.1; HALO.api.opacity=0.6*s.halo+0.15;
   const q=RQ[RQ_KINI]||RQ.halus; renderer.toneMappingExposure=q.exp*s.exp;
   for(const id of ['#mood','#fpsMood']){ const e=$(id); if(e) e.value=MOOD; }
@@ -7005,7 +7229,7 @@ $('#sideBtn').onclick=toggleSidebar;
 function toggleWallGhost(){
   WALL_GHOST=!WALL_GHOST;
   const t='Tembok: '+(WALL_GHOST?'Ghost':'Solid');
-  $('#wallModeBtn').textContent=t;
+  $('#wallModeBtn .lb').textContent=WALL_GHOST?'Ghost':'Solid';
   $('#wallModeBtn').classList.toggle('on',WALL_GHOST);
   $('#fpsWall').textContent=t;
   rebuildScene();
@@ -7220,8 +7444,11 @@ function stepBidik(dt){
   $('#fpsAim').classList.toggle('on',!!AIM);
   if(!AIM){ b.hidden=true; return; }
   b.hidden=false;
-  const isi = SENTUH ? '👆 '+lbl : '<kbd>E</kbd>'+lbl;
-  if(b.innerHTML!==isi) b.innerHTML=isi;
+  // dibandingkan dengan label yang terakhir DITULIS, bukan isi DOM: terjemahan
+  // otomatis peramban mengubah teksnya, dan membandingkan isi DOM membuat
+  // tombol ditulis ulang tiap 0,1 detik lalu diterjemahkan lagi — berkedip
+  const kunci=(SENTUH?'s':'k')+lbl;
+  if(b.dataset.k!==kunci){ b.dataset.k=kunci; b.innerHTML = SENTUH ? '👆 '+lbl : '<kbd translate="no">E</kbd>'+lbl; }
 }
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
@@ -7251,7 +7478,7 @@ function enterFPS(){
   setSidebar(false);                         // jalan-jalan memakai seluruh layar
   select(null); setTool('select');
   orbit.enabled=false;
-  $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true;
+  $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true; $('#viewbar').hidden=true; $('#helpPanel').hidden=true;
   $('#fpsFull').hidden=!BISA_LAYAR_PENUH;    // iPhone & sebagian iPad tidak mengizinkannya
   FPS.info='';
   $('#levelbar').hidden=true;
@@ -7271,7 +7498,7 @@ function exitFPS(){
   if(document.exitPointerLock) document.exitPointerLock();
   orbit.enabled=true;
   if(FPS.save){ camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); orbit.update(); }
-  $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false;
+  $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   $('#levelbar').hidden=false;
   viewport.style.cursor='';
   if(FPS.sidebarWas) setSidebar(true);
