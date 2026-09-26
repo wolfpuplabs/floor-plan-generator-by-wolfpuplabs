@@ -643,6 +643,71 @@ renderer.shadowMap.type=THREE.PCFShadowMap;      // PCF + radius: tepi bayangan 
 // matahari, atau posisi lampu berubah. Itu yang membuat bayangan lampu (6 kubus
 // bayangan) terjangkau di iPad.
 renderer.shadowMap.autoUpdate=false;
+/* BAYANGAN LUNAK — penyaring bawaan three.js (PCF 17 titik, lebar tetap dalam
+   texel) diganti PCSS: dicari dulu seberapa jauh penghalangnya dari permukaan,
+   lalu lebar penumbra mengikuti jarak itu. Hasilnya seperti cahaya sungguhan:
+   tajam di kaki benda yang menempel lantai, makin lembut makin jauh. Titik
+   cuplikan berpola spiral Vogel yang diputar per piksel, jadi tidak muncul
+   bayangan bertumpuk bergaris.
+   · matahari/bulan : shadow.radius = kelembutan (UV per satuan kedalaman)
+   · lampu titik    : shadow.radius = ukuran sumber cahaya dalam meter */
+(function(){
+  let s=THREE.ShaderChunk.shadowmap_pars_fragment;
+  const fn=`
+	float sbB2( vec2 a ){ a=floor(a); return fract( dot( a, vec2( 0.5, a.y*0.75 ) ) ); }
+	float sbIGN(){ vec2 a=gl_FragCoord.xy; return sbB2( 0.5*a )*0.25 + sbB2( a ); }   // matriks Bayer 4×4: tekstur halus merata, bukan bintik acak
+	// spiral Vogel tanpa sin/cos per cuplikan: arah diputar sudut emas tiap langkah
+	const mat2 SB_EMAS = mat2( -0.7373688, 0.6754903, -0.6754903, -0.7373688 );
+	const mat2 SB_GESER = mat2( -0.5048461, 0.8632094, -0.8632094, -0.5048461 );
+	float sbPCSS( sampler2D map, vec2 uv, float z, float S, vec2 size ){
+		vec2 tex=1.0/size; float rot=sbIGN()*6.2831853; vec2 a0=vec2( cos(rot), sin(rot) ), a=a0;
+		float cari=clamp( z*S, tex.x*3.0, 0.02 );
+		// bias bidang penerima: permukaan miring terhadap cahaya tidak boleh
+		// menghalangi dirinya sendiri di cuplikan yang jauh dari pusat
+		float kz=0.035/max(S,1e-4);
+		float jumlah=0.0, n=0.0;
+		for( int i=0; i<12; i++ ){
+			float r=sqrt((float(i)+0.5)/12.0)*cari;
+			float d=unpackRGBAToDepth( texture2D( map, uv+a*r ) );
+			if( d<z-r*kz ){ jumlah+=d; n+=1.0; }
+			a=SB_EMAS*a;
+		}
+		if( n<0.5 ) return 1.0;                        // terang penuh: selesai dengan 12 cuplikan
+		float pen=clamp( ( z-jumlah/n )*S, tex.x*1.5, 0.025 );
+		if( n>11.5 && pen<=cari ) return 0.0;          // seluruh area terhalang: umbra, tanpa penyaringan
+		float h=0.0;
+		a=SB_GESER*a0;
+		for( int i=0; i<16; i++ ){ float r=sqrt((float(i)+0.5)/16.0)*pen; h+=texture2DCompare( map, uv+a*r, z-r*kz ); a=SB_EMAS*a; }
+		return h/16.0;
+	}
+`;
+  const fnTitik=`
+	float sbTitik( sampler2D map, vec2 size, float Ls, vec3 L2P, float dp, float nearC, float farC, float texY ){
+		// lampu: satu lintasan 12 cuplikan tanpa pencarian penghalang — empat
+		// lampu sekaligus harus tetap ringan. Lebar penumbra mengikuti ukuran
+		// kap/bohlam dan jarak ke permukaan.
+		float dR=length(L2P); vec3 N=L2P/dR;
+		vec3 up=abs(N.y)<0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0);
+		vec3 T=normalize(cross(up,N)); vec3 B=cross(N,T);
+		float rot=sbIGN()*6.2831853, tex=2.0/size.x; vec2 a=vec2( cos(rot), sin(rot) );
+		float pen=clamp( 0.6*Ls/max(dR,0.3), tex*1.5, 0.12 );
+		float kd=0.7*dR/(farC-nearC);                 // bias bidang penerima per radian
+		float h=0.0;
+		for( int i=0; i<12; i++ ){ float r=sqrt((float(i)+0.5)/12.0)*pen; vec2 o=a*r; a=SB_EMAS*a; h+=texture2DCompare( map, cubeToUV( N+T*o.x+B*o.y, texY ), dp-r*kd ); }
+		return h/12.0;
+	}
+`;
+  const a0=s.indexOf('float getShadow(');
+  s=s.slice(0,a0)+fn+s.slice(a0);
+  const i0=s.indexOf('#if defined( SHADOWMAP_TYPE_PCF )'), i1=s.indexOf('#elif defined( SHADOWMAP_TYPE_PCF_SOFT )');
+  s=s.slice(0,i0)+'#if defined( SHADOWMAP_TYPE_PCF )\n\t\t\tshadow = sbPCSS( shadowMap, shadowCoord.xy, shadowCoord.z, shadowRadius, shadowMapSize );\n\t\t'+s.slice(i1);
+  const b0=s.indexOf('float getPointShadow(');
+  s=s.slice(0,b0)+fnTitik+s.slice(b0);
+  const j0=s.indexOf('#if defined( SHADOWMAP_TYPE_PCF ) || defined( SHADOWMAP_TYPE_PCF_SOFT ) || defined( SHADOWMAP_TYPE_VSM )', b0);
+  const j1=s.indexOf('#else', j0);
+  s=s.slice(0,j0)+'#if defined( SHADOWMAP_TYPE_PCF ) || defined( SHADOWMAP_TYPE_PCF_SOFT ) || defined( SHADOWMAP_TYPE_VSM )\n\t\t\treturn sbTitik( shadowMap, shadowMapSize, shadowRadius, lightToPosition, dp, shadowCameraNear, shadowCameraFar, texelSize.y );\n\t\t'+s.slice(j1);
+  THREE.ShaderChunk.shadowmap_pars_fragment=s;
+})();
 let BAYANG_KOTOR=2, BAYANG_JEDA=0;
 function bayangKotor(){ BAYANG_KOTOR=Math.max(BAYANG_KOTOR,1); }
 viewport.appendChild(renderer.domElement);
@@ -683,7 +748,13 @@ function pasBayangMatahari(){
     v.set(i&1?bb.max.x:bb.min.x, i&2?bb.max.y:bb.min.y, i&4?bb.max.z:bb.min.z).applyMatrix4(inv);
     x0=Math.min(x0,v.x); x1=Math.max(x1,v.x); y0=Math.min(y0,v.y); y1=Math.max(y1,v.y); z0=Math.min(z0,v.z); z1=Math.max(z1,v.z);
   }
-  cam.left=x0; cam.right=x1; cam.bottom=y0; cam.top=y1; cam.near=Math.max(0.1,-z1-1); cam.far=-z0+1;
+  // persegi: satu nilai kelembutan berlaku sama di kedua sumbu peta bayangan
+  const cxL=(x0+x1)/2, cyL=(y0+y1)/2, sisi=Math.max(x1-x0,y1-y0)/2;
+  cam.left=cxL-sisi; cam.right=cxL+sisi; cam.bottom=cyL-sisi; cam.top=cyL+sisi;
+  cam.near=Math.max(0.1,-z1-1); cam.far=-z0+1;
+  // penumbra ±5 cm tiap 1 m jarak penghalang–permukaan (matahari "lembut"
+  // ala foto arsitektur, lebih lebar dari piringan matahari asli)
+  sun.shadow.radius=0.05*(cam.far-cam.near)/(2*sisi);
   cam.updateProjectionMatrix(); bayangKotor();
 }
 
@@ -3470,7 +3541,7 @@ const KOLAM=[];                        // lampu titik tetap: 4 buah berbayang, d
 for(let i=0;i<4;i++){
   // berbayang: cahaya lampu berhenti di dinding, tidak tembus ke ruang sebelah
   const l=new THREE.PointLight(0xffc98a,0,7,2); l.castShadow=true;
-  l.shadow.mapSize.set(512,512); l.shadow.bias=-0.0012; l.shadow.normalBias=0.015; l.shadow.radius=4;
+  l.shadow.mapSize.set(512,512); l.shadow.bias=-0.0012; l.shadow.normalBias=0.015; l.shadow.radius=0.12;   // radius = ukuran kap/bohlam (m)
   l.shadow.camera.near=0.08; l.shadow.camera.far=7;
   scene.add(l); KOLAM.push(l);
 }
@@ -3493,7 +3564,7 @@ function stepLampu(dt){
       if(l.position.distanceToSquared(L.pos)>0.01) bayangKotor();
       l.position.copy(L.pos); l.position.y-=0.05;
       l.color.setHex(L.jenis==='api'?0xff9a4a:0xffc98a);
-      l.distance = L.jenis==='api'?6:7; l.shadow.camera.far=l.distance; });
+      l.distance = L.jenis==='api'?6:7; l.shadow.camera.far=l.distance; l.shadow.radius = L.jenis==='api'?0.2:0.1; });
   }
   const s=SUASANA[MOOD], tk=performance.now()/1000;
   for(const l of KOLAM){ const L=l.userData.L; if(!L){ l.intensity=0; continue; }
@@ -3524,6 +3595,7 @@ function buildObject(o, lv){
   if(o.kind==='void'||o.kind==='column') g.scale.set(1,1,1);
   else g.scale.set(o.sx||1,o.sy||1,o.sz||1);
   Object.assign(g.userData,{kind:'obj', id:o.id});   // jangan menimpa keterangan lampu dari hiasNyala
+  if(o.kind==='furn'||o.kind==='model') g.userData.perabot=true;   // bukan pijakan di mode jalan
   return g;
 }
 
@@ -7500,13 +7572,26 @@ function fpsGround(px,pz,feetY){
     // tangga, kepala railing) dilewati: yang dicari pijakan tertinggi yang masih
     // terjangkau, bukan sekadar benda pertama di bawah lutut
     if(h.point.y > feetY+LANGKAH_MAX+0.01) continue;
-    let o=h.object, tampak=true;
-    while(o && o!==worldRoot){ if(!o.visible){ tampak=false; break; } o=o.parent; }
+    let o=h.object, tampak=true, perabot=false;
+    while(o && o!==worldRoot){ if(!o.visible){ tampak=false; break; } if(o.userData.perabot) perabot=true; o=o.parent; }
     if(!tampak) continue;                          // lantai yang disembunyikan tidak dipijak
+    if(perabot) continue;                          // sofa, meja, karpet: dilewati, bukan dinaiki
     return h.point.y;
   }
   return null;
 }
+/* telapak kaki dicuplik di lima titik: celah sempit (antara anak tangga teratas
+   dan pelat, sambungan pelat) tidak lagi membuat orangnya terperosok */
+const TELAPAK=[[0,0],[0.14,0],[-0.14,0],[0,0.14],[0,-0.14]];
+function fpsPijakan(px,pz,feetY){
+  let best=null;
+  for(const [dx,dz] of TELAPAK){ const g=fpsGround(px+dx,pz+dz,feetY); if(g!=null && (best==null||g>best)) best=g; }
+  return best;
+}
+/* penjaga tepi: langkah yang membuat turun lebih dari 45 cm (tepi void, sisi
+   tangga, ujung balkon) ditolak — pagar dan railing menahan, tidak dilompati.
+   Menuruni tangga (optrede ≤ 25 cm) tetap bisa. */
+const JATUH_MAX=0.45;
 function fpsStep(dt){
   if(FPS.paused){
     $('#fpsinfo').innerHTML='Dijeda · <b>klik layar</b> untuk lanjut · <b>Esc</b> keluar';
@@ -7535,8 +7620,21 @@ function fpsStep(dt){
 
   [px,pz]=fpsResolveWalls(px,pz,FPS.feet);
 
+  const tanah0=levelElevation(0);
+  if(FPS.vy>-0.5){                                  // sedang berpijak, bukan sedang jatuh
+    const dukung=(x,z)=>{ const g=fpsPijakan(x,z,FPS.feet); return Math.max(g==null?-1e9:g, tanah0); };
+    const ox=camera.position.x, oz=camera.position.z, batas=FPS.feet-JATUH_MAX;
+    if(dukung(px,pz)<batas){
+      // meluncur menyusuri tepi bila salah satu sumbu masih aman
+      if(dukung(px,oz)>=batas) pz=oz;
+      else if(dukung(ox,pz)>=batas) px=ox;
+      else { px=ox; pz=oz; }
+      [px,pz]=fpsResolveWalls(px,pz,FPS.feet);
+    }
+  }
+
   // pijakan: naik tangga sampai setinggi satu optrede, selebihnya jatuh
-  const g=fpsGround(px,pz,FPS.feet);
+  const g=fpsPijakan(px,pz,FPS.feet);
   if(g!=null && g<=FPS.feet+LANGKAH_MAX){
     if(g>=FPS.feet-0.02){ FPS.feet=g; FPS.vy=0; }
     else {
