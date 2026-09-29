@@ -665,19 +665,22 @@ renderer.shadowMap.autoUpdate=false;
   let s=THREE.ShaderChunk.shadowmap_pars_fragment;
   const fn=`
 	float sbB2( vec2 a ){ a=floor(a); return fract( dot( a, vec2( 0.5, a.y*0.75 ) ) ); }
-	float sbIGN(){ vec2 a=gl_FragCoord.xy; return sbB2( 0.5*a )*0.25 + sbB2( a ); }   // matriks Bayer 4×4: tekstur halus merata, bukan bintik acak
+	// pola putar 2×2 (bukan 4×4): di layar retina satu periode hanya 2 piksel fisik,
+	// jadi mata merata-ratakannya — tidak tampak bintik-bintik seperti pola 4×4
+	float sbIGN(){ return sbB2( gl_FragCoord.xy ); }
+	float sbGeser(){ return 0.125+0.75*sbB2( gl_FragCoord.xy+vec2(1.0,0.0) ); }
 	// spiral Vogel tanpa sin/cos per cuplikan: arah diputar sudut emas tiap langkah
 	const mat2 SB_EMAS = mat2( -0.7373688, 0.6754903, -0.6754903, -0.7373688 );
 	const mat2 SB_GESER = mat2( -0.5048461, 0.8632094, -0.8632094, -0.5048461 );
 	float sbPCSS( sampler2D map, vec2 uv, float z, float S, vec2 size ){
-		vec2 tex=1.0/size; float rot=sbIGN()*6.2831853; vec2 a0=vec2( cos(rot), sin(rot) ), a=a0;
+		vec2 tex=1.0/size; float rot=sbIGN()*6.2831853, sg=sbGeser(); vec2 a0=vec2( cos(rot), sin(rot) ), a=a0;
 		float cari=clamp( z*S, tex.x*3.0, 0.02 );
 		// bias bidang penerima: permukaan miring terhadap cahaya tidak boleh
 		// menghalangi dirinya sendiri di cuplikan yang jauh dari pusat
 		float kz=0.035/max(S,1e-4);
 		float jumlah=0.0, n=0.0;
 		for( int i=0; i<12; i++ ){
-			float r=sqrt((float(i)+0.5)/12.0)*cari;
+			float r=sqrt((float(i)+sg)/12.0)*cari;
 			float d=unpackRGBAToDepth( texture2D( map, uv+a*r ) );
 			if( d<z-r*kz ){ jumlah+=d; n+=1.0; }
 			a=SB_EMAS*a;
@@ -687,7 +690,7 @@ renderer.shadowMap.autoUpdate=false;
 		if( n>11.5 && pen<=cari ) return 0.0;          // seluruh area terhalang: umbra, tanpa penyaringan
 		float h=0.0;
 		a=SB_GESER*a0;
-		for( int i=0; i<16; i++ ){ float r=sqrt((float(i)+0.5)/16.0)*pen; h+=texture2DCompare( map, uv+a*r, z-r*kz ); a=SB_EMAS*a; }
+		for( int i=0; i<16; i++ ){ float r=sqrt((float(i)+sg)/16.0)*pen; h+=texture2DCompare( map, uv+a*r, z-r*kz ); a=SB_EMAS*a; }
 		return h/16.0;
 	}
 `;
@@ -699,12 +702,16 @@ renderer.shadowMap.autoUpdate=false;
 		float dR=length(L2P); vec3 N=L2P/dR;
 		vec3 up=abs(N.y)<0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0);
 		vec3 T=normalize(cross(up,N)); vec3 B=cross(N,T);
-		float rot=sbIGN()*6.2831853, tex=2.0/size.x; vec2 a=vec2( cos(rot), sin(rot) );
+		float rot=sbIGN()*6.2831853, sg=sbGeser(), tex=2.0/size.x; vec2 a=vec2( cos(rot), sin(rot) );
 		float pen=clamp( 0.6*Ls/max(dR,0.3), tex*1.5, 0.12 );
 		float kd=0.7*dR/(farC-nearC);                 // bias bidang penerima per radian
 		float h=0.0;
-		for( int i=0; i<12; i++ ){ float r=sqrt((float(i)+0.5)/12.0)*pen; vec2 o=a*r; a=SB_EMAS*a; h+=texture2DCompare( map, cubeToUV( N+T*o.x+B*o.y, texY ), dp-r*kd ); }
-		return h/12.0;
+		for( int i=0; i<12; i++ ){ float r=sqrt((float(i)+sg)/12.0)*pen; vec2 o=a*r; a=SB_EMAS*a; h+=texture2DCompare( map, cubeToUV( N+T*o.x+B*o.y, texY ), dp-r*kd ); }
+		if( h<0.5 || h>11.5 ) return h/12.0;         // terang penuh / umbra: cukup 12 cuplikan
+		// di penumbra saja: 12 cuplikan lagi di sela-sela yang pertama → 24, bintik jauh berkurang
+		a=SB_GESER*a; float sg2=fract(sg+0.5);
+		for( int i=0; i<12; i++ ){ float r=sqrt((float(i)+sg2)/12.0)*pen; vec2 o=a*r; a=SB_EMAS*a; h+=texture2DCompare( map, cubeToUV( N+T*o.x+B*o.y, texY ), dp-r*kd ); }
+		return h/24.0;
 	}
 `;
   const a0=s.indexOf('float getShadow(');
@@ -882,11 +889,15 @@ function fxSiapkan(){
     uniforms:{tAO:{value:FX.rtA.texture}, tDepth:{value:FX.rtD.depthTexture}, size:{value:new THREE.Vector2()}, cNear:{value:0.05}, cFar:{value:600}, projInv:{value:new THREE.Matrix4()}},
     fragmentShader:posFn+`
     uniform sampler2D tAO; varying vec2 vUv;
-    void main(){                                   // 5×5 menghormati kedalaman: bayangan tidak meluber ke benda di depannya
+    // 4×4 persis selebar pola Bayer AO: tiap jendela memuat ke-16 putaran sekali,
+    // jadi polanya hilang total (5×5 menyisakan bintik-bintik halus). Bobot
+    // kedalaman relatif: lantai yang dilihat miring tetap dirata-rata penuh,
+    // sedangkan benda di depan/belakang tidak ikut meluber.
+    void main(){
       vec2 px=1.0/size; float z0=posV(vUv).z, s=0.0, w=0.0;
-      for(int x=-2;x<=2;x++) for(int y=-2;y<=2;y++){
+      for(int x=-2;x<=1;x++) for(int y=-2;y<=1;y++){
         vec2 uv=vUv+vec2(float(x),float(y))*px;
-        float bw=1.0/(1.0+abs(posV(uv).z-z0)*18.0);
+        float bw=1.0-0.97*smoothstep(0.015,0.05,abs(posV(uv).z-z0)/max(-z0,0.05));
         s+=texture2D(tAO,uv).r*bw; w+=bw;
       }
       gl_FragColor=vec4(vec3(s/w),1.0);
@@ -1321,6 +1332,45 @@ function setPBR(on){
   rebuildScene();
 }
 
+/* ANTI-PENGULANGAN — tekstur finishing berulang tiap 1–2,4 m; di dinding atau
+   lantai yang luas, bercak yang sama muncul berderet dan mata langsung melihat
+   "ubin"-nya. Di shader: (1) variasi terang skala besar dari noise ruang dunia,
+   (2) tekstur acak (cat, plester, beton, teraso) dicampur dengan dirinya sendiri
+   yang diputar & diskalakan lewat topeng noise, (3) keramik: tiap keping sedikit
+   beda nada seperti ubin sungguhan dari lot produksi yang sama. */
+const ULANG_ACAK=new Set(['W_cat','W_plester','W_beton','L_beton','L_teraso']);
+const ULANG_KEPING={L_keramik:2, L_keramik2:2};
+function antiUlang(m,kunci){
+  const acak=ULANG_ACAK.has(kunci)?1:0, kep=ULANG_KEPING[kunci]||0;
+  m.customProgramCacheKey=()=>'ulang_'+acak+'_'+kep;
+  m.onBeforeCompile=sh=>{
+    sh.vertexShader=sh.vertexShader
+      .replace('#include <common>','#include <common>\nvarying vec3 vUPos;')
+      .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\n vUPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.fragmentShader=sh.fragmentShader
+      .replace('#include <common>',`#include <common>
+varying vec3 vUPos;
+float uH(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+float uN(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(uH(i),uH(i+vec3(1,0,0)),f.x),mix(uH(i+vec3(0,1,0)),uH(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(uH(i+vec3(0,0,1)),uH(i+vec3(1,0,1)),f.x),mix(uH(i+vec3(0,1,1)),uH(i+vec3(1,1,1)),f.x),f.y),f.z); }`)
+      .replace('#include <map_fragment>',`#ifdef USE_MAP
+  vec4 texelColor=texture2D( map, vUv );
+  #if ${acak}
+  { vec2 uv2=mat2(0.8,-0.6,0.6,0.8)*vUv*0.71+vec2(0.37,0.61);
+    float t=smoothstep(0.3,0.7,uN(vUPos*0.8+vec3(3.1)));
+    texelColor=mix(texelColor,texture2D( map, uv2 ),t); }
+  #endif
+  texelColor=mapTexelToLinear( texelColor );
+  diffuseColor*=texelColor;
+#endif
+  diffuseColor.rgb*=0.955+0.09*(uN(vUPos*0.42)*0.65+uN(vUPos*1.35+vec3(7.0))*0.35);
+  #if ${kep}
+  { vec2 c=floor(vUv*${kep}.0+0.0001); diffuseColor.rgb*=0.975+0.05*fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
+  #endif`);
+  };
+  m.needsUpdate=true;
+}
 const FINMAT=new Map();          // kunci -> material, dibuat sekali lalu dipakai ulang
 function finMat(tabel,kunci,warnaCustom){
   const def=tabel[kunci]||tabel[Object.keys(tabel)[0]];
@@ -1339,6 +1389,7 @@ function finMat(tabel,kunci,warnaCustom){
     } else m=new THREE.MeshStandardMaterial(tex
       ? {map:finTex(kunciTex,warna), color:0xffffff, roughness:def.kasar, metalness:def.logam}
       : {color:warna, roughness:def.kasar, metalness:def.logam});
+    if(tex && renderer.capabilities.isWebGL2) antiUlang(m,kunciTex);
     FINMAT.set(id,m);
   }
   return FINMAT.get(id);
@@ -3191,6 +3242,17 @@ function wallSconce(){ const g=new THREE.Group(), y=1.65;
   g.add(box(0.015,0.015,0.14,MAT.brass,0,y,0.03));
   g.add(msh(new THREE.CylinderGeometry(0.07,0.09,0.14,24,1,true),MAT.shade,0,y+0.06,0.1));
   g.add(sph(0.03,MAT.glow,0,y+0.04,0.1)); return g; }
+/* lampu yang menempel di plafon: tanpa tali, diffuser rata dengan plafon */
+function downlight(){ const g=new THREE.Group(), H=ceilH();
+  g.add(cyl(0.085,0.085,0.012,MAT.white,0,H-0.006,0,32));                 // bingkai (trim) bulat
+  g.add(cyl(0.066,0.066,0.004,MAT.glow,0,H-0.013,0,32)); return g; }
+function ceilingFlush(){ const g=new THREE.Group(), H=ceilH();
+  g.add(cyl(0.2,0.2,0.025,MAT.white,0,H-0.0125,0,40));
+  const d=msh(new THREE.SphereGeometry(0.19,40,10,0,Math.PI*2,Math.PI/2,Math.PI/2),MAT.glow,0,H-0.024,0);
+  d.scale.y=0.36; g.add(d); return g; }
+function ceilingPanel(){ const g=new THREE.Group(), H=ceilH();
+  g.add(box(0.6,0.028,0.6,MAT.white,0,H-0.014,0));
+  g.add(box(0.56,0.004,0.56,MAT.glow,0,H-0.03,0)); return g; }
 
 /* ---------- TANAMAN ---------- */
 function leafGeo(len,wid,tipe){
@@ -3494,6 +3556,9 @@ const FURN={
   night_lamp  :{l:'Nakas + Lampu',      i:'🛏️', c:'lampu',   f:[0.45,0.4],  b:nightLampSet},
   arc_lamp    :{l:'Lampu Lengkung',     i:'💡', c:'lampu',   f:[0.4,1.7],   b:arcLamp},
   wall_sconce :{l:'Lampu Dinding',      i:'💡', c:'lampu',   f:[0.2,0.2],   b:wallSconce,   wall:1, back:0.05},
+  downlight   :{l:'Downlight Plafon',   i:'💡', c:'lampu',   f:[0.17,0.17], b:downlight,    plafon:1},
+  ceiling_flush:{l:'Lampu Plafon Bulat',i:'💡', c:'lampu',   f:[0.4,0.4],   b:ceilingFlush, plafon:1},
+  ceiling_panel:{l:'Panel LED Plafon',  i:'💡', c:'lampu',   f:[0.6,0.6],   b:ceilingPanel, plafon:1},
   // --- tanaman
   monstera    :{l:'Monstera',           i:'🌿', c:'tanaman', f:[1.2,1.2],   b:monstera},
   fiddle_leaf :{l:'Pohon Biola',        i:'🌳', c:'tanaman', f:[0.8,0.8],   b:fiddleLeaf},
@@ -3564,6 +3629,9 @@ const KAIDAH={
   arc_lamp:'Pangkal di belakang/samping sofa, kap menjangkau di atas meja tamu setinggi ±170–180 cm.',
   wall_sconce:'Pasang ±160–170 cm. Di samping ranjang ±120–150 cm; mengapit cermin setinggi mata, 75–100 cm terpisah.',
   floor_lamp:'Di sudut ruang atau di samping kursi baca; kap sejajar bahu saat duduk.',
+  downlight:'Jarak antar-downlight ≈ tinggi plafon (±1,2–1,5 m), ±60 cm dari dinding. Hitung lumennya dengan tombol SNI di bawah.',
+  ceiling_flush:'Satu di tengah ruang kecil (≤ 12 m²). Plafon rendah (< 2,6 m) lebih cocok lampu tempel daripada lampu gantung.',
+  ceiling_panel:'Mengikuti modul plafon 60 × 60 cm; cocok untuk ruang kerja, dapur, dan garasi yang butuh terang merata.',
   monstera:'Cahaya terang tidak langsung, 1–2 m dari jendela. Tanaman besar di sudut menyeimbangkan perabot yang rendah.',
   fiddle_leaf:'Butuh cahaya terang dekat jendela dan tidak suka dipindah-pindah. Tinggi 1,5–2 m cocok sebagai titik fokus di sudut.',
   snake_plant:'Tahan cahaya rendah dan menyaring udara — cocok untuk kamar tidur dan sudut minim cahaya.',
@@ -3657,12 +3725,72 @@ function buildColumn(o,lv){
    dikompilasi ulang saat lampu dinyalakan/dimatikan).
    ===================================================================== */
 const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table_lamp:'lampu',night_lamp:'lampu',
-  arc_lamp:'lampu',wall_sconce:'lampu',floor_lamp:'lampu',
+  arc_lamp:'lampu',wall_sconce:'lampu',floor_lamp:'lampu',downlight:'lampu',ceiling_flush:'lampu',ceiling_panel:'lampu',
   kitchen_line:'lampu',kitchen_l2:'lampu',kitchen_u:'lampu',kitchen_par:'lampu',kitchen_isl:'lampu',
   fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
   music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio'};
 const KUAT_LAMPU={chandelier:1.6,pendant:1.1,pendant_trio:1.4,table_lamp:0.6,night_lamp:0.6,arc_lamp:0.9,wall_sconce:0.55,
   floor_lamp:0.8,kitchen_line:0.8,kitchen_l2:0.8,kitchen_u:0.8,kitchen_par:0.8,kitchen_isl:0.9,fire_modern:1.3,fire_classic:1.3,wood_stove:0.9};
+/* TERANG LAMPU DALAM LUMEN — nilai bawaan = lampu LED rumahan yang umum dijual
+   (lumen mengikuti bohlam/modul yang biasa dipasang di tiap jenis armatur).
+   Kekuatan lampu titik di scene sebanding lurus dengan lumennya. */
+const LUMEN_STD={chandelier:3200,pendant:2200,pendant_trio:2800,table_lamp:1200,night_lamp:800,arc_lamp:1600,wall_sconce:800,
+  floor_lamp:1600,kitchen_line:1600,kitchen_l2:1600,kitchen_u:1600,kitchen_par:1600,kitchen_isl:1800,
+  downlight:900,ceiling_flush:2000,ceiling_panel:3600};
+const LM_PER_KUAT=2000;
+function lumenLampu(o){ const v=o.params&&+o.params.lumen; return v>0 ? v : (LUMEN_STD[o.type]||1600); }
+function kuatLampu(o){ return NYALA_JENIS[o.type]==='lampu' ? lumenLampu(o)/LM_PER_KUAT : (KUAT_LAMPU[o.type]||0.8); }
+/* Kebutuhan terang menurut SNI 6197:2011 (rumah tinggal, lux) & metode lumen:
+   Φ total = E × A / (CU × MF), CU ≈ 0,6 (ruang berdinding terang), MF = 0,8. */
+const SNI_LUX={tidur:{l:'Kamar tidur',e:150,r:'120–250'}, tamu:{l:'Ruang tamu/keluarga',e:150,r:'120–150'},
+  makan:{l:'Ruang makan',e:200,r:'120–250'}, kerja:{l:'Ruang kerja',e:250,r:'120–250'}, dapur:{l:'Dapur',e:250,r:'250'},
+  mandi:{l:'Kamar mandi',e:250,r:'250'}, teras:{l:'Teras/area terbuka',e:60,r:'60'}, umum:{l:'Ruang',e:150,r:'120–250'}};
+const LAMPU_UTAMA=new Set(['pendant','pendant_trio','chandelier','downlight','ceiling_flush','ceiling_panel']);
+/* luas ruang tempat lampu berada: isi-banjir grid 10 cm yang dibatasi dinding
+   (pintu dianggap tertutup), lalu jenis ruang ditebak dari perabot di dalamnya */
+function ruangLampu(o,lv){
+  const walls=lv.walls.filter(w=>!w.rail); if(!walls.length) return null;
+  let x0=o.x,x1=o.x,z0=o.z,z1=o.z;
+  for(const w of walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  const C=0.1; x0-=0.5; z0-=0.5; const nx=Math.ceil((x1+0.5-x0)/C), nz=Math.ceil((z1+0.5-z0)/C);
+  if(nx*nz>600000) return null;
+  const blok=new Uint8Array(nx*nz);
+  for(const w of walls){
+    const t=(w.thickness||0.15)/2+C*0.75, dx=w.x2-w.x1, dz=w.z2-w.z1, L2=dx*dx+dz*dz||1e-9;
+    const ia=Math.max(0,Math.floor((Math.min(w.x1,w.x2)-t-x0)/C)), ib=Math.min(nx-1,Math.ceil((Math.max(w.x1,w.x2)+t-x0)/C));
+    const ja=Math.max(0,Math.floor((Math.min(w.z1,w.z2)-t-z0)/C)), jb=Math.min(nz-1,Math.ceil((Math.max(w.z1,w.z2)+t-z0)/C));
+    for(let j=ja;j<=jb;j++) for(let i=ia;i<=ib;i++){
+      const px=x0+(i+0.5)*C, pz=z0+(j+0.5)*C;
+      const u=clamp(((px-w.x1)*dx+(pz-w.z1)*dz)/L2,0,1), qx=w.x1+dx*u-px, qz=w.z1+dz*u-pz;
+      if(qx*qx+qz*qz<=t*t) blok[j*nx+i]=1;
+    }
+  }
+  // titik awal: sel bebas terdekat (lampu dinding menempel ke tembok)
+  let si=-1; const ci=Math.floor((o.x-x0)/C), cj=Math.floor((o.z-z0)/C);
+  for(let r=0;r<8&&si<0;r++) for(let j=cj-r;j<=cj+r&&si<0;j++) for(let i=ci-r;i<=ci+r;i++){
+    if(i<0||j<0||i>=nx||j>=nz) continue; if(!blok[j*nx+i]){ si=j*nx+i; break; } }
+  if(si<0) return null;
+  const isi=new Uint8Array(nx*nz), q=[si]; isi[si]=1; let n=0, bocor=false;
+  while(q.length){ const k=q.pop(); n++; const i=k%nx, j=(k-i)/nx;
+    if(i===0||j===0||i===nx-1||j===nz-1){ bocor=true; continue; }
+    for(const kk of [k-1,k+1,k-nx,k+nx]) if(!blok[kk]&&!isi[kk]){ isi[kk]=1; q.push(kk); } }
+  const di=(x,z)=>{ const i=Math.floor((x-x0)/C), j=Math.floor((z-z0)/C); return i>=0&&j>=0&&i<nx&&j<nz&&isi[j*nx+i]; };
+  const isiRuang=lv.objects.filter(b=>b.kind==='furn'&&di(b.x,b.z));
+  const ada=re=>isiRuang.some(b=>re.test(b.type));
+  const jenis = bocor ? 'teras' : ada(/^(bed_|bunk|crib)/) ? 'tidur' : ada(/^(toilet|bathtub|shower|washbasin|vanity$)/) ? 'mandi'
+    : ada(/^(kitchen|stove|sink|fridge|island|range_hood)/) ? 'dapur' : ada(/^dining/) ? 'makan'
+    : ada(/^(desk|office_chair|filing)/) ? 'kerja' : ada(/^(sofa|armchair|tv_|coffee_table)/) ? 'tamu' : 'umum';
+  const luas = bocor ? Math.min(n*C*C, 30) : n*C*C;
+  const utama=Math.max(1, isiRuang.filter(b=>LAMPU_UTAMA.has(b.type)).length);
+  return {luas, jenis, utama, bocor};
+}
+function saranLumen(o,lv){
+  const R=ruangLampu(o,lv); if(!R) return null;
+  const S=SNI_LUX[R.jenis], total=S.e*R.luas/(0.6*0.8);
+  // lampu utama berbagi kebutuhan ruang; lampu aksen (meja, lantai, dinding) cukup menerangi sekitarnya
+  const lm = LAMPU_UTAMA.has(o.type) ? total/R.utama : Math.min(LUMEN_STD[o.type]||800, total*0.3);
+  return {...R, S, total, lm:clamp(Math.round(lm/50)*50,200,12000)};
+}
 const MATI=new Set(), TV_NYALA=new Set(), GORDEN_BUKA=new Set();
 Object.assign(MAT,{
   glowOff : new THREE.MeshStandardMaterial({color:0xe9e4da, roughness:.35}),
@@ -4255,18 +4383,36 @@ function kumpulkanLampu(){
     for(const c of lg.children){
       if(c.userData.kind!=='obj' || !c.userData.lampuTitik) continue;
       const lv=PROJECT.levels[idx], o=lv&&lv.objects.find(x=>x.id===c.userData.id); if(!o) continue;
-      LAMPU_PASANG.push({id:o.id, idx, jenis:c.userData.nyalaJenis, kuat:KUAT_LAMPU[o.type]||0.8,
+      LAMPU_PASANG.push({id:o.id, idx, jenis:c.userData.nyalaJenis, kuat:kuatLampu(o), plafon:!!(FURN[o.type]&&FURN[o.type].plafon),
                          pos:c.localToWorld(c.userData.lampuTitik.clone()), grp:c});
     }
   });
   LAMPU_T=0;
 }
+// piringan penahan hanya boleh menghalangi lampunya sendiri: di peta bayangan
+// matahari tidak tergambar sama sekali, di peta lampu lain dibuang (discard)
+const TUTUP_JARAK=new THREE.MeshDistanceMaterial();
+TUTUP_JARAK.onBeforeCompile=sh=>{
+  sh.vertexShader=sh.vertexShader.replace('void main() {','uniform vec3 referencePosition; varying float vMilik;\nvoid main() {\n vMilik=distance(referencePosition,(modelMatrix*vec4(0.0,0.0,0.0,1.0)).xyz);');
+  sh.fragmentShader=sh.fragmentShader.replace('void main () {','varying float vMilik;\nvoid main () {\n if(vMilik>0.3) discard;').replace('void main() {','varying float vMilik;\nvoid main() {\n if(vMilik>0.3) discard;');
+};
+TUTUP_JARAK.customProgramCacheKey=()=>'tutupLampu';
+const TUTUP_KEDALAMAN=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});
+TUTUP_KEDALAMAN.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('void main() {','void main() {\n discard;'); };
+TUTUP_KEDALAMAN.customProgramCacheKey=()=>'tutupMatahari';
 const KOLAM=[];                        // lampu titik tetap: 4 buah berbayang, dipakai bergiliran oleh lampu terdekat
 for(let i=0;i<4;i++){
   // berbayang: cahaya lampu berhenti di dinding, tidak tembus ke ruang sebelah
   const l=new THREE.PointLight(0xffc98a,0,7,2); l.castShadow=true;
   l.shadow.mapSize.set(512,512); l.shadow.bias=-0.0012; l.shadow.normalBias=0.015; l.shadow.radius=0.12;   // radius = ukuran kap/bohlam (m)
   l.shadow.camera.near=0.08; l.shadow.camera.far=7;
+  // lampu plafon memancar ke bawah: piringan tak terlihat di atas titik cahaya
+  // menahan sinar ke atas, jadi plafon di sekitar lampu tidak menyala putih
+  const tutup=new THREE.Mesh(new THREE.CircleGeometry(1.4,24).rotateX(Math.PI/2),
+    new THREE.MeshBasicMaterial({colorWrite:false, depthWrite:false, transparent:true, opacity:0, side:THREE.DoubleSide}));
+  tutup.position.y=0.12; tutup.castShadow=true; tutup.visible=false; tutup.raycast=()=>{}; tutup.userData.noExport=true;
+  tutup.customDistanceMaterial=TUTUP_JARAK; tutup.customDepthMaterial=TUTUP_KEDALAMAN;
+  l.add(tutup); l.userData.tutup=tutup;
   scene.add(l); KOLAM.push(l);
 }
 let LAMPU_T=0;
@@ -4284,11 +4430,22 @@ function stepLampu(dt){
     KOLAM.forEach(l=>{ if(l.userData.L && !aktif.includes(l.userData.L)) l.userData.L=null; });
     KOLAM.forEach(l=>{ if(!l.userData.L && sisa.length){ l.userData.L=sisa.shift(); bayangKotor(); } });
     KOLAM.forEach(l=>{ const L=l.userData.L;
-      if(!L){ l.intensity=0; return; }
-      if(l.position.distanceToSquared(L.pos)>0.01) bayangKotor();
-      l.position.copy(L.pos); l.position.y-=0.05;
+      if(!L){ l.intensity=0; l.userData.tutup.visible=false; return; }
+      const x=L.pos.x, y=L.pos.y-(L.plafon?0.2:0.05), z=L.pos.z;
+      if((l.position.x-x)**2+(l.position.y-y)**2+(l.position.z-z)**2>1e-4) bayangKotor();
+      if(l.userData.tutup.visible!==L.plafon){ l.userData.tutup.visible=L.plafon; bayangKotor(); }
+      l.position.set(x,y,z);
       l.color.setHex(L.jenis==='api'?0xff9a4a:0xffc98a);
       l.distance = L.jenis==='api'?6:7; l.shadow.camera.far=l.distance; l.shadow.radius = L.jenis==='api'?0.2:0.1; });
+  }
+  // lampu yang sedang ditarik gizmo: titik cahayanya ikut berpindah tiap frame,
+  // bukan tertinggal di posisi lama sampai gizmo dilepas
+  if(gizmo.dragging && gizmo.object){
+    const g=gizmo.object; g.updateMatrixWorld(true);
+    for(const l of KOLAM){ const L=l.userData.L;
+      if(!L || L.grp!==g) continue;
+      L.pos.copy(g.userData.lampuTitik); g.localToWorld(L.pos);
+      l.position.copy(L.pos); l.position.y-=L.plafon?0.2:0.05; }
   }
   const s=SUASANA[MOOD], tk=performance.now()/1000;
   for(const l of KOLAM){ const L=l.userData.L; if(!L){ l.intensity=0; continue; }
@@ -4521,6 +4678,28 @@ function commitGizmo(){
 /* ======================================================================
    INSPECTOR
    ====================================================================== */
+/* terang lampu: lumen manual, atau dihitung dari luas & jenis ruang (SNI 6197) */
+function inspektorCahaya(ins,d){
+  ins.appendChild(el('div','section-title','Cahaya'));
+  const lm=lumenLampu(d), manual=!!(d.params&&d.params.lumen);
+  fRow(ins,'Terang (lumen)',numInput(lm,50,v=>{ d.params=d.params||{}; d.params.lumen=clamp(Math.round(v),100,12000);
+    HIST.label='Terang lampu'; rebuildScene(); renderInspector(); },100,12000));
+  ins.appendChild(el('p','hint',`≈ ${fmt(lm/100,1)} W LED (±100 lm/W) · ${manual?'diatur sendiri':'bawaan armatur ini'}`));
+  const sr=saranLumen(d,L());
+  if(sr){
+    const b=el('div','badge ok');
+    b.textContent=`SNI 6197: ${sr.S.l} ${sr.S.r} lux → pakai ${sr.S.e} lux. Luas ${sr.bocor?'± (area terbuka) ':''}${fmt(sr.luas,1)} m²`
+      +(LAMPU_UTAMA.has(d.type)?`, ${sr.utama} lampu utama → ${fmt(sr.lm,0)} lm per lampu.`:` — lampu aksen: ${fmt(sr.lm,0)} lm cukup.`);
+    ins.appendChild(b);
+    const row=el('div','row');
+    const bs=el('button','btn sm ghost','Pakai standar SNI');
+    bs.onclick=()=>{ d.params=d.params||{}; d.params.lumen=sr.lm; HIST.label='Terang lampu (SNI)'; rebuildScene(); renderInspector();
+      toast(`Terang lampu ${fmt(sr.lm,0)} lm — ${sr.S.l.toLowerCase()} ${sr.S.e} lux`); };
+    row.appendChild(bs);
+    if(manual){ const br=el('button','btn sm ghost','Bawaan'); br.onclick=()=>{ delete d.params.lumen; rebuildScene(); renderInspector(); }; row.appendChild(br); }
+    ins.appendChild(row);
+  }
+}
 function fRow(parent,label,node){
   const r=el('div','f-row'); r.appendChild(el('label',null,label)); r.appendChild(node); parent.appendChild(r); return r;
 }
@@ -4782,6 +4961,7 @@ function renderInspector(){
       else toast('Tidak ada dinding dalam jarak 6 m');
     };
     ins.appendChild(bw);
+    if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
     addTransformFields(ins,d,true);
   }
 
@@ -7932,7 +8112,7 @@ $('#furn-filter').addEventListener('change',renderCatalogs);
    sekali; objek yang belum ada di atlas (objek baru, model .glb unggahan)
    digambar di tempat, satu per satu saat senggang.
    ===================================================================== */
-const THUMB_ATLAS=/*ATLAS*/{"src":"thumbs.webp?v=f0af8263","kol":10,"keys":["stair:straight","stair:landing","stair:l_shape","stair:u_shape","stair:spiral","stair:curved","column:rect","column:round","void:rect","void:L","furn:bed_single","furn:bed_double","furn:bed_king","furn:nightstand","furn:wardrobe","furn:sofa2","furn:sofa3","furn:armchair","furn:coffee_table","furn:tv_set","furn:rug","furn:dining4","furn:dining6","furn:chair","furn:kitchen","furn:island","furn:stove","furn:fridge","furn:sink","furn:toilet","furn:washbasin","furn:bathtub","furn:shower","furn:desk","furn:office_chair","furn:bookshelf","furn:plant","furn:bunk","furn:crib","furn:dresser","furn:vanity_table","furn:wardrobe3","furn:sofa_l","furn:side_table","furn:floor_lamp","furn:dining8","furn:buffet","furn:bar_stool","furn:kitchen_l","furn:upper_cab","furn:washer","furn:vanity","furn:shower_box","furn:filing","furn:ac_split","furn:car","furn:motorcycle","furn:plant_big","furn:art_canvas","furn:art_triptych","furn:gallery_wall","furn:mirror_round","furn:mirror_arch","furn:mirror_floor","furn:wall_shelf","furn:wall_clock","furn:tv_wall","furn:slat_panel","furn:curtain","furn:pendant","furn:pendant_trio","furn:chandelier","furn:table_lamp","furn:night_lamp","furn:arc_lamp","furn:wall_sconce","furn:monstera","furn:fiddle_leaf","furn:snake_plant","furn:hanging_plant","furn:cactus","furn:rug_round","furn:rug_oval","furn:rug_runner","furn:rug_organic","furn:rug_persia","furn:rug_berber","furn:display_cab","furn:shoe_cab","furn:console_tbl","furn:tv_console","furn:pantry","furn:kitchen_line","furn:kitchen_l2","furn:kitchen_u","furn:kitchen_par","furn:kitchen_isl","furn:range_hood","furn:fire_modern","furn:fire_classic","furn:wood_stove","furn:dining_round","furn:ottoman","furn:bench","furn:rattan_chair","furn:piano","furn:room_divider","furn:coat_rack","furn:floor_vase","furn:music_box","furn:vinyl_player","furn:cassette_player","furn:cd_player"]}/*ATLAS*/;
+const THUMB_ATLAS=/*ATLAS*/{"src":"thumbs.webp?v=cf3c43b0","kol":10,"keys":["stair:straight","stair:landing","stair:l_shape","stair:u_shape","stair:spiral","stair:curved","column:rect","column:round","void:rect","void:L","furn:bed_single","furn:bed_double","furn:bed_king","furn:nightstand","furn:wardrobe","furn:sofa2","furn:sofa3","furn:armchair","furn:coffee_table","furn:tv_set","furn:rug","furn:dining4","furn:dining6","furn:chair","furn:kitchen","furn:island","furn:stove","furn:fridge","furn:sink","furn:toilet","furn:washbasin","furn:bathtub","furn:shower","furn:desk","furn:office_chair","furn:bookshelf","furn:plant","furn:bunk","furn:crib","furn:dresser","furn:vanity_table","furn:wardrobe3","furn:sofa_l","furn:side_table","furn:floor_lamp","furn:dining8","furn:buffet","furn:bar_stool","furn:kitchen_l","furn:upper_cab","furn:washer","furn:vanity","furn:shower_box","furn:filing","furn:ac_split","furn:car","furn:motorcycle","furn:plant_big","furn:art_canvas","furn:art_triptych","furn:gallery_wall","furn:mirror_round","furn:mirror_arch","furn:mirror_floor","furn:wall_shelf","furn:wall_clock","furn:tv_wall","furn:slat_panel","furn:curtain","furn:pendant","furn:pendant_trio","furn:chandelier","furn:table_lamp","furn:night_lamp","furn:arc_lamp","furn:wall_sconce","furn:downlight","furn:ceiling_flush","furn:ceiling_panel","furn:monstera","furn:fiddle_leaf","furn:snake_plant","furn:hanging_plant","furn:cactus","furn:rug_round","furn:rug_oval","furn:rug_runner","furn:rug_organic","furn:rug_persia","furn:rug_berber","furn:display_cab","furn:shoe_cab","furn:console_tbl","furn:tv_console","furn:pantry","furn:kitchen_line","furn:kitchen_l2","furn:kitchen_u","furn:kitchen_par","furn:kitchen_isl","furn:range_hood","furn:fire_modern","furn:fire_classic","furn:wood_stove","furn:dining_round","furn:ottoman","furn:bench","furn:rattan_chair","furn:piano","furn:room_divider","furn:coat_rack","furn:floor_vase","furn:music_box","furn:vinyl_player","furn:cassette_player","furn:cd_player"]}/*ATLAS*/;
 const THUMB={W:184, H:128, url:new Map(), antri:[], sibuk:false, atlasGagal:false};
 const THUMB_IDX = THUMB_ATLAS ? new Map(THUMB_ATLAS.keys.map((k,i)=>[k,i])) : new Map();
 if(THUMB_ATLAS){ const im=new Image(); im.onerror=()=>{ THUMB.atlasGagal=true; renderCatalogs(); }; im.src=THUMB_ATLAS.src; }
@@ -7999,7 +8179,9 @@ function gambarThumb(kind,type,R=renderer){
   THUMB.blob.visible=dilantai;
   if(dilantai){ THUMB.blob.position.set(c.x,bb.min.y+0.002,c.z); THUMB.blob.scale.set(uk.x*1.35+0.15,uk.z*1.35+0.15,1); }
   // kamera 3/4 dari depan-kanan-atas, dibingkai pas dengan proyeksi sudut kotak
-  const cam=THUMB.cam, arah=(kind==='stair'?new THREE.Vector3(1,0.5,0.45):new THREE.Vector3(0.62,0.52,1)).normalize();   // tangga dilihat dari samping: larinya terbaca
+  const cam=THUMB.cam, arah=(kind==='stair'?new THREE.Vector3(1,0.5,0.45)            // tangga dilihat dari samping: larinya terbaca
+    : kind==='furn'&&FURN[type].plafon ? new THREE.Vector3(0.62,-0.62,1)                 // lampu plafon dilihat dari bawah: sisi yang menyala
+    : new THREE.Vector3(0.62,0.52,1)).normalize();
   let jarak=bb.getSize(new THREE.Vector3()).length()/2/Math.sin(cam.fov/2*D2R);
   const v=new THREE.Vector3();
   for(let it=0;it<3;it++){
@@ -8552,6 +8734,7 @@ function pakai(t){
   else if(t.jenis==='tv'){ if(TV_NYALA.has(t.id)) TV_NYALA.delete(t.id); else TV_NYALA.add(t.id); for(const g of grupObjek(t.id)) terapkanTV(g,TV_NYALA.has(t.id)); }
   else if(t.jenis==='gorden'){ if(GORDEN_BUKA.has(t.id)) GORDEN_BUKA.delete(t.id); else GORDEN_BUKA.add(t.id); for(const g of grupObjek(t.id)) terapkanGorden(g,GORDEN_BUKA.has(t.id)); }
   else if(t.jenis==='audio'){ if(AUDIO.main.has(t.id)) hentikanMusik(t.id); else mulaiMusik(t.id); }
+  bayangKotor();                     // gorden dibuka/ditutup dsb.: peta bayangan digambar ulang
   AIM_T=0;
 }
 function stepBidik(dt){
@@ -9025,13 +9208,15 @@ const DETAIL_FRAG={
     float w=dF(vec3(g.x*1.2,g.y*26.0,0.0));
     float cincin=sin((g.y*9.0+dF(vec3(g*vec2(2.0,3.0),1.0))*7.0)*3.14159);
     float serat=0.5+0.5*sin(g.y*260.0+w*9.0);
-    float jauh=1.0-smoothstep(0.4,1.6,fwidth(g.y*260.0));
+    float fw=fwidth(g.y*260.0);
+    float jauh=1.0-smoothstep(0.3,1.0,fw);             // warna serat: pudar saat ±6 piksel per garis
+    float jauhB=1.0-smoothstep(0.1,0.35,fw);           // relief serat pudar lebih dulu — turunannya yang memicu moiré
     float k=0.86+0.16*w+0.05*cincin-0.07*serat*jauh;
-    diffuseColor.rgb*=k; dRough=(0.06*w-0.05*serat*jauh); dTinggi=serat*jauh*0.6; }`,
+    diffuseColor.rgb*=k; dRough=(0.06*w-0.05*serat*jauh); dTinggi=serat*jauhB*0.6; }`,
   kain:`{ vec2 u=dUV(vDPos,vDNrm);
     // benang berwarna campur (heather) + tenunan halus ±3 mm yang hanya tampak dari dekat
     float heather=dN(vec3(u*vec2(90.0,260.0),1.0))*0.6+dN(vec3(u*vec2(260.0,90.0),2.0))*0.4;
-    vec2 t=u*2100.0; float jauh=1.0-smoothstep(0.25,0.9,max(fwidth(t.x),fwidth(t.y)));
+    vec2 t=u*2100.0; float jauh=1.0-smoothstep(0.12,0.4,max(fwidth(t.x),fwidth(t.y)));
     float an=(sin(t.x)*0.5+0.5)*(sin(t.y+1.57)*0.5+0.5);
     float belang=dF(vDPos*5.0);
     diffuseColor.rgb*=0.93+0.07*belang+0.07*(heather-0.5)-0.05*an*jauh; dRough=0.03*an*jauh; dTinggi=an*jauh*0.25; }`,
@@ -9039,7 +9224,7 @@ const DETAIL_FRAG={
     diffuseColor.rgb*=0.86+0.2*belang; dSheen=0.55; }`,
   cat:`{ float r=dF(vDPos*3.0); dRough=(r-0.5)*0.12; diffuseColor.rgb*=0.985+0.03*dF(vDPos*0.8); }`,
   logam:`{ vec3 a=abs(vDNrm); vec2 u=a.y>0.7? vDPos.xz : vec2(vDPos.x+vDPos.z,vDPos.y);
-    float jauh=1.0-smoothstep(0.4,1.4,fwidth(u.y*900.0));
+    float jauh=1.0-smoothstep(0.12,0.45,fwidth(u.y*900.0));
     float gores=dN(vec3(u.x*6.0,u.y*900.0,0.0));
     dRough=(gores-0.5)*0.18*jauh; diffuseColor.rgb*=0.97+0.06*gores*jauh; }`
 };
