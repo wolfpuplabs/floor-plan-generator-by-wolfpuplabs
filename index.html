@@ -935,7 +935,10 @@ function fxPipelineSiap(){
   const vs='varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }';
   const opt={minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, depthBuffer:false, stencilBuffer:false};
   const P=FX.pipa={};
-  P.rtAdegan=new THREE.WebGLMultisampleRenderTarget(2,2,{minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, stencilBuffer:false});
+  // stencil dinyalakan agar kedalamannya DEPTH24_STENCIL8: tanpa itu three r128 memberi
+  // buffer MSAA kedalaman 16-bit, dan dari jauh muka dinding yang sebidang saling
+  // "berebut" (z-fighting) — sambungan panel dinding tampak pecah-pecah bergerigi
+  P.rtAdegan=new THREE.WebGLMultisampleRenderTarget(2,2,{minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, stencilBuffer:true});
   P.rtAdegan.samples=4;
   P.h1=new THREE.WebGLRenderTarget(2,2,opt); P.h2=new THREE.WebGLRenderTarget(2,2,opt);
   P.q1=new THREE.WebGLRenderTarget(2,2,opt); P.q2=new THREE.WebGLRenderTarget(2,2,opt);
