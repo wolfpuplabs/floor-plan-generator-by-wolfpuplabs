@@ -123,6 +123,27 @@ details#adv>*:not(summary){margin-bottom:8px}
 #viewport.rapat #toolbar button{padding:7px 5px}
 #viewport.rapat #toolbar .sep{margin:4px 2px}
 #viewbar{right:12px;bottom:12px;display:flex;gap:2px;padding:4px}
+#aiPanel{position:absolute;inset:0;z-index:70;background:rgba(8,9,12,.9);display:flex;align-items:center;justify-content:center;padding:14px}
+#aiPanel[hidden]{display:none}
+.ai-isi{display:flex;flex-direction:column;gap:10px;max-width:100%;max-height:100%;align-items:center}
+.ai-banding{position:relative;max-width:100%;max-height:calc(100vh - 170px);border-radius:8px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.6);touch-action:none;user-select:none;-webkit-user-select:none}
+.ai-banding img{display:block;max-width:100%;max-height:calc(100vh - 170px);pointer-events:none}
+.ai-atas{position:absolute;inset:0;clip-path:inset(0 0 0 50%)}
+.ai-atas img{width:100%;height:100%;object-fit:cover}
+.ai-garis{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.6);cursor:ew-resize}
+.ai-garis span{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font-weight:700}
+.ai-lbl{position:absolute;bottom:12px;padding:6px 12px;border-radius:5px;font:600 .9rem/1 inherit;background:rgba(15,15,18,.78);color:#fff}
+.ai-lbl.kiri{left:12px}.ai-lbl.kanan{right:12px;background:rgba(245,245,240,.92);color:#111;box-shadow:inset 0 -3px 0 #76b900}
+.ai-banding.tunggu .ai-garis,.ai-banding.tunggu .ai-lbl,.ai-banding.tunggu .ai-atas{display:none}
+.ai-status{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(8,9,12,.55);color:#fff;text-align:center;padding:20px;font-size:.8rem}
+.ai-banding.tunggu .ai-status{display:flex}
+.ai-status b{font-size:.95rem}
+.ai-bar-maju{width:min(260px,70%);height:4px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:4px}
+.ai-bar-maju i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.ai-putar{width:28px;height:28px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--accent);border-radius:50%;animation:aiPutar .9s linear infinite}
+.ai-status.gagal .ai-putar{display:none}
+@keyframes aiPutar{to{transform:rotate(360deg)}}
+.ai-tombol{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 #viewbar button{background:none;border:none;color:var(--muted);padding:6px 9px;border-radius:5px;font:600 .68rem/1 inherit;cursor:pointer;min-height:30px}
 #viewbar button.active{background:#2a2a33;color:var(--txt)}
 #helpPanel{left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 18px;z-index:40;max-width:min(520px,calc(100% - 24px))}
@@ -377,6 +398,12 @@ details#adv>*:not(summary){margin-bottom:8px}
       </select></div>
       <label class="chk"><input type="checkbox" id="pbrOn"><span>Material PBR — pantulan lingkungan, relief (normal map), dan kekasaran per bagian</span></label>
       <button class="btn ghost sm" id="renderShot">Render Gambar Tinggi (.png)</button>
+      <div class="section-title">Render AI (foto realistis)</div>
+      <div class="f-row"><label>Space HF</label><input id="aiSpace" type="text" spellcheck="false" autocapitalize="off"></div>
+      <div class="f-row"><label>Prompt</label><input id="aiPrompt" type="text" placeholder="opsional — mis. warm daylight, photoreal"></div>
+      <div class="f-row"><label>Token HF</label><input id="aiToken" type="password" placeholder="opsional — hf_…" autocomplete="off"></div>
+      <button class="btn sm" id="aiBtn">✨ Render AI dari tampilan ini</button>
+      <p class="hint">Tampilan saat ini dikirim ke Space Hugging Face (bawaan: <b>victor/dlss-5-anything</b>) dan digambar ulang oleh AI menjadi foto realistis, lalu dibandingkan dengan geser Off/On. Butuh internet; gambar diproses di server Hugging Face. Space gratis memakai kuota GPU bergilir — token HF (hanya tersimpan di peramban ini) memberi kuota lebih besar.</p>
       <p class="hint" id="rqNote"></p>
       <div class="section-title">Tampilan</div>
       <div class="f-row"><label>Lantai lain</label><select id="otherLevels">
@@ -495,6 +522,23 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button data-view="atas" title="Tampak atas / denah (2)">Atas</button>
       <button data-view="depan" title="Tampak depan (3)">Depan</button>
       <button data-view="iso" title="Isometri (4)">Iso</button>
+      <button id="aiViewBtn" title="Render AI — foto realistis (DLSS 5 Anything)">✨ AI</button>
+    </div>
+    <div id="aiPanel" hidden>
+      <div class="ai-isi">
+        <div class="ai-banding" id="aiBanding">
+          <img id="aiAsli" alt="Render asli">
+          <div class="ai-atas" id="aiAtas"><img id="aiHasil" alt="Render AI"></div>
+          <div class="ai-garis" id="aiGaris"><span>⟷</span></div>
+          <span class="ai-lbl kiri">Off</span><span class="ai-lbl kanan">AI On</span>
+          <div class="ai-status" id="aiStatus"><div class="ai-putar"></div><b id="aiStatusJudul">Menghubungkan…</b><span id="aiStatusRinci"></span><div class="ai-bar-maju"><i id="aiMaju"></i></div></div>
+        </div>
+        <div class="ai-tombol">
+          <button class="btn sm ghost" id="aiUlang">↻ Ulangi</button>
+          <button class="btn sm ghost" id="aiSimpan" disabled>⤓ Simpan hasil</button>
+          <button class="btn sm" id="aiTutup">✕ Tutup</button>
+        </div>
+      </div>
     </div>
     <div class="float" id="helpPanel" hidden>
       <h3>Pintasan</h3>
@@ -518,6 +562,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       </select>
       <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
       <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
+      <button class="btn ghost sm" id="fpsAI">✨ AI</button>
       <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
       <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
     </div>
@@ -5180,6 +5225,7 @@ function setTool(t){
 
 addEventListener('keydown',e=>{
   if(typeof AR!=='undefined' && AR.open){ if(e.key==='Escape') closeAR(); return; }
+  if(!$('#aiPanel').hidden){ if(e.key==='Escape') tutupAI(); return; }
   if(/input|select|textarea/i.test(e.target.tagName)) return;
   const k=e.key.toLowerCase();
   // saat berjalan, W A S D dan kawan-kawan milik mode jalan — jangan sampai
@@ -8100,6 +8146,160 @@ $('#renderShot').onclick=()=>{
     toast(`Render ${fmt(naik,2)}× (${Math.round(viewport.clientWidth*naik)}×${Math.round(viewport.clientHeight*naik)} px) disimpan`);
   });
 };
+
+/* ======================================================================
+   RENDER AI — tampilan saat ini dikirim ke Space Hugging Face (bawaan
+   "DLSS 5 Anything") lewat klien resmi @gradio/client, lalu hasilnya
+   dibandingkan dengan geser Off/On. Endpoint Space dicari sendiri dari
+   daftar API-nya: yang menerima gambar dan mengembalikan gambar, jadi tidak
+   bergantung pada nama fungsi Space tertentu.
+   ====================================================================== */
+const GRADIO_URL='https://cdn.jsdelivr.net/npm/@gradio/client@2.7.0/dist/index.min.js';
+const AI={space:'victor/dlss-5-anything', token:'', prompt:'', klien:null, kunci:'', job:null, asli:null, hasil:null, jalan:0};
+try{ AI.space=localStorage.getItem('ai_space')||AI.space; AI.token=localStorage.getItem('ai_token')||''; AI.prompt=localStorage.getItem('ai_prompt')||''; }catch(e){}
+$('#aiSpace').value=AI.space; $('#aiToken').value=AI.token; $('#aiPrompt').value=AI.prompt;
+const simpanAI=(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(e){} };
+$('#aiSpace').onchange=e=>{ AI.space=e.target.value.trim()||'victor/dlss-5-anything'; e.target.value=AI.space; simpanAI('ai_space',AI.space); AI.klien=null; };
+$('#aiToken').onchange=e=>{ AI.token=e.target.value.trim(); simpanAI('ai_token',AI.token); AI.klien=null; };
+$('#aiPrompt').onchange=e=>{ AI.prompt=e.target.value.trim(); simpanAI('ai_prompt',AI.prompt); };
+
+/* gambar bersih tanpa grid, gizmo, garis seleksi, dan label ukuran */
+function tangkapTampilan(maks=1024){
+  const sembunyi=[grid,helperRoot,DIM.grp,gizmo].filter(Boolean), dulu=sembunyi.map(o=>o.visible);
+  sembunyi.forEach(o=>o.visible=false);
+  renderer.render(scene,camera);
+  const src=renderer.domElement, k=Math.min(1,maks/Math.max(src.width,src.height));
+  const c=document.createElement('canvas');
+  c.width=Math.max(64,Math.round(src.width*k/8)*8); c.height=Math.max(64,Math.round(src.height*k/8)*8);   // kelipatan 8: disukai model difusi
+  c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+  sembunyi.forEach((o,i)=>o.visible=dulu[i]);
+  return c;
+}
+function aiStatus(judul,rinci,maju,gagal){
+  $('#aiStatusJudul').textContent=judul; $('#aiStatusRinci').textContent=rinci||'';
+  $('#aiMaju').style.width = maju==null ? '0' : Math.round(clamp(maju,0,1)*100)+'%';
+  $('#aiStatus').classList.toggle('gagal',!!gagal);
+}
+async function aiKlien(){
+  const kunci=AI.space+'|'+AI.token;
+  if(AI.klien && AI.kunci===kunci) return AI.klien;
+  const G=await import(GRADIO_URL);
+  AI.G=G;
+  AI.klien=await G.Client.connect(AI.space,{
+    token: AI.token||undefined, events:['data','status'],
+    status_callback: s=>{
+      const m={sleeping:'Space sedang tidur — dibangunkan…', building:'Space sedang dibangun…', starting:'Space sedang dinyalakan…', running:'Space siap'};
+      aiStatus(m[s.status]||('Space: '+s.status), s.message||'', null, s.load_status==='error');
+    }});
+  AI.kunci=kunci;
+  return AI.klien;
+}
+const aiGambarParam=p=>/image/i.test(p.component||'') || /filepath|ImageData|FileData/i.test((p.python_type&&p.python_type.type)||'');
+function aiPilihEndpoint(api){
+  const semua=[...Object.entries(api.named_endpoints||{}), ...Object.entries(api.unnamed_endpoints||{}).map(([n,e])=>[+n,e])];
+  const skor=([n,e])=>{
+    const ps=e.parameters||[], rs=e.returns||[];
+    return (ps.some(aiGambarParam)?4:0) + (rs.some(r=>/image|gallery|slider/i.test(r.component||''))?4:0)
+         + (/enhance|generate|process|run|infer|predict|dlss|render|edit/i.test(String(n))?1:0)
+         - (/example|clear|reset|load|lambda/i.test(String(n))?3:0);
+  };
+  const urut=semua.map(x=>[x,skor(x)]).sort((a,b)=>b[1]-a[1]);
+  return urut.length && urut[0][1]>=8 ? urut[0][0][0] : null;   // nama endpoint
+}
+function aiCariGambar(data){
+  let url=null;
+  const telusur=v=>{
+    if(!v) return;
+    if(Array.isArray(v)){ v.forEach(telusur); return; }
+    if(typeof v==='string'){ if(/^data:image\/|^https?:\/\/\S+\.(png|jpe?g|webp)(\?|$)/i.test(v)) url=v; return; }
+    if(typeof v==='object'){ if(typeof v.url==='string') url=v.url; for(const k in v) if(v[k] && typeof v[k]==='object') telusur(v[k]); }
+  };
+  telusur(data); return url;              // yang terakhir: pada ImageSlider [sebelum, sesudah] itu hasilnya
+}
+async function renderAI(){
+  const id=++AI.jalan;
+  if(FPS.on){ FPS.paused=true; if(document.exitPointerLock) document.exitPointerLock(); }
+  const kanvas=tangkapTampilan();
+  // panel & status diatur ulang sebelum menunggu apa pun: galat percobaan
+  // sebelumnya tidak boleh sempat terlihat
+  $('#aiAsli').src=kanvas.toDataURL('image/jpeg',0.9); $('#aiHasil').removeAttribute('src');
+  $('#aiPanel').hidden=false; $('#aiBanding').classList.add('tunggu'); $('#aiSimpan').disabled=true;
+  aiStatus('Menghubungkan ke '+AI.space+'…','Gambar '+kanvas.width+'×'+kanvas.height+' px');
+  const blob=await new Promise(r=>kanvas.toBlob(r,'image/png'));
+  if(id!==AI.jalan) return;
+  if(AI.asli) URL.revokeObjectURL(AI.asli);
+  AI.asli=URL.createObjectURL(blob);
+  try{
+    const klien=await aiKlien(); if(id!==AI.jalan) return;
+    const api=await klien.view_api();
+    const ep=aiPilihEndpoint(api);
+    if(ep==null) throw new Error('Space ini tidak punya endpoint gambar → gambar yang bisa dipakai.');
+    const e=(api.named_endpoints||{})[ep]||(api.unnamed_endpoints||{})[ep];
+    let adaGambar=false;
+    const data=e.parameters.map(p=>{
+      if(aiGambarParam(p) && !adaGambar){ adaGambar=true; return AI.G.handle_file(blob); }
+      const teks=/textbox|text/i.test(p.component||'') || /^str/i.test((p.python_type&&p.python_type.type)||'');
+      if(teks && AI.prompt && /prompt|instruction|text|style/i.test((p.parameter_name||'')+' '+(p.label||''))) return AI.prompt;
+      if(p.parameter_has_default) return p.parameter_default;
+      return teks ? (AI.prompt||'') : null;
+    });
+    aiStatus('Mengunggah & mengantre…','endpoint '+ep);
+    const job=AI.job=klien.submit(ep,data);
+    let hasil=null;
+    for await(const m of job){
+      if(id!==AI.jalan){ try{ job.cancel(); }catch(_){} return; }
+      if(m.type==='status'){
+        if(m.stage==='error') throw new Error(m.message||'Space mengembalikan galat');
+        if(m.stage==='pending') aiStatus(m.position!=null&&m.position>0 ? `Antrean ke-${m.position+1}${m.size?' dari '+m.size:''}` : 'Menunggu GPU…',
+                                         m.eta?`perkiraan ±${Math.round(m.eta)} detik`:'', null);
+        if(m.stage==='generating'||m.progress_data){ const pd=(m.progress_data||[])[0];
+          const f=pd&&pd.length ? pd.index/pd.length : (pd&&pd.progress);
+          aiStatus('AI sedang menggambar ulang…', pd&&pd.desc?pd.desc:(pd&&pd.length?`${pd.index}/${pd.length} ${pd.unit||''}`:''), f); }
+      }
+      if(m.type==='data'){ const u=aiCariGambar(m.data); if(u) hasil=u; }
+    }
+    if(id!==AI.jalan) return;
+    if(!hasil) throw new Error('Space selesai tetapi tidak mengirim gambar.');
+    aiStatus('Mengunduh hasil…','',1);
+    const res=await fetch(hasil, AI.token&&!/^data:/.test(hasil)?{headers:{Authorization:'Bearer '+AI.token}}:{});
+    if(!res.ok) throw new Error('Hasil tidak bisa diunduh ('+res.status+')');
+    const b2=await res.blob();
+    if(AI.hasil) URL.revokeObjectURL(AI.hasil);
+    AI.hasil=URL.createObjectURL(b2);
+    $('#aiHasil').src=AI.hasil;
+    $('#aiBanding').classList.remove('tunggu'); $('#aiSimpan').disabled=false;
+    aiGeser(0.5);
+    toast('✨ Render AI selesai — geser garis untuk membandingkan');
+  }catch(err){
+    if(id!==AI.jalan) return;
+    const pesan=String(err&&err.message||err);
+    const kuota=/quota|GPU|limit|exceeded|ZeroGPU/i.test(pesan);
+    aiStatus('Render AI gagal', pesan + (kuota?' — isi Token HF (Render AI di panel) untuk kuota GPU lebih besar, atau coba lagi nanti.':
+             /fetch|network|Failed|load/i.test(pesan)?' — periksa koneksi internet / nama Space.':''), null, true);
+    AI.klien=null;
+  }
+}
+function aiGeser(f){
+  f=clamp(f,0,1); AI.f=f;
+  $('#aiAtas').style.clipPath=`inset(0 0 0 ${f*100}%)`;
+  $('#aiGaris').style.left=(f*100)+'%';
+}
+(function(){
+  const bd=$('#aiBanding'); let tarik=false;
+  const posisi=e=>{ const r=bd.getBoundingClientRect(); aiGeser((e.clientX-r.left)/r.width); };
+  bd.addEventListener('pointerdown',e=>{ if(bd.classList.contains('tunggu')) return; tarik=true; bd.setPointerCapture(e.pointerId); posisi(e); });
+  bd.addEventListener('pointermove',e=>{ if(tarik) posisi(e); });
+  bd.addEventListener('pointerup',()=>tarik=false); bd.addEventListener('pointercancel',()=>tarik=false);
+})();
+function tutupAI(){
+  AI.jalan++; if(AI.job) try{ AI.job.cancel(); }catch(e){}
+  $('#aiPanel').hidden=true;
+  if(FPS.on) FPS.paused=false;
+}
+$('#aiBtn').onclick=renderAI; $('#aiViewBtn').onclick=renderAI; $('#fpsAI').onclick=e=>{ e.stopPropagation(); renderAI(); };
+$('#aiUlang').onclick=()=>{ $('#aiPanel').hidden=true; requestAnimationFrame(renderAI); };
+$('#aiTutup').onclick=tutupAI;
+$('#aiSimpan').onclick=()=>{ if(!AI.hasil) return; fetch(AI.hasil).then(r=>r.blob()).then(b=>download(b,(PROJECT.name||'render')+'-render-ai.'+((b.type.split('/')[1]||'png').replace('jpeg','jpg')))); };
 
 /* ======================================================================
    PANEL SAMPING, TEMBOK GHOST/SOLID, TEKSTUR
