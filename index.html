@@ -939,25 +939,64 @@ function fxAO(){
 }
 /* PIPELINE FOTO (WebGL2): adegan → buffer MSAA; AO; bloom dua tingkat (¼ & ⅛);
    lalu satu lintasan komposit: AO × gambar + bloom, kurva kontras filmis,
-   split toning (bayangan sejuk, sorotan hangat), vinyet, bulir film halus. */
-const BLOOM_SUASANA={siang:0.2, senja:0.32, malam:0.5, gelap:0.5};
+   split toning (bayangan sejuk, sorotan hangat), vinyet, bulir film halus.
+   HDR: bila GPU bisa menggambar ke buffer half-float, adegan disimpan tanpa
+   pemetaan nada (nilai > 1 tidak terpotong). Pemetaan nada ACES dan eksposur
+   baru diterapkan di komposit, dengan EKSPOSUR OTOMATIS seperti mata/kamera:
+   rata-rata log-luminans layar diukur di GPU (32×32 → 1×1), lalu menyesuaikan
+   perlahan (±1 dtk). Ruang yang diterangi lampu kuat tidak lagi "terbakar",
+   ruang redup tidak jadi hitam pekat — tanpa membaca piksel ke CPU. */
+const BLOOM_SUASANA={siang:0.2, senja:0.32, malam:0.45, gelap:0.45};
+// kunci eksposur per suasana: malam sengaja lebih rendah agar tetap terasa malam
+const KUNCI_EKSPOSUR={siang:0.3, senja:0.26, malam:0.15, gelap:0.11};
+let FX_HDR=null;
+function fxBisaHDR(){
+  if(FX_HDR===null){ const gl=renderer.getContext();
+    FX_HDR = !!(renderer.capabilities.isWebGL2 && gl.getExtension('EXT_color_buffer_float')); }
+  return FX_HDR;
+}
 function fxPipelineSiap(){
   if(FX.pipa) return FX.pipa;
   const vs='varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }';
-  const opt={minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, depthBuffer:false, stencilBuffer:false};
-  const P=FX.pipa={};
+  const hdr=fxBisaHDR(), tipe=hdr?THREE.HalfFloatType:THREE.UnsignedByteType;
+  const opt={minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, depthBuffer:false, stencilBuffer:false, type:tipe};
+  const P=FX.pipa={hdr};
   // stencil dinyalakan agar kedalamannya DEPTH24_STENCIL8: tanpa itu three r128 memberi
   // buffer MSAA kedalaman 16-bit, dan dari jauh muka dinding yang sebidang saling
   // "berebut" (z-fighting) — sambungan panel dinding tampak pecah-pecah bergerigi
-  P.rtAdegan=new THREE.WebGLMultisampleRenderTarget(2,2,{minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, stencilBuffer:true});
+  P.rtAdegan=new THREE.WebGLMultisampleRenderTarget(2,2,{minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, stencilBuffer:true, type:tipe});
   P.rtAdegan.samples=4;
   P.h1=new THREE.WebGLRenderTarget(2,2,opt); P.h2=new THREE.WebGLRenderTarget(2,2,opt);
   P.q1=new THREE.WebGLRenderTarget(2,2,opt); P.q2=new THREE.WebGLRenderTarget(2,2,opt);
+  if(hdr){
+    const o1={minFilter:THREE.NearestFilter, magFilter:THREE.NearestFilter, depthBuffer:false, stencilBuffer:false, type:THREE.HalfFloatType};
+    P.lum=new THREE.WebGLRenderTarget(32,32,o1); P.lum1=new THREE.WebGLRenderTarget(1,1,o1);
+    P.adA=new THREE.WebGLRenderTarget(1,1,o1); P.adB=new THREE.WebGLRenderTarget(1,1,o1); P.adaptAwal=true;
+    P.ukurLum=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tSrc:{value:null}},
+      fragmentShader:`uniform sampler2D tSrc; varying vec2 vUv;
+        float lg(vec2 uv){ return log2(max(dot(texture2D(tSrc,uv).rgb,vec3(0.2126,0.7152,0.0722)),1e-4)); }
+        void main(){ vec2 d=vec2(0.25/32.0);
+          gl_FragColor=vec4((lg(vUv+d)+lg(vUv-d)+lg(vUv+vec2(d.x,-d.y))+lg(vUv-vec2(d.x,-d.y)))*0.25,0.0,0.0,1.0); }`});
+    P.rataLum=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tSrc:{value:null}},
+      fragmentShader:`uniform sampler2D tSrc; varying vec2 vUv;
+        void main(){ float s=0.0; for(int j=0;j<32;j++) for(int i=0;i<32;i++) s+=texture2D(tSrc,(vec2(float(i),float(j))+0.5)/32.0).r;
+          gl_FragColor=vec4(s/1024.0,0.0,0.0,1.0); }`});
+    P.adapt=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tPrev:{value:null}, tCur:{value:null}, laju:{value:1}},
+      fragmentShader:`uniform sampler2D tPrev, tCur; uniform float laju; varying vec2 vUv;
+        void main(){ float a=texture2D(tPrev,vec2(0.5)).r, b=texture2D(tCur,vec2(0.5)).r; gl_FragColor=vec4(mix(a,b,laju),0.0,0.0,1.0); }`});
+  }
+  // eksposur: di mode HDR dihitung dari rata-rata log-luminans yang sudah diadaptasi
+  const paparan=`uniform sampler2D tEksp; uniform float dasar, kunci, hdr;
+    float paparan(){ if(hdr<0.5) return 1.0;
+      float av=exp2(texture2D(tEksp,vec2(0.5)).r);
+      return dasar*clamp(pow(kunci/max(av,1e-4),0.6),0.4,2.0); }`;
+  const Uexp=()=>({tEksp:{value:null}, dasar:{value:1}, kunci:{value:0.3}, hdr:{value:hdr?1:0}});
   P.terang=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false,
-    uniforms:{tSrc:{value:null}, ambang:{value:0.86}},
-    fragmentShader:`uniform sampler2D tSrc; uniform float ambang; varying vec2 vUv;
-      void main(){ vec3 c=texture2D(tSrc,vUv).rgb; float l=max(c.r,max(c.g,c.b));
-        float k=smoothstep(ambang,1.0,l); gl_FragColor=vec4(c*k,1.0); }`});
+    uniforms:Object.assign({tSrc:{value:null}, ambang:{value:0.86}},Uexp()),
+    fragmentShader:paparan+`uniform sampler2D tSrc; uniform float ambang; varying vec2 vUv;
+      void main(){ vec3 c=texture2D(tSrc,vUv).rgb*paparan(); float l=max(c.r,max(c.g,c.b));
+        float k=hdr>0.5 ? smoothstep(1.0,2.6,l) : smoothstep(ambang,1.0,l);
+        gl_FragColor=vec4(min(c*k,vec3(16.0)),1.0); }`});
   P.blur=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false,
     uniforms:{tSrc:{value:null}, arah:{value:new THREE.Vector2()}},
     fragmentShader:`uniform sampler2D tSrc; uniform vec2 arah; varying vec2 vUv;
@@ -968,16 +1007,22 @@ function fxPipelineSiap(){
   P.salin=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tSrc:{value:null}},
     fragmentShader:'uniform sampler2D tSrc; varying vec2 vUv; void main(){ gl_FragColor=vec4(texture2D(tSrc,vUv).rgb,1.0); }'});
   P.komposit=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false,
-    uniforms:{tAdegan:{value:null}, tAO:{value:FX.rtB.texture}, tB1:{value:null}, tB2:{value:null},
-              bloom:{value:0.3}, waktu:{value:0}, res:{value:new THREE.Vector2(1,1)}, vinyet:{value:0.22}, bulir:{value:0.018}},
-    fragmentShader:`uniform sampler2D tAdegan, tAO, tB1, tB2; uniform float bloom, waktu, vinyet, bulir; uniform vec2 res; varying vec2 vUv;
+    uniforms:Object.assign({tAdegan:{value:null}, tAO:{value:FX.rtB.texture}, tB1:{value:null}, tB2:{value:null},
+              bloom:{value:0.3}, waktu:{value:0}, res:{value:new THREE.Vector2(1,1)}, vinyet:{value:0.22}, bulir:{value:0.018}, aces:{value:1}},Uexp()),
+    fragmentShader:paparan+`uniform sampler2D tAdegan, tAO, tB1, tB2; uniform float bloom, waktu, vinyet, bulir, aces; uniform vec2 res; varying vec2 vUv;
+      vec3 rrt(vec3 v){ vec3 a=v*(v+0.0245786)-0.000090537; vec3 b=v*(0.983729*v+0.4329510)+0.238081; return a/b; }
+      vec3 acesFilm(vec3 c){                                                  // sama dengan ACESFilmicToneMapping three.js
+        const mat3 mi=mat3(vec3(0.59719,0.07600,0.02840),vec3(0.35458,0.90834,0.13383),vec3(0.04823,0.01566,0.83777));
+        const mat3 mo=mat3(vec3(1.60475,-0.10208,-0.00327),vec3(-0.53108,1.10813,-0.07276),vec3(-0.07367,-0.00605,1.07602));
+        return clamp(mo*rrt(mi*(c/0.6)),0.0,1.0); }
       void main(){
         vec3 c=texture2D(tAdegan,vUv).rgb;
         c*=texture2D(tAO,vUv).r;                                             // ambient occlusion
-        c+=(texture2D(tB1,vUv).rgb*0.6+texture2D(tB2,vUv).rgb*0.7)*bloom;   // pendar lampu & jendela
+        c+=(texture2D(tB1,vUv).rgb*0.6+texture2D(tB2,vUv).rgb*0.7)*bloom*(hdr>0.5?1.0/max(paparan(),1e-3):1.0);   // pendar lampu & jendela
+        if(hdr>0.5){ c*=paparan(); c = aces>0.5 ? acesFilm(c) : clamp(c,0.0,1.0); }
         float l=dot(c,vec3(0.2126,0.7152,0.0722));
         c=mix(vec3(l),c,1.06);                                               // saturasi sedikit
-        c=mix(c,c*c*(3.0-2.0*c),0.18);                                       // kurva S filmis
+        c=mix(c,c*c*(3.0-2.0*c),hdr>0.5?0.08:0.18);                          // kurva S filmis (ACES sudah berkontras)
         c+=mix(vec3(-0.006,0.0,0.012),vec3(0.014,0.006,-0.01),smoothstep(0.1,0.9,l));   // bayangan sejuk, sorotan hangat
         vec2 q=vUv-0.5; q.x*=res.x/res.y;
         c*=1.0-vinyet*smoothstep(0.35,0.95,length(q));                       // vinyet lensa
@@ -988,6 +1033,7 @@ function fxPipelineSiap(){
   return P;
 }
 const _ukDB=new THREE.Vector2();
+let FX_T0=0;
 function renderFrame(){
   if(!FX.on || !window.__siap){ renderer.render(scene,camera); return; }
   if(!renderer.capabilities.isWebGL2){ renderer.render(scene,camera); fxAO(); return; }
@@ -995,22 +1041,36 @@ function renderFrame(){
   renderer.getDrawingBufferSize(_ukDB);
   const W=Math.max(2,_ukDB.x|0), H=Math.max(2,_ukDB.y|0), W4=Math.max(2,W>>2), H4=Math.max(2,H>>2), W8=Math.max(2,W>>3), H8=Math.max(2,H>>3);
   if(P.rtAdegan.width!==W||P.rtAdegan.height!==H){ P.rtAdegan.setSize(W,H); P.h1.setSize(W4,H4); P.h2.setSize(W4,H4); P.q1.setSize(W8,H8); P.q2.setSize(W8,H8); }
-  // 1. adegan ke buffer MSAA (bayangan & semua cahaya seperti biasa)
+  // 1. adegan ke buffer MSAA (bayangan & semua cahaya seperti biasa); HDR: tanpa pemetaan nada
+  const tm=renderer.toneMapping;
+  if(P.hdr) renderer.toneMapping=THREE.NoToneMapping;
   renderer.setRenderTarget(P.rtAdegan); renderer.clear(); renderer.render(scene,camera);
+  renderer.toneMapping=tm;
   // 2. AO ½ resolusi
   fxHitungAO(Math.max(2,W>>1),Math.max(2,H>>1));
-  // 3. bloom
+  // 3. eksposur otomatis (HDR)
+  const eks=[P.terang.uniforms,P.komposit.uniforms];
+  if(P.hdr){
+    const kini=performance.now(), dt=Math.min(0.25,(kini-(FX_T0||kini))/1000); FX_T0=kini;
+    P.ukurLum.uniforms.tSrc.value=P.rtAdegan.texture; fxQuad(P.ukurLum,P.lum);
+    P.rataLum.uniforms.tSrc.value=P.lum.texture; fxQuad(P.rataLum,P.lum1);
+    P.adapt.uniforms.tPrev.value=P.adA.texture; P.adapt.uniforms.tCur.value=P.lum1.texture;
+    P.adapt.uniforms.laju.value=P.adaptAwal?1:1-Math.exp(-dt*(FPS.on?1.6:3.0)); P.adaptAwal=false;
+    fxQuad(P.adapt,P.adB); const t=P.adA; P.adA=P.adB; P.adB=t;
+    for(const U of eks){ U.tEksp.value=P.adA.texture; U.dasar.value=renderer.toneMappingExposure; U.kunci.value=KUNCI_EKSPOSUR[MOOD]??0.25; }
+  }
+  // 4. bloom
   P.terang.uniforms.tSrc.value=P.rtAdegan.texture; fxQuad(P.terang,P.h1);
   P.blur.uniforms.tSrc.value=P.h1.texture; P.blur.uniforms.arah.value.set(1/W4,0); fxQuad(P.blur,P.h2);
   P.blur.uniforms.tSrc.value=P.h2.texture; P.blur.uniforms.arah.value.set(0,1/H4); fxQuad(P.blur,P.h1);
   P.salin.uniforms.tSrc.value=P.h1.texture; fxQuad(P.salin,P.q1);
   P.blur.uniforms.tSrc.value=P.q1.texture; P.blur.uniforms.arah.value.set(1.5/W8,0); fxQuad(P.blur,P.q2);
   P.blur.uniforms.tSrc.value=P.q2.texture; P.blur.uniforms.arah.value.set(0,1.5/H8); fxQuad(P.blur,P.q1);
-  // 4. komposit ke layar
+  // 5. komposit ke layar
   const U=P.komposit.uniforms;
   U.tAdegan.value=P.rtAdegan.texture; U.tAO.value=FX.rtB.texture; U.tB1.value=P.h1.texture; U.tB2.value=P.q1.texture;
   U.bloom.value=BLOOM_SUASANA[MOOD]??0.3; U.waktu.value=performance.now()/1000; U.res.value.set(W,H);
-  U.vinyet.value=FPS.on?0.3:0.16;
+  U.vinyet.value=FPS.on?0.3:0.16; U.aces.value=tm===THREE.NoToneMapping?0:1;
   fxQuad(P.komposit,null);
 }
 function setFX(on){
@@ -1292,23 +1352,10 @@ const ENV_TEX=new Map();
 function studioEnv(k){
   k=k||(typeof MOOD!=='undefined'?MOOD:'siang');
   if(ENV_TEX.has(k)) return ENV_TEX.get(k);
-  const [terang,tint]=ENV_SUASANA[k]||ENV_SUASANA.siang, T=new THREE.Color(tint);
-  const warna=(r,g,b,m)=>new THREE.Color(r*T.r,g*T.g,b*T.b).multiplyScalar(m*terang);
+  // lingkungan pantulan = langit HDR suasana ini (lihat LANGIT_GLSL) + tanah
   const sc=new THREE.Scene();
-  const ruang=new THREE.Mesh(new THREE.BoxGeometry(24,12,24),
-    new THREE.MeshBasicMaterial({color:warna(0.36,0.37,0.4,1), side:THREE.BackSide}));
-  ruang.position.y=5; sc.add(ruang);
-  const lantai=new THREE.Mesh(new THREE.PlaneGeometry(24,24), new THREE.MeshBasicMaterial({color:warna(0.2,0.19,0.18,1)}));
-  lantai.rotation.x=-Math.PI/2; lantai.position.y=-0.9; sc.add(lantai);
-  const panel=(w,h,x,y,z,ry,rx,m,hex)=>{
-    const c=new THREE.Color(hex||0xffffff);
-    const mt=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:warna(c.r,c.g,c.b,m), side:THREE.DoubleSide}));
-    mt.position.set(x,y,z); mt.rotation.set(rx||0,ry||0,0); sc.add(mt);
-  };
-  panel(10,10,0,10.9,0,0,Math.PI/2,1.3,0xeaf2ff);     // langit-langit terang
-  panel(6,4,-11.8,5,0,Math.PI/2,0,3,0xfff1dc);          // jendela matahari
-  panel(5,3,11.8,4,-4,-Math.PI/2,0,1.5);
-  panel(8,3,0,4,-11.8,0,0,1.1);
+  const bola=new THREE.Mesh(new THREE.SphereGeometry(50,48,24), matLangit());
+  bola.material.transparent=false; isiLangit(bola.material.uniforms,k,true); sc.add(bola);
   const pm=new THREE.PMREMGenerator(renderer);
   const t=pm.fromScene(sc,0.035).texture;
   pm.dispose();
@@ -3746,41 +3793,63 @@ const SNI_LUX={tidur:{l:'Kamar tidur',e:150,r:'120–250'}, tamu:{l:'Ruang tamu/
   makan:{l:'Ruang makan',e:200,r:'120–250'}, kerja:{l:'Ruang kerja',e:250,r:'120–250'}, dapur:{l:'Dapur',e:250,r:'250'},
   mandi:{l:'Kamar mandi',e:250,r:'250'}, teras:{l:'Teras/area terbuka',e:60,r:'60'}, umum:{l:'Ruang',e:150,r:'120–250'}};
 const LAMPU_UTAMA=new Set(['pendant','pendant_trio','chandelier','downlight','ceiling_flush','ceiling_panel']);
-/* luas ruang tempat lampu berada: isi-banjir grid 10 cm yang dibatasi dinding
-   (pintu dianggap tertutup), lalu jenis ruang ditebak dari perabot di dalamnya */
-function ruangLampu(o,lv){
-  const walls=lv.walls.filter(w=>!w.rail); if(!walls.length) return null;
-  let x0=o.x,x1=o.x,z0=o.z,z1=o.z;
-  for(const w of walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
-  const C=0.1; x0-=0.5; z0-=0.5; const nx=Math.ceil((x1+0.5-x0)/C), nz=Math.ceil((z1+0.5-z0)/C);
-  if(nx*nz>600000) return null;
-  const blok=new Uint8Array(nx*nz);
-  for(const w of walls){
-    const t=(w.thickness||0.15)/2+C*0.75, dx=w.x2-w.x1, dz=w.z2-w.z1, L2=dx*dx+dz*dz||1e-9;
-    const ia=Math.max(0,Math.floor((Math.min(w.x1,w.x2)-t-x0)/C)), ib=Math.min(nx-1,Math.ceil((Math.max(w.x1,w.x2)+t-x0)/C));
-    const ja=Math.max(0,Math.floor((Math.min(w.z1,w.z2)-t-z0)/C)), jb=Math.min(nz-1,Math.ceil((Math.max(w.z1,w.z2)+t-z0)/C));
-    for(let j=ja;j<=jb;j++) for(let i=ia;i<=ib;i++){
-      const px=x0+(i+0.5)*C, pz=z0+(j+0.5)*C;
-      const u=clamp(((px-w.x1)*dx+(pz-w.z1)*dz)/L2,0,1), qx=w.x1+dx*u-px, qz=w.z1+dz*u-pz;
-      if(qx*qx+qz*qz<=t*t) blok[j*nx+i]=1;
+/* PETA RUANG per lantai: grid 10 cm, sel yang tertutup dinding ditandai, lalu
+   tiap daerah tertutup diberi nomor (isi-banjir; pintu dianggap tertutup).
+   Dipakai untuk luas ruang (SNI), memilih lampu seruangan dengan kamera, dan
+   pantulan cahaya (GI). Disimpan sampai scene dibangun ulang. */
+let PETA_RUANG=new WeakMap();
+function petaRuang(lv){
+  if(PETA_RUANG.has(lv)) return PETA_RUANG.get(lv);
+  let P=null;
+  const walls=lv.walls.filter(w=>!w.rail);
+  if(walls.length){
+    let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+    for(const w of walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+    const C=0.1; x0-=0.5; z0-=0.5; const nx=Math.ceil((x1+0.5-x0)/C), nz=Math.ceil((z1+0.5-z0)/C);
+    if(nx*nz<=600000){
+      const lab=new Int32Array(nx*nz);            // -1 dinding, 0 belum, ≥1 nomor ruang
+      for(const w of walls){
+        const t=(w.thickness||0.15)/2+C*0.75, dx=w.x2-w.x1, dz=w.z2-w.z1, L2=dx*dx+dz*dz||1e-9;
+        const ia=Math.max(0,Math.floor((Math.min(w.x1,w.x2)-t-x0)/C)), ib=Math.min(nx-1,Math.ceil((Math.max(w.x1,w.x2)+t-x0)/C));
+        const ja=Math.max(0,Math.floor((Math.min(w.z1,w.z2)-t-z0)/C)), jb=Math.min(nz-1,Math.ceil((Math.max(w.z1,w.z2)+t-z0)/C));
+        for(let j=ja;j<=jb;j++) for(let i=ia;i<=ib;i++){
+          const px=x0+(i+0.5)*C, pz=z0+(j+0.5)*C;
+          const u=clamp(((px-w.x1)*dx+(pz-w.z1)*dz)/L2,0,1), qx=w.x1+dx*u-px, qz=w.z1+dz*u-pz;
+          if(qx*qx+qz*qz<=t*t) lab[j*nx+i]=-1;
+        }
+      }
+      const luas=[0], bocor=[false], q=[];
+      for(let s0=0;s0<lab.length;s0++){
+        if(lab[s0]!==0) continue;
+        const id=luas.length; let n=0, b=false; lab[s0]=id; q.push(s0);
+        while(q.length){ const k=q.pop(); n++; const i=k%nx, j=(k-i)/nx;
+          if(i===0||j===0||i===nx-1||j===nz-1){ b=true; continue; }
+          for(const kk of [k-1,k+1,k-nx,k+nx]) if(lab[kk]===0){ lab[kk]=id; q.push(kk); } }
+        luas.push(n*C*C); bocor.push(b);
+      }
+      P={x0,z0,nx,nz,C,lab,luas,bocor};
     }
   }
-  // titik awal: sel bebas terdekat (lampu dinding menempel ke tembok)
-  let si=-1; const ci=Math.floor((o.x-x0)/C), cj=Math.floor((o.z-z0)/C);
-  for(let r=0;r<8&&si<0;r++) for(let j=cj-r;j<=cj+r&&si<0;j++) for(let i=ci-r;i<=ci+r;i++){
-    if(i<0||j<0||i>=nx||j>=nz) continue; if(!blok[j*nx+i]){ si=j*nx+i; break; } }
-  if(si<0) return null;
-  const isi=new Uint8Array(nx*nz), q=[si]; isi[si]=1; let n=0, bocor=false;
-  while(q.length){ const k=q.pop(); n++; const i=k%nx, j=(k-i)/nx;
-    if(i===0||j===0||i===nx-1||j===nz-1){ bocor=true; continue; }
-    for(const kk of [k-1,k+1,k-nx,k+nx]) if(!blok[kk]&&!isi[kk]){ isi[kk]=1; q.push(kk); } }
-  const di=(x,z)=>{ const i=Math.floor((x-x0)/C), j=Math.floor((z-z0)/C); return i>=0&&j>=0&&i<nx&&j<nz&&isi[j*nx+i]; };
-  const isiRuang=lv.objects.filter(b=>b.kind==='furn'&&di(b.x,b.z));
+  PETA_RUANG.set(lv,P); return P;
+}
+// nomor ruang di titik (x,z); benda yang menempel dinding dicari sel bebas terdekat
+function ruangDi(P,x,z){
+  if(!P) return 0;
+  const ci=Math.floor((x-P.x0)/P.C), cj=Math.floor((z-P.z0)/P.C);
+  for(let r=0;r<8;r++) for(let j=cj-r;j<=cj+r;j++) for(let i=ci-r;i<=ci+r;i++){
+    if(i<0||j<0||i>=P.nx||j>=P.nz) continue; const v=P.lab[j*P.nx+i]; if(v>0) return v; }
+  return 0;
+}
+function ruangLampu(o,lv){
+  const P=petaRuang(lv); if(!P) return null;
+  const id=ruangDi(P,o.x,o.z); if(!id) return null;
+  const bocor=P.bocor[id];
+  const isiRuang=lv.objects.filter(b=>b.kind==='furn'&&ruangDi(P,b.x,b.z)===id);
   const ada=re=>isiRuang.some(b=>re.test(b.type));
   const jenis = bocor ? 'teras' : ada(/^(bed_|bunk|crib)/) ? 'tidur' : ada(/^(toilet|bathtub|shower|washbasin|vanity$)/) ? 'mandi'
     : ada(/^(kitchen|stove|sink|fridge|island|range_hood)/) ? 'dapur' : ada(/^dining/) ? 'makan'
     : ada(/^(desk|office_chair|filing)/) ? 'kerja' : ada(/^(sofa|armchair|tv_|coffee_table)/) ? 'tamu' : 'umum';
-  const luas = bocor ? Math.min(n*C*C, 30) : n*C*C;
+  const luas = bocor ? Math.min(P.luas[id], 30) : P.luas[id];
   const utama=Math.max(1, isiRuang.filter(b=>LAMPU_UTAMA.has(b.type)).length);
   return {luas, jenis, utama, bocor};
 }
@@ -4376,7 +4445,7 @@ function stepAudio(dt){
 /* titik cahaya tiap lampu yang terpasang — dikumpulkan tiap scene dibangun */
 let LAMPU_PASANG=[];
 function kumpulkanLampu(){
-  LAMPU_PASANG=[];
+  LAMPU_PASANG=[]; PETA_RUANG=new WeakMap();
   worldRoot.updateMatrixWorld(true);
   levelGroups.forEach((lg,idx)=>{
     if(!lg) return;
@@ -4384,7 +4453,7 @@ function kumpulkanLampu(){
       if(c.userData.kind!=='obj' || !c.userData.lampuTitik) continue;
       const lv=PROJECT.levels[idx], o=lv&&lv.objects.find(x=>x.id===c.userData.id); if(!o) continue;
       LAMPU_PASANG.push({id:o.id, idx, jenis:c.userData.nyalaJenis, kuat:kuatLampu(o), plafon:!!(FURN[o.type]&&FURN[o.type].plafon),
-                         pos:c.localToWorld(c.userData.lampuTitik.clone()), grp:c});
+                         pos:c.localToWorld(c.userData.lampuTitik.clone()), grp:c, ruang:ruangDi(petaRuang(lv),o.x,o.z)});
     }
   });
   LAMPU_T=0;
@@ -4415,20 +4484,65 @@ for(let i=0;i<4;i++){
   l.add(tutup); l.userData.tutup=tutup;
   scene.add(l); KOLAM.push(l);
 }
-let LAMPU_T=0;
+let LAMPU_T=0, RUANG_KAMERA={idx:-1,id:0};
+/* GI LAMPU — cahaya lampu yang memantul dari lantai & dinding menerangi plafon
+   dan sisi yang tidak kena sinar langsung. Dihitung dari fluks lampu yang
+   menyala di ruang itu dibagi luas ruangnya (ruang kecil = pantulan lebih
+   rapat), diwarnai finishing lantai (untuk plafon) dan dinding (untuk lantai):
+   seperti radiosity satu pantulan yang dirata-ratakan per ruang. */
+const giL=new THREE.HemisphereLight(0xffffff,0xffffff,0); scene.add(giL);
+const _giW=new THREE.Color(), _giF=new THREE.Color(), _giL=new THREE.Color(0xffc98a);
+function warnaPantul(hex,out){ out.set(hex); const m=Math.max(out.r,out.g,out.b,1e-3), lum=0.2126*out.r+0.7152*out.g+0.0722*out.b;
+  out.multiplyScalar(1/m).lerp(new THREE.Color(1,1,1),0.45).multiplyScalar(clamp(lum*1.25,0.15,1)); return out; }
+function stepGI(){
+  let fluks=0;
+  for(const l of KOLAM){ const L=l.userData.L; if(!L || !l.intensity) continue;
+    if(FPS.on && (L.idx!==RUANG_KAMERA.idx || (RUANG_KAMERA.id && L.ruang!==RUANG_KAMERA.id))) continue;
+    fluks+=l.intensity; }
+  if(fluks<=0){ giL.intensity=0; return; }
+  const lv=PROJECT.levels[FPS.on?RUANG_KAMERA.idx:PROJECT.active], P=lv&&petaRuang(lv);
+  let luas=40;
+  if(P){ if(FPS.on && RUANG_KAMERA.id) luas = P.bocor[RUANG_KAMERA.id] ? 30 : P.luas[RUANG_KAMERA.id];
+         else { let t=0; for(let i=1;i<P.luas.length;i++) if(!P.bocor[i]) t+=P.luas[i]; if(t>0) luas=t; } }
+  const f=PROJECT.finish||{};
+  warnaPantul((LANTAI[f.floor]||{}).warna ?? 0xcccccc,_giF);
+  warnaPantul(f.in==='warna'&&f.inColor ? f.inColor : ((FINISH[f.in]||{}).warna ?? 0xefece5),_giW);
+  giL.groundColor.copy(_giF).multiply(_giL);            // dari bawah: pantulan lantai → plafon
+  giL.color.copy(_giW).multiply(_giL);                  // dari atas/samping: pantulan plafon & dinding
+  giL.intensity=0.1*fluks*clamp(Math.sqrt(15/Math.max(luas,1)),0.45,1.6);
+}
+/* Empat lampu titik berbayang dibagi ke lampu yang paling berarti bagi kamera:
+   lampu seruangan didahulukan (di mode jalan), lalu jarak. Pergantian slot
+   tidak lagi langsung: lampu lama meredup dulu, baru slotnya dipindah dan
+   lampu baru menyala perlahan — tidak ada kedip nyala-mati saat berjalan. */
+function skorLampu(L,ref){
+  let d=Math.sqrt(L.pos.distanceToSquared(ref));
+  if(FPS.on){
+    if(L.idx!==RUANG_KAMERA.idx) d+=15;
+    else if(!RUANG_KAMERA.id || L.ruang!==RUANG_KAMERA.id) d+=8;
+  }
+  if(KOLAM.some(l=>l.userData.L && l.userData.L.id===L.id && l.userData.tuju>0)) d-=1.5;   // histeresis: yang sedang menyala tidak mudah terganti
+  return d;
+}
 function stepLampu(dt){
   LAMPU_T-=dt;
   const ref = FPS.on ? camera.position : orbit.target;
   if(LAMPU_T<=0){
     LAMPU_T=0.25;
+    if(FPS.on){ const idx=fpsLevelAt(FPS.feet), lv=PROJECT.levels[idx];
+      RUANG_KAMERA={idx, id: lv ? ruangDi(petaRuang(lv),camera.position.x,camera.position.z) : 0}; }
     const aktif=LAMPU_PASANG.filter(L=>!MATI.has(L.id) && levelGroups[L.idx] && levelGroups[L.idx].visible
                                        && (FPS.on || L.idx===PROJECT.active || $('#otherLevels').value==='solid'))
-                            .sort((a,b)=>a.pos.distanceToSquared(ref)-b.pos.distanceToSquared(ref)).slice(0,KOLAM.length);
-    // lampu yang masih termasuk terdekat tetap di slotnya: slot yang berpindah
-    // memaksa peta bayangan digambar ulang, jadi pengacakan urutan dihindari
-    const sisa=aktif.filter(L=>!KOLAM.some(l=>l.userData.L===L));
-    KOLAM.forEach(l=>{ if(l.userData.L && !aktif.includes(l.userData.L)) l.userData.L=null; });
-    KOLAM.forEach(l=>{ if(!l.userData.L && sisa.length){ l.userData.L=sisa.shift(); bayangKotor(); } });
+                            .map(L=>[skorLampu(L,ref),L]).sort((a,b)=>a[0]-b[0]).slice(0,KOLAM.length).map(a=>a[1]);
+    // slot yang lampunya tidak terpilih lagi meredup; setelah padam slotnya bebas
+    // (dicocokkan lewat id: setelah scene dibangun ulang objek lampunya baru,
+    //  tetapi lampu yang sama tidak boleh ikut meredup lalu menyala lagi)
+    KOLAM.forEach(l=>{ const L=l.userData.L; if(!L) return;
+      const baru=aktif.find(A=>A.id===L.id);
+      if(baru){ l.userData.L=baru; l.userData.tuju=1; } else l.userData.tuju=0;
+      if(!l.userData.tuju && (l.userData.f||0)<=0.02) l.userData.L=null; });
+    const sisa=aktif.filter(A=>!KOLAM.some(l=>l.userData.L && l.userData.L.id===A.id));
+    KOLAM.forEach(l=>{ if(!l.userData.L && sisa.length){ l.userData.L=sisa.shift(); l.userData.f=0; l.userData.tuju=1; bayangKotor(); } });
     KOLAM.forEach(l=>{ const L=l.userData.L;
       if(!L){ l.intensity=0; l.userData.tutup.visible=false; return; }
       const x=L.pos.x, y=L.pos.y-(L.plafon?0.2:0.05), z=L.pos.z;
@@ -4449,8 +4563,10 @@ function stepLampu(dt){
   }
   const s=SUASANA[MOOD], tk=performance.now()/1000;
   for(const l of KOLAM){ const L=l.userData.L; if(!L){ l.intensity=0; continue; }
+    const u=l.userData; u.f=clamp((u.f??1)+(u.tuju?1:-1)*dt*3.5,0,1);        // redup/nyala ±0,3 dtk
     const kedip = L.jenis==='api' ? 0.82+0.18*Math.sin(tk*11+L.pos.x)*Math.sin(tk*7.3+L.pos.z) : 1;
-    l.intensity=L.kuat*s.lamp*kedip; }
+    l.intensity=L.kuat*s.lamp*kedip*u.f*u.f; }
+  stepGI();
 }
 
 function buildObject(o, lv){
@@ -4467,6 +4583,10 @@ function buildObject(o, lv){
     BUILD_LV=lv;                      // benda gantung membaca tinggi plafon lantainya
     g = def ? def.b() : new THREE.Group();
     BUILD_LV=null;
+    // semua bagian menerima bayangan — bagian yang dibuat langsung dengan
+    // new THREE.Mesh (bak wastafel, mangkuk kloset, …) dulu terlewat dan
+    // tampak "menyala" di ruang gelap karena cahaya bulan tidak terhalang
+    g.traverse(m=>{ if(m.isMesh) m.receiveShadow=true; });
     hiasNyala(g,o);
   }
   g.position.set(o.x,o.y||0,o.z);
@@ -8412,15 +8532,60 @@ const SUASANA={
 /* kecerahan lingkungan pantulan (PBR & logam) per suasana — sebelumnya satu
    studio terang untuk semua waktu, sehingga PBR malah membanjiri ruang dengan
    cahaya sekitar, apalagi di malam hari */
-const ENV_SUASANA={siang:[1.0,0xffffff], senja:[0.7,0xffc79a], malam:[0.1,0x9fb0d8], gelap:[0.06,0x8fa2d0]};
 let MOOD='siang', RQ_KINI='halus';
 function langitTex(k){
   const s=SUASANA[k];
   return decoTex('langit_'+k,256,(c,S)=>{ const g=c.createLinearGradient(0,0,0,S); g.addColorStop(0,s.langit[0]); g.addColorStop(1,s.langit[1]); c.fillStyle=g; c.fillRect(0,0,S,S); });
 }
+/* LANGIT HDR — pengganti foto HDRI: langit dihitung per arah pandang di shader
+   (gradasi zenit→cakrawala, kabut cakrawala, cakram matahari/bulan yang jauh
+   lebih terang dari 1, pendar di sekitarnya, bintang di malam hari, tanah di
+   bawah cakrawala). Nilainya HDR, jadi pipeline HDR + eksposur otomatis
+   memperlakukannya seperti langit sungguhan. Langit yang sama dipakai untuk
+   latar mode jalan DAN sebagai lingkungan pantulan/IBL (lewat PMREM), jadi
+   pantulan kaca, logam, dan lantai mengkilap cocok dengan langit di jendela. */
+const LANGIT_GLSL=`
+uniform vec3 zenit, cakrawala, tanah, arahSurya, warnaSurya; uniform float cakram, bintang, terang;
+vec3 langitHDR(vec3 d){
+  float h=d.y;
+  vec3 c=mix(cakrawala,zenit,pow(clamp(h,0.0,1.0),0.5));
+  c+=cakrawala*0.35*exp(-abs(h)*9.0);                                   // kabut tipis di cakrawala
+  float mu=max(dot(d,arahSurya),0.0);
+  c+=warnaSurya*(0.18*pow(mu,6.0)+0.6*pow(mu,48.0));                     // pendar sekitar matahari
+  c+=warnaSurya*cakram*smoothstep(0.99955,0.99975,mu);                  // cakram matahari/bulan (HDR)
+  if(bintang>0.0){ vec3 q=floor(d*420.0); float r=fract(sin(dot(q,vec3(12.9898,78.233,37.719)))*43758.5453);
+    c+=vec3(step(0.9985,r)*bintang*smoothstep(0.02,0.25,h)); }
+  vec3 bawah=tanah*(0.6+0.4*exp(h*6.0));
+  return mix(bawah,c,smoothstep(-0.03,0.0,h))*terang;
+}`;
+function uniformLangit(){ return {zenit:{value:new THREE.Color()}, cakrawala:{value:new THREE.Color()}, tanah:{value:new THREE.Color()},
+  arahSurya:{value:new THREE.Vector3(0,1,0)}, warnaSurya:{value:new THREE.Color()}, cakram:{value:10}, bintang:{value:0}, terang:{value:1}}; }
+// encodings_fragment wajib: PMREM three r128 menyimpan peta dalam RGBE — tanpa
+// pengkodean, nilai mentah terbaca sebagai eksponen raksasa (tak hingga)
+function matLangit(){
+  return new THREE.ShaderMaterial({uniforms:uniformLangit(), side:THREE.BackSide, depthWrite:false, transparent:true, fog:false,
+    vertexShader:'varying vec3 vArah; void main(){ vArah=normalize((modelMatrix*vec4(position,1.0)).xyz-cameraPosition); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_Position.z=gl_Position.w*0.99999; }',
+    fragmentShader:LANGIT_GLSL+'varying vec3 vArah; void main(){ gl_FragColor=vec4(langitHDR(normalize(vArah)),1.0);\n#include <tonemapping_fragment>\n#include <encodings_fragment>\n}'});
+}
+const LANGIT_SUASANA={siang:{cakram:40,bintang:0,terang:1.15,tanah:[0.2,0.19,0.17]}, senja:{cakram:30,bintang:0,terang:1.0,tanah:[0.16,0.12,0.1]},
+  malam:{cakram:4,bintang:0.8,terang:1.0,tanah:[0.02,0.022,0.03]}, gelap:{cakram:3,bintang:1.0,terang:1.0,tanah:[0.015,0.016,0.022]}};
+function isiLangit(U,k,env){
+  const s=SUASANA[k]||SUASANA.siang, L=LANGIT_SUASANA[k]||LANGIT_SUASANA.siang;
+  U.zenit.value.set(s.langit[0]).convertSRGBToLinear(); U.cakrawala.value.set(s.langit[1]).convertSRGBToLinear();
+  if(env) U.zenit.value.lerp(U.cakrawala.value,0.55);                  // pantulan di dalam ruang: biru langit tidak terlalu pekat
+  U.tanah.value.setRGB(...L.tanah); U.arahSurya.value.set(...s.sunPos).normalize();
+  U.warnaSurya.value.setHex(s.sun[0]).multiplyScalar(Math.min(1.5,s.sun[1]*1.2));
+  U.cakram.value = env ? Math.min(L.cakram,6) : L.cakram;              // di peta lingkungan cakram diredam: matahari sudah jadi lampu berbayang
+  U.bintang.value = env ? 0 : L.bintang; U.terang.value=L.terang;
+}
+const kubahLangit=new THREE.Mesh(new THREE.SphereGeometry(300,48,24), matLangit());
+kubahLangit.frustumCulled=false; kubahLangit.renderOrder=-10; kubahLangit.visible=false; kubahLangit.raycast=()=>{};
+kubahLangit.onBeforeRender=(r,sc,cam)=>{ kubahLangit.position.copy(cam.position); kubahLangit.updateMatrixWorld(); };
+scene.add(kubahLangit);
 function terapkanLangit(){
-  if(FPS.on){ const s=SUASANA[MOOD]; scene.background=langitTex(MOOD); scene.fog=new THREE.Fog(s.kabut[0],s.kabut[1],s.kabut[2]); }
-  else { scene.background=new THREE.Color(0x0e0e11); scene.fog=new THREE.Fog(0x0e0e11,70,190); }
+  if(FPS.on){ const s=SUASANA[MOOD]; isiLangit(kubahLangit.material.uniforms,MOOD,false); kubahLangit.visible=true;
+    scene.background=new THREE.Color(s.langit[1]); scene.fog=new THREE.Fog(s.kabut[0],s.kabut[1],s.kabut[2]); }
+  else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=new THREE.Fog(0x0e0e11,70,190); }
 }
 function setSuasana(k){
   const s=SUASANA[k]||SUASANA.siang; MOOD=SUASANA[k]?k:'siang';
