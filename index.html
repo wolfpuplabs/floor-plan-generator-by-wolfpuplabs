@@ -265,7 +265,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       </div>
 
       <div class="section-title">3. Deteksi Otomatis</div>
-      <p class="hint" id="cal-info">Mengikuti kaidah gambar kerja: <b>semua garis tebal dibaca sebagai dinding</b> — termasuk sekat tipis, dinding lengkung, dan dinding kaca — blok masif kecil sebagai <b>kolom</b>, dan garis tipis sebagai <b>simbol</b>: busur ayun pintu, kaca jendela, pintu geser, tangga (lurus, L, U, berputar, lengkung, putar; arah naik dari panah), dan perabot sanitair. Arsiran, garis as/grid, dan balok putus-putus diabaikan. Ambang hitam, tebal dinding, dan pelurusan siku dihitung sendiri dari gambarnya. Tidak ada yang perlu disetel.</p>
+      <p class="hint" id="cal-info">Mengikuti kaidah gambar kerja: <b>semua garis tebal dibaca sebagai dinding</b> — termasuk sekat tipis, dinding lengkung, dan dinding kaca — blok masif kecil sebagai <b>kolom</b>, dan garis tipis sebagai <b>simbol</b>: busur ayun pintu, kaca jendela, pintu geser, tangga (lurus, L, U, berputar, lengkung, putar; arah naik dari panah), perabot sanitair, serta <b>perabot</b> (ranjang, nakas, sofa, kursi, meja makan, meja tamu, island, deret dapur, lemari, mesin cuci) yang langsung dipasang 3D sesuai ukuran &amp; arahnya. Arsiran, garis as/grid, dan balok putus-putus diabaikan. Ambang hitam, tebal dinding, dan pelurusan siku dihitung sendiri dari gambarnya. Tidak ada yang perlu disetel.</p>
       <label class="chk"><input type="checkbox" id="showOverlay" checked><span>Tampilkan overlay hasil deteksi</span></label>
       <details id="symref">
         <summary>Referensi simbol yang dikenali</summary>
@@ -6929,6 +6929,356 @@ function detectFixtures(thin,w,h,pxm,segs){
   }
   return keep;
 }
+/* =====================================================================
+   PERABOT DARI SIMBOL DENAH
+   Ranjang, sofa, kursi santai, meja makan + kursi, meja tamu, island,
+   deret dapur, lemari, nakas, mesin cuci — dibaca dari simbol baku gambar
+   kerja (garis tipis, tampak atas) lalu dipasang sebagai perabot 3D dengan
+   ukuran & arah seperti di gambar.
+   Garis perabot biasanya paling tipis & paling muda warnanya; pada resolusi
+   olah dinding (±760 px) garis itu sering hilang. Karena itu perabot dibaca
+   dari salinan gambar beresolusi lebih tinggi dengan ambang yang lebih
+   longgar, sesudah pita dinding dibuang.
+   Tiap simbol diringkas jadi ciri sederhana: ukuran (m), sisi kotak mana
+   yang tergambar (sisi yang menempel dinding sering terpotong), garis dalam
+   yang sejajar sisi (sandaran sofa, bantal & lipatan selimut ranjang),
+   kepadatan isi, bentuk bulat. Jenisnya diputuskan dari ukuran baku +
+   ciri itu + konteks (kursi di sekeliling meja = meja makan; kotak kecil di
+   samping kepala ranjang = nakas; meja di depan sofa = meja tamu).
+   ===================================================================== */
+const SISI_ARAH=[[0,-1],[1,0],[0,1],[-1,0]];          // atas, kanan, bawah, kiri → arah dunia (x,z)
+function ciriSimbol(ink,W,c,P){
+  const {x0,y0,x1,y1}=c, bw=x1-x0+1, bh=y1-y0+1;
+  const band=Math.max(2,Math.round(0.05*P));
+  const at=(x,y)=>ink[y*W+x];
+  // cakupan tiap sisi kotak
+  const cov=[0,0,0,0];
+  for(let x=x0;x<=x1;x++){
+    let t=0,b=0; for(let d=0;d<band;d++){ if(at(x,y0+d)) t=1; if(at(x,y1-d)) b=1; }
+    cov[0]+=t; cov[2]+=b; }
+  for(let y=y0;y<=y1;y++){
+    let r=0,l=0; for(let d=0;d<band;d++){ if(at(x1-d,y)) r=1; if(at(x0+d,y)) l=1; }
+    cov[1]+=r; cov[3]+=l; }
+  cov[0]/=bw; cov[2]/=bw; cov[1]/=bh; cov[3]/=bh;
+  // garis dalam sejajar sisi (posisi 0..1 dari sisi atas / kiri)
+  const ix0=x0+band, ix1=x1-band, iy0=y0+band, iy1=y1-band, iw=ix1-ix0+1, ih=iy1-iy0+1;
+  const garisH=[], garisV=[]; let isi=0;
+  if(iw>3&&ih>3){
+    let run=-1;
+    for(let y=iy0;y<=iy1+1;y++){
+      let n=0; if(y<=iy1) for(let x=ix0;x<=ix1;x++) if(at(x,y)) n++;
+      isi+=n;
+      if(y<=iy1 && n>=0.55*iw){ if(run<0) run=y; }
+      else if(run>=0){ garisH.push(((run+y-1)/2-y0)/bh); run=-1; }
+    }
+    run=-1;
+    for(let x=ix0;x<=ix1+1;x++){
+      let n=0; if(x<=ix1) for(let y=iy0;y<=iy1;y++) if(at(x,y)) n++;
+      if(x<=ix1 && n>=0.55*ih){ if(run<0) run=x; }
+      else if(run>=0){ garisV.push(((run+x-1)/2-x0)/bw); run=-1; }
+    }
+  }
+  const padat = iw>3&&ih>3 ? isi/(iw*ih) : 0;
+  // bulat: piksel tinta berkumpul di elips terluar kotak, mengitari semua arah
+  let bulat=false;
+  if(Math.max(bw,bh)/Math.min(bw,bh)<1.25){
+    const cx=(x0+x1)/2, cy=(y0+y1)/2, rx=bw/2, ry=bh/2, sudut=new Uint8Array(16);
+    let di=0, n=0;
+    for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) if(at(x,y)){
+      n++; const u=(x-cx)/rx, v=(y-cy)/ry, r=Math.hypot(u,v);
+      if(r>0.8&&r<1.1){ di++; sudut[Math.floor(((Math.atan2(v,u)+Math.PI)/(2*Math.PI))*16)%16]=1; }
+    }
+    // sudut kotak pembatas harus kosong — kotak bergaris diagonal (shower) bukan lingkaran
+    let pojok=0; const kx=Math.max(1,Math.round(0.12*bw)), ky=Math.max(1,Math.round(0.12*bh));
+    for(const [ax,ay] of [[x0,y0],[x1-kx,y0],[x0,y1-ky],[x1-kx,y1-ky]]){
+      let ada=false; for(let y=ay;y<=ay+ky&&!ada;y++) for(let x=ax;x<=ax+kx;x++) if(at(x,y)){ ada=true; break; }
+      if(ada) pojok++; }
+    bulat = n>0 && pojok<=1 && di>=0.55*n && sudut.reduce((a,b)=>a+b,0)>=14 && Math.min(cov[0],cov[2])<0.75;
+  }
+  const kotak = cov.filter(v=>v>=0.6).length>=3;
+  return {bw,bh,cov,garisH,garisV,padat,bulat,kotak};
+}
+/* Kotak inti: label ruang sering ditulis menimpa simbol (KITCHEN di atas
+   island, FAMILY ROOM di atas meja tamu) sehingga kotak pembatas komponen
+   melebar. Sisi kotak sebenarnya = garis lurus terluar yang panjangnya
+   ≥ separuh komponen; bagian yang mencuat di luarnya diabaikan. */
+function intiKotak(ink,W,c){
+  const {x0,y0,x1,y1}=c, bw=x1-x0+1, bh=y1-y0+1;
+  let t=-1,b=-1,l=-1,r=-1;
+  for(let y=y0;y<=y1;y++){ let n=0; for(let x=x0;x<=x1;x++) if(ink[y*W+x]) n++; if(n>=0.5*bw){ if(t<0) t=y; b=y; } }
+  for(let x=x0;x<=x1;x++){ let n=0; for(let y=y0;y<=y1;y++) if(ink[y*W+x]) n++; if(n>=0.5*bh){ if(l<0) l=x; r=x; } }
+  const k={x0:l>=0?l:x0, x1:r>=0?r:x1, y0:t>=0?t:y0, y1:b>=0?b:y1};
+  // satu sisi tanpa garis (menempel dinding) tetap memakai tepi komponen
+  if(t>=0&&b>=0&&b-t<0.3*bh){ k.y0=y0; k.y1=y1; }
+  if(l>=0&&r>=0&&r-l<0.3*bw){ k.x0=x0; k.x1=x1; }
+  k.bw=k.x1-k.x0+1; k.bh=k.y1-k.y0+1; k.px=c.px;
+  return k;
+}
+/* ARSIRAN BERKALA di dalam satu komponen — grid keramik kamar mandi, anak
+   tangga: ≥5 garis lurus sejajar berjarak sama (12–70 cm). Garis-garis itu
+   dihapus supaya kloset, wastafel, dan shower di atasnya terpisah jadi
+   simbol sendiri. Dikembalikan: jumlah garis yang dihapus. */
+function hapusArsiran(ink,W,c,P){
+  const {x0,y0,x1,y1}=c, bw=x1-x0+1, bh=y1-y0+1;
+  let dihapus=0;
+  for(const datar of [true,false]){
+    const n=datar?bh:bw, span=datar?bw:bh, pos=[];
+    let run=-1;
+    for(let a=0;a<=n;a++){
+      let k=0;
+      if(a<n) for(let b=0;b<span;b++) if(ink[datar?(y0+a)*W+x0+b:(y0+b)*W+x0+a]) k++;
+      if(a<n&&k>=0.35*span){ if(run<0) run=a; }
+      else if(run>=0){ if(a-run<=Math.max(3,0.04*P)) pos.push([run,a-1]); run=-1; }
+    }
+    if(pos.length<5) continue;
+    const pusat=pos.map(([a,b])=>(a+b)/2), sel=[];
+    for(let i=1;i<pusat.length;i++) sel.push(pusat[i]-pusat[i-1]);
+    const urut=[...sel].sort((a,b)=>a-b), m=urut[Math.floor(urut.length/2)];
+    if(m<0.12*P||m>0.7*P) continue;
+    const tol=Math.max(2,0.12*m);
+    const cocok=pos.filter((_,i)=>pusat.some((q,j)=>j!==i&&Math.abs(Math.abs(q-pusat[i])-m)<=tol));
+    // ≥5 garis (sofa 3 dudukan pun hanya 4: dua lengan + dua sekat bantal)
+    if(cocok.length<5) continue;
+    // hanya ruas lurus yang panjang (≥ separuh ukuran ubin) di garis grid itu yang dihapus;
+    // lengkung kloset/wastafel yang memotong garis grid hanya menyentuhnya sebentar, jadi tetap utuh
+    const minRuas=Math.max(4,0.5*m), idx=(t,u)=>datar?(y0+t)*W+x0+u:(y0+u)*W+x0+t;
+    for(const [a,b] of cocok){
+      const t0=Math.max(0,a-1), t1=Math.min(n-1,b+1);
+      let u0=-1;
+      for(let u=0;u<=span;u++){
+        let on=false; if(u<span) for(let t=t0;t<=t1;t++) if(ink[idx(t,u)]){ on=true; break; }
+        if(on){ if(u0<0) u0=u; }
+        else if(u0>=0){ if(u-u0>=minRuas) for(let v=u0;v<u;v++) for(let t=t0;t<=t1;t++) ink[idx(t,v)]=0; u0=-1; }
+      }
+    }
+    dihapus+=cocok.length;
+  }
+  return dihapus;
+}
+function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
+  if(!hi||!bbox) return [];
+  const {data,W,H,k}=hi, P=pxm*k;
+  if(P<18) return [];
+  const thr=clamp(Math.round(paperLevel(data,W,H)*0.86),120,235);
+  const ink=binarize(data,W,H,thr);
+  // pita dinding (+±6 cm), kusen jendela & semua yang di luar bangunan dibuang
+  const zona=dilate(mask,w,h,2);
+  const bx0=(bbox.x0+2)*k, by0=(bbox.y0+2)*k, bx1=(bbox.x0+bbox.w-3)*k, by1=(bbox.y0+bbox.h-3)*k;
+  for(let y=0;y<H;y++){ const ly=Math.min(h-1,Math.floor(y/k));
+    for(let x=0;x<W;x++){ const i=y*W+x; if(!ink[i]) continue;
+      if(x<bx0||x>bx1||y<by0||y>by1||zona[ly*w+Math.min(w-1,Math.floor(x/k))]) ink[i]=0; } }
+  // huruf & angka label ruang (< ±22 cm) dibuang dulu supaya tidak menempel ke simbol
+  for(const c of components(ink,W,H)) if(Math.max(c.bw,c.bh)<0.22*P) for(const i of c.px) ink[i]=0;
+  let gabung=dilate(ink,W,H,1);
+  // arsiran berkala (keramik, anak tangga) dihapus, lalu komponen dihitung ulang
+  { let ada=false;
+    for(const c of components(gabung,W,H)){ const L=Math.max(c.bw,c.bh)/P;
+      if(L<0.9||L>9) continue;
+      if(hapusArsiran(ink,W,c,P)) ada=true; }
+    if(ada){ for(const c of components(ink,W,H)) if(Math.max(c.bw,c.bh)<0.22*P) for(const i of c.px) ink[i]=0;
+      gabung=dilate(ink,W,H,1); } }
+  const kand=[];
+  if(window.__dbgPerabot) window.__dbgPerabot={ink,W,H,P,kand};
+  for(let c of components(gabung,W,H)){
+    const L=Math.max(c.bw,c.bh)/P, S=Math.min(c.bw,c.bh)/P;
+    if(L<0.3||L>3.6||S<0.25) continue;
+    if(c.px.length>0.6*c.bw*c.bh) continue;                    // blok masif/arsiran pekat
+    let f=ciriSimbol(ink,W,c,P);
+    if(!f.kotak){ const k=intiKotak(ink,W,c);
+      if((k.bw<c.bw-2||k.bh<c.bh-2) && k.bw>=0.6*c.bw && k.bh>=0.6*c.bh){ const f2=ciriSimbol(ink,W,k,P);
+        if(f2.kotak){ c=k; f=f2; } } }
+    const L2=Math.max(c.bw,c.bh)/P, S2=Math.min(c.bw,c.bh)/P;
+    const pusat=toM((c.x0+c.x1)/2/k,(c.y0+c.y1)/2/k);
+    // di atas tangga yang sudah terbaca: bagian simbol tangga, bukan perabot
+    if((stairs||[]).some(st=>{ const pj=(st.steps||10)*(st.tread||0.28), dx=Math.sin(st.rotY||0), dz=Math.cos(st.rotY||0);
+      const ux=pusat.x-st.x, uz=pusat.z-st.z, sep=ux*dx+uz*dz, sam=Math.abs(ux*dz-uz*dx);
+      return st.variant==='straight' ? sep>-0.3&&sep<pj+0.3&&sam<(st.width||1)/2+0.3
+                                     : Math.hypot(ux,uz)<Math.max(pj*0.6,(st.width||1)*1.6); })) continue;
+    kand.push({c,f,L:L2,S:S2,x:pusat.x,z:pusat.z,horiz:c.bw>=c.bh});
+  }
+  // bagian di dalam simbol lain (bantal, bak cuci di meja dapur) bukan perabot tersendiri
+  for(let i=kand.length-1;i>=0;i--){ const a=kand[i].c;
+    if(kand.some(q=>q.c!==a&&a.x0>=q.c.x0-2&&a.x1<=q.c.x1+2&&a.y0>=q.c.y0-2&&a.y1<=q.c.y1+2)) kand.splice(i,1); }
+  // jarak sisi kotak ke dinding terdekat (m)
+  const jarakDinding=(q,s)=>{
+    const {x0,y0,x1,y1}=q.c, mx=(x0+x1)/2, my=(y0+y1)/2;
+    const pt=s===0?[mx,y0]:s===1?[x1,my]:s===2?[mx,y1]:[x0,my];
+    const p=toM(pt[0]/k,pt[1]/k); let best=1e9;
+    for(const wl of walls){ const Lw=wallLen(wl); if(Lw<0.1) continue;
+      const ux=(wl.x2-wl.x1)/Lw, uz=(wl.z2-wl.z1)/Lw, t=clamp((p.x-wl.x1)*ux+(p.z-wl.z1)*uz,0,Lw);
+      best=Math.min(best,Math.hypot(p.x-wl.x1-ux*t,p.z-wl.z1-uz*t)-(wl.thickness||0.15)/2); }
+    return best;
+  };
+  // urutan: sisi "rendah" (atas/kiri, posisi garis dekat 0) dulu
+  const sisiPanjang=q=>q.horiz?[0,2]:[3,1], sisiPendek=q=>q.horiz?[3,1]:[0,2];
+  const dekatDinding=(q,daftar)=>{ let b=daftar[0], bd=1e9; for(const s of daftar){ const d=jarakDinding(q,s); if(d<bd){ bd=d; b=s; } } return [b,bd]; };
+  const jarak=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+  // luas ruang kira-kira: sinar ke empat arah sampai menabrak dinding
+  const sinar=(x,z,dx,dz)=>{ let best=8;
+    for(const wl of walls){ const ex=wl.x2-wl.x1, ez=wl.z2-wl.z1, den=dx*ez-dz*ex; if(Math.abs(den)<1e-9) continue;
+      const t=((wl.x1-x)*ez-(wl.z1-z)*ex)/den, u=((wl.x1-x)*dz-(wl.z1-z)*dx)/den;
+      if(t>0.05&&u>=-0.02&&u<=1.02) best=Math.min(best,t); }
+    return best; };
+  // satu ruang = garis lurus di antara keduanya tidak menembus dinding
+  const seruang=(a,b)=>{ const dx=b.x-a.x, dz=b.z-a.z;
+    for(const wl of walls){ const ex=wl.x2-wl.x1, ez=wl.z2-wl.z1, den=dx*ez-dz*ex; if(Math.abs(den)<1e-9) continue;
+      const t=((wl.x1-a.x)*ez-(wl.z1-a.z)*ex)/den, u=((wl.x1-a.x)*dz-(wl.z1-a.z)*dx)/den;
+      if(t>0.02&&t<0.98&&u>=0&&u<=1) return false; }
+    return true; };
+  const luasRuang=q=>(sinar(q.x,q.z,1,0)+sinar(q.x,q.z,-1,0))*(sinar(q.x,q.z,0,1)+sinar(q.x,q.z,0,-1));
+  // sisi sandaran: keluarga garis dalam yang tidak simetris (sandaran di satu sisi;
+  // lengan sofa/kursi muncul berpasangan di kedua ujung, jadi simetris)
+  const sisiSandaran=q=>{
+    const rata=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length-0.5:0;
+    const aH=rata(q.f.garisH), aV=rata(q.f.garisV);
+    if(Math.max(Math.abs(aH),Math.abs(aV))<0.12) return null;
+    return Math.abs(aH)>=Math.abs(aV) ? (aH<0?0:2) : (aV<0?3:1); };
+  // shower juga kerap digambar kotak dengan SATU garis diagonal
+  const diagonal1=q=>{ const c=q.c; let a=0,b=0,n=0;
+    for(let y=c.y0;y<=c.y1;y++) for(let x=c.x0;x<=c.x1;x++){ if(!ink[y*W+x]) continue; n++;
+      const u=(x-c.x0)/c.bw, v=(y-c.y0)/c.bh; if(Math.abs(u-v)<0.04) a++; if(Math.abs(u+v-1)<0.04) b++; }
+    return Math.max(a,b)>=0.7*Math.hypot(c.bw,c.bh); };     // garis diagonal utuh dari sudut ke sudut
+  const out=[], pakai=new Set();
+  const pasang=(q,jenis,punggung,lebar,dalam)=>{
+    pakai.add(q);
+    const f=FURN[jenis]; if(!f) return;
+    let rotY, eX, eZ;
+    if(punggung!=null){
+      const [bx,bz]=SISI_ARAH[punggung]; rotY=Math.atan2(-bx,-bz);
+      const sepanjangX = punggung===0||punggung===2;        // punggung di sumbu z → lebar = arah x gambar
+      eX=(sepanjangX?q.c.bw:q.c.bh)/P; eZ=(sepanjangX?q.c.bh:q.c.bw)/P;
+    } else {
+      const panjangX=f.f[0]>=f.f[1];
+      rotY = (panjangX===q.horiz) ? 0 : Math.PI/2;
+      eX = panjangX?q.L:q.S; eZ = panjangX?q.S:q.L;
+    }
+    if(lebar) eX=lebar; if(dalam) eZ=dalam;
+    const bebas=jenis==='kitchen';
+    out.push({kind:jenis, x:q.x, z:q.z, rotY,
+      sx:clamp(eX/f.f[0], bebas?0.35:0.72, bebas?2.6:1.4), sz:clamp(eZ/f.f[1],0.72,1.4)});
+  };
+  // 1. RANJANG — 1,75–2,4 m × 0,85–2,1 m; kepala di sisi pendek yang terbuka/menempel dinding/berbantal
+  for(const q of kand){
+    if(!(q.L>=1.5&&q.L<=2.45&&q.S>=0.85&&q.S<=2.15&&q.f.kotak)) continue;
+    const [a,b]=sisiPendek(q);
+    const garis=q.horiz?q.f.garisV:q.f.garisH;
+    // ranjang yang kepalanya terpotong pita dinding tampak lebih pendek: cukup bila
+    // ada bantal/lipatan selimut (≥2 garis lintang di sepertiga ujungnya)
+    // garis rangkap di tepi (t < 0,06 / > 0,94) hanya tebal garis luar, bukan bantal
+    const ujung=Math.max(garis.filter(t=>t>0.06&&t<0.36).length, garis.filter(t=>t>0.64&&t<0.94).length);
+    if(ujung<1) continue;                                // tanpa bantal/selimut: bukan ranjang (bisa island/meja)
+    if(q.L<1.75 && Math.min(...q.f.cov)<0.9 && ujung<2) continue;
+    const skor=s=>{ const lo = s===0||s===3;            // sisi atas/kiri ↔ posisi garis dekat 0
+      let v=-jarakDinding(q,s); if(q.f.cov[s]<0.6) v+=1.5;
+      for(const t of garis) if(lo? (t>0.06&&t<0.36) : (t>0.64&&t<0.94)) v+=0.6;
+      return v; };
+    const kepala = skor(a)>=skor(b) ? a : b;
+    const lebar=q.S;
+    pasang(q, lebar<1.25?'bed_single': lebar<1.72?'bed_double':'bed_king', kepala);
+    q.ranjang=true; q.kepala=kepala;
+  }
+  const ranjang=kand.filter(q=>q.ranjang);
+  // 2. KURSI kecil (calon kursi makan) — dipakai sebagai konteks meja makan
+  const kursi=kand.filter(q=>!pakai.has(q)&&q.L>=0.32&&q.L<=0.62&&q.S>=0.3&&q.L/q.S<1.7);
+  // 3. SOFA & KURSI SANTAI — di ruang yang cukup luas (bukan ruang cuci/kamar mandi)
+  for(const q of kand){
+    if(pakai.has(q)||!q.f.kotak) continue;
+    const sofa = q.L>=1.4&&q.L<=3.4&&q.S>=0.65&&q.S<=1.12;
+    const santai = q.L>=0.72&&q.L<=1.12&&q.S>=0.62&&q.L/q.S<1.35;
+    if(!sofa&&!santai) continue;
+    if(!(q.f.garisH.length||q.f.garisV.length) && q.f.padat<0.02) continue;
+    if(luasRuang(q)<8) continue;
+    let punggung=sisiSandaran(q);
+    if(sofa && punggung!=null && !sisiPanjang(q).includes(punggung)) punggung=null;
+    if(punggung==null) punggung=dekatDinding(q, sofa?sisiPanjang(q):[0,1,2,3])[0];
+    pasang(q, sofa ? (q.L<1.95?'sofa2':'sofa3') : 'armchair', punggung);
+    q.duduk=true;
+  }
+  const duduk=kand.filter(q=>q.duduk);
+  // 4. MEJA BULAT
+  for(const q of kand){
+    if(pakai.has(q)||!q.f.bulat) continue;
+    const D=(q.L+q.S)/2;
+    if(D>=0.7&&D<=1.6) pasang(q,'dining_round',null,D+0.8,D+0.8);
+    else if(D>=0.35&&D<0.7) pasang(q,'side_table',null);
+  }
+  // 5. DERET DAPUR / LEMARI — strip 0,5–0,78 m menempel dinding di sisi panjangnya
+  for(const q of kand){
+    if(pakai.has(q)) continue;
+    if(!(q.S>=0.5&&q.S<=0.8&&q.L>=1.15&&q.L/q.S>=1.9)) continue;
+    const [s,d]=dekatDinding(q,sisiPanjang(q)); if(d>0.3) continue;
+    // sepasang mesin cuci & pengering: deret pendek yang dibelah dua sekat di tengahnya
+    const sekat=(q.horiz?q.f.garisV:q.f.garisH).some(t=>t>0.4&&t<0.6);
+    if(q.L<=1.8 && sekat && q.L/2/q.S>0.8 && q.L/2/q.S<1.3){
+      pakai.add(q);
+      const [ax,az]=q.horiz?[1,0]:[0,1], [bx,bz]=SISI_ARAH[s], f=FURN.washer;
+      for(const t of [-0.25,0.25]) out.push({kind:'washer', x:q.x+ax*t*q.L, z:q.z+az*t*q.L, rotY:Math.atan2(-bx,-bz),
+        sx:clamp(q.L/2/f.f[0],0.72,1.4), sz:clamp(q.S/f.f[1],0.72,1.4)});
+      continue;
+    }
+    const kamar = ranjang.some(r=>jarak(r,q)<4.5&&seruang(r,q));
+    if(kamar){ pasang(q, q.L>=2.0?'wardrobe3':'wardrobe', s); continue; }
+    // deret dapur harus punya tanda dapur: sekat kabinet / bak cuci / tungku, bukan sekadar kotak panjang
+    const lintang=(q.horiz?q.f.garisV:q.f.garisH).length, isi=q.f.padat>0.05;
+    if(q.S>=0.55 && (lintang>=2 || isi)){ pasang(q,'kitchen',s,q.L,null); q.dapur=true; }
+  }
+  const dapur=kand.filter(q=>q.dapur);
+  // 7. NAKAS (di samping kepala ranjang) & MESIN CUCI (kotak ±60 cm berisi huruf/lingkaran)
+  const diKepala=(r,q)=>{                                   // q di pita ±0,7 m dari sisi kepala ranjang r, di sampingnya
+    const [ax,az]=SISI_ARAH[r.kepala], panjang=(r.kepala%2===0)?r.c.bh/P:r.c.bw/P, lebar=(r.kepala%2===0)?r.c.bw/P:r.c.bh/P;
+    const dx=q.x-r.x, dz=q.z-r.z, sumbu=dx*ax+dz*az, samping=Math.abs(dx*az-dz*ax);
+    return sumbu>panjang/2-0.75 && sumbu<panjang/2+0.15 && samping>lebar/2-0.05 && samping<lebar/2+0.75; };
+  for(const q of kand){
+    if(pakai.has(q)) continue;
+    if(!(q.L>=0.32&&q.L<=0.78&&q.S>=0.3&&q.L/q.S<1.45)) continue;
+    const [s,d]=dekatDinding(q,[0,1,2,3]);
+    const r=ranjang.find(r=>diKepala(r,q));
+    const covUrut=[...q.f.cov].sort((a,b)=>b-a);
+    if(r && q.L<=0.65 && covUrut[1]>=0.6){ pasang(q, q.f.padat>0.03?'night_lamp':'nightstand', r.kepala); continue; }
+    if(!r && q.L>=0.52 && q.f.kotak && q.f.padat>0.012 && d<0.4 && !diagonal1(q) && !hasCrossDiagonals(q.c,W)){ pasang(q,'washer',s); continue; }
+  }
+  // 8. SANITAIR yang belum terbaca di resolusi olah dinding (kloset, wastafel, meja wastafel, bathtub, shower)
+  // hanya di ruang kecil (kamar mandi/WC) atau berdekatan dengan sanitair lain —
+  // kotak tertutup apa pun punya "rongga", jadi ukuran saja tidak cukup
+  const calonSan=kand.filter(q=>!pakai.has(q)&&q.L>=0.38&&q.L<=2.1&&q.S>=0.25);
+  for(const q of kand){
+    if(pakai.has(q)) continue;
+    const cross=hasCrossDiagonals(q.c,W), blob=hasInnerHole(gabung,W,H,q.c), r=q.L/q.S;
+    const [s,d]=dekatDinding(q,[0,1,2,3]);
+    const kmd = luasRuang(q)<10 || calonSan.some(o=>o!==q&&jarak(o,q)<2.2&&seruang(o,q)&&luasRuang(o)<10);
+    if(!kmd) continue;
+    const ganda=q.f.garisH.length+q.f.garisV.length>=2;
+    let jenis=null;
+    if(q.L>=1.4&&q.L<=2.1&&q.S>=0.6&&q.S<=1.0&&blob&&ganda) jenis='bathtub';
+    else if(q.L>=0.65&&q.L<=1.35&&q.S>=0.6&&q.L/q.S<1.3&&q.f.kotak&&(cross||diagonal1(q))) jenis='shower';
+    else if(q.L>=0.55&&q.L<=0.98&&q.S>=0.3&&q.S<=0.72&&r>=1.25&&blob) jenis='toilet';
+    else if(q.L>=0.8&&q.L<=1.9&&q.S>=0.36&&q.S<=0.66&&r>=1.8&&d<0.25) jenis='vanity';
+    else if(q.L>=0.38&&q.L<=0.85&&q.S>=0.25&&q.S<=0.62&&r<1.25&&blob&&d<0.3) jenis='washbasin';
+    if(!jenis) continue;
+    // kloset & bak cuci menghadap menjauhi dinding: punggung di sisi terdekat dinding
+    const pg = jenis==='toilet' ? dekatDinding(q,sisiPendek(q))[0] : jenis==='bathtub'||jenis==='shower' ? null : dekatDinding(q,sisiPanjang(q))[0];
+    pasang(q,jenis,pg);
+  }
+  // 6. MEJA — makan (ada kursi di sekeliling), island (dekat dapur), meja tamu (dekat sofa), meja kerja
+  for(const q of kand){
+    if(pakai.has(q)) continue;
+    if(!(q.L>=0.75&&q.L<=2.8&&q.S>=0.42&&q.S<=1.35&&q.f.kotak)) continue;
+    const r=Math.max(q.L,q.S)/2+0.75;
+    const kk=kursi.filter(c=>!pakai.has(c)&&jarak(c,q)<r);
+    if(kk.length>=2){
+      for(const c of kk) pakai.add(c);
+      const n=kk.length;
+      const jenis = n<=4&&q.L<1.6 ? 'dining4' : n<=6&&q.L<2.15 ? 'dining6' : 'dining8';
+      pasang(q,jenis,null); continue;
+    }
+    const dw=dekatDinding(q,[0,1,2,3])[1];
+    if(dapur.some(d=>jarak(d,q)<3.2&&seruang(d,q)) && q.S>=0.55 && dw>0.4){ pasang(q,'island',null); continue; }
+    if(duduk.some(d=>jarak(d,q)<2.4) && q.L<=1.6 && dw>0.3){ pasang(q,'coffee_table',null); continue; }
+    if(dw<0.25 && q.S<=0.85 && q.L>=1.0 && q.L<=1.9 && luasRuang(q)>=6 && !out.some(o=>/toilet|vanity|washbasin|bathtub|shower/.test(o.kind)&&Math.hypot(o.x-q.x,o.z-q.z)<2.5)){
+      pasang(q,'desk',dekatDinding(q,sisiPanjang(q))[0]); continue; }
+  }
+  return out;
+}
 /* Simbol shower = kotak dengan silang diagonal. Diuji langsung dari sebaran
    piksel terhadap kedua diagonal kotak pembatas: penipisan skeleton menyisakan
    pola dua piksel pada garis 45 derajat, sehingga penelusuran ruas memecahnya
@@ -7116,7 +7466,7 @@ function cavityFill(src,w,h,pxm,anchor){
 
 function extractPlan(opt){
   const {data,w,h,thr,noise,minLenM,ortho,detectOpen,detectDoors,heal,realWidth,
-         doorH,sillH,auto,closeRManual,wallMinManual,detectStairsOpt,detectFix}=opt;
+         doorH,sillH,auto,closeRManual,wallMinManual,detectStairsOpt,detectFix,hi}=opt;
 
   // Nilai yang tidak diberikan dihitung sendiri: tidak ada yang perlu disetel.
   // Otsu mencari lembah histogram; untuk gambar garis di atas kertas ambangnya
@@ -7586,7 +7936,7 @@ function extractPlan(opt){
   }
 
   // --- simbol lain di lapis garis tipis: tangga & perabot sanitair ---
-  let symSegs=null, stairs=[], fixtures=[];
+  let symSegs=null, stairs=[], fixtures=[], furniture=[];
   if(detectStairsOpt || detectFix){
     symSegs=symbolSegments(thin,w,h,pxm);
     if(detectStairsOpt){
@@ -7622,11 +7972,14 @@ function extractPlan(opt){
         fixtures.push({kind:f.kind, x:c.x, z:c.z,
                        rotY:(f.bw>=f.bh?0:Math.PI/2), w:f.bw/pxm, d:f.bh/pxm});
       }
+      // perabot lain dari salinan gambar beresolusi tinggi; sanitair yang sudah terbaca didahulukan
+      for(const f of detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs))
+        if(!fixtures.some(x=>Math.hypot(x.x-f.x,x.z-f.z)<0.5)) furniture.push(f);
     }
   }
 
   return {walls, nDoor, nWin, nOpen, nSlide, arcs, cal, closeR, wallMinPx, pxm, bbox, cavityPx:cav.n,
-          stairs, fixtures, columns, nCurved:wallArcs.length, thr:thrA, noise:noiseA, minLenM:minLenA, ortho:orthoA};
+          stairs, fixtures, furniture, columns, nCurved:wallArcs.length, thr:thrA, noise:noiseA, minLenM:minLenA, ortho:orthoA};
 
 }
 
@@ -7680,6 +8033,15 @@ const SYMREF=[
     ['Lengkung','antrede menjari, berlubang tengah','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><path d="M8 42A24 24 0 0 1 56 42M20 42A12 12 0 0 1 44 42"/>'+[200,220,240,260,280,300,320,340].map(a=>{const r=a*Math.PI/180;return `<path d="M${(32+Math.cos(r)*12).toFixed(1)} ${(42+Math.sin(r)*12).toFixed(1)}L${(32+Math.cos(r)*24).toFixed(1)} ${(42+Math.sin(r)*24).toFixed(1)}"/>`;}).join('')+'</g>'],
     ['Putar (spiral)','mengelilingi tiang','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><circle cx="32" cy="24" r="19"/><circle cx="32" cy="24" r="2"/>'+[0,30,60,90,120,150,180,210,240,270,300,330].map(a=>{const r=a*Math.PI/180;return `<path d="M${(32+Math.cos(r)*2).toFixed(1)} ${(24+Math.sin(r)*2).toFixed(1)}L${(32+Math.cos(r)*19).toFixed(1)} ${(24+Math.sin(r)*19).toFixed(1)}"/>`;}).join('')+'</g>']
   ]],
+  ['Perabot (garis tipis, tampak atas)',[
+    ['Ranjang','bantal = sisi kepala; lebar → single/double/king','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="16" y="4" width="32" height="40"/><rect x="19" y="7" width="12" height="7"/><rect x="33" y="7" width="12" height="7"/><path d="M16 18H48"/></g>'],
+    ['Nakas','kotak kecil di samping kepala ranjang','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="6" y="6" width="12" height="12"/><circle cx="12" cy="12" r="3"/><rect x="22" y="6" width="36" height="38"/></g>'],
+    ['Sofa & kursi santai','sandaran = garis dalam di satu sisi','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="6" y="12" width="52" height="22"/><path d="M6 18H58M12 18V34M52 18V34M25 18V34M39 18V34"/></g>'],
+    ['Meja makan','meja + ≥2 kursi di sekelilingnya','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="18" y="14" width="28" height="20"/><rect x="21" y="5" width="8" height="7"/><rect x="35" y="5" width="8" height="7"/><rect x="21" y="36" width="8" height="7"/><rect x="35" y="36" width="8" height="7"/></g>'],
+    ['Meja tamu / island','meja di depan sofa / dekat deret dapur','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="16" y="14" width="32" height="20"/></g>'],
+    ['Deret dapur / lemari','strip ±60 cm menempel dinding; di kamar = lemari','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="4" y="30" width="56" height="12"/><path d="M18 30V42M32 30V42M46 30V42"/><circle cx="25" cy="36" r="3"/><circle cx="39" cy="36" r="3"/></g>'],
+    ['Mesin cuci & pengering','dua kotak ±60 cm berdampingan','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="10" y="14" width="22" height="22"/><rect x="32" y="14" width="22" height="22"/></g>']
+  ]],
   ['Diabaikan — bukan dinding',[
     ['Arsiran','garis sejajar berulang','<rect x="10" y="6" width="44" height="36" fill="none" stroke="#999" stroke-width=".8"/>'+[11,16,21,26,31,36].map(y=>`<path d="M10 ${y}H54" stroke="#aaa" stroke-width=".8"/>`).join('')],
     ['As / grid','garis titik-garis + bulatan','<circle cx="32" cy="8" r="5" fill="none" stroke="#777"/><path d="M32 13V44M6 30H58" stroke="#777" stroke-dasharray="7 2 1 2"/>'],
@@ -7703,7 +8065,7 @@ const SYMREF=[
 
 /* ---------- layer denah: tiap lantai menyimpan gambar denahnya sendiri ----------
    Gambar disimpan di PROJECT.plans (di luar levels) agar catatan undo tetap ringan. */
-const PLAN_IMG=new Map(), PLAN_RES=new Map();
+const PLAN_IMG=new Map(), PLAN_RES=new Map(), PLAN_ASLI=new Map();
 let PLAN_SHOWN=null;
 const planOf = lv => lv ? PROJECT.plans[lv.id] : null;
 function showPlanImage(img,pl){
@@ -7787,6 +8149,7 @@ function loadPlanFile(f,toNewLevel){
       PROJECT.plans[lv.id]={ img:stored.src, w, h, name:f.name||'denah',
         realWidth:parseFloat($('#realWidth').value)||12, unit:$('#unit').value, dx:0, dz:0 };
       PLAN_IMG.set(lv.id,stored);
+      PLAN_ASLI.set(lv.id,img);               // resolusi asli, hanya di memori: untuk garis perabot yang tipis
       PLAN_RES.delete(lv.id);
       LAST_RESULT=null; SRC_IMG=stored;
       PLAN_SHOWN=null;
@@ -7930,6 +8293,15 @@ function runGenerate(toNewLevel){
       ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
       ctx2d.drawImage(SRC_IMG,0,0,w,h);
       const data=ctx2d.getImageData(0,0,w,h).data;
+      // salinan beresolusi lebih tinggi khusus untuk garis perabot yang tipis
+      let hi=null;
+      { const asli=(L()&&PLAN_ASLI.get(L().id))||SRC_IMG;
+        const sw=asli.naturalWidth||asli.width, kk=Math.min(2.6, Math.min(sw,1800)/w);
+        if(kk>=1.2){ const cv=document.createElement('canvas'); cv.width=Math.round(w*kk); cv.height=Math.round(h*kk);
+          const cx=cv.getContext('2d',{willReadFrequently:true}); cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height);
+          cx.drawImage(asli,0,0,cv.width,cv.height);
+          hi={data:cx.getImageData(0,0,cv.width,cv.height).data, W:cv.width, H:cv.height, k:cv.width/w}; }
+        else hi={data, W:w, H:h, k:1}; }
       const lvH=parseFloat($('#wallH').value)||3.2;
       // null = hitung sendiri dari gambar
       const AUTO=$('#autoDetect').checked;
@@ -7943,6 +8315,7 @@ function runGenerate(toNewLevel){
         detectDoors:     AUTO || $('#doDoors').checked,
         detectStairsOpt: AUTO || $('#doStairs').checked,
         detectFix:       AUTO || $('#doFix').checked,
+        hi,
         heal:            AUTO || $('#doHeal').checked,
         auto:            AUTO || $('#autoCal').checked,
         closeRManual:+$('#closeR').value,
@@ -7993,6 +8366,11 @@ function runGenerate(toNewLevel){
         faceNearestWall(o, lv.walls);
         lv.objects.push(o);
       }
+      // perabot dari simbol: arah & ukuran sudah dihitung dari gambarnya
+      for(const f of (res.furniture||[])){
+        lv.objects.push({id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
+          x:f.x, y:0, z:f.z, rotY:f.rotY, sx:+f.sx.toFixed(3), sy:1, sz:+f.sz.toFixed(3), params:paramsAwal('furn',f.kind)||{}});
+      }
       PROJECT.pxPerMeter=res.pxm;
       LAST_RESULT=res;
       PLAN_RES.set(lv.id,res);
@@ -8018,6 +8396,7 @@ function runGenerate(toNewLevel){
         + (res.nSlide?` · ${res.nSlide} geser`:'')
         + (res.stairs.length?` · ${res.stairs.length} tangga`:'')
         + (res.fixtures.length?` · ${res.fixtures.length} sanitair`:'')
+        + ((res.furniture||[]).length?` · ${res.furniture.length} perabot`:'')
         + (res.columns.length?` · ${res.columns.length} kolom`:'')
         + (res.nCurved?` · ${res.nCurved} dinding lengkung`:'')
         + (alignMsg?' · '+alignMsg:''));
