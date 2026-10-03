@@ -1,0 +1,65 @@
+# Gerbang mutu & keputusan — lihat docs/SDLC.md (Gerbang G2: Verifikasi).
+# Merge ke main hanya bila SEMUA job hijau.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guardrail:
+    name: Lint · Guardrail · Gerbang JEV
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+      - run: npm ci
+      - name: Audit dependensi (high+)
+        run: npm audit --audit-level=high
+      - name: ESLint (galat = gagal, peringatan = ratchet)
+        run: npm run lint
+      - name: Guardrail statis (SRI, CSP, host, sink XSS, rahasia, ukuran)
+        run: npm run guard
+      - name: Gerbang JEV — PR wajib merujuk item ber-verdict GO
+        env:
+          JEV_GERBANG: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node jev.mjs check
+      - name: Laporan JEV harus sinkron dengan registry
+        run: |
+          node jev.mjs report > /dev/null
+          git diff --exit-code -- ../docs/jev/LAPORAN.md || (echo "::error::docs/jev/LAPORAN.md usang — jalankan: cd tools && node jev.mjs report" && exit 1)
+
+  e2e:
+    name: Tes e2e (Chromium)
+    needs: guardrail
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

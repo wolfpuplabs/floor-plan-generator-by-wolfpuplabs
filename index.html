@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<!-- GUARDRAIL G4 — Content Security Policy: skrip hanya dari halaman ini dan
+     jsDelivr (terkunci SRI), tanpa plugin/objek, tanpa <base> sisipan, tanpa form
+     keluar. Unduhan data (HDRI/model) dibatasi ke HTTPS. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Arsitek 3D — Editor Denah, Dinding, Lantai & Furnitur</title>
 <style>
 :root{
@@ -240,12 +245,16 @@ details#adv>*:not(summary){margin-bottom:8px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+<!-- GUARDRAIL G5 — pustaka pihak ketiga dikunci versinya DAN isinya (Subresource
+     Integrity): bila CDN disusupi atau berkasnya berubah, peramban menolak
+     menjalankannya. Hash dihitung dari tarball npm resmi (byte yang disajikan
+     jsDelivr). Mengganti versi = hitung ulang hash (lihat docs/SDLC.md). -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js" integrity="sha384-B6xO4Jgg0u+mU5RCidCjX9gGXVfcKQqaO289hQ0Vx+dM15uhh+Bt81X49IGCFU1s" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js" integrity="sha384-rGtaymDtw9nk80MOKrYMkPbGnrELAWx6L/Lxn7kG4sc4+09Aa1xll+AwI+/ZKGSz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" integrity="sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E" crossorigin="anonymous"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js" integrity="sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW" crossorigin="anonymous"></script>
 </head>
 <body>
 <div id="app">
@@ -671,9 +680,21 @@ const D2R=Math.PI/180, R2D=180/Math.PI;
 const fmt=(v,d=2)=>(Math.round(v*10**d)/10**d).toFixed(d);
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
+// GUARDRAIL G1: teks apa pun yang berasal dari berkas proyek, unggahan, atau API
+// luar WAJIB lewat esc() sebelum masuk innerHTML / atribut (cegah XSS tersimpan)
+const esc=v=>String(v??'').replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
 const el=(tag,cls,txt)=>{const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e;};
 
 let toastTimer=null;
+// GUARDRAIL G6 — galat tak tertangkap dicatat di memori (tanpa telemetri; data
+// tidak keluar perangkat) dan pengguna diingatkan sekali untuk menyimpan proyek
+window.__galat=[];
+function catatGalat(m){
+  const G=window.__galat; G.push({t:Date.now(), m:String(m).slice(0,300)}); if(G.length>50) G.shift();
+  if(!catatGalat.sudah){ catatGalat.sudah=true; setTimeout(()=>{ try{ toast('Terjadi galat tak terduga — simpan proyek Anda. ('+String(m).slice(0,70)+')'); }catch(e){} },0); }
+}
+addEventListener('error',e=>catatGalat(e.message||e.error));
+addEventListener('unhandledrejection',e=>catatGalat('Promise: '+((e.reason&&e.reason.message)||e.reason)));
 function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
@@ -6140,8 +6161,23 @@ function prepareAssetObject(root){
   const s3=new THREE.Box3().setFromObject(wrap).getSize(new THREE.Vector3());
   return {obj:wrap, fit, dims:[+s3.x.toFixed(3),+s3.y.toFixed(3),+s3.z.toFixed(3)]};
 }
+/* GUARDRAIL G3 — model dari proyek/unggahan tidak boleh menyuruh peramban
+   mengambil berkas dari alamat lain (membocorkan IP/proyek, atau memuat isi yang
+   berubah diam-diam): buffer & gambar glTF harus tertanam (GLB / data:). */
+function uriLuarGLTF(buf){
+  let json=null; const u8=new Uint8Array(buf);
+  try{
+    if(sniffGLTF(buf)==='glb'){ const dv=new DataView(buf); const n=dv.getUint32(12,true);
+      if(dv.getUint32(16,true)===0x4E4F534A) json=JSON.parse(new TextDecoder().decode(u8.subarray(20,20+n))); }
+    else json=JSON.parse(new TextDecoder().decode(u8));
+  }catch(e){ return null; }                    // biar GLTFLoader yang melaporkan berkas rusak
+  const luar=[...(json.buffers||[]),...(json.images||[])].map(x=>x&&x.uri).filter(u=>typeof u==='string' && !/^data:/i.test(u));
+  return luar.length ? luar : null;
+}
 function parseAsset(id,buf){
   return new Promise((res,rej)=>{
+    const luar=uriLuarGLTF(buf);
+    if(luar) return rej(new Error('model merujuk berkas di luar dirinya ('+luar.slice(0,2).join(', ').slice(0,80)+') — kemas sebagai satu .glb mandiri'));
     if(typeof THREE.GLTFLoader!=='function')
       return rej(new Error('pustaka GLTFLoader belum termuat — periksa koneksi internet'));
     let data=buf;
@@ -9518,7 +9554,7 @@ function syncPlanPanel(force){
   if(!pl){
     $('#rapikan-info').textContent='';
     canvas2d.style.display='none';
-    if(ph){ ph.style.display=''; ph.innerHTML=`<b>${lv.name}</b> belum punya gambar denah.<br>Upload denah khusus lantai ini di atas.`; }
+    if(ph){ ph.style.display=''; ph.innerHTML=`<b>${esc(lv.name)}</b> belum punya gambar denah.<br>Upload denah khusus lantai ini di atas.`; }
     updatePxm();
     return;
   }
@@ -9844,7 +9880,7 @@ function updateStatsBar(){
     area=(x1-x0)*(z1-z0);
   }
   $('#stats').innerHTML = lv.walls.length||lv.objects.length
-    ? `<b>${lv.name}</b> · dinding <b>${lv.walls.length}</b> (struktural <b>${struct}</b>)<br>
+    ? `<b>${esc(lv.name)}</b> · dinding <b>${lv.walls.length}</b> (struktural <b>${struct}</b>)<br>
        panjang total <b>${fmt(total,1)} m</b> · luas kotak <b>${fmt(area,1)} m²</b><br>
        bukaan <b>${ops}</b> — pintu <b>${doors}</b>, jendela <b>${wins}</b><br>
        objek <b>${lv.objects.filter(o=>o.kind!=='void').length}</b>${voidN?` · void <b>${voidN}</b>`:''} · tinggi lantai <b>${fmt(lv.height)} m</b>`
@@ -10294,7 +10330,7 @@ function ikonObjek(kind,type){
   }
   if(THUMB.url.has(k)) return `<span class="thumb-latar"><span class="thumb" style="background-image:url(${THUMB.url.get(k)})"></span></span>`;
   if(!THUMB.antri.includes(k)) THUMB.antri.push(k);
-  return `<span class="thumb-latar"><span class="thumb kosong" data-thumb="${k}"></span></span>`;
+  return `<span class="thumb-latar"><span class="thumb kosong" data-thumb="${esc(k)}"></span></span>`;
 }
 function isiThumbAntri(){
   if(THUMB.sibuk || !THUMB.antri.length) return;
@@ -10442,11 +10478,13 @@ async function daftarModelPH(){
   if(GALERI.daftar) return GALERI.daftar;
   const r=await fetch('https://api.polyhaven.com/assets?t=models',{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status);
   const j=await r.json();
-  GALERI.daftar=Object.entries(j).map(([id,a])=>({id, nama:a.name||id, kat:(a.categories||[]).map(String), tag:(a.tags||[]).map(String),
+  GALERI.daftar=Object.entries(j).filter(([id])=>ID_AMAN.test(id)).map(([id,a])=>({id, nama:a.name||id, kat:(a.categories||[]).map(String), tag:(a.tags||[]).map(String),
     unduh:a.download_count||0})).sort((a,b)=>b.unduh-a.unduh);
   return GALERI.daftar;
 }
 async function unduhModelPH(id,nama,res,onP){
+  if(!ID_AMAN.test(id)) throw new Error('id model tidak sah');
+  if(!/^(1k|2k)$/.test(res)) res='1k';
   const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status);
   const f=await r.json(), g=f.gltf&&(f.gltf[res]||f.gltf['1k']||f.gltf[Object.keys(f.gltf)[0]]);
   const gl=g&&g.gltf; if(!gl||!gl.url) throw new Error('model ini tidak punya versi glTF');
@@ -10516,7 +10554,7 @@ async function bukaGaleri(){
     const d=await daftarModelPH(), hit={};
     for(const a of d) for(const k of a.kat) hit[k]=(hit[k]||0)+1;
     const kat=Object.entries(hit).sort((a,b)=>b[1]-a[1]).slice(0,24);
-    $('#galeriKat').innerHTML=`<option value="semua">Semua (${d.length})</option>`+kat.map(([k,n])=>`<option value="${k.replace(/"/g,'')}">${k} (${n})</option>`).join('');
+    $('#galeriKat').innerHTML=`<option value="semua">Semua (${d.length})</option>`+kat.map(([k,n])=>`<option value="${esc(k)}">${esc(k)} (${n})</option>`).join('');
     renderGaleri();
   }catch(e){ $('#galeriInfo').textContent='Daftar model tidak bisa dimuat ('+(e.message||e)+') — perlu koneksi internet.'; }
 }
@@ -10582,36 +10620,87 @@ $('#saveBtn').onclick=()=>{
   download(JSON.stringify({v:3, ...PROJECT, plans},null,1), (PROJECT.name||'denah')+'.json','application/json');
   toast('Proyek disimpan');
 };
+/* GUARDRAIL G2 — berkas proyek adalah MASUKAN TAK TEPERCAYA (bisa dikirim orang
+   lain). Sebelum menyentuh PROJECT, isinya disaring: tipe & rentang angka, panjang
+   teks, pola id, gambar denah hanya data:image (tak ada URL luar yang membocorkan
+   IP), aset hanya base64. Pemuatan bersifat atomik: bila apa pun gagal, proyek
+   yang sedang terbuka dipulihkan utuh. */
+const BATAS_PROYEK={berkasMB:250, lantai:50, dinding:5000, objek:5000, bukaan:60, aset:200, teks:120, kedalaman:5, larik:20000};
+const ID_AMAN=/^[A-Za-z0-9_-]{1,64}$/;
+function angka(v,min,max,bawaan){ v=+v; return Number.isFinite(v) ? clamp(v,min,max) : bawaan; }
+function teks(v,maks,bawaan){ return typeof v==='string' ? v.slice(0,maks??BATAS_PROYEK.teks) : bawaan; }
+function idAman(v,awalan){ return typeof v==='string' && ID_AMAN.test(v) ? v : uid(awalan); }
+function nilaiAman(v,d){                       // params objek: hanya data polos, berbatas
+  d=d||0; if(d>BATAS_PROYEK.kedalaman) return undefined;
+  if(typeof v==='number') return Number.isFinite(v) ? v : 0;
+  if(typeof v==='boolean') return v;
+  if(typeof v==='string') return v.slice(0,500);
+  if(Array.isArray(v)) return v.slice(0,BATAS_PROYEK.larik).map(x=>nilaiAman(x,d+1));
+  if(v && typeof v==='object'){ const o={}; for(const k of Object.keys(v).slice(0,200)){ if(k==='__proto__'||k==='constructor'||k==='prototype') continue; const x=nilaiAman(v[k],d+1); if(x!==undefined) o[k]=x; } return o; }
+  return undefined;
+}
+function sanitasiProyek(j){
+  if(!j || typeof j!=='object' || !Array.isArray(j.levels) || !j.levels.length) throw new Error('format tidak dikenali');
+  if(j.levels.length>BATAS_PROYEK.lantai) throw new Error(`lebih dari ${BATAS_PROYEK.lantai} lantai`);
+  const M=1e4;                                  // koordinat ±10 km sudah jauh di luar bangunan mana pun
+  const levels=j.levels.map(l=>{
+    l=l&&typeof l==='object'?l:{};
+    const walls=(Array.isArray(l.walls)?l.walls:[]).slice(0,BATAS_PROYEK.dinding).map(w=>({...nilaiAman(w),
+      id:idAman(w.id,'w'), x1:angka(w.x1,-M,M,0), z1:angka(w.z1,-M,M,0), x2:angka(w.x2,-M,M,1), z2:angka(w.z2,-M,M,0),
+      thickness:angka(w.thickness,0.02,2,0.15), height:angka(w.height,0,20,0),
+      openings:(Array.isArray(w.openings)?w.openings:[]).slice(0,BATAS_PROYEK.bukaan).map(o=>({...nilaiAman(o), id:idAman(o.id,'o'),
+        type:teks(o.type,40,'door'), at:angka(o.at,-M,M,0), width:angka(o.width,0.1,30,0.8), sill:angka(o.sill,0,20,0), head:angka(o.head,0.1,20,2.1)}))
+    })).filter(w=>Math.hypot(w.x2-w.x1,w.z2-w.z1)>1e-6);
+    const objects=(Array.isArray(l.objects)?l.objects:[]).slice(0,BATAS_PROYEK.objek).filter(o=>o&&typeof o.kind==='string').map(o=>({...nilaiAman(o),
+      id:idAman(o.id,'ob'), kind:teks(o.kind,20,'furn'), type:teks(o.type,64,''), x:angka(o.x,-M,M,0), y:angka(o.y,-100,500,0), z:angka(o.z,-M,M,0),
+      rotY:angka(o.rotY,-1e3,1e3,0), sx:angka(o.sx??1,0.01,100,1), sy:angka(o.sy??1,0.01,100,1), sz:angka(o.sz??1,0.01,100,1),
+      params:nilaiAman(o.params&&typeof o.params==='object'?o.params:{})||{}}));
+    return { id:idAman(l.id,'lv'), name:teks(l.name,60,'Lantai')||'Lantai', height:angka(l.height,2,8,3.2),
+             slab:l.slab!==false, visible:l.visible!==false, walls, objects };
+  });
+  const ids=new Set(levels.map(l=>l.id));
+  const assets={};
+  for(const [k,a] of Object.entries(j.assets&&typeof j.assets==='object'?j.assets:{}).slice(0,BATAS_PROYEK.aset)){
+    if(!ID_AMAN.test(k)||!a||typeof a.data!=='string') continue;
+    if(a.data.length>ASSET_MAX*1.4 || !/^[A-Za-z0-9+/=\s]*$/.test(a.data.slice(0,4096))) continue;
+    assets[k]={ name:teks(a.name,120,'model'), size:angka(a.size,0,ASSET_MAX,0), dims:(Array.isArray(a.dims)?a.dims:[1,1,1]).slice(0,3).map(v=>angka(v,0,1e3,1)),
+                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/polyhaven\.com\//.test(a.sumber)?{sumber:a.sumber}:{}) };
+  }
+  const plans={};
+  for(const [k,pl] of Object.entries(j.plans&&typeof j.plans==='object'?j.plans:{})){
+    if(!ids.has(k)||!pl||typeof pl.img!=='string'||!/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(pl.img)) continue;
+    plans[k]={...nilaiAman({...pl,img:''}), img:pl.img, w:angka(pl.w,1,2e4,1000), h:angka(pl.h,1,2e4,1000)};
+  }
+  const pilih=(o,bawaan,cek)=>{ const r={...bawaan}; if(o&&typeof o==='object') for(const k of Object.keys(bawaan)) if(o[k]!==undefined && cek(k,o[k])) r[k]=o[k]; return r; };
+  const warna=v=>typeof v==='string'&&/^#[0-9a-f]{3,8}$/i.test(v);
+  return {
+    name:teks(j.name,120,'Denah 3D')||'Denah 3D', pxPerMeter:angka(j.pxPerMeter,1,1e4,30), levels,
+    active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans,
+    finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
+    atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12)},
+    site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6)},
+    langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
+  };
+}
 $('#loadInput').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
+  const f=e.target.files[0]; if(!f) return; e.target.value='';
+  if(f.size>BATAS_PROYEK.berkasMB*1048576) return toast(`Berkas proyek ${fmt(f.size/1048576,0)} MB melebihi batas ${BATAS_PROYEK.berkasMB} MB`);
   const rd=new FileReader();
   rd.onload=ev=>{
+    const KUNCI=['name','pxPerMeter','levels','active','assets','plans','finish','atap','site','langit'];
+    const cadangan=Object.fromEntries(KUNCI.map(k=>[k,PROJECT[k]]));
     try{
-      const j=JSON.parse(ev.target.result);
-      if(!j.levels||!j.levels.length) throw new Error('format tidak dikenali');
-      PROJECT.name=j.name||'Denah 3D';
-      PROJECT.pxPerMeter=j.pxPerMeter||30;
-      PROJECT.levels=j.levels.map(l=>({
-        id:l.id||uid('lv'), name:l.name||'Lantai', height:l.height||3.2,
-        slab:l.slab!==false, visible:l.visible!==false,
-        walls:(l.walls||[]).map(w=>({...w, id:w.id||uid('w'), openings:(w.openings||[]).map(o=>({...o,id:o.id||uid('o')}))})),
-        objects:(l.objects||[]).map(o=>({...o, id:o.id||uid('ob'), params:o.params||{}}))
-      }));
-      PROJECT.active=clamp(j.active||0,0,PROJECT.levels.length-1);
-      PROJECT.assets=j.assets||{};
-      PROJECT.plans=j.plans||{};
+      let j; try{ j=JSON.parse(ev.target.result); }catch(_){ throw new Error('bukan JSON yang sah'); }
+      const B=sanitasiProyek(j);
+      for(const k of KUNCI) PROJECT[k]=B[k];
       PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
-      PROJECT.finish=Object.assign({in:'cat',out:'plester',floor:'keramik',
-                                    inColor:'#efece5',outColor:'#d9d3c7'}, j.finish||{});
-      PROJECT.atap=Object.assign({tritisan:0.6, tebal:0.12}, j.atap||{});
-      PROJECT.site=Object.assign({tanah:'none', margin:6}, j.site||{}); renderSitusUI();
-      PROJECT.langit=Object.assign({},LANGIT_BAWAAN,j.langit||{});
-      if(PROJECT.langit.mode==='foto') muatLangitFoto({id:PROJECT.langit.id, nama:PROJECT.langit.nama});
-      else if(FOTO.tex) matikanLangitFoto(); else renderLangitUI();
+      renderSitusUI();
       renderFinishUI(); renderAtapUI();
       SEL=null; $('#projName').value=PROJECT.name;
       renderLevels(); renderCatalogs(); rebuildScene();
       resetHistory('Proyek dimuat');
+      if(PROJECT.langit.mode==='foto') muatLangitFoto({id:PROJECT.langit.id, nama:PROJECT.langit.nama});
+      else if(FOTO.tex) matikanLangitFoto(); else renderLangitUI();
       toast('Proyek dimuat: '+PROJECT.name);
       if(Object.keys(PROJECT.assets).length){
         loadProjectAssets().then(r=>{
@@ -10620,7 +10709,14 @@ $('#loadInput').addEventListener('change',e=>{
                         : `${r.total} model dari pustaka dimuat`);
         });
       }
-    }catch(err){ toast('Gagal memuat: '+err.message); }
+    }catch(err){
+      // pulihkan proyek lama utuh — berkas rusak tidak boleh meninggalkan setengah proyek
+      for(const [k,v] of Object.entries(cadangan)) PROJECT[k]=v;
+      PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null; SEL=null;
+      try{ renderSitusUI(); renderFinishUI(); renderAtapUI(); renderLevels(); renderCatalogs(); rebuildScene(); }catch(e2){ console.error(e2); }
+      console.warn('muat proyek gagal',err);
+      toast('Gagal memuat: '+err.message+' — proyek sebelumnya tetap utuh');
+    }
   };
   rd.readAsText(f);
 });
@@ -10807,7 +10903,6 @@ const LANGIT_JENIS={
   gurun: {l:'🏜 Gurun', k:['desert','dune','dunes','arid']},
   salju: {l:'❄ Salju', k:['snow','snowy','winter','glacier','ice']}
 };
-const WAKTU_FOTO={siang:['midday','morning-afternoon'], senja:['sunrise-sunset'], malam:['night'], gelap:['night']};
 // kecerahan rata-rata langit (luminans linear, belahan atas) yang dituju per suasana —
 // setara langit prosedural, supaya cahaya, eksposur, dan lampu yang sudah dikalibrasi tetap cocok
 const TERANG_FOTO={siang:0.7, senja:0.3, malam:0.012, gelap:0.008};
@@ -11015,7 +11110,7 @@ async function daftarHDRI(){
   try{ const r=await fetch(url,{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status); j=await r.json();
     if(cache) try{ await cache.put(url,new Response(JSON.stringify(j),{headers:{'content-type':'application/json'}})); }catch(e){} }
   catch(e){ const r=cache&&await cache.match(url); if(!r) throw e; j=await r.json(); }
-  FOTO.daftar=Object.entries(j).map(([id,a])=>{
+  FOTO.daftar=Object.entries(j).filter(([id])=>ID_AMAN.test(id)).map(([id,a])=>{
     const kat=(a.categories||[]).map(x=>String(x).toLowerCase()), tag=(a.tags||[]).map(x=>String(x).toLowerCase());
     const kata=new Set([...kat,...tag,...String(a.name||id).toLowerCase().split(/[^a-z]+/),...id.toLowerCase().split(/[^a-z]+/)]);
     const waktu=kat.includes('night')?'malam':kat.includes('sunrise-sunset')?'senja':'siang';
@@ -11034,6 +11129,8 @@ function pilihHDRI(daftar,jenis,kecuali){
   return c.length ? c[Math.floor(Math.random()*c.length)] : null;
 }
 async function urlHDRI(id,res){
+  if(!ID_AMAN.test(id)) throw new Error('id panorama tidak sah');
+  if(!/^(1k|2k|4k)$/.test(res)) res='4k';
   try{ const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors'}); if(r.ok){ const j=await r.json();
     const f=j.hdri&&(j.hdri[res]||j.hdri['2k']||j.hdri['1k']); if(f&&f.hdr&&f.hdr.url) return f.hdr.url; } }catch(e){}
   return `https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/${res}/${id}_${res}.hdr`;
@@ -11437,7 +11534,7 @@ function fpsStep(dt){
   camera.position.set(px, FPS.feet+FPS.eye, pz);
   stepBidik(dt);
   const lv=PROJECT.levels[fpsLevelAt(FPS.feet)];
-  const teks = `<b>${lv?lv.name:'-'}</b> · ` + (SENTUH
+  const teks = `<b>${esc(lv?lv.name:'-')}</b> · ` + (SENTUH
     ? 'stik kiri untuk jalan · geser sisi kanan untuk menengok'
     : '<b>W A S D</b> jalan · <b>Shift</b> lari · <b>Esc</b> keluar');
   if(FPS.info!==teks){ $('#fpsinfo').innerHTML=teks; FPS.info=teks; }

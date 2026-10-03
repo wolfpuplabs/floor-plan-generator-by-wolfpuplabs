@@ -1,0 +1,49 @@
+{
+  "_catatan": "SEMUA angka di 'asumsi' adalah ASUMSI AWAL yang wajib dikalibrasi dengan data nyata (analitik, wawancara, harga jasa). Ubah di sini → semua verdict dihitung ulang oleh tools/jev.mjs.",
+  "mataUang": "IDR",
+  "asumsi": {
+    "tarifDevPerJam": 150000,
+    "nilaiWaktuPenggunaPerJam": 75000,
+    "penggunaAktifPerTahun": 500,
+    "horizonTahun": 2,
+    "presentasiKlienPerPenggunaPerTahun": 6,
+    "nilaiFeeDesainRp": 15000000,
+    "marginFee": 0.35
+  },
+  "ambang": {
+    "roiGo": 1.0,
+    "roiTunda": 0.0,
+    "paybackMaksBulan": 12,
+    "pMin": 0.3,
+    "biayaButuhBuktiKuatRp": 10000000,
+    "buktiLemah": [
+      "tidak-ada",
+      "anekdot"
+    ]
+  },
+  "batasPeluangMenurutBukti": {
+    "tidak-ada": 0.25,
+    "anekdot": 0.45,
+    "permintaan-pengguna": 0.65,
+    "uji-pengguna": 0.8,
+    "data-pemakaian": 0.9
+  },
+  "guardrailKeras": [
+    "keamanan",
+    "privasi",
+    "lisensi",
+    "kinerja",
+    "aksesibilitas"
+  ],
+  "rumus": {
+    "manfaatWaktu": "pengguna × jangkauan × pakaiPerTahun × menitHemat/60 × nilaiWaktuPenggunaPerJam",
+    "manfaatKonversi": "pengguna × jangkauan × presentasiKlien × upliftMenang × nilaiFeeDesain × marginFee",
+    "manfaatRisiko": "pInsidenPerTahun × dampakRp × reduksi",
+    "peluang": "min(p perkiraan, batasPeluangMenurutBukti[bukti])",
+    "EVperTahun": "peluang × (manfaatWaktu + manfaatKonversi + manfaatRisiko + lainRpPerTahun)",
+    "biaya": "(bangunJam + ujiJam) × tarifDev + pemeliharaanJamPerTahun × tarifDev × horizon + lainRp",
+    "ROI": "(EVperTahun × horizon − biaya) / biaya",
+    "payback": "biayaAwal / ((EVperTahun − biayaPemeliharaanPerTahun)/12)",
+    "verdict": "guardrail keras gagal → NO-GO; kelas 'wajib' → GO; bukti lemah ∧ biaya > biayaButuhBuktiKuatRp → maksimal DEFER (validasi murah dulu); ROI ≥ roiGo ∧ payback ≤ maks ∧ peluang ≥ pMin ∧ semua guardrail dinilai → GO; ROI ≥ roiTunda → DEFER; selain itu NO-GO"
+  }
+}
