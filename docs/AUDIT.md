@@ -60,7 +60,7 @@ Diurutkan menurut ROI perbaikan (dampak ÷ biaya), dengan item JEV-nya.
 | TD-05 | three.js r128 (2021), 55 rilis tertinggal; model-viewer membawa three sendiri, jadi ada dua salinan di memori saat AR | `npm` peer conflict | Sedang | Migrasi ke r16x dikaji bersama JEV-042 (API `encoding` → `colorSpace` berubah) |
 | TD-06 | Riwayat urung menyimpan **seluruh** `levels` sebagai JSON per langkah (60 langkah) | Proyek besar = puluhan MB di memori iPad | Sedang | Simpan diff (JSON Patch) bila proyek > 2 MB |
 | TD-07 | Proyek menyimpan aset GLB sebagai base64 (+33%) tanpa batas total | 10 model fotogrametri ≈ 100+ MB `.json` | Sedang | JEV-046 (NO-GO saat ini); murah: batas total + peringatan |
-| TD-08 | Aksesibilitas: banyak tombol ikon tanpa `aria-label`; belum ada mode gerak-tereduksi di mode jalan | Tinjauan manual | Rendah–Sedang | Masuk Definition of Done (SDLC) untuk UI baru |
+| TD-08 | Aksesibilitas: banyak tombol ikon tanpa `aria-label`; belum ada mode gerak-tereduksi di mode jalan | Tinjauan manual | Rendah–Sedang | ✅ Sebagian (JEV-057): toolbar, tab, menu & kartu Mulai berlabel + `role`, target sentuh ≥ 44 px, cincin fokus; tes e2e memeriksa tombol ikon tanpa nama. Sisa: mode gerak-tereduksi |
 | TD-09 | Tidak ada observabilitas: tidak ada metrik pemakaian, sehingga semua asumsi JEV belum terkalibrasi | `docs/jev/model.json` | **Tinggi untuk keputusan** | Analitik lokal opt-in, tanpa PII (usulan JEV berikutnya) |
 
 ## Guardrail yang dipasang

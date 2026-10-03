@@ -71,6 +71,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | E-05 | Void & area bentuk bebas dengan *tracing* titik | Tutup di titik pertama/ketuk-ganda/Enter; gambar denah tampil di bawahnya | JEV-013 |
 | E-06 | Atap dak mengikuti tapak, tritisan & tebal bisa diatur | — | JEV-010 |
 | E-07 | Tampak cepat: 3D, atas, depan, iso (ortogonal), mata | Atas/depan tanpa perspektif | JEV-011 |
+| E-08 | **UI ramah pengguna**: kartu *Mulai* pada proyek kosong (unggah denah · gambar dinding · rumah contoh · buka proyek); 5 tab berikon (pengaturan render/material/tampilan di tab **Tampilan**); toolbar ikon + label dengan alat jarang dipakai di menu **⋯ Lainnya**; langkah bernomor & tombol *Buat dinding 3D* menempel; pencarian furnitur; target sentuh ≥ 44 px, `aria-label` & cincin fokus | Toolbar satu baris berlabel di iPad landscape dengan panel terbuka; rumah contoh dimuat & bisa langsung dijelajahi | JEV-057 |
 
 ### 5.3 Isi ruang & lingkungan (P1)
 
