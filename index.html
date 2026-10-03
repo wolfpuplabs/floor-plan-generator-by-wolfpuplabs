@@ -791,7 +791,9 @@ renderer.shadowMap.autoUpdate=false;
 const GI_U={
   giPeta:{value:new THREE.DataTexture(new Uint8Array(4),1,1,THREE.LuminanceFormat)},
   giWarna:{value:new THREE.DataTexture(new Uint8Array(256*2*4),256,2,THREE.RGBAFormat)},
-  giInfo:{value:new THREE.Vector4(0,0,1,1)}, giLantai:{value:new THREE.Vector2(-1e4,-1e4)}, giSkala:{value:0}
+  giInfo:{value:new THREE.Vector4(0,0,1,1)}, giLantai:{value:new THREE.Vector2(-1e4,-1e4)}, giSkala:{value:0},
+  // kotak ruangan untuk koreksi paralaks pantulan probe (min.x > max.x = mati)
+  pbMin:{value:new THREE.Vector3(1,0,0)}, pbMax:{value:new THREE.Vector3(0,0,0)}, pbPos:{value:new THREE.Vector3()}
 };
 for(const k of ["giPeta","giWarna"]){ const t=GI_U[k].value; t.magFilter=t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; t.unpackAlignment=1; t.needsUpdate=true; }
 function pasangGIShader(sh){
@@ -800,7 +802,16 @@ function pasangGIShader(sh){
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos;')
     .replace('#include <project_vertex>','#include <project_vertex>\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
   sh.fragmentShader=sh.fragmentShader
-    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo; uniform vec2 giLantai; uniform float giSkala;')
+    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo; uniform vec2 giLantai; uniform float giSkala; uniform vec3 pbMin, pbMax, pbPos;')
+    .replace('#include <envmap_physical_pars_fragment>',THREE.ShaderChunk.envmap_physical_pars_fragment.replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
+      `reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
+      #ifdef KOTAK_PANTUL
+      if(pbMax.x>pbMin.x){                      // pantulan dari probe dikoreksi ke dinding ruangan (box projection)
+        vec3 rmax=(pbMax-vGIPos)/reflectVec, rmin=(pbMin-vGIPos)/reflectVec;
+        vec3 rr=max(rmax,rmin); float t=min(min(rr.x,rr.y),rr.z);
+        reflectVec=normalize(vGIPos+reflectVec*t-pbPos);
+      }
+      #endif`))
     .replace('#include <lights_fragment_end>',`if(giSkala>0.0){
       vec3 nW=inverseTransformDirection(geometry.normal,viewMatrix);
       vec3 q=vGIPos+vec3(nW.x,0.0,nW.z)*0.25;
@@ -815,7 +826,7 @@ function pasangGIShader(sh){
 }
 THREE.MeshStandardMaterial.prototype.onBeforeCompile=function(sh){ pasangGIShader(sh); };
 let BAYANG_KOTOR=2, BAYANG_JEDA=0;
-function bayangKotor(){ BAYANG_KOTOR=Math.max(BAYANG_KOTOR,1); }
+function bayangKotor(){ BAYANG_KOTOR=Math.max(BAYANG_KOTOR,1); if(typeof PROBE!=='undefined') PROBE.kotor=true; }
 // kanvas jadi anak pertama: efek filter CSS (color grading) membuatnya dilukis seperti
 // elemen berposisi, jadi harus berada sebelum toolbar & panel agar tidak menutupinya
 viewport.insertBefore(renderer.domElement, viewport.firstChild);
@@ -1195,7 +1206,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); }   // setelah semua modul selesai dimuat
+  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   BAYANG_JEDA-=dt;
   if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
@@ -3322,7 +3333,61 @@ Object.assign(MAT,{
 function pasangPantulanLogam(env){
   env=env||studioEnv();
   const lain=[[MAT.silver,0.9],[MAT.cdDisc,1],[MAT.vinylRec,0.6],[MAT.smoke,0.8]].filter(([m])=>m);   // perangkat audio (dibuat belakangan)
-  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8],...lain]){ m.envMap=env; m.envMapIntensity=k; m.needsUpdate=true; }
+  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8],...lain]){ m.envMap=(typeof PROBE!=='undefined'&&PROBE.aktif&&PROBE.env)||env; m.envMapIntensity=k; m.needsUpdate=true; }
+  if(typeof PROBE!=='undefined') PROBE.kotor=true;
+}
+/* ---------- PROBE PANTULAN — kaca, logam, cermin, air memantulkan ruangan
+   sungguhan: kamera kubus merekam adegan dari posisi pengamat, diolah PMREM,
+   dan arah pantulnya dikoreksi ke kotak ruangan (paralaks) ---------- */
+const PROBE={rt:null, cam:null, pm:null, env:null, pos:new THREE.Vector3(1e9,0,0), ruang:-1, kotor:true, jeda:0, aktif:false, kotak:new Map()};
+function bahanPantul(){ return [MAT.mirror,MAT.glass,MAT.steel,MAT.brass,MAT.metal,MAT.blackMetal,MAT.silver,MAT.cdDisc,MAT.air,MAT.airKolam].filter(Boolean); }
+function pantulKotor(){ PROBE.kotor=true; }
+function kotakRuang(P,id){
+  const k=P.lab.length+':'+id; if(PROBE.kotak.get(k)&&PROBE.kotak.get(k).P===P) return PROBE.kotak.get(k);
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(let j=0;j<P.nz;j++) for(let i=0;i<P.nx;i++) if(P.lab[j*P.nx+i]===id){ x0=Math.min(x0,i); x1=Math.max(x1,i); z0=Math.min(z0,j); z1=Math.max(z1,j); }
+  const r={P, x0:P.x0+x0*P.C, x1:P.x0+(x1+1)*P.C, z0:P.z0+z0*P.C, z1:P.z0+(z1+1)*P.C}; PROBE.kotak.set(k,r); return r;
+}
+function terapkanProbe(env){
+  for(const m of bahanPantul()){
+    if(!m.defines||m.defines.KOTAK_PANTUL===undefined){ m.defines=Object.assign(m.defines||{},{KOTAK_PANTUL:''}); m.needsUpdate=true; }
+    m.envMap=env||studioEnv();
+  }
+}
+function stepProbe(dt){
+  PROBE.jeda-=dt; if(PROBE.jeda>0) return;
+  const p=camera.position, idx=FPS.on?fpsLevelAt(FPS.feet):PROJECT.active, lv=PROJECT.levels[idx]; if(!lv) return;
+  const el0=levelElevation(idx), H=lv.height||3.2, P=petaRuang(lv);
+  let id=0;
+  if(P && p.y>el0+0.05 && p.y<el0+H-0.05){ const i=Math.floor((p.x-P.x0)/P.C), j=Math.floor((p.z-P.z0)/P.C);
+    if(i>=0&&j>=0&&i<P.nx&&j<P.nz) id=P.lab[j*P.nx+i]>0?P.lab[j*P.nx+i]:ruangDi(P,p.x,p.z); }
+  const tertutup=id>0 && !P.bocor[id];
+  if(!(FPS.on||tertutup)){                                  // editor, kamera di luar: pantulan langit
+    if(PROBE.aktif){ PROBE.aktif=false; GI_U.pbMin.value.set(1,0,0); GI_U.pbMax.value.set(0,0,0); terapkanProbe(null); }
+    return; }
+  if(PROBE.aktif && !PROBE.kotor && id===PROBE.ruang && p.distanceTo(PROBE.pos)<1.2) return;
+  PROBE.jeda=0.35;
+  if(!PROBE.rt){
+    const hf=renderer.capabilities.isWebGL2;
+    PROBE.rt=new THREE.WebGLCubeRenderTarget(256,{type:hf?THREE.HalfFloatType:THREE.UnsignedByteType, generateMipmaps:false, minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter});
+    PROBE.cam=new THREE.CubeCamera(0.05,90,PROBE.rt); PROBE.pm=new THREE.PMREMGenerator(renderer); PROBE.pm.compileCubemapShader();
+  }
+  const pos=new THREE.Vector3(p.x, clamp(p.y,el0+0.4,el0+H-0.3), p.z);
+  // alat bantu editor tidak ikut terpantul
+  const sembunyi=[helperRoot,DIM.grp,grid,gizmo,selBox].filter(Boolean), dulu=sembunyi.map(o=>o.visible);
+  sembunyi.forEach(o=>o.visible=false);
+  const tm=renderer.toneMapping; if(FX.on&&renderer.capabilities.isWebGL2) renderer.toneMapping=THREE.NoToneMapping;
+  const rtLama=renderer.getRenderTarget();
+  PROBE.cam.position.copy(pos); PROBE.cam.update(renderer,scene);
+  renderer.toneMapping=tm; renderer.setRenderTarget(rtLama);
+  sembunyi.forEach((o,i)=>o.visible=dulu[i]);
+  const baru=PROBE.pm.fromCubemap(PROBE.rt.texture).texture;
+  if(PROBE.env) PROBE.env.dispose(); PROBE.env=baru;
+  if(tertutup){ const k=kotakRuang(P,id); GI_U.pbMin.value.set(k.x0,el0,k.z0); GI_U.pbMax.value.set(k.x1,el0+H,k.z1); }
+  else { GI_U.pbMin.value.set(1,0,0); GI_U.pbMax.value.set(0,0,0); }
+  GI_U.pbPos.value.copy(pos);
+  PROBE.pos.copy(p); PROBE.ruang=id; PROBE.kotor=false; PROBE.aktif=true;
+  terapkanProbe(baru);
 }
 const BUKU=[0x8e3b2e,0x2f4858,0xd9a441,0x7d8f69,0xe9e1d3,0x3d3a36,0xb89b72].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
 function books(n,x0,y,z,R){ const g=new THREE.Group(); let x=x0;
@@ -5232,7 +5297,8 @@ function buildObject(o, lv){
   if(o.kind==='void'||o.kind==='column'||o.kind==='area'||o.kind==='garis') g.scale.set(1,1,1);
   else g.scale.set(o.sx||1,o.sy||1,o.sz||1);
   Object.assign(g.userData,{kind:'obj', id:o.id});   // jangan menimpa keterangan lampu dari hiasNyala
-  if(o.kind==='furn'||o.kind==='model') g.userData.perabot=true;   // bukan pijakan di mode jalan
+  if(o.kind==='furn') g.userData.perabot=true;                     // bukan pijakan di mode jalan
+  if(o.kind==='model'){ if(o.params&&o.params.collider===false) g.userData.perabot=true; else g.userData.modelPijak=true; }   // model: permukaan rendahnya bisa dipijak
   return g;
 }
 
@@ -5352,6 +5418,8 @@ function rebuildScene0(){
     worldRoot.add(lg);
     levelGroups[idx]=lg;
   });
+  if(typeof PROBE!=='undefined') PROBE.kotor=true;
+  if(typeof LIHAT_COL!=='undefined' && LIHAT_COL.size) gambarColliderDebug();
   { const situs=buildSitus(); if(situs){ if(levelGroups[0]&&!levelGroups[0].visible) situs.visible=false; worldRoot.add(situs); } }
   refreshSelectionVisual();
   updateStatsBar();
@@ -5730,6 +5798,18 @@ function renderInspector(){
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
       ins.appendChild(el('p','hint',`Ukuran terpasang ${fmt(sz,2)} × ${fmt(szz,2)} m, tinggi ${fmt(sy,2)} m.`));
+      ins.appendChild(el('div','section-title','Collider'));
+      d.params=d.params||{};
+      const cl=el('label','chk'), cc=document.createElement('input'); cc.type='checkbox'; cc.checked=d.params.collider!==false;
+      cc.onchange=()=>{ d.params.collider=cc.checked; HIST.label='Collider model'; rebuildScene(); renderInspector(); };
+      cl.appendChild(cc); cl.appendChild(el('span',null,'Collider otomatis — model menghalangi & bisa dipijak di mode jalan')); ins.appendChild(cl);
+      if(d.params.collider!==false && ASSET_OBJ.has(d.type)){
+        const col=colliderModel(d.type);
+        if(col) ins.appendChild(el('p','hint',`Dibuat otomatis dari ${col.nTri.toLocaleString('id')} segitiga: ${col.isi.toLocaleString('id')} sel ${fmt(col.C*100,0)} cm. Bagian setinggi badan menghalangi, permukaan ≤ ${fmt(LANGKAH_MAX*100,0)} cm bisa dinaiki.`));
+        const bl=el('button','btn sm ghost',LIHAT_COL.has(d.id)?'🙈 Sembunyikan collider':'👁 Lihat collider');
+        bl.onclick=()=>{ if(LIHAT_COL.has(d.id)) LIHAT_COL.delete(d.id); else LIHAT_COL.add(d.id); gambarColliderDebug(); renderInspector(); };
+        ins.appendChild(bl);
+      }
     }
 
   } else {
@@ -10502,6 +10582,7 @@ function fpsResolveWalls(px,pz,feetY){
         px=cx+nx*rad; pz=cz+nz*rad; moved=true;
       }
       for(const o of lv.objects){
+        if(o.kind==='model' && o.params.collider!==false){ const r=dorongCollider(o,lv,px,pz,feetY); if(r){ px=r[0]; pz=r[1]; moved=true; } continue; }
         if(o.kind!=='column') continue;
         const rad=Math.max(o.params.w||0.3,o.params.d||0.3)/2+FPS.r, d=Math.hypot(px-o.x,pz-o.z);
         if(d>=rad) continue;
@@ -10512,6 +10593,92 @@ function fpsResolveWalls(px,pz,feetY){
     if(!moved) break;
   }
   return [px,pz];
+}
+/* ---------- COLLIDER OTOMATIS untuk model yang diunggah ----------
+   Geometri model di-raster sekali ke peta sel 8 cm: tiap sel mencatat tinggi
+   terendah & tertinggi segitiga di atasnya. Saat berjalan, sel yang punya
+   geometri setinggi badan (di atas langkah, di bawah kepala) menghalangi;
+   permukaan rendah bisa dipijak; ambang/lengkung tinggi bisa dilewati. */
+const COLLIDER=new Map();
+function colliderModel(id){
+  if(COLLIDER.has(id)) return COLLIDER.get(id);
+  const tpl=ASSET_OBJ.get(id); if(!tpl){ return null; }
+  tpl.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(tpl); if(bb.isEmpty()){ COLLIDER.set(id,null); return null; }
+  let C=0.08; while(((bb.max.x-bb.min.x)/C+4)*((bb.max.z-bb.min.z)/C+4)>300000) C*=1.5;
+  const x0=bb.min.x-2*C, z0=bb.min.z-2*C, nx=Math.ceil((bb.max.x-x0)/C)+3, nz=Math.ceil((bb.max.z-z0)/C)+3;
+  const lo=new Float32Array(nx*nz).fill(Infinity), hi=new Float32Array(nx*nz).fill(-Infinity);
+  const tandai=(i,j,y0,y1)=>{ if(i<0||j<0||i>=nx||j>=nz) return; const k=j*nx+i; if(y0<lo[k]) lo[k]=y0; if(y1>hi[k]) hi[k]=y1; };
+  const A=new THREE.Vector3(), B=new THREE.Vector3(), Cc=new THREE.Vector3();
+  let nTri=0;
+  const segitiga=(a,b,c)=>{
+    nTri++;
+    const ax=(a.x-x0)/C, az=(a.z-z0)/C, bx=(b.x-x0)/C, bz=(b.z-z0)/C, cx=(c.x-x0)/C, cz=(c.z-z0)/C;
+    const ylo=Math.min(a.y,b.y,c.y), yhi=Math.max(a.y,b.y,c.y), luas=(bx-ax)*(cz-az)-(cx-ax)*(bz-az);
+    if(Math.abs(luas)<0.05){                           // hampir tegak: telusuri tepinya
+      for(const [p,q] of [[[ax,az],[bx,bz]],[[bx,bz],[cx,cz]],[[cx,cz],[ax,az]]]){
+        const n=Math.ceil(Math.hypot(q[0]-p[0],q[1]-p[1])*2)+1;
+        for(let t=0;t<=n;t++) tandai(Math.floor(p[0]+(q[0]-p[0])*t/n),Math.floor(p[1]+(q[1]-p[1])*t/n),ylo,yhi); }
+      return; }
+    const i0=Math.floor(Math.min(ax,bx,cx)), i1=Math.floor(Math.max(ax,bx,cx)), j0=Math.floor(Math.min(az,bz,cz)), j1=Math.floor(Math.max(az,bz,cz));
+    if(i1-i0<=1&&j1-j0<=1){ for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) tandai(i,j,ylo,yhi); return; }
+    const e=[Math.hypot(cx-bx,cz-bz),Math.hypot(ax-cx,az-cz),Math.hypot(bx-ax,bz-az)].map(l=>0.72*l/Math.abs(luas));
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
+      const px=i+0.5, pz=j+0.5;
+      const w0=((bx-px)*(cz-pz)-(cx-px)*(bz-pz))/luas, w1=((cx-px)*(az-pz)-(ax-px)*(cz-pz))/luas, w2=1-w0-w1;
+      if(w0<-e[0]||w1<-e[1]||w2<-e[2]) continue;
+      const y=clamp(w0*a.y+w1*b.y+w2*c.y,ylo,yhi); tandai(i,j,y,y);
+    }
+  };
+  tpl.traverse(m=>{
+    if(!m.isMesh||!m.geometry||!m.geometry.attributes.position) return;
+    const pos=m.geometry.attributes.position, idx=m.geometry.index, n=idx?idx.count:pos.count;
+    const lompat=Math.max(1,Math.floor(n/3/120000))*3;           // model raksasa dicuplik
+    const ambil=(k,v)=>v.fromBufferAttribute(pos,idx?idx.getX(k):k).applyMatrix4(m.matrixWorld);
+    for(let k=0;k+2<n;k+=lompat){ ambil(k,A); ambil(k+1,B); ambil(k+2,Cc); segitiga(A,B,Cc); }
+  });
+  let isi=0; for(let k=0;k<lo.length;k++) if(hi[k]>=lo[k]) isi++;
+  const col={C,x0,z0,nx,nz,lo,hi,isi,nTri}; COLLIDER.set(id,col); return col;
+}
+const LIHAT_COL=new Set(), COL_VIS=new THREE.Group(); COL_VIS.renderOrder=22;
+function gambarColliderDebug(){
+  while(COL_VIS.children.length){ const c=COL_VIS.children.pop(); c.geometry.dispose(); }
+  if(!COL_VIS.parent) helperRoot.add(COL_VIS);
+  const lv=L(); if(!lv||!LIHAT_COL.size) return;
+  const mat=COL_VIS.mat||(COL_VIS.mat=new THREE.MeshBasicMaterial({color:0xff4d4d, transparent:true, opacity:0.32, depthWrite:false}));
+  for(const o of lv.objects){
+    if(o.kind!=='model'||!LIHAT_COL.has(o.id)||o.params.collider===false) continue;
+    const col=colliderModel(o.type); if(!col) continue;
+    const sel=[]; for(let k=0;k<col.lo.length;k++) if(col.hi[k]>=col.lo[k]) sel.push(k);
+    const im=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat,sel.length), M=new THREE.Matrix4(), q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),o.rotY||0);
+    const el0=levelElevation(PROJECT.active)+(o.y||0), sx=o.sx||1, sy=o.sy||1, sz=o.sz||1;
+    sel.forEach((k,n)=>{ const i=k%col.nx, j=(k-i)/col.nx, u=(col.x0+(i+0.5)*col.C)*sx, v=(col.z0+(j+0.5)*col.C)*sz, h=Math.max(0.02,(col.hi[k]-col.lo[k])*sy);
+      const p=new THREE.Vector3(u,el0+((col.lo[k]+col.hi[k])/2)*sy,v).applyQuaternion(q); p.x+=o.x; p.z+=o.z;
+      M.compose(p,q,new THREE.Vector3(col.C*sx*0.92,h,col.C*sz*0.92)); im.setMatrixAt(n,M); });
+    im.userData.noExport=true; im.raycast=()=>{}; COL_VIS.add(im);
+  }
+}
+/* dorong pemain keluar dari sel model yang menghalangi; null = tidak bertabrakan */
+function dorongCollider(o,lv,px,pz,feetY){
+  const col=colliderModel(o.type); if(!col) return null;
+  const sx=o.sx||1, sy=o.sy||1, sz=o.sz||1, a=o.rotY||0, ca=Math.cos(a), sa=Math.sin(a);
+  const r=FPS.r, jari=Math.hypot(col.nx*col.C*sx,col.nz*col.C*sz)/2+r+Math.hypot(col.x0+col.nx*col.C/2,col.z0+col.nz*col.C/2)*Math.max(sx,sz);
+  if(Math.hypot(px-o.x,pz-o.z)>jari) return null;
+  const dasar=levelElevation(PROJECT.levels.indexOf(lv))+(o.y||0);
+  const bawah=(feetY+LANGKAH_MAX+0.02-dasar)/sy, atas=(feetY+FPS.eye+0.15-dasar)/sy;
+  const keLokal=(x,z)=>{ const dx=x-o.x, dz=z-o.z; return [(dx*ca-dz*sa)/sx, (dx*sa+dz*ca)/sz]; };
+  const keDunia=(u,v)=>{ const x=u*sx, z=v*sz; return [o.x+x*ca+z*sa, o.z-x*sa+z*ca]; };
+  const rl=r/Math.min(sx,sz);
+  const tabrak=(u,v)=>{ const i0=Math.floor((u-rl-col.x0)/col.C), i1=Math.floor((u+rl-col.x0)/col.C), j0=Math.floor((v-rl-col.z0)/col.C), j1=Math.floor((v+rl-col.z0)/col.C);
+    let gx=0, gz=0, n=0;
+    for(let j=Math.max(0,j0);j<=Math.min(col.nz-1,j1);j++) for(let i=Math.max(0,i0);i<=Math.min(col.nx-1,i1);i++){
+      const k=j*col.nx+i; if(!(col.hi[k]>=bawah && col.lo[k]<=atas)) continue;
+      const cx=col.x0+(i+0.5)*col.C, cz=col.z0+(j+0.5)*col.C; if(Math.hypot(cx-u,cz-v)>rl+col.C*0.5) continue;
+      gx+=u-cx; gz+=v-cz; n++; }
+    return n?[gx,gz]:null; };
+  let [u,v]=keLokal(px,pz), t=tabrak(u,v); if(!t) return null;
+  for(let k=0;k<14&&t;k++){ let l=Math.hypot(t[0],t[1]); if(l<1e-6){ t=[u||1,v]; l=Math.hypot(t[0],t[1])||1; } u+=t[0]/l*col.C*0.5; v+=t[1]/l*col.C*0.5; t=tabrak(u,v); }
+  return keDunia(u,v);
 }
 /* Permukaan pijakan dicari dengan menembak sinar ke bawah dari lutut: anak
    tangga, pelat lantai, dan bordes terbaca apa adanya, dan di atas void
