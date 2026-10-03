@@ -695,7 +695,22 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x0e0e11);
 scene.fog=new THREE.Fog(0x0e0e11, 70, 190);
 
-const camera=new THREE.PerspectiveCamera(45, viewport.clientWidth/viewport.clientHeight, 0.05, 600);
+let camera=new THREE.PerspectiveCamera(45, viewport.clientWidth/viewport.clientHeight, 0.05, 600);
+/* tampak atas, depan, dan iso memakai proyeksi paralel (ortografis) seperti
+   gambar kerja; 3D, Mata, dan mode jalan tetap perspektif */
+const kameraPersp=camera, kameraOrto=new THREE.OrthographicCamera(-8,8,6,-6,0.1,4000);
+function aturOrto(halfH){
+  const asp=Math.max(0.2,viewport.clientWidth/Math.max(1,viewport.clientHeight));
+  kameraOrto.top=halfH; kameraOrto.bottom=-halfH; kameraOrto.left=-halfH*asp; kameraOrto.right=halfH*asp; kameraOrto.updateProjectionMatrix();
+}
+function pakaiKamera(orto){
+  const baru=orto?kameraOrto:kameraPersp; if(camera===baru) return;
+  baru.position.copy(camera.position); baru.quaternion.copy(camera.quaternion); baru.up.copy(camera.up);
+  if(orto){ const h=camera.position.distanceTo(orbit.target)*Math.tan(camera.fov/2*D2R); kameraOrto.zoom=1; aturOrto(Math.max(0.5,h)); }
+  camera=baru; orbit.object=baru; gizmo.camera=baru;
+  if(typeof terapkanLangit==='function') terapkanLangit();
+  orbit.update();
+}
 camera.position.set(14,14,18);
 
 const renderer=new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
@@ -846,12 +861,12 @@ function majuKamera(m){
 { let cubit=null;
   renderer.domElement.addEventListener('wheel',e=>{
     if(typeof FPS!=='undefined'&&FPS.on) return;
-    if(e.deltaY<0 && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp(Math.abs(e.deltaY)*0.004,0.12,0.6));
+    if(e.deltaY<0 && camera.isPerspectiveCamera && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp(Math.abs(e.deltaY)*0.004,0.12,0.6));
   },{passive:true});
   renderer.domElement.addEventListener('touchmove',e=>{
     if((typeof FPS!=='undefined'&&FPS.on)||e.touches.length!==2){ cubit=null; return; }
     const a=e.touches[0], b=e.touches[1], d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-    if(cubit!=null && d>cubit+1 && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp((d-cubit)*0.012,0.02,0.5));
+    if(cubit!=null && d>cubit+1 && camera.isPerspectiveCamera && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp((d-cubit)*0.012,0.02,0.5));
     cubit=d;
   },{passive:true});
   renderer.domElement.addEventListener('touchend',()=>{ cubit=null; },{passive:true}); }
@@ -939,8 +954,9 @@ function fitViewport(){
   aturInspector();
   const w=viewport.clientWidth, h=viewport.clientHeight;
   if(!w||!h) return;
-  camera.aspect=w/h;
-  camera.updateProjectionMatrix();
+  kameraPersp.aspect=w/h;
+  kameraPersp.updateProjectionMatrix();
+  aturOrto(kameraOrto.top);
   renderer.setSize(w,h);
 }
 addEventListener('resize',fitViewport);
@@ -1035,6 +1051,9 @@ const FX_SEMBUNYI=[];
 /* AO: kedalaman ½ resolusi → AO → blur; hasil di FX.rtB */
 function fxHitungAO(W,H){
   if(FX.rtD.width!==W||FX.rtD.height!==H){ FX.rtD.setSize(W,H); FX.rtA.setSize(W,H); FX.rtB.setSize(W,H); }
+  if(camera.isOrthographicCamera){                 // AO layar dihitung untuk proyeksi perspektif: di tampak ortho dianggap 1
+    const cc=renderer.getClearColor(new THREE.Color()), ca=renderer.getClearAlpha();
+    renderer.setClearColor(0xffffff,1); renderer.setRenderTarget(FX.rtB); renderer.clear(); renderer.setClearColor(cc,ca); return; }
   FX_SEMBUNYI.length=0;
   scene.traverseVisible(o=>{ if(o.isSprite||o.isLine||o.isLineSegments||(o.isMesh&&o.material&&!Array.isArray(o.material)&&o.material.transparent)) FX_SEMBUNYI.push(o); });
   for(const o of FX_SEMBUNYI) o.visible=false;
@@ -1208,6 +1227,8 @@ const clock=new THREE.Clock();
   if(FPS.on) fpsStep(dt); else orbit.update();
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
+  if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
+    for(const sp of DIM.grp.children) if(sp.isSprite&&sp.userData.labelK){ const k=sp.userData.labelK*s; sp.scale.set(k*sp.material.userData.rasio,k,1); } }
   BAYANG_JEDA-=dt;
   if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
   renderFrame();
@@ -3381,8 +3402,9 @@ function stepProbe(dt){
   PROBE.cam.position.copy(pos); PROBE.cam.update(renderer,scene);
   renderer.toneMapping=tm; renderer.setRenderTarget(rtLama);
   sembunyi.forEach((o,i)=>o.visible=dulu[i]);
-  const baru=PROBE.pm.fromCubemap(PROBE.rt.texture).texture;
-  if(PROBE.env) PROBE.env.dispose(); PROBE.env=baru;
+  // render target PMREM lama dibuang utuh (bukan hanya teksturnya) — kalau tidak, memori GPU bocor tiap pembaruan
+  const rtBaru=PROBE.pm.fromCubemap(PROBE.rt.texture), baru=rtBaru.texture;
+  if(PROBE.envRT) PROBE.envRT.dispose(); PROBE.envRT=rtBaru; PROBE.env=baru;
   if(tertutup){ const k=kotakRuang(P,id); GI_U.pbMin.value.set(k.x0,el0,k.z0); GI_U.pbMax.value.set(k.x1,el0+H,k.z1); }
   else { GI_U.pbMin.value.set(1,0,0); GI_U.pbMax.value.set(0,0,0); }
   GI_U.pbPos.value.copy(pos);
@@ -6307,7 +6329,8 @@ function labelSprite(teks,warna){
     mat=new THREE.SpriteMaterial({map:t, depthTest:false, sizeAttenuation:false, transparent:true});
     mat.userData.rasio=W/H; LABELCACHE.set(key,mat);
   }
-  const sp=new THREE.Sprite(mat), k=0.03*Math.tan(camera.fov/2*D2R)/Math.tan(22.5*D2R);
+  const sp=new THREE.Sprite(mat), k=camera.isOrthographicCamera ? 0.03/Math.tan(22.5*D2R)*camera.top/camera.zoom : 0.03*Math.tan(camera.fov/2*D2R)/Math.tan(22.5*D2R);
+  sp.userData.labelK=0.03/Math.tan(22.5*D2R);
   sp.scale.set(k*mat.userData.rasio,k,1); sp.renderOrder=21; sp.raycast=()=>{};
   return sp;
 }
@@ -6406,11 +6429,26 @@ function setView(k){
   for(const o of lv.objects){ x0=Math.min(x0,o.x); x1=Math.max(x1,o.x); z0=Math.min(z0,o.z); z1=Math.max(z1,o.z); }
   if(x0>x1){ x0=-5; x1=5; z0=-5; z1=5; }
   const cx=(x0+x1)/2, cz=(z0+z1)/2, ukuran=Math.max(x1-x0,z1-z0,4), el0=levelElevation(PROJECT.active);
-  const asp=Math.max(0.5,camera.aspect);
+  const asp=Math.max(0.5,viewport.clientWidth/Math.max(1,viewport.clientHeight));
   let fov=45, pos, tgt=new THREE.Vector3(cx,el0+1.0,cz);
+  const orto = k==='atas'||k==='depan'||k==='iso';
+  const hOrto0 = camera.isOrthographicCamera ? camera.top/camera.zoom : camera.position.distanceTo(orbit.target)*Math.tan(camera.fov/2*D2R);
+  pakaiKamera(orto);
+  if(orto){
+    // proyeksi paralel: jarak kamera tidak mengubah ukuran, bingkai dari tinggi frustum
+    const tinggi=PROJECT.levels.reduce((a,l)=>a+(l.height||3.2),0);
+    let arah, halfH;
+    if(k==='atas'){ arah=new THREE.Vector3(0,1,0.0001); tgt.y=el0; halfH=Math.max((z1-z0),(x1-x0)/asp)/2*1.18+0.6; }
+    else if(k==='depan'){ arah=new THREE.Vector3(0,0,1); tgt.set(cx,tinggi/2,cz); halfH=Math.max(tinggi+1,(x1-x0)/asp)/2*1.15+0.4; }
+    else { arah=new THREE.Vector3(1,0.82,1).normalize(); const r=0.5*Math.hypot(x1-x0,z1-z0)+1.2; halfH=Math.max(r*0.82,r/asp)*1.05; }
+    pos=tgt.clone().addScaledVector(arah,60);
+    camera.zoom=1;
+    VIEW.anim={t:0,p0:camera.position.clone(),t0:orbit.target.clone(),p1:pos,t1:tgt,h0:Math.max(0.5,hOrto0),h1:halfH};
+    VIEW.cur=k; $$('#viewbar button').forEach(b=>b.classList.toggle('active',b.dataset.view===k));
+    return;
+  }
   const mata = k==='mata' ? pandanganMata(lv) : null;
   if(mata){ fov=60; pos=mata.pos; tgt=mata.tgt; }
-  else if(k==='atas'){ fov=28; const d=(ukuran*1.2)/(2*Math.tan(fov/2*D2R))/Math.min(1,asp)+2; pos=new THREE.Vector3(cx,el0+d,cz+0.001); tgt.y=el0; }
   else {
     // bola pembungkus bangunan dibingkai utuh, arah pandang miring standar
     const r=0.5*Math.hypot(x1-x0,z1-z0)+1.2, d=r/Math.sin(fov/2*D2R)/Math.min(1,asp)*0.92;
@@ -6424,7 +6462,8 @@ function stepView(dt){
   const a=VIEW.anim; if(!a) return;
   a.t=Math.min(1,a.t+dt/0.45); const e=a.t<0.5?2*a.t*a.t:1-Math.pow(-2*a.t+2,2)/2;
   camera.position.lerpVectors(a.p0,a.p1,e); orbit.target.lerpVectors(a.t0,a.t1,e);
-  camera.fov=a.f0+(a.f1-a.f0)*e; camera.updateProjectionMatrix();
+  if(a.h1!=null){ if(camera.isOrthographicCamera) aturOrto(a.h0+(a.h1-a.h0)*e); }
+  else if(camera.isPerspectiveCamera){ camera.fov=a.f0+(a.f1-a.f0)*e; camera.updateProjectionMatrix(); }
   if(a.t>=1){ VIEW.anim=null; rebuildDims(); }
 }
 $$('#viewbar button').forEach(b=>b.onclick=()=>setView(b.dataset.view));
@@ -10433,7 +10472,7 @@ scene.add(kubahLangit);
 function terapkanLangit(){
   if(FPS.on){ const s=SUASANA[MOOD]; isiLangit(kubahLangit.material.uniforms,MOOD,false); kubahLangit.visible=true;
     scene.background=new THREE.Color(s.langit[1]); scene.fog=new THREE.Fog(s.kabut[0],s.kabut[1],s.kabut[2]); }
-  else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=new THREE.Fog(0x0e0e11,70,190); }
+  else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=camera.isOrthographicCamera?null:new THREE.Fog(0x0e0e11,70,190); }
 }
 function setSuasana(k){
   const s=SUASANA[k]||SUASANA.siang; MOOD=SUASANA[k]?k:'siang';
@@ -10862,7 +10901,8 @@ function enterFPS(){
   if(FPS.on) return;
   const lv=L();
   if(!lv.walls.length) return toast('Belum ada ruangan untuk dijelajahi.');
-  FPS.save={pos:camera.position.clone(), target:orbit.target.clone(), tool:TOOL};
+  FPS.save={pos:camera.position.clone(), target:orbit.target.clone(), tool:TOOL, orto:camera.isOrthographicCamera, view:VIEW.cur, ortoTop:kameraOrto.top, ortoZoom:kameraOrto.zoom};
+  if(camera.isOrthographicCamera){ pakaiKamera(false); camera.fov=45; camera.updateProjectionMatrix(); }
   // berdiri di tengah denah lantai aktif
   let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
   for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2);
@@ -10917,7 +10957,7 @@ function exitFPS(){
   if(document.exitPointerLock) document.exitPointerLock();
   orbit.enabled=true;
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
-  if(FPS.save){ camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); orbit.update(); }
+  if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
   $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   $('#levelbar').hidden=false;
   viewport.style.cursor='';
