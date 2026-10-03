@@ -401,6 +401,26 @@ details#adv>*:not(summary){margin-bottom:8px}
         <option value="malam">Malam — lampu menyala</option>
         <option value="gelap">Malam — lampu padam</option>
       </select></div>
+      <div class="f-row"><label>Langit</label><select id="langitMode">
+        <option value="prosedural">Prosedural — ringan, offline</option>
+        <option value="foto">Foto 360° asli (HDRI)</option>
+      </select></div>
+      <div id="langitFotoUI" hidden>
+        <div class="f-row"><label>Lanskap</label><select id="langitJenis"></select></div>
+        <div class="f-row"><label>Resolusi</label><select id="langitRes">
+          <option value="2k">2K — ±6 MB, ringan</option>
+          <option value="4k">4K — ±20 MB, tajam</option>
+        </select></div>
+        <div class="f-row"><label>Putar</label><input type="range" id="langitPutar" min="0" max="359" step="1" value="0"></div>
+        <label class="chk"><input type="checkbox" id="langitEditor" checked><span>Tampilkan juga di tampilan 3D editor (bukan hanya mode jalan)</span></label>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="langitAcak">🎲 Lanskap lain</button>
+          <button class="btn ghost sm" id="langitUnggahBtn">📁 Pakai foto 360° sendiri</button>
+          <input type="file" id="langitUnggah" accept=".hdr,image/jpeg,image/png,image/webp" hidden>
+        </div>
+        <p class="hint" id="langitInfo"></p>
+        <p class="hint"><a id="langitKredit" target="_blank" rel="noopener" hidden>Lihat sumber panorama</a></p>
+      </div>
       <label class="chk"><input type="checkbox" id="pbrOn" checked><span>Material PBR — pantulan lingkungan, relief (normal map), dan kekasaran per bagian</span></label>
       <label class="chk"><input type="checkbox" id="fxOn" checked><span>Efek realistis real-time — ambient occlusion, pendar lampu (bloom), color grading filmis, vinyet</span></label>
       <button class="btn ghost sm" id="renderShot">Render Gambar Tinggi (.png)</button>
@@ -553,6 +573,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <select id="fpsMood" title="Suasana cahaya">
         <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option><option value="gelap">🌑 Malam gelap</option>
       </select>
+      <button class="btn ghost sm" id="fpsLangit" title="Langit foto 360° — ketuk lagi untuk lanskap acak lain">🏞 Langit</button>
       <select id="fpsFov" title="Lebar pandang (lensa)">
         <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option>
       </select>
@@ -660,7 +681,8 @@ const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{}
   // finishing dinding dibedakan muka dalam dan muka luar, seperti gambar kerja
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
   atap:{ tritisan:0.6, tebal:0.12 },
-  site:{ tanah:'none', margin:6 } };                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
+  site:{ tanah:'none', margin:6 },
+  langit:{ mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true } };   // langit: prosedural atau foto 360°                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
 
 function newLevel(name,height){
   return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
@@ -1491,7 +1513,9 @@ function pbrMaps(kunciTex,warna,def){
 /* lingkungan pantulan: studio kecil berlampu panel, diolah PMREM bawaan three.js
    (tanpa berkas HDR yang perlu diunduh) */
 const ENV_TEX=new Map();
+var LANGIT_FOTO_ENV=null;                 // lingkungan dari langit foto 360° (lihat LANGIT FOTO)
 function studioEnv(k){
+  if(LANGIT_FOTO_ENV && (!k || k===MOOD)) return LANGIT_FOTO_ENV;
   k=k||(typeof MOOD!=='undefined'?MOOD:'siang');
   if(ENV_TEX.has(k)) return ENV_TEX.get(k);
   // lingkungan pantulan = langit HDR suasana ini (lihat LANGIT_GLSL) + tanah
@@ -4938,15 +4962,26 @@ function sfx(jenis,titik){
     osc(ctx,'square',2200,t,t+0.03,envGain(ctx,d,t,0.0005,0.08,0.02));
     derau(ctx,t+0.045,0.01,envGain(ctx,hp,t+0.045,0.0008,0.22,0.01));
   } else if(jenis==='pintuBuka'||jenis==='pintuTutup'){
-    const lp=filt('lowpass',900); lp.connect(d);
-    const bpK=filt('bandpass',2400,2); bpK.connect(d); derau(ctx,t,0.05,envGain(ctx,bpK,t,0.001,0.25,0.04));   // klik gagang
-    if(jenis==='pintuBuka'){                                  // derit engsel
-      const bp=filt('bandpass',700,9); bp.connect(d);
-      const o=osc(ctx,'sawtooth',150,t+0.08,t+0.7,envGain(ctx,bp,t+0.08,0.08,0.18,0.55));
-      o.frequency.setValueAtTime(150,t+0.08); o.frequency.linearRampToValueAtTime(115,t+0.6);
-    } else {                                                  // bantingan daun pintu
-      osc(ctx,'sine',85,t+0.03,t+0.35,envGain(ctx,d,t+0.03,0.003,0.9,0.28));
-      derau(ctx,t+0.03,0.12,envGain(ctx,lp,t+0.03,0.002,0.6,0.12));
+    // gagang: dua ketukan logam kecil (lidah kunci masuk/keluar), lembut
+    const gagang=(tt,k)=>{ const bp=filt('bandpass',3200,4); bp.connect(d); derau(ctx,tt,0.012,envGain(ctx,bp,tt,0.0008,0.09*k,0.012));
+      osc(ctx,'sine',1850,tt,tt+0.05,envGain(ctx,d,tt,0.0008,0.025*k,0.04)); };
+    if(jenis==='pintuBuka'){
+      gagang(t,1); gagang(t+0.07,0.7);
+      // ayunan daun: desir udara + derit engsel halus (sinus bergetar, bukan gergaji)
+      const lp=filt('bandpass',500,0.7); lp.connect(d);
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t+0.1); g.gain.exponentialRampToValueAtTime(0.05,t+0.35); g.gain.exponentialRampToValueAtTime(0.0001,t+0.9); g.connect(lp); derau(ctx,t+0.1,0.85,g);
+      const dr=ctx.createGain(); dr.gain.setValueAtTime(0.0001,t+0.15); dr.gain.exponentialRampToValueAtTime(0.018,t+0.3); dr.gain.exponentialRampToValueAtTime(0.0001,t+0.7); dr.connect(d);
+      const o=osc(ctx,'triangle',520,t+0.15,t+0.72,dr); o.frequency.setValueAtTime(520,t+0.15); o.frequency.linearRampToValueAtTime(610,t+0.5); o.frequency.linearRampToValueAtTime(560,t+0.7);
+      const vib=ctx.createOscillator(), vg=ctx.createGain(); vib.frequency.value=23; vg.gain.value=14; vib.connect(vg); vg.connect(o.frequency); vib.start(t+0.15); vib.stop(t+0.72);
+    } else {
+      // daun menutup: desir singkat, benturan kayu teredam ke kusen, lalu lidah kunci
+      const lp=filt('bandpass',450,0.7); lp.connect(d);
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.04,t+0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+0.32); g.connect(lp); derau(ctx,t,0.34,g);
+      const tb=t+0.3, kayu=filt('lowpass',650); kayu.connect(d);
+      osc(ctx,'sine',110,tb,tb+0.22,envGain(ctx,d,tb,0.004,0.32,0.18));
+      osc(ctx,'sine',185,tb,tb+0.12,envGain(ctx,d,tb,0.003,0.12,0.09));
+      derau(ctx,tb,0.08,envGain(ctx,kayu,tb,0.002,0.22,0.07));
+      gagang(tb+0.02,0.8);
     }
   } else if(jenis==='gorden'){                                // kain bergeser
     const bp=filt('bandpass',3200,0.7); bp.connect(d);
@@ -4994,24 +5029,30 @@ function permukaanPijak(obj){
 function bunyiLangkah(jenis,cepat){
   if(!SFX.on) return;
   const ctx=AUDIO.ctx; if(!ctx||ctx.state!=='running') return;
-  const t=ctx.currentTime+0.005, v=(cepat?1.25:1)*(0.85+Math.random()*0.3), d=ctx.createStereoPanner?ctx.createStereoPanner():null;
-  const keluar=d||AUDIO.master; if(d){ d.pan.value=LANGKAH.kiri?-0.18:0.18; d.connect(AUDIO.master); setTimeout(()=>{ try{ d.disconnect(); }catch(e){} },800); }
+  // langkah dibuat lembut: lebih pelan, tanpa klik tajam, lewat lowpass yang memotong desis tinggi
+  const t=ctx.currentTime+0.005, v=0.55*(cepat?1.2:1)*(0.85+Math.random()*0.3);
+  const lembut=ctx.createBiquadFilter(); lembut.type='lowpass'; lembut.frequency.value=jenis==='kerikil'?3800:jenis==='rumput'?2600:1600; lembut.Q.value=0.5;
+  const d=ctx.createStereoPanner?ctx.createStereoPanner():null;
+  if(d){ d.pan.value=LANGKAH.kiri?-0.12:0.12; lembut.connect(d); d.connect(AUDIO.master); } else lembut.connect(AUDIO.master);
+  setTimeout(()=>{ try{ lembut.disconnect(); if(d) d.disconnect(); }catch(e){} },900);
   LANGKAH.kiri=!LANGKAH.kiri;
+  const keluar=lembut;
   const filt=(tipe,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=tipe; b.frequency.value=f; if(q) b.Q.value=q; b.connect(keluar); return b; };
-  if(jenis==='keras'){                                    // ubin / beton: tumit lalu telapak
-    derau(ctx,t,0.03,envGain(ctx,filt('bandpass',2600,1.3),t,0.001,0.22*v,0.03));
-    derau(ctx,t+0.05,0.05,envGain(ctx,filt('bandpass',1400,1),t+0.05,0.003,0.12*v,0.05));
-    osc(ctx,'sine',140,t,t+0.08,envGain(ctx,keluar,t,0.002,0.12*v,0.06));
+  const lembutEnv=(dest,tt,a,p,l)=>envGain(ctx,dest,tt,a,p,l);
+  if(jenis==='keras'){                                    // ubin / beton: tumit lalu telapak, teredam
+    derau(ctx,t,0.05,lembutEnv(filt('bandpass',900,0.9),t,0.004,0.09*v,0.05));
+    derau(ctx,t+0.06,0.06,lembutEnv(filt('bandpass',600,0.8),t+0.06,0.008,0.05*v,0.06));
+    osc(ctx,'sine',95,t,t+0.1,lembutEnv(keluar,t,0.004,0.09*v,0.08));
   } else if(jenis==='kayu'){                              // papan kayu: dentum rendah
-    osc(ctx,'sine',95+Math.random()*20,t,t+0.14,envGain(ctx,keluar,t,0.002,0.32*v,0.12));
-    derau(ctx,t,0.06,envGain(ctx,filt('bandpass',900,1.2),t,0.002,0.16*v,0.06));
-  } else if(jenis==='rumput'){                            // daun rumput tersibak
-    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.14*v,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2); g.connect(filt('bandpass',2400,0.8));
-    derau(ctx,t,0.22,g); osc(ctx,'sine',80,t,t+0.08,envGain(ctx,keluar,t,0.004,0.08*v,0.07));
-  } else if(jenis==='kerikil'){                           // kerikil berderak
-    for(let i=0;i<7;i++){ const tt=t+i*0.018+Math.random()*0.012; derau(ctx,tt,0.012,envGain(ctx,filt('bandpass',2500+Math.random()*2500,2),tt,0.001,(0.1+Math.random()*0.12)*v,0.012)); }
+    osc(ctx,'sine',85+Math.random()*15,t,t+0.16,lembutEnv(keluar,t,0.005,0.16*v,0.14));
+    derau(ctx,t,0.06,lembutEnv(filt('bandpass',500,1),t,0.004,0.06*v,0.06));
+  } else if(jenis==='rumput'){                            // rumput tersibak
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.07*v,t+0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22); g.connect(filt('bandpass',1700,0.7));
+    derau(ctx,t,0.24,g); osc(ctx,'sine',70,t,t+0.08,lembutEnv(keluar,t,0.006,0.05*v,0.07));
+  } else if(jenis==='kerikil'){                           // kerikil berderak, halus
+    for(let i=0;i<6;i++){ const tt=t+i*0.02+Math.random()*0.012; derau(ctx,tt,0.014,lembutEnv(filt('bandpass',1800+Math.random()*1600,1.5),tt,0.002,(0.04+Math.random()*0.05)*v,0.014)); }
   } else {                                                // tanah: gedebuk tumpul
-    derau(ctx,t,0.09,envGain(ctx,filt('lowpass',500),t,0.004,0.3*v,0.08));
+    derau(ctx,t,0.09,lembutEnv(filt('lowpass',380),t,0.006,0.16*v,0.08));
   }
 }
 function stepLangkah(jarak,cepat,pijak){
@@ -6590,6 +6631,7 @@ const VT_NAMA=m=>m.kind==='void'?'void':m.kind==='area'?(JENIS_AREA[m.type]||'ar
 function mulaiTraceVoid(gantiId){ mulaiTrace({kind:'void'},gantiId); }
 function mulaiTrace(mode,gantiId){
   if(FPS.on) return;
+  akhiriTrace();                                   // tracing sebelumnya (dan alas denahnya) dibersihkan dulu
   VT.mode=mode||{kind:'void'};
   VT.pts=[]; VT.ganti=gantiId||null;
   if(!VT.grp.parent) helperRoot.add(VT.grp);
@@ -6602,7 +6644,7 @@ function mulaiTrace(mode,gantiId){
     const m=new THREE.Mesh(new THREE.PlaneGeometry(pl.w/pxm,pl.h/pxm),
       new THREE.MeshBasicMaterial({map:tex, transparent:true, opacity:0.55, depthWrite:false, toneMapped:false}));
     m.rotation.x=-Math.PI/2; m.position.set(pl.dx||0, levelElevation(PROJECT.active)+0.012, pl.dz||0);
-    m.renderOrder=24; m.userData.noExport=true; m.raycast=()=>{};
+    m.renderOrder=24; m.userData.noExport=true; m.userData.alasDenah=true; m.raycast=()=>{};
     VT.alas=m; helperRoot.add(m);
   }
   setView('atas');
@@ -6614,7 +6656,9 @@ function mulaiTrace(mode,gantiId){
 function akhiriTrace(){
   VT.pts=[]; VT.ganti=null;
   while(VT.grp.children.length){ const c=VT.grp.children.pop(); c.geometry&&c.geometry.dispose(); }
-  if(VT.alas){ helperRoot.remove(VT.alas); VT.alas.geometry.dispose(); VT.alas.material.map.dispose(); VT.alas.material.dispose(); VT.alas=null; }
+  // semua alas denah dibuang — termasuk yang tertinggal saat tracing dimulai ulang sebelum selesai
+  for(const m of helperRoot.children.filter(c=>c.userData.alasDenah)){ helperRoot.remove(m); m.geometry.dispose(); if(m.material.map) m.material.map.dispose(); m.material.dispose(); }
+  VT.alas=null;
   $('#traceBar').hidden=true;
 }
 function titikTrace(e){
@@ -10072,7 +10116,9 @@ $('#autoCal').addEventListener('change',e=>{ $('#manual-cal').hidden=e.target.ch
 /* ======================================================================
    UI — LANTAI
    ====================================================================== */
+function lepasTraceLantai(){ if(TOOL==='voidTrace') setTool('select'); else akhiriTrace(); }   // tracing (dan alasnya) milik lantai sebelumnya
 function setActiveLevel(i){
+  lepasTraceLantai();
   PROJECT.active=clamp(i,0,PROJECT.levels.length-1);
   SEL=null;
   renderLevels(); rebuildScene();
@@ -10104,6 +10150,7 @@ function renderLevels(){
   const del=el('button','btn sm danger','Hapus Lantai Ini');
   del.onclick=()=>{
     if(PROJECT.levels.length<2) return toast('Minimal harus ada satu lantai.');
+    lepasTraceLantai();
     PROJECT.levels.splice(PROJECT.active,1);
     PROJECT.active=clamp(PROJECT.active,0,PROJECT.levels.length-1);
     SEL=null; HIST.label='Hapus lantai'; renderLevels(); rebuildScene();
@@ -10122,6 +10169,7 @@ function renderLevels(){
   syncPlanPanel();
 }
 function addLevel(copy){
+  lepasTraceLantai();
   const src=L();
   const lv=newLevel('Lantai '+(PROJECT.levels.length+1), src?src.height:3.2);
   if(copy&&src){
@@ -10418,6 +10466,9 @@ $('#loadInput').addEventListener('change',e=>{
                                     inColor:'#efece5',outColor:'#d9d3c7'}, j.finish||{});
       PROJECT.atap=Object.assign({tritisan:0.6, tebal:0.12}, j.atap||{});
       PROJECT.site=Object.assign({tanah:'none', margin:6}, j.site||{}); renderSitusUI();
+      PROJECT.langit=Object.assign({},LANGIT_BAWAAN,j.langit||{});
+      if(PROJECT.langit.mode==='foto') muatLangitFoto({id:PROJECT.langit.id, nama:PROJECT.langit.nama});
+      else if(FOTO.tex) matikanLangitFoto(); else renderLangitUI();
       renderFinishUI(); renderAtapUI();
       SEL=null; $('#projName').value=PROJECT.name;
       renderLevels(); renderCatalogs(); rebuildScene();
@@ -10568,7 +10619,11 @@ kubahLangit.frustumCulled=false; kubahLangit.renderOrder=-10; kubahLangit.visibl
 kubahLangit.onBeforeRender=(r,sc,cam)=>{ kubahLangit.position.copy(cam.position); kubahLangit.updateMatrixWorld(); };
 scene.add(kubahLangit);
 function terapkanLangit(){
-  if(FPS.on){ const s=SUASANA[MOOD]; isiLangit(kubahLangit.material.uniforms,MOOD,false); kubahLangit.visible=true;
+  const foto=fotoAktif(), tampil=FPS.on || (foto && langitP().editor!==false && !camera.isOrthographicCamera);
+  if(kubahFoto) kubahFoto.visible=tampil&&foto;
+  if(tampil&&foto){ kubahLangit.visible=false; const k=FOTO.kabut||new THREE.Color(0x8a9099);
+    scene.background=k.clone(); scene.fog=new THREE.Fog(k,60,280); }
+  else if(tampil){ const s=SUASANA[MOOD]; isiLangit(kubahLangit.material.uniforms,MOOD,false); kubahLangit.visible=true;
     scene.background=new THREE.Color(s.langit[1]); scene.fog=new THREE.Fog(s.kabut[0],s.kabut[1],s.kabut[2]); }
   else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=camera.isOrthographicCamera?null:new THREE.Fog(0x0e0e11,70,190); }
 }
@@ -10587,6 +10642,330 @@ function setSuasana(k){
   for(const id of ['#mood','#fpsMood']){ const e=$(id); if(e) e.value=MOOD; }
   terapkanLangit(); LAMPU_T=0;
   sun.userData.arah.set(...s.sunPos).normalize(); pasBayangMatahari();
+  if(fotoAktif()){ terapkanCahayaFoto(); langitIkutSuasana(); }
+}
+/* ======================================================================
+   LANGIT FOTO 360° — panorama HDR sungguhan (Poly Haven, lisensi CC0)
+   Daftar HDRI diambil saat dipakai, disaring per lanskap (pegunungan,
+   tebing, hutan, pantai, danau, sungai, padang rumput, …) dan per waktu
+   (siang/senja/malam mengikuti suasana), lalu satu dipilih acak. Berkas
+   .hdr dibaca sendiri (RGBE + RLE), disimpan di GPU apa adanya (4 bita per
+   piksel) dan diurai di shader dengan interpolasi bilinear manual — jadi
+   jalan di semua perangkat tanpa tekstur float. Dari foto yang sama:
+   latar mode jalan/3D, lingkungan pantulan (PMREM), arah & warna matahari
+   (titik paling terang), warna langit, dan kabut cakrawala. Berkas yang
+   sudah diunduh disimpan di Cache Storage supaya bisa dibuka lagi offline.
+   ====================================================================== */
+const LANGIT_JENIS={
+  acak:  {l:'🎲 Acak — semua alam'},
+  gunung:{l:'⛰ Pegunungan', k:['mountain','mountains','alps','alpine','peak','peaks','valley','hills','hill','highland','highlands','volcano']},
+  tebing:{l:'🧗 Tebing & bebatuan', k:['cliff','cliffs','rock','rocks','rocky','canyon','gorge','quarry','boulder','boulders','crag']},
+  hutan: {l:'🌲 Hutan', k:['forest','woods','woodland','jungle','pine','pines','trees']},
+  pantai:{l:'🏖 Pantai & laut', k:['beach','coast','coastal','sea','ocean','shore','seaside','bay','sand']},
+  danau: {l:'🏞 Danau', k:['lake','lakeside','pond','reservoir','lagoon']},
+  sungai:{l:'🌊 Sungai', k:['river','riverside','riverbank','stream','creek','waterfall']},
+  padang:{l:'🌾 Padang rumput', k:['field','fields','meadow','meadows','grass','grassland','prairie','farm','farmland','savanna','pasture','countryside']},
+  gurun: {l:'🏜 Gurun', k:['desert','dune','dunes','arid']},
+  salju: {l:'❄ Salju', k:['snow','snowy','winter','glacier','ice']}
+};
+const WAKTU_FOTO={siang:['midday','morning-afternoon'], senja:['sunrise-sunset'], malam:['night'], gelap:['night']};
+// kecerahan rata-rata langit (luminans linear, belahan atas) yang dituju per suasana —
+// setara langit prosedural, supaya cahaya, eksposur, dan lampu yang sudah dikalibrasi tetap cocok
+const TERANG_FOTO={siang:0.7, senja:0.3, malam:0.012, gelap:0.008};
+const LANGIT_BAWAAN={mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true};
+var FOTO={tex:null, kecil:null, env:null, w:0, h:0, nama:'', id:null, waktu:'siang', rata:1, k:1,
+  surya:null, cerah:0.35, warnaSurya:new THREE.Color(1,1,1), warnaLangit:new THREE.Color(1,1,1), cakrawala:new THREE.Color(1,1,1),
+  token:0, daftar:null, riwayat:[], sibuk:false, kreditUrl:''};
+const EXP_RGBE=new Float32Array(256); for(let e=1;e<256;e++) EXP_RGBE[e]=Math.pow(2,e-136);
+function langitP(){ return PROJECT.langit||(PROJECT.langit=Object.assign({},LANGIT_BAWAAN)); }
+function fotoAktif(){ return !!(FOTO && FOTO.tex) && langitP().mode==='foto'; }
+
+/* --- pembaca Radiance .hdr (RGBE, baris RLE baru maupun datar) --- */
+function bacaHDR(buf){
+  const u=new Uint8Array(buf); let p=0;
+  const baris=()=>{ let s=''; while(p<u.length && u[p]!==10) s+=String.fromCharCode(u[p++]); p++; return s; };
+  if(!/^#\?/.test(baris())) throw new Error('bukan berkas Radiance .hdr');
+  for(let l=baris(); l!=='' && p<u.length; l=baris()) if(/^FORMAT=/.test(l) && !/32-bit_rle_rgbe/.test(l)) throw new Error('format .hdr '+l+' belum didukung');
+  const m=baris().match(/([+-])Y\s+(\d+)\s+([+-])X\s+(\d+)/); if(!m) throw new Error('ukuran .hdr tidak terbaca');
+  const h=+m[2], w=+m[4], out=new Uint8Array(w*h*4), sl=new Uint8Array(w*4);
+  for(let y=0;y<h;y++){
+    if(p>=u.length) throw new Error('berkas .hdr terpotong');
+    if(w<8||w>0x7fff||u[p]!==2||u[p+1]!==2||(u[p+2]&0x80)){            // baris datar
+      out.set(u.subarray(p,p+(h-y)*w*4),y*w*4); break; }
+    if(((u[p+2]<<8)|u[p+3])!==w) throw new Error('baris .hdr rusak');
+    p+=4;
+    for(let c=0;c<4;c++){ let x=0;
+      while(x<w){ let n=u[p++];
+        if(n>128){ n-=128; const v=u[p++]; while(n-->0) sl[(x++)*4+c]=v; }
+        else while(n-->0) sl[(x++)*4+c]=u[p++]; } }
+    out.set(sl,y*w*4);
+  }
+  if(m[1]==='+'){ const t=new Uint8Array(w*4); for(let y=0;y<h/2|0;y++){ const a=y*w*4,b=(h-1-y)*w*4; t.set(out.subarray(a,a+w*4)); out.copyWithin(a,b,b+w*4); out.set(t,b); } }
+  return {w,h,rgbe:out};
+}
+function keRGBE(r,g,b,o,i){
+  const m=Math.max(r,g,b);
+  if(!(m>1e-32)){ o[i]=o[i+1]=o[i+2]=o[i+3]=0; return; }
+  const e=Math.min(127,Math.floor(Math.log2(m))+1), s=256/Math.pow(2,e);
+  o[i]=Math.min(255,r*s); o[i+1]=Math.min(255,g*s); o[i+2]=Math.min(255,b*s); o[i+3]=e+128;
+}
+// panorama yang terlalu besar untuk GPU/memori dikecilkan 2× berulang (rata-rata kotak)
+function kecilkanRGBE(P,maksW){
+  while(P.w>maksW){
+    const w=P.w>>1, h=P.h>>1, o=new Uint8Array(w*h*4), s=P.rgbe, W=P.w;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){ let r=0,g=0,b=0;
+      for(const [dx,dy] of [[0,0],[1,0],[0,1],[1,1]]){ const i=((y*2+dy)*W+x*2+dx)*4, f=EXP_RGBE[s[i+3]]; r+=s[i]*f; g+=s[i+1]*f; b+=s[i+2]*f; }
+      keRGBE(r/4,g/4,b/4,o,(y*w+x)*4); }
+    P={w,h,rgbe:o};
+  }
+  return P;
+}
+/* foto 360 biasa (.jpg/.png, misalnya dari kamera 360 atau iPhone): sRGB → linear,
+   bagian yang terbakar putih (matahari) dinaikkan supaya tetap jadi sumber cahaya */
+async function panoDariGambar(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const im=await new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=()=>no(new Error('gambar tidak terbaca')); i.src=url; });
+    const maks=Math.min(4096,renderer.capabilities.maxTextureSize||4096), w=Math.min(maks,im.naturalWidth), h=Math.max(2,Math.round(w/2));
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const c=cv.getContext('2d'); c.drawImage(im,0,0,w,h);
+    const d=c.getImageData(0,0,w,h).data, o=new Uint8Array(w*h*4), lut=new Float32Array(256);
+    for(let i=0;i<256;i++){ const v=i/255; lut[i]=v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4); }
+    for(let i=0;i<w*h*4;i+=4){ let r=lut[d[i]],g=lut[d[i+1]],b=lut[d[i+2]];
+      if(d[i]>250&&d[i+1]>250&&d[i+2]>245){ r*=12; g*=12; b*=12; }
+      keRGBE(r,g,b,o,i); }
+    return {w,h,rgbe:o};
+  } finally { URL.revokeObjectURL(url); }
+}
+function texRGBE(w,h,data){
+  const t=new THREE.DataTexture(data,w,h,THREE.RGBAFormat,THREE.UnsignedByteType);
+  t.minFilter=t.magFilter=THREE.NearestFilter; t.generateMipmaps=false; t.flipY=false;
+  t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.ClampToEdgeWrapping; t.needsUpdate=true; return t;
+}
+/* analisis satu kali: rata-rata langit, warna cakrawala, matahari (pusat titik
+   terang), plus versi kecil 256×128 (rata-rata, hemat energi) untuk PMREM */
+function analisisPano(P){
+  const {w,h,rgbe:s}=P, SW=256, SH=128, jum=new Float32Array(SW*SH*3), n=new Float32Array(SW*SH);
+  let atas=0, atasW=0, maxL=0, maxX=0, maxY=0; const lgt=[0,0,0], ckr=[0,0,0]; let ckrW=0;
+  for(let y=0;y<h;y++){
+    const lat=(0.5-(y+0.5)/h)*Math.PI, cw=Math.cos(lat), sy=Math.min(SH-1,(y*SH/h)|0)*SW, dekat=Math.abs(lat)<0.16;
+    for(let x=0;x<w;x++){
+      const i=(y*w+x)*4, f=EXP_RGBE[s[i+3]]; if(!f) { n[sy+((x*SW/w)|0)]++; continue; }
+      const r=s[i]*f, g=s[i+1]*f, b=s[i+2]*f, L=0.2126*r+0.7152*g+0.0722*b, si=sy+((x*SW/w)|0);
+      jum[si*3]+=r; jum[si*3+1]+=g; jum[si*3+2]+=b; n[si]++;
+      if(lat>0){ atas+=L*cw; atasW+=cw; lgt[0]+=r*cw; lgt[1]+=g*cw; lgt[2]+=b*cw;
+        if(L>maxL){ maxL=L; maxX=x; maxY=y; } }
+      if(dekat){ ckr[0]+=r*cw; ckr[1]+=g*cw; ckr[2]+=b*cw; ckrW+=cw; }
+    }
+  }
+  const kecil=new Uint8Array(SW*SH*4);
+  for(let i=0;i<SW*SH;i++){ const k=n[i]?1/n[i]:0; keRGBE(jum[i*3]*k,jum[i*3+1]*k,jum[i*3+2]*k,kecil,i*4); }
+  const rata=Math.max(1e-6,atas/Math.max(1e-6,atasW));
+  // matahari: titik terlalu terang dibanding langitnya, di atas cakrawala; pusatnya
+  // dihitung dari semua piksel > 25% puncak di sekitar titik itu
+  let surya=null, cerah=0.35; const ws=[1,1,1];
+  const rasio=maxL/rata;
+  if(rasio>25 && maxY<h*0.49){
+    const R=Math.max(4,w>>6); let sx=0,sy2=0,sw=0, cr=0,cg=0,cb=0;
+    for(let y=Math.max(0,maxY-R);y<Math.min(h,maxY+R);y++) for(let dx=-R;dx<=R;dx++){
+      const x=(maxX+dx+w)%w, i=(y*w+x)*4, f=EXP_RGBE[s[i+3]], r=s[i]*f, g=s[i+1]*f, b=s[i+2]*f, L=0.2126*r+0.7152*g+0.0722*b;
+      if(L>maxL*0.25){ sx+=(maxX+dx+0.5)*L; sy2+=(y+0.5)*L; sw+=L; cr+=r; cg+=g; cb+=b; } }
+    if(sw>0){ surya={u:sx/sw/w, v:sy2/sw/h}; const mx=Math.max(cr,cg,cb)||1; ws[0]=cr/mx; ws[1]=cg/mx; ws[2]=cb/mx;
+      cerah=clamp(0.55+0.45*Math.log10(rasio/25)/Math.log10(40),0.55,1); }
+  }
+  const nl=Math.max(lgt[0],lgt[1],lgt[2])||1, nc=1/Math.max(1e-6,ckrW);
+  return {kecil, rata, surya, cerah, warnaSurya:ws, warnaLangit:[lgt[0]/nl,lgt[1]/nl,lgt[2]/nl], cakrawala:[ckr[0]*nc,ckr[1]*nc,ckr[2]*nc]};
+}
+const FOTO_GLSL=`
+uniform sampler2D peta; uniform vec2 ukuran; uniform float terang, putar, batas;
+vec3 dekRGBE(vec4 t){ float e=floor(t.a*255.0+0.5); return e>0.0 ? t.rgb*255.0*exp2(e-136.0) : vec3(0.0); }
+vec3 fotoHDR(vec3 d){
+  float u=atan(d.z,d.x)*0.15915494+0.5-putar, v=acos(clamp(d.y,-1.0,1.0))*0.31830989;
+  vec2 p=vec2(u,v)*ukuran-0.5, f=fract(p), a=(floor(p)+0.5)/ukuran, s=1.0/ukuran;
+  vec3 c=mix(mix(dekRGBE(texture2D(peta,a)),dekRGBE(texture2D(peta,a+vec2(s.x,0.0))),f.x),
+             mix(dekRGBE(texture2D(peta,a+vec2(0.0,s.y))),dekRGBE(texture2D(peta,a+s)),f.x),f.y);
+  return min(c*terang,vec3(batas));
+}`;
+function matFoto(){
+  return new THREE.ShaderMaterial({uniforms:{peta:{value:null}, ukuran:{value:new THREE.Vector2(1,1)}, terang:{value:1}, putar:{value:0}, batas:{value:60}},
+    side:THREE.BackSide, depthWrite:false, transparent:true, fog:false,
+    vertexShader:'varying vec3 vArah; void main(){ vArah=normalize((modelMatrix*vec4(position,1.0)).xyz-cameraPosition); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_Position.z=gl_Position.w*0.99999; }',
+    fragmentShader:FOTO_GLSL+'varying vec3 vArah; void main(){ gl_FragColor=vec4(fotoHDR(normalize(vArah)),1.0);\n#include <tonemapping_fragment>\n#include <encodings_fragment>\n}'});
+}
+var kubahFoto=new THREE.Mesh(new THREE.SphereGeometry(300,64,32), matFoto());
+kubahFoto.frustumCulled=false; kubahFoto.renderOrder=-10; kubahFoto.visible=false; kubahFoto.raycast=()=>{}; kubahFoto.userData.noExport=true;
+kubahFoto.onBeforeRender=(r,sc,cam)=>{ kubahFoto.position.copy(cam.position); kubahFoto.updateMatrixWorld(); };
+scene.add(kubahFoto);
+function arahFoto(u,v){ const ph=(u-0.5+FOTO.putarU())*Math.PI*2, th=v*Math.PI;
+  return new THREE.Vector3(Math.cos(ph)*Math.sin(th), Math.cos(th), Math.sin(ph)*Math.sin(th)); }
+FOTO.putarU=()=>(langitP().putar||0)/360;
+function envFoto(){
+  const sc=new THREE.Scene(), m=matFoto(), g=new THREE.SphereGeometry(50,48,24);
+  m.transparent=false; m.uniforms.peta.value=FOTO.kecil; m.uniforms.ukuran.value.set(256,128);
+  m.uniforms.terang.value=FOTO.k; m.uniforms.putar.value=FOTO.putarU(); m.uniforms.batas.value=12;   // matahari sudah lampu berbayang: di pantulan diredam
+  sc.add(new THREE.Mesh(g,m));
+  const pm=new THREE.PMREMGenerator(renderer), t=pm.fromScene(sc,0.02).texture;
+  pm.dispose(); m.dispose(); g.dispose();
+  return t;
+}
+/* foto → cahaya: dipanggil setelah foto dimuat, saat suasana atau putaran berubah */
+function dasarCahaya(){
+  const s=SUASANA[MOOD]||SUASANA.siang;
+  sun.color.setHex(s.sun[0]); sun.intensity=s.sun[1]; sun.userData.arah.set(...s.sunPos).normalize();
+  terapkanPantulan();
+}
+function terapkanCahayaFoto(){
+  if(!fotoAktif()) return;
+  const s=SUASANA[MOOD]||SUASANA.siang;
+  dasarCahaya();
+  FOTO.k=(TERANG_FOTO[MOOD]||0.7)/FOTO.rata;
+  const U=kubahFoto.material.uniforms; U.terang.value=FOTO.k; U.putar.value=FOTO.putarU();
+  const lama=FOTO.env; FOTO.env=envFoto(); LANGIT_FOTO_ENV=FOTO.env;
+  if(typeof pasangPantulanLogam==='function') terapkanEnv();
+  if(lama) lama.dispose();
+  // matahari foto: arah dari titik terang, warna setengah dari foto; langit berawan
+  // (tanpa matahari jelas) → cahaya matahari lemah, bayangan lembut seperti aslinya
+  sun.color.setHex(s.sun[0]).lerp(FOTO.warnaSurya,0.5);
+  sun.intensity=s.sun[1]*FOTO.cerah;
+  if(FOTO.surya){ const a=arahFoto(FOTO.surya.u,FOTO.surya.v); if(a.y>0.04) sun.userData.arah.copy(a); }
+  hemiL.color.lerp(FOTO.warnaLangit,0.35);
+  const c=FOTO.cakrawala.clone().multiplyScalar(FOTO.k*1.1); c.r=Math.min(1,c.r); c.g=Math.min(1,c.g); c.b=Math.min(1,c.b);
+  FOTO.kabut=c.convertLinearToSRGB();
+  pasBayangMatahari(); bayangKotor(); terapkanLangit();
+  if(typeof PROBE!=='undefined') PROBE.kotor=true;
+}
+function lepasFoto(){
+  for(const k of ['tex','kecil','env']) if(FOTO[k]){ FOTO[k].dispose(); FOTO[k]=null; }
+  LANGIT_FOTO_ENV=null; kubahFoto.material.uniforms.peta.value=null; kubahFoto.visible=false;
+}
+function pasangPano(P,info){
+  const maks=Math.min(4096,renderer.capabilities.maxTextureSize||4096);
+  P=kecilkanRGBE(P,maks);
+  const A=analisisPano(P);
+  lepasFoto();
+  FOTO.tex=texRGBE(P.w,P.h,P.rgbe); FOTO.kecil=texRGBE(256,128,A.kecil); FOTO.w=P.w; FOTO.h=P.h;
+  FOTO.rata=A.rata; FOTO.surya=A.surya; FOTO.cerah=A.cerah;
+  FOTO.warnaSurya.setRGB(...A.warnaSurya); FOTO.warnaLangit.setRGB(...A.warnaLangit); FOTO.cakrawala.setRGB(...A.cakrawala);
+  FOTO.id=info.id; FOTO.nama=info.nama; FOTO.kreditUrl=info.kredit||''; FOTO.waktu=info.waktu||null;
+  const U=kubahFoto.material.uniforms; U.peta.value=FOTO.tex; U.ukuran.value.set(P.w,P.h);
+  const lp=langitP(); lp.mode='foto'; lp.id=info.id; lp.nama=info.nama;
+  terapkanCahayaFoto();
+  renderLangitUI();
+}
+/* --- jaringan: daftar HDRI Poly Haven + unduhan dengan progres & cache --- */
+const LANGIT_CACHE='langit360-v1';
+async function bukaCache(){ try{ return window.caches ? await caches.open(LANGIT_CACHE) : null; }catch(e){ return null; } }
+async function ambilBerkas(url,onP){
+  const cache=await bukaCache();
+  if(cache){ try{ const r=await cache.match(url); if(r) return await r.arrayBuffer(); }catch(e){} }
+  const res=await fetch(url,{mode:'cors'}); if(!res.ok) throw new Error('HTTP '+res.status);
+  const total=+res.headers.get('content-length')||0;
+  let buf;
+  if(res.body && res.body.getReader){
+    const rd=res.body.getReader(), bag=[]; let n=0;
+    for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length; if(onP) onP(n,total); }
+    const u=new Uint8Array(n); let o=0; for(const b of bag){ u.set(b,o); o+=b.length; } buf=u.buffer;
+  } else buf=await res.arrayBuffer();
+  if(cache){ try{ await cache.put(url,new Response(buf.slice(0)));
+    const ks=(await cache.keys()).filter(q=>/\.hdr$/i.test(q.url)); for(const q of ks.slice(0,Math.max(0,ks.length-8))) await cache.delete(q); }catch(e){} }
+  return buf;
+}
+async function daftarHDRI(){
+  if(FOTO.daftar) return FOTO.daftar;
+  const url='https://api.polyhaven.com/assets?t=hdris', cache=await bukaCache();
+  let j=null;
+  try{ const r=await fetch(url,{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status); j=await r.json();
+    if(cache) try{ await cache.put(url,new Response(JSON.stringify(j),{headers:{'content-type':'application/json'}})); }catch(e){} }
+  catch(e){ const r=cache&&await cache.match(url); if(!r) throw e; j=await r.json(); }
+  FOTO.daftar=Object.entries(j).map(([id,a])=>{
+    const kat=(a.categories||[]).map(x=>String(x).toLowerCase()), tag=(a.tags||[]).map(x=>String(x).toLowerCase());
+    const kata=new Set([...kat,...tag,...String(a.name||id).toLowerCase().split(/[^a-z]+/),...id.toLowerCase().split(/[^a-z]+/)]);
+    const waktu=kat.includes('night')?'malam':kat.includes('sunrise-sunset')?'senja':'siang';
+    return {id, nama:a.name||id, kat, kata, waktu};
+  }).filter(a=>!a.kat.some(k=>k==='indoor'||k==='studio'||k==='urban'));
+  return FOTO.daftar;
+}
+function pilihHDRI(daftar,jenis,kecuali){
+  const J=LANGIT_JENIS[jenis]&&LANGIT_JENIS[jenis].k ? [LANGIT_JENIS[jenis].k] : Object.values(LANGIT_JENIS).filter(x=>x.k).map(x=>x.k);
+  let c=daftar.filter(a=>J.some(ks=>ks.some(k=>a.kata.has(k))));
+  if(!c.length) c=daftar.filter(a=>a.kat.includes('nature')||a.kat.includes('outdoor'));
+  const waktu=(MOOD==='gelap'?'malam':MOOD);
+  const cw=c.filter(a=>a.waktu===waktu); if(cw.length) c=cw;
+  const baru=c.filter(a=>a.id!==kecuali && !FOTO.riwayat.includes(a.id)); if(baru.length) c=baru;
+  else { const b2=c.filter(a=>a.id!==kecuali); if(b2.length) c=b2; }
+  return c.length ? c[Math.floor(Math.random()*c.length)] : null;
+}
+async function urlHDRI(id,res){
+  try{ const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors'}); if(r.ok){ const j=await r.json();
+    const f=j.hdri&&(j.hdri[res]||j.hdri['2k']||j.hdri['1k']); if(f&&f.hdr&&f.hdr.url) return f.hdr.url; } }catch(e){}
+  return `https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/${res}/${id}_${res}.hdr`;
+}
+function infoLangit(t){ const e=$('#langitInfo'); if(e) e.textContent=t; const f=$('#fpsLangit'); if(f) f.classList.toggle('on',FOTO.sibuk); }
+/* muat panorama: id tertentu, atau acak dari lanskap terpilih */
+async function muatLangitFoto(opsi){
+  opsi=opsi||{}; const lp=langitP(), token=++FOTO.token;
+  FOTO.sibuk=true; infoLangit('Mencari panorama…');
+  try{
+    let pilih=null;
+    if(opsi.id && opsi.id!=='unggah'){ pilih={id:opsi.id, nama:opsi.nama||lp.nama||opsi.id, waktu:null}; }
+    else { const d=await daftarHDRI(); if(token!==FOTO.token) return;
+      pilih=pilihHDRI(d,lp.jenis,FOTO.id); if(!pilih) throw new Error('tidak ada panorama untuk lanskap ini'); }
+    infoLangit('Mengunduh '+pilih.nama+'…');
+    const url=await urlHDRI(pilih.id,lp.res||'4k'); if(token!==FOTO.token) return;
+    const buf=await ambilBerkas(url,(n,t)=>{ if(token===FOTO.token) infoLangit(`Mengunduh ${pilih.nama} — ${t?Math.round(n/t*100)+'%':(n/1048576).toFixed(1)+' MB'}`); });
+    if(token!==FOTO.token) return;
+    infoLangit('Memproses '+pilih.nama+'…'); await new Promise(r=>setTimeout(r,30));
+    const P=bacaHDR(buf); if(token!==FOTO.token) return;
+    pasangPano(P,{id:pilih.id, nama:pilih.nama, waktu:pilih.waktu, kredit:'https://polyhaven.com/a/'+pilih.id});
+    FOTO.riwayat.push(pilih.id); if(FOTO.riwayat.length>10) FOTO.riwayat.shift();
+    FOTO.sibuk=false; renderLangitUI();
+    toast('Langit 360°: '+pilih.nama+' — Poly Haven (CC0)');
+  }catch(e){
+    if(token!==FOTO.token) return;
+    FOTO.sibuk=false;
+    console.warn('langit foto',e);
+    if(!FOTO.tex){ lp.mode='prosedural'; kembaliProsedural(); }
+    renderLangitUI();
+    infoLangit('Gagal memuat panorama ('+(e.message||e)+'). Perlu koneksi internet — langit prosedural dipakai.');
+    toast('Panorama 360° gagal dimuat — periksa koneksi internet');
+  }
+}
+async function unggahLangit(file){
+  const token=++FOTO.token; FOTO.sibuk=true; infoLangit('Membaca '+file.name+'…');
+  try{
+    await new Promise(r=>setTimeout(r,30));
+    const P=/\.hdr$/i.test(file.name) ? bacaHDR(await file.arrayBuffer()) : await panoDariGambar(file);
+    if(token!==FOTO.token) return;
+    if(Math.abs(P.w/P.h-2)>0.15) toast('Peringatan: panorama 360° biasanya 2:1 — gambar ini '+P.w+'×'+P.h);
+    pasangPano(P,{id:'unggah', nama:file.name.replace(/\.[^.]+$/,'')});
+    FOTO.sibuk=false; renderLangitUI(); toast('Langit 360° dari berkas: '+file.name);
+  }catch(e){ FOTO.sibuk=false; renderLangitUI(); infoLangit('Berkas tidak bisa dipakai: '+(e.message||e)); toast('Panorama tidak terbaca'); }
+}
+function kembaliProsedural(){ dasarCahaya(); terapkanEnv(); pasBayangMatahari(); bayangKotor(); terapkanLangit(); if(typeof PROBE!=='undefined') PROBE.kotor=true; }
+function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); }
+/* putar panorama: hanya arah (latar, pantulan, matahari) yang ikut berubah */
+let PUTAR_T=0;
+function putarLangit(deg){
+  langitP().putar=((+deg%360)+360)%360; if(!fotoAktif()) return;
+  kubahFoto.material.uniforms.putar.value=FOTO.putarU();
+  clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); },180);
+}
+function simpanPrefLangit(){ try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor})); }catch(e){} }
+function renderLangitUI(){
+  const lp=langitP(), e=id=>$(id);
+  if(!e('#langitMode')) return;
+  e('#langitMode').value=lp.mode; e('#langitJenis').value=lp.jenis; e('#langitRes').value=lp.res;
+  e('#langitPutar').value=lp.putar||0; e('#langitEditor').checked=lp.editor!==false;
+  e('#langitFotoUI').hidden=lp.mode!=='foto';
+  if(!FOTO.sibuk) infoLangit(lp.mode!=='foto' ? '' : FOTO.tex ? `${FOTO.nama} · ${FOTO.w}×${FOTO.h}`+(FOTO.id!=='unggah'?' · Poly Haven (CC0)':'')+(FOTO.surya?'':' · berawan: bayangan lembut') : '');
+  const k=e('#langitKredit'); if(k){ k.hidden=!(FOTO.tex&&FOTO.kreditUrl&&lp.mode==='foto'); k.href=FOTO.kreditUrl||'#'; }
+  simpanPrefLangit();
+}
+/* setelah suasana diganti: foto yang waktunya tidak cocok (misal foto siang
+   saat malam) diganti foto lain dari lanskap yang sama */
+function langitIkutSuasana(){
+  if(!fotoAktif()) return;
+  const w=MOOD==='gelap'?'malam':MOOD;
+  if(FOTO.waktu && FOTO.waktu!==w && FOTO.id!=='unggah' && !FOTO.sibuk && FOTO.daftar && FOTO.daftar.some(a=>a.waktu===w)) muatLangitFoto();
 }
 /* PANTULAN (GI kira-kira) — cahaya yang memantul dari lantai dan dinding
    mewarnai bayangan ruangan: lantai parket menghangatkan, dinding hijau
@@ -10997,6 +11376,17 @@ function stepBidik(dt){
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
 $('#fpsMood').onchange=e=>{ setSuasana(e.target.value); e.target.blur(); };
+/* langit foto 360° */
+$('#langitJenis').innerHTML=Object.entries(LANGIT_JENIS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
+$('#langitMode').onchange=e=>{ if(e.target.value==='foto'){ langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); } else matikanLangitFoto(); };
+$('#langitJenis').onchange=e=>{ langitP().jenis=e.target.value; renderLangitUI(); if(langitP().mode==='foto') muatLangitFoto(); };
+$('#langitRes').onchange=e=>{ langitP().res=e.target.value; renderLangitUI(); if(langitP().mode==='foto' && FOTO.id && FOTO.id!=='unggah') muatLangitFoto({id:FOTO.id, nama:FOTO.nama}); };
+$('#langitPutar').oninput=e=>putarLangit(e.target.value);
+$('#langitEditor').onchange=e=>{ langitP().editor=e.target.checked; renderLangitUI(); terapkanLangit(); };
+$('#langitAcak').onclick=()=>{ langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); };
+$('#langitUnggahBtn').onclick=()=>$('#langitUnggah').click();
+$('#langitUnggah').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f){ langitP().mode='foto'; renderLangitUI(); unggahLangit(f); } };
+$('#fpsLangit').onclick=e=>{ e.currentTarget.blur(); if(FOTO.sibuk) return toast('Panorama sedang dimuat…'); langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); };
 
 function enterFPS(){
   if(FPS.on) return;
@@ -11539,6 +11929,11 @@ try{ for(const k of ['ai_token','ai_space','ai_prompt']) localStorage.removeItem
 pasangPantulanLogam();
 setSuasana('siang');
 window.__siap=true;
+// pilihan langit terakhir di perangkat ini: bila foto 360°, langsung dimuat (dari cache bila pernah diunduh)
+try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
+  if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false});
+    if(pr.mode==='foto'){ langitP().mode='foto'; muatLangitFoto(); } } }catch(e){}
+renderLangitUI();
 renderLevels();
 setTool('select');
 rebuildScene();
