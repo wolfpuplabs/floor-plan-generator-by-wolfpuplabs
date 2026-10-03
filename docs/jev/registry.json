@@ -1666,6 +1666,58 @@
     "target": "0",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-053",
+   "judul": "Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Lampu tembok luar yang tidak memegang slot lampu berbayang hanya menyala bohlamnya; fasad malam tampak belang (sebagian lampu \"mati\").",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "laporan pengguna 2026-10-03 + 2 screenshot iPad: \"lampu tembok ada yg mati\"",
+    "alternatif": [
+     "lampu tanpa bayangan biasa (bocor menembus dinding ke dalam rumah)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.006
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "≤ 8 lampu luar dihitung di shader tanpa bayangan; tidak ada render bayangan tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan \"lampu luar mati\"",
+    "target": "0",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }

@@ -893,13 +893,16 @@ renderer.shadowMap.autoUpdate=false;
 /* hingga GI_MAKS lantai sekaligus: peta ruang tiap lantai ditumpuk dalam satu atlas,
    warna pantul 2 baris per lantai — ruangan berlampu menyala di lantai lain (atau
    dilihat dari luar) tetap terang, bukan hanya lantai tempat kamera berada */
-const GI_MAKS=4;
+const GI_MAKS=4, LUAR_MAKS=8;
 const GI_U={
   giPeta:{value:new THREE.DataTexture(new Uint8Array(4),1,1,THREE.LuminanceFormat)},
   giWarna:{value:new THREE.DataTexture(new Uint8Array(256*2*GI_MAKS*4),256,2*GI_MAKS,THREE.RGBAFormat)},
   giInfo:{value:Array.from({length:GI_MAKS},()=>new THREE.Vector4(0,0,1,1))},
   giBatas:{value:Array.from({length:GI_MAKS},()=>new THREE.Vector3(0,0,0))},
   giLantai:{value:Array.from({length:GI_MAKS},()=>new THREE.Vector2(-1e4,-1e4))}, giSkala:{value:0},
+  // lampu LUAR tanpa slot berbayang: dihitung di shader, hanya untuk titik di luar
+  // ruangan (menurut peta ruang) — cahayanya tidak bisa bocor ke dalam rumah
+  luarPos:{value:Array.from({length:LUAR_MAKS},()=>new THREE.Vector3())}, luarWarna:{value:Array.from({length:LUAR_MAKS},()=>new THREE.Vector3())}, luarN:{value:0},
   // kotak ruangan untuk koreksi paralaks pantulan probe (min.x > max.x = mati)
   pbMin:{value:new THREE.Vector3(1,0,0)}, pbMax:{value:new THREE.Vector3(0,0,0)}, pbPos:{value:new THREE.Vector3()}
 };
@@ -910,7 +913,7 @@ function pasangGIShader(sh){
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos;')
     .replace('#include <project_vertex>','#include <project_vertex>\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
   sh.fragmentShader=sh.fragmentShader
-    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo['+GI_MAKS+']; uniform vec3 giBatas['+GI_MAKS+']; uniform vec2 giLantai['+GI_MAKS+']; uniform float giSkala; uniform vec3 pbMin, pbMax, pbPos;')
+    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo['+GI_MAKS+']; uniform vec3 giBatas['+GI_MAKS+']; uniform vec2 giLantai['+GI_MAKS+']; uniform float giSkala; uniform vec3 luarPos['+LUAR_MAKS+'], luarWarna['+LUAR_MAKS+']; uniform float luarN; uniform vec3 pbMin, pbMax, pbPos;')
     .replace('#include <envmap_physical_pars_fragment>',THREE.ShaderChunk.envmap_physical_pars_fragment.replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
       `reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
       #ifdef KOTAK_PANTUL
@@ -920,18 +923,31 @@ function pasangGIShader(sh){
         reflectVec=normalize(vGIPos+reflectVec*t-pbPos);
       }
       #endif`))
-    .replace('#include <lights_fragment_end>',`if(giSkala>0.0){
+    .replace('#include <lights_fragment_end>',`if(giSkala>0.0 || luarN>0.0){
       vec3 nW=inverseTransformDirection(geometry.normal,viewMatrix);
       vec3 q=vGIPos+vec3(nW.x,0.0,nW.z)*0.25;
+      float ruang=0.0;
       for(int i=0;i<${GI_MAKS};i++){
         if(q.y>giLantai[i].x && q.y<giLantai[i].y){
           vec2 lu=vec2((q.x-giInfo[i].x)*giInfo[i].z,(q.z-giInfo[i].y)*giInfo[i].w);
           if(lu.x>0.0 && lu.y>0.0 && lu.x<giBatas[i].x && lu.y<giBatas[i].y){
             float id=floor(texture2D(giPeta,vec2(lu.x,lu.y+giBatas[i].z)).r*255.0+0.5), r=float(i)*2.0;
-            vec3 atas=texture2D(giWarna,vec2((id+0.5)/256.0,(r+0.5)/${2*GI_MAKS}.0)).rgb, bawah=texture2D(giWarna,vec2((id+0.5)/256.0,(r+1.5)/${2*GI_MAKS}.0)).rgb;
-            irradiance+=mix(bawah,atas,0.5*nW.y+0.5)*giSkala*PI;
+            ruang=id;
+            if(giSkala>0.0){
+              vec3 atas=texture2D(giWarna,vec2((id+0.5)/256.0,(r+0.5)/${2*GI_MAKS}.0)).rgb, bawah=texture2D(giWarna,vec2((id+0.5)/256.0,(r+1.5)/${2*GI_MAKS}.0)).rgb;
+              irradiance+=mix(bawah,atas,0.5*nW.y+0.5)*giSkala*PI;
+            }
             break;
           }
+        }
+      }
+      // lampu luar: titik di dalam ruangan (ruang>0) tidak menerima — tidak bocor
+      if(ruang<0.5){
+        for(int i=0;i<${LUAR_MAKS};i++){
+          if(float(i)>=luarN) break;
+          vec3 d=luarPos[i]-vGIPos; float jarak=length(d);
+          float redam=pow(clamp(1.0-jarak/7.0,0.0,1.0),2.0);
+          irradiance+=luarWarna[i]*max(dot(nW,d/max(jarak,1e-3)),0.0)*redam*PI;
         }
       }
     }
@@ -5410,7 +5426,10 @@ function kumpulkanLampu(){
       if(c.userData.kind!=='obj' || !c.userData.lampuTitik) continue;
       const lv=PROJECT.levels[idx], o=lv&&lv.objects.find(x=>x.id===c.userData.id); if(!o) continue;
       LAMPU_PASANG.push({id:o.id, idx, jenis:c.userData.nyalaJenis, kuat:kuatLampu(o), plafon:!!(FURN[o.type]&&FURN[o.type].plafon),
-                         pos:c.localToWorld(c.userData.lampuTitik.clone()), grp:c, ruang:ruangDi(petaRuang(lv),o.x,o.z)});
+                         pos:c.localToWorld(c.userData.lampuTitik.clone()), grp:c, ruang:0});
+      // ruang ditentukan dari BOHLAM-nya, bukan pangkal objek: lampu dinding luar yang
+      // pangkalnya menempel dinding dulu bisa "tertarik" ke ruangan di balik dinding
+      const Lb=LAMPU_PASANG[LAMPU_PASANG.length-1]; Lb.ruang=ruangDi(petaRuang(lv),Lb.pos.x,Lb.pos.z);
     }
   });
   LAMPU_T=0;
@@ -5494,12 +5513,24 @@ function stepGI(s){
   }
   // fluks per ruang dari SEMUA lampu yang menyala di lantai-lantai itu
   GI_FLUKS.fill(0); let ada=false;
+  const luar=[];
   for(const L of LAMPU_PASANG){
-    if(MATI.has(L.id) || !L.ruang) continue;
-    const k=lvs.indexOf(L.idx), P=peta[k]; if(k<0 || !P || P.bocor[L.ruang]) continue;
+    if(MATI.has(L.id)) continue;
+    const k=lvs.indexOf(L.idx), P=peta[k]; if(k<0 || !P) continue;
     const slot=KOLAM.find(l=>l.userData.L && l.userData.L.id===L.id), f=slot?(slot.userData.f||0):0;
+    if(!(L.ruang>0) || P.bocor[L.ruang]){                 // lampu luar (teras, dinding luar, taman)
+      const w=L.kuat*s.lamp*(1-f*f);
+      if(w>0.01) luar.push([L.pos.distanceToSquared(camera.position),L,w]);
+      continue;
+    }
     GI_FLUKS[k*256+1+((L.ruang-1)%254)]+=L.kuat*s.lamp*(1+GI_LANGSUNG*(1-f*f)); ada=true;
   }
+  luar.sort((a,b)=>a[0]-b[0]);
+  const nL=Math.min(LUAR_MAKS,luar.length);
+  for(let i=0;i<nL;i++){ const [,L,w]=luar[i];
+    GI_U.luarPos.value[i].set(L.pos.x, L.pos.y-(L.plafon?0.2:0.05), L.pos.z);
+    GI_U.luarWarna.value[i].set(_giL.r*w, _giL.g*w, _giL.b*w); }
+  GI_U.luarN.value=nL;
   const fin=PROJECT.finish||{};
   warnaPantul((LANTAI[fin.floor]||{}).warna ?? 0xcccccc,_giF).multiply(_giL);      // dari bawah: pantulan lantai → plafon
   warnaPantul(fin.in==='warna'&&fin.inColor ? fin.inColor : ((FINISH[fin.in]||{}).warna ?? 0xefece5),_giW).multiply(_giL);   // dari atas & samping
