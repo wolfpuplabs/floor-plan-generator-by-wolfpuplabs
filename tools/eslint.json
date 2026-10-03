@@ -1,0 +1,69 @@
+{
+ "env": {
+  "browser": true,
+  "es2022": true
+ },
+ "parserOptions": {
+  "ecmaVersion": 2022,
+  "sourceType": "script"
+ },
+ "globals": {
+  "THREE": "readonly"
+ },
+ "rules": {
+  "no-undef": "error",
+  "no-unused-vars": [
+   "warn",
+   {
+    "args": "none",
+    "varsIgnorePattern": "^_"
+   }
+  ],
+  "no-redeclare": "error",
+  "no-dupe-keys": "error",
+  "no-unreachable": "error",
+  "no-self-assign": "error",
+  "no-dupe-else-if": "error",
+  "no-fallthrough": "warn",
+  "no-cond-assign": "warn",
+  "no-constant-condition": [
+   "warn",
+   {
+    "checkLoops": false
+   }
+  ],
+  "no-empty": "off",
+  "no-unsafe-finally": "error",
+  "use-isnan": "error",
+  "valid-typeof": "error",
+  "no-loss-of-precision": "error",
+  "no-sparse-arrays": "error",
+  "no-compare-neg-zero": "error",
+  "no-dupe-class-members": "error",
+  "no-func-assign": "error",
+  "no-import-assign": "error",
+  "no-inner-declarations": "off",
+  "no-unsafe-negation": "error",
+  "no-unsafe-optional-chaining": "error",
+  "no-self-compare": "warn",
+  "no-unmodified-loop-condition": "warn",
+  "no-use-before-define": [
+   "warn",
+   {
+    "functions": false,
+    "classes": false,
+    "variables": true
+   }
+  ],
+  "no-shadow-restricted-names": "error",
+  "no-global-assign": "error",
+  "no-implied-eval": "error",
+  "no-eval": "error",
+  "no-new-func": "error",
+  "no-script-url": "error",
+  "array-callback-return": "warn",
+  "no-promise-executor-return": "off",
+  "no-async-promise-executor": "error",
+  "require-atomic-updates": "off"
+ }
+}

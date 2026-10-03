@@ -1,0 +1,20 @@
+{
+  "name": "arsitek3d-tools",
+  "private": true,
+  "description": "Guardrail, lint, decision layer (JEV) dan tes e2e untuk index.html. Tidak ikut di-deploy.",
+  "type": "module",
+  "scripts": {
+    "lint": "node lint.mjs",
+    "guard": "node guard.mjs",
+    "jev": "node jev.mjs report",
+    "jev:check": "node jev.mjs check",
+    "test:e2e": "node ../tests/e2e/run.mjs",
+    "ci": "npm run lint && npm run guard && npm run jev:check && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@google/model-viewer": "4.3.1",
+    "eslint": "8.57.1",
+    "playwright": "1.56.1",
+    "three": "0.128.0"
+  }
+}

@@ -1,0 +1,1396 @@
+{
+ "_catatan": "Registry keputusan JEV. Setiap PR merujuk ≥1 id di sini. Verdict DIHITUNG oleh tools/jev.mjs dari model.json — jangan ditulis tangan. Override harus tercatat di field override {alasan, oleh, tanggal}.",
+ "item": [
+  {
+   "id": "JEV-001",
+   "judul": "Generator denah gambar → model 3D",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Membuat model 3D dari denah 2D secara manual (SketchUp/Revit) memakan berjam-jam per proyek.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 120,
+     "ujiJam": 40,
+     "pemeliharaanJamPerTahun": 40,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.9,
+      "pakaiPerTahun": 8,
+      "menitHemat": 120
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "% unggahan yang menghasilkan ≥4 dinding tanpa koreksi manual",
+    "target": "≥ 70%",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-002",
+   "judul": "Editor dinding, bukaan, multi-lantai, undo",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Hasil generator tidak pernah 100% benar; pengguna perlu mengoreksi dan menyusun lantai.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 80,
+     "ujiJam": 20,
+     "pemeliharaanJamPerTahun": 20,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.9,
+      "pakaiPerTahun": 8,
+      "menitHemat": 45
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "median waktu koreksi per denah",
+    "target": "≤ 10 menit",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-003",
+   "judul": "Tangga 6 varian + void pelat",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Rumah bertingkat butuh tangga yang sesuai kaidah (2R+A) dan lubang pelat.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 30,
+     "ujiJam": 10,
+     "pemeliharaanJamPerTahun": 5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 4,
+      "menitHemat": 30
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-004",
+   "judul": "Katalog furnitur & interior + thumbnail",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Denah kosong sulit dijual ke klien; ruang perlu terisi untuk terbaca skalanya.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 60,
+     "ujiJam": 15,
+     "pemeliharaanJamPerTahun": 10,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.7,
+      "pakaiPerTahun": 8,
+      "menitHemat": 20
+     },
+     "konversi": {
+      "jangkauan": 0.7,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-005",
+   "judul": "Deteksi perabot dari simbol denah",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Menaruh perabot satu per satu mengulang informasi yang sudah ada di gambar denah.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.45,
+    "biaya": {
+     "bangunJam": 70,
+     "ujiJam": 30,
+     "pemeliharaanJamPerTahun": 15,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 8,
+      "menitHemat": 15
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "presisi perabot terdeteksi (dipertahankan pengguna)",
+    "target": "≥ 85%",
+    "tinjau": "2027-01-03"
+   },
+   "catatan": "Pengguna beberapa kali melaporkan hasil \"masih ngaco\" → peluang diturunkan ke 0,45. Akurasi uji: 88/97 simbol benar pada 5 denah uji."
+  },
+  {
+   "id": "JEV-006",
+   "judul": "Rapikan denah otomatis (pra-proses)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Foto/scan denah miring, kotor, beresolusi rendah gagal dibaca generator.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 16,
+     "ujiJam": 6,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 8,
+      "menitHemat": 10
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-007",
+   "judul": "Mode jalan orang-pertama (+ joystick iPad)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Klien awam sulit membayangkan ruang dari tampak atas.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 40,
+     "ujiJam": 15,
+     "pemeliharaanJamPerTahun": 8,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kontrol sentuh + keyboard; belum ada mode gerak-tereduksi"
+    }
+   }
+  },
+  {
+   "id": "JEV-008",
+   "judul": "Render realistis (PBR, AO, HDR, GI, bayangan halus)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tampilan 3D datar kalah meyakinkan dibanding render arsitektur pesaing.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 90,
+     "ujiJam": 30,
+     "pemeliharaanJamPerTahun": 15,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.8,
+      "upliftMenang": 0.04
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pilihan mutu Cepat/Halus/Tinggi; diuji di profil iPad"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-009",
+   "judul": "Ekspor GLB/OBJ/USDZ + AR maket",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Hasil perlu dibawa ke alat lain dan ditunjukkan di lokasi/meja klien.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.55,
+    "biaya": {
+     "bangunJam": 35,
+     "ujiJam": 15,
+     "pemeliharaanJamPerTahun": 8,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 4,
+      "menitHemat": 30
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-010",
+   "judul": "Atap dak beton",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Bangunan tanpa atap terlihat belum selesai di presentasi.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 12,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-011",
+   "judul": "Tampak ortogonal atas/depan/iso",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Gambar kerja butuh proyeksi tanpa perspektif.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 10,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.7,
+      "pakaiPerTahun": 8,
+      "menitHemat": 5
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-012",
+   "judul": "Builder situs & taman",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Konteks lahan (rumput, kolam, pagar) memengaruhi penjualan desain.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.5,
+    "biaya": {
+     "bangunJam": 30,
+     "ujiJam": 8,
+     "pemeliharaanJamPerTahun": 5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-013",
+   "judul": "Tracing void & area bentuk bebas",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Void/area non-persegi tidak bisa dibuat dari kotak.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 14,
+     "ujiJam": 5,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 4,
+      "menitHemat": 10
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-014",
+   "judul": "Interaksi mode jalan (pintu, lampu, gorden, TV)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Ruang statis terasa seperti maket, bukan rumah.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.45,
+    "biaya": {
+     "bangunJam": 25,
+     "ujiJam": 8,
+     "pemeliharaanJamPerTahun": 4,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-015",
+   "judul": "Audio: CD, kaset, piringan hitam",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Suasana ruang saat presentasi.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.3,
+    "biaya": {
+     "bangunJam": 20,
+     "ujiJam": 6,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.1,
+      "upliftMenang": 0.001
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-016",
+   "judul": "Pustaka model .glb sendiri + collider otomatis",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Katalog bawaan tidak memuat produk spesifik klien/merek.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 25,
+     "ujiJam": 8,
+     "pemeliharaanJamPerTahun": 4,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 4,
+      "menitHemat": 20
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-017",
+   "judul": "Animasi api perapian",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Perapian terlihat mati di presentasi.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.3,
+    "biaya": {
+     "bangunJam": 8,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.05,
+      "upliftMenang": 0.002
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-018",
+   "judul": "Piano yang bisa dimainkan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Hiburan di mode jalan.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.25,
+    "biaya": {
+     "bangunJam": 14,
+     "ujiJam": 6,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.02,
+      "upliftMenang": 0.001
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "catatan": "Menyumbang 2 bug yang dilaporkan pengguna (tidak bisa berhenti, bisu di iPad)."
+  },
+  {
+   "id": "JEV-019",
+   "judul": "SFX langkah kaki & interaksi",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Mode jalan terasa sunyi/tidak hidup.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.35,
+    "biaya": {
+     "bangunJam": 10,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.002
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-020",
+   "judul": "Pantulan probe untuk kaca, logam, air",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Kaca dan logam terlihat palsu tanpa pantulan ruangan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.5,
+    "biaya": {
+     "bangunJam": 16,
+     "ujiJam": 6,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-030",
+   "judul": "Langit foto 360° acak per lanskap (HDRI CC0)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Langit prosedural terlihat sintetis; pemandangan nyata menaikkan kesan premium.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.55,
+    "biaya": {
+     "bangunJam": 12,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "permintaan ke Poly Haven hanya bila pengguna memilih foto 360°; tanpa cookie/identitas"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "CC0, kredit ditautkan"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "2K/4K bisa dipilih; RGBE 4 bita/piksel, cache lokal"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "% sesi mode jalan yang memakai langit 360°",
+    "target": "≥ 25%",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-031",
+   "judul": "Galeri model fotogrametri (Poly Haven CC0)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Perabot prosedural kurang detail dibanding benda nyata.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.55,
+    "biaya": {
+     "bangunJam": 10,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "CC0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "batas 20 MB/model, tekstur 1K bawaan"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-040",
+   "judul": "Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global)",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Berkas proyek bisa dikirim orang lain: XSS tersimpan & pemuatan non-atomik ditemukan saat audit.",
+    "bukti": "data-pemakaian",
+    "sumberBukti": "temuan audit docs/AUDIT.md (SEC-01..SEC-07)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 10,
+     "ujiJam": 5,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.05,
+      "dampakRp": 150000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "temuan keamanan High/Critical terbuka",
+    "target": "0",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-041",
+   "judul": "Tes e2e + CI + lint ratchet di repo",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Tes regresi hanya ada di mesin pengembang; rilis bisa rusak tanpa terdeteksi (contoh: CSP memblokir WASM AR, tertangkap tes baru).",
+    "bukti": "data-pemakaian",
+    "sumberBukti": "insiden: 2 bug piano, alas tracing tertinggal; tes e2e baru menangkap CSP×WASM sebelum rilis",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 8,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 4,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.6,
+      "dampakRp": 20000000,
+      "reduksi": 0.6
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "rilis yang perlu hotfix dalam 48 jam",
+    "target": "≤ 1 per kuartal",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-042",
+   "judul": "Modularisasi index.html (12k baris → modul + build)",
+   "status": "usulan",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Satu berkas 700 KB memperlambat perubahan dan memperbesar risiko regresi.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.45,
+    "biaya": {
+     "bangunJam": 40,
+     "ujiJam": 12,
+     "pemeliharaanJamPerTahun": 0,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "lainRpPerTahun": 9000000
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "catatan": "lainRpPerTahun = ±60 jam pemeliharaan/tahun yang dihemat × tarif."
+  },
+  {
+   "id": "JEV-043",
+   "judul": "Impor Gaussian splat (.splat/.ply)",
+   "status": "usulan",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengguna menginginkan realisme setara pindaian.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.3,
+    "biaya": {
+     "bangunJam": 40,
+     "ujiJam": 15,
+     "pemeliharaanJamPerTahun": 8,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.1,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "belum",
+     "catatan": "pengurutan jutaan splat per frame belum diukur di iPad"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-044",
+   "judul": "Tekstur PBR foto untuk dinding & lantai (CC0)",
+   "status": "usulan",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Finishing prosedural masih terlihat sintetis di jarak dekat.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "permintaan pemilik produk (sesi pengembangan)",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.55,
+    "biaya": {
+     "bangunJam": 12,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.7,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-045",
+   "judul": "RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan)",
+   "status": "usulan",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Klien selalu bertanya \"berapa biayanya?\"; estimasi manual dari denah butuh berjam-jam.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.45,
+    "biaya": {
+     "bangunJam": 50,
+     "ujiJam": 15,
+     "pemeliharaanJamPerTahun": 10,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 6,
+      "menitHemat": 180
+     },
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "catatan": "Hipotesis ROI tertinggi di backlog — validasi dengan 5 wawancara arsitek/kontraktor sebelum dibangun (naikkan bukti ke uji-pengguna)."
+  },
+  {
+   "id": "JEV-046",
+   "judul": "Kompresi aset (meshopt + KTX2) untuk ukuran proyek",
+   "status": "usulan",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Proyek dengan banyak model fotogrametri bisa >100 MB dan gagal dibuka di iPad.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.45,
+    "biaya": {
+     "bangunJam": 20,
+     "ujiJam": 6,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.3,
+      "dampakRp": 10000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  },
+  {
+   "id": "JEV-047",
+   "judul": "Kolaborasi & berbagi tautan proyek (cloud)",
+   "status": "usulan",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Proyek dibagikan lewat berkas JSON besar.",
+    "bukti": "anekdot",
+    "sumberBukti": "hipotesis tim — belum divalidasi",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.45,
+    "biaya": {
+     "bangunJam": 120,
+     "ujiJam": 40,
+     "pemeliharaanJamPerTahun": 40,
+     "lainRp": 12000000
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "belum",
+     "catatan": "butuh autentikasi & kontrol akses"
+    },
+    "privasi": {
+     "status": "belum",
+     "catatan": "penyimpanan data klien di server → perlu kajian UU PDP & kebijakan retensi"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   }
+  }
+ ]
+}
