@@ -32,6 +32,7 @@ Aplikasi berjalan sepenuhnya di peramban, tanpa server dan tanpa akun. Jadi risi
 | SEC-10 | Residual | `import()` dinamis USDZExporter tidak bisa diberi SRI dan memuat `three.module.js` kedua (±1,2 MB) | Celah rantai pasok kecil (host tetap dibatasi CSP); unduhan ganda | ⏳ Terbuka — diselesaikan oleh JEV-042 (bundel lokal) |
 | SEC-11 | Residual | CSP masih `'unsafe-inline'` (skrip utama inline) dan `connect-src https:` (unduhan Poly Haven bisa di-*redirect*) | XSS inline tidak diblokir CSP (sudah ditutup di sumbernya oleh G1/G2) | ⏳ Terbuka — JEV-042: skrip ke berkas terpisah + hash; persempit `connect-src` setelah host redirect terverifikasi di produksi |
 | SEC-12 | Sedang (desain) | Tautan lihat-saja (JEV-058) membawa proyek di fragmen URL — siapa pun bisa membuat tautan berisi data jahat atau bom kompresi | Dibuka korban → DoS/XSS bila tidak disaring | ✅ Dicegah sejak awal — batas kode 6 MB & 20 MB sesudah dibuka, `sanitasiProyek()` (G2), model hanya lewat rujukan Poly Haven/Khronos ber-SHA-256; tes e2e bom kompresi, tautan rusak, nama berisi HTML |
+| SEC-13 | Sedang (desain) | Impor ZIP/OBJ/FBX & Sketchfab (JEV-060): berkas arsip dari internet, token API pengguna, pustaka loader tambahan | Bom zip, glTF berURL luar, token bocor ke proyek/tautan, rantai pasok loader | ✅ Dicegah sejak awal — batas 200 MB sesudah dibuka, URL luar ditolak, token hanya di localStorage & hanya ke api.sketchfab.com, loader terkunci versi + SRI; tes e2e |
 
 `npm audit` pada dependensi tooling: **0 kerentanan**. Aplikasi sendiri tidak punya dependensi npm saat runtime.
 

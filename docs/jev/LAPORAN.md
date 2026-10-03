@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 34 GO · 3 DEFER · 5 NO-GO dari 42 item.
+**Ringkasan:** 35 GO · 3 DEFER · 5 NO-GO dari 43 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -17,6 +17,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-059 | Tekstur foto untuk objek (foto sendiri / pustaka Poly Haven) + pola tekstur tidak berulang | terkirim | 0.60 | 47,3 jt | 1,7 jt | 56.3× | 27.6× | 0.3 bln | 18 | **GO** |
 | JEV-053 | Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah | terkirim | 0.65 | 30,7 jt | 1,2 jt | 50.2× | 24.6× | 0.4 bln | 20 | **GO** |
 | JEV-045 | RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan) | usulan | 0.45 | 309,8 jt | 12,8 jt | 47.6× | 23.3× | 0.4 bln | 21 | **DEFER** |
+| JEV-060 | Sumber model dari Sketchfab, CGTrader & situs 3D gratis: pencarian Sketchfab + impor ZIP/OBJ/FBX | terkirim | 0.60 | 49,1 jt | 2,1 jt | 45.7× | 22.4× | 0.4 bln | 22 | **GO** |
 | JEV-044 | Tekstur PBR foto untuk dinding & lantai (CC0) | usulan | 0.55 | 60,6 jt | 3 jt | 39.4× | 19.2× | 0.5 bln | 25 | **GO** |
 | JEV-054 | Sumber aset realistis kedua: furnitur produk nyata (Wayfair, DGG) via Khronos glTF Sample Assets | terkirim | 0.60 | 30,2 jt | 1,5 jt | 39.3× | 19.2× | 0.5 bln | 25 | **GO** |
 | JEV-007 | Mode jalan orang-pertama (+ joystick iPad) | terkirim | 0.60 | 170,1 jt | 10,7 jt | 30.9× | 15.0× | 0.6 bln | 32 | **GO** |
@@ -64,6 +65,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-059 Tekstur foto untuk objek (foto sendiri / pustaka Poly Haven) + pola tekstur tidak berulang — GO.** ROI 56.3× ≥ 1, payback 0.3 bln.
 - **JEV-053 Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah — GO.** ROI 50.2× ≥ 1, payback 0.4 bln.
 - **JEV-045 RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan) — DEFER.** ROI 47.6× menjanjikan, tetapi biaya 12,8 jt > 10 jt dengan bukti "anekdot" — validasi murah dulu (wawancara/prototipe) hingga bukti ≥ uji-pengguna. _Hipotesis ROI tertinggi di backlog — validasi dengan 5 wawancara arsitek/kontraktor sebelum dibangun (naikkan bukti ke uji-pengguna)._
+- **JEV-060 Sumber model dari Sketchfab, CGTrader & situs 3D gratis: pencarian Sketchfab + impor ZIP/OBJ/FBX — GO.** ROI 45.7× ≥ 1, payback 0.4 bln.
 - **JEV-044 Tekstur PBR foto untuk dinding & lantai (CC0) — GO.** ROI 39.4× ≥ 1, payback 0.5 bln.
 - **JEV-054 Sumber aset realistis kedua: furnitur produk nyata (Wayfair, DGG) via Khronos glTF Sample Assets — GO.** ROI 39.3× ≥ 1, payback 0.5 bln.
 - **JEV-007 Mode jalan orang-pertama (+ joystick iPad) — GO.** ROI 30.9× ≥ 1, payback 0.6 bln.

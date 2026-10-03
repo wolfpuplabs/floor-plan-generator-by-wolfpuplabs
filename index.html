@@ -191,6 +191,11 @@ details#adv>*:not(summary){margin-bottom:8px}
 .gl-modal .gl-head input,.gl-modal .gl-head select{flex:1 1 140px;min-width:0}
 .gl-ruang{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0}
 .gl-ruang button{min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.gl-token{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 14px 0}
+.gl-token input{flex:1 1 220px;min-width:0}
+.gl-token a,.gl-situs a{color:var(--accent);font-size:.8rem}
+.gl-situs{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:0 14px 12px}
+.gl-modal .gl-card .gl-lis{color:var(--muted);font-size:.62rem}
 .gl-ruang button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0b1416;font-weight:600}
 .gl-modal .gl-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px 14px;-webkit-overflow-scrolling:touch}
 .gl-modal .gl-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:stretch;color:var(--txt);font-size:.7rem;cursor:pointer;text-align:center}
@@ -600,11 +605,11 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
       <div class="section-title">Model realistis &amp; model sendiri</div>
       <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)">🌐 Jelajahi model realistis</button>
-      <p class="hint">Fotogrametri Poly Haven &amp; produk nyata — saring per ruangan: kamar tidur, sofa, kamar mandi, dapur.</p>
-      <div class="group"><label>Unggah model sendiri (.glb / .gltf)</label>
+      <p class="hint">Fotogrametri Poly Haven, produk nyata, dan <b>Sketchfab</b> — saring per ruangan: kamar tidur, sofa, kamar mandi, dapur. Juga tautan ke CGTrader, TurboSquid, Free3D, Poly Pizza, Smithsonian 3D, Fab.</p>
+      <div class="group"><label>Unggah model sendiri (.glb, .gltf, ZIP, .obj + .mtl, .fbx)</label>
         <input type="file" id="glbInput" multiple></div>
       <div id="model-list" class="group"></div>
-      <details class="info"><summary>Format &amp; batas berkas</summary><p class="hint">Terima <b>.glb</b> (glTF biner) dan <b>.gltf</b> yang sudah memuat datanya sendiri. Berkasnya ikut tersimpan di dalam proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas. Berkas juga bisa dijatuhkan langsung ke viewport.</p>
+      <details class="info"><summary>Format &amp; batas berkas</summary><p class="hint">Terima <b>.glb</b>, <b>.gltf</b> (pilih sekaligus .bin &amp; teksturnya), <b>ZIP</b> unduhan situs model (CGTrader, TurboSquid, Free3D, Sketchfab, …), <b>.obj</b> (+ .mtl &amp; tekstur, atau dalam ZIP) dan <b>.fbx</b> — semuanya diubah menjadi .glb. Berkasnya ikut tersimpan di dalam proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas. Berkas juga bisa dijatuhkan langsung ke viewport.</p>
       <p class="hint">Di iPhone/iPad, pilih berkasnya lewat <b>Browse</b> di aplikasi Files — daftar berkas sengaja tidak disaring, sebab iOS mengunci berkas .glb bila penyaringnya dipasang.</p></details>
       <div class="section-title">Tangga</div>
       <div class="cat-grid" id="cat-stairs"></div>
@@ -770,14 +775,21 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     </div></div>
     <div id="galeri" class="gl-modal" hidden><div class="gl-box">
       <div class="gl-head"><b>🌐 Model realistis — fotogrametri & produk nyata</b>
-        <select id="galeriSumber" title="Sumber model"><option value="ph">📷 Poly Haven — fotogrametri (CC0)</option><option value="khr">🛋 Produk nyata — Wayfair dkk. (CC0/CC-BY)</option></select>
+        <select id="galeriSumber" title="Sumber model"><option value="ph">📷 Poly Haven — fotogrametri (CC0)</option><option value="khr">🛋 Produk nyata — Wayfair dkk. (CC0/CC-BY)</option><option value="skf">🎨 Sketchfab — ribuan model (CC0/CC-BY, perlu token)</option></select>
         <input type="search" id="galeriCari" placeholder="Cari: chair, sofa, plant, lamp…">
         <select id="galeriKat"><option value="semua">Semua</option></select>
         <select id="galeriRes"><option value="1k">Tekstur 1K — ringan</option><option value="2k">Tekstur 2K — lebih detail</option></select>
         <button class="btn sm ghost" id="galeriTutup" style="flex:0 0 auto">✕ Tutup</button></div>
       <div class="gl-ruang" id="galeriRuang" role="group" aria-label="Saring menurut ruangan"></div>
+      <div class="gl-token" id="skfBaris" hidden>
+        <input type="password" id="skfToken" placeholder="Token API Sketchfab (Settings → Password &amp; API)" autocomplete="off" aria-label="Token API Sketchfab">
+        <button class="btn sm" id="skfSimpan" style="flex:0 0 auto">Simpan token</button>
+        <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Dapatkan token (akun gratis)</a>
+        <span class="hint">Token hanya disimpan di perangkat ini dan hanya dikirim ke Sketchfab.</span>
+      </div>
       <div class="gl-grid" id="galeriGrid"></div>
       <p class="hint" id="galeriInfo"></p>
+      <div class="gl-situs" id="galeriSitus"></div>
     </div></div>
     <div id="teksturModal" class="gl-modal" hidden><div class="gl-box">
       <div class="gl-head"><b>🖼 Tekstur foto — foto sendiri atau pustaka Poly Haven (CC0)</b>
@@ -6905,7 +6917,8 @@ function faceNearestWall(obj, walls){
    contoh di memori, lalu tiap objek cukup menyalinnya.
    ====================================================================== */
 const ASSET_OBJ=new Map();            // id -> THREE.Object3D contoh
-const ASSET_MAX=20*1024*1024;         // 20 MB per berkas
+const ASSET_MAX=20*1024*1024;
+const ZIP_MAKS=200*1048576;          // isi ZIP sesudah dibuka (model unduhan situs lain)         // 20 MB per berkas
 
 function b64FromBuf(buf){
   const u=new Uint8Array(buf); let s='';
@@ -7006,11 +7019,17 @@ function sniffGLTF(buf){
   return null;
 }
 async function importAssetFile(file){
+  // ZIP, OBJ (+MTL & tekstur), FBX, atau glTF yang berkasnya terpisah: diubah dulu menjadi GLB
+  if(file.grup || /\.(zip|obj|fbx)$/i.test(file.name)){
+    if(file.size>ZIP_MAKS) throw new Error(`berkas ${fmt(file.size/1048576,1)} MB terlalu besar`);
+    const r=await berkasKeGLB(file.grup||[file]);
+    return daftarkanAset(r.nama,r.buf);
+  }
   if(file.size>ASSET_MAX) throw new Error(`berkas ${fmt(file.size/1048576,1)} MB melebihi batas 20 MB`);
   if(!file.size) throw new Error('berkas kosong');
   const buf=await file.arrayBuffer();
   const kind=sniffGLTF(buf);
-  if(!kind) throw new Error('isinya bukan glTF — perlu .glb, atau .gltf yang memuat datanya sendiri');
+  if(!kind) throw new Error('isinya bukan glTF — perlu .glb, .gltf, ZIP, .obj, atau .fbx');
   return daftarkanAset(file.name.replace(/\.glb$/i,''),buf,file.size);
 }
 function assetInUse(id){
@@ -11214,7 +11233,11 @@ function semuaKunciThumb(){
 }
 async function importModelFiles(files){
   let ok=0, gagal=0;
-  for(const f of files){
+  // ZIP & GLB berdiri sendiri; berkas lepas lain (obj + mtl + tekstur, gltf + bin, fbx + tekstur) = satu model
+  const lepas=files.filter(f=>!/\.(zip|glb)$/i.test(f.name));
+  const kelompok=[...files.filter(f=>/\.(zip|glb)$/i.test(f.name)).map(f=>[f]), ...(lepas.length?[lepas]:[])];
+  for(const grup of kelompok){
+    const f=grup.length===1?grup[0]:{name:grup.map(x=>x.name).join(' + '), size:grup.reduce((a,x)=>a+x.size,0), grup};
     try{
       $('#loader-txt').textContent='Membaca '+f.name+'…';
       $('#loader').classList.add('on');
@@ -11233,7 +11256,7 @@ async function importModelFiles(files){
       console.warn('impor model gagal:',f.name,err);
     }
   }
-  if(files.length>1) toast(`${ok} model dimuat${gagal?`, ${gagal} gagal`:''}`);
+  if(kelompok.length>1) toast(`${ok} model dimuat${gagal?`, ${gagal} gagal`:''}`);
   return {ok,gagal};
 }
 /* ======================================================================
@@ -11362,6 +11385,211 @@ async function daftarkanAset(nama,buf,ukuran){
   PROJECT.assets[id]={ name:nama, size:ukuran||buf.byteLength, dims:r.dims, fit:r.fit, data:b64FromBuf(buf) };
   return {id, ...r};
 }
+/* ---------- IMPOR LUAS: ZIP, OBJ+MTL, FBX → GLB (JEV-060) ----------
+   Situs model gratis (CGTrader, TurboSquid, Free3D, Sketchfab, …) jarang menyediakan
+   satu .glb mandiri: umumnya ZIP berisi .gltf + .bin + tekstur, atau .obj + .mtl, atau
+   .fbx. Semua diubah sekali menjadi .glb (tekstur tertanam) lalu masuk pustaka seperti
+   unggahan biasa — jadi tetap lewat uriLuarGLTF (G3), batas 20 MB, dan collider otomatis.
+   ZIP dibaca sendiri (DecompressionStream) dengan batas ukuran sesudah dibuka (bom zip).
+   Loader OBJ/MTL/FBX dimuat hanya saat diperlukan, terkunci versi + SRI seperti
+   pustaka lain. */
+const LOADER_EKSTRA={
+  obj:[['https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js','sha384-3YljIMKl/XEbvorEW5PsmELaNNzJxReJMpvhbpYScnKrnRDI8kmxmksZx4HNCxu3'],
+       ['https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js','sha384-UWFC8mrevmKCZhKbJ/8/dqLrRAvHArRwJCKjwruJuXyhsebGMFsIK5zrn+R9r+fT']],
+  fbx:[['https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js','sha384-z5TPRpmZ+60mv8LqyHeCA0HTTbGjLyhJPjpEb4c4mgqrdWC1zM5Sn5pSRmknOjK8'],
+       ['https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js','sha384-2p/UEtsvNhL+wOAYuEC0nPIxmadBIxZnUrgBcwTle8Ur/abmFqGeiNvkFDHGocOM']]};
+const SKRIP_DIMUAT=new Map();
+function muatSkrip(url,sri){
+  if(SKRIP_DIMUAT.has(url)) return SKRIP_DIMUAT.get(url);
+  const p=new Promise((ok,gagal)=>{ const s=document.createElement('script'); s.src=url; s.integrity=sri; s.crossOrigin='anonymous';
+    s.onload=ok; s.onerror=()=>{ SKRIP_DIMUAT.delete(url); gagal(new Error('pustaka '+url.split('/').pop()+' tidak termuat — periksa koneksi internet')); };
+    document.head.appendChild(s); });
+  SKRIP_DIMUAT.set(url,p); return p;
+}
+async function pakaiLoader(jenis){ for(const [u,s] of LOADER_EKSTRA[jenis]) await muatSkrip(u,s); }
+async function inflateBatas(u8,batas){
+  const rd=new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(), bag=[]; let n=0;
+  for(;;){ const {done,value}=await rd.read(); if(done) break; n+=value.length;
+    if(n>batas){ rd.cancel(); throw new Error('isi ZIP lebih besar dari yang tertulis — dibatalkan'); } bag.push(value); }
+  const u=new Uint8Array(n); let o=0; for(const b of bag){ u.set(b,o); o+=b.length; } return u;
+}
+function bacaZip(buf){
+  const u8=new Uint8Array(buf), dv=new DataView(buf); let e=-1;
+  for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--) if(dv.getUint32(i,true)===0x06054b50){ e=i; break; }
+  if(e<0) throw new Error('bukan berkas ZIP yang sah');
+  const n=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true), total=0;
+  if(n>5000) throw new Error('ZIP berisi terlalu banyak berkas');
+  const isi=new Map();
+  for(let k=0;k<n;k++){
+    if(p+46>u8.length || dv.getUint32(p,true)!==0x02014b50) throw new Error('ZIP rusak');
+    const metode=dv.getUint16(p+10,true), ukZ=dv.getUint32(p+20,true), uk=dv.getUint32(p+24,true),
+          nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lo=dv.getUint32(p+42,true);
+    const nama=new TextDecoder().decode(u8.subarray(p+46,p+46+nl)).replace(/\\/g,'/'); p+=46+nl+xl+cl;
+    if(nama.endsWith('/')||/(^|\/)__MACOSX\//.test(nama)) continue;
+    if(lo+30>u8.length || dv.getUint32(lo,true)!==0x04034b50) throw new Error('ZIP rusak');
+    total+=uk; if(total>ZIP_MAKS) throw new Error('isi ZIP melebihi '+(ZIP_MAKS>>20)+' MB');
+    const mulai=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);
+    isi.set(nama,{metode, data:u8.subarray(mulai,mulai+ukZ), uk});
+  }
+  return { nama:[...isi.keys()], ambil:async nm=>{ const f=isi.get(nm); if(!f) return null;
+    if(f.metode===0) return f.data.slice(); if(f.metode!==8) throw new Error('kompresi ZIP jenis '+f.metode+' tidak didukung');
+    return inflateBatas(f.data,f.uk+64); } };
+}
+const dasarNama=n=>n.split('/').pop().replace(/\.[^.]+$/,'');
+// cari berkas sumber daya relatif terhadap berkas utama; bila jalurnya lain, cocokkan nama berkasnya saja
+function cariRelatif(daftar,utama,uri){
+  const u=decodeURIComponent(uri).replace(/\\/g,'/').replace(/^\.\//,''), dir=utama.includes('/')?utama.slice(0,utama.lastIndexOf('/')+1):'';
+  const norm=t=>{ const out=[]; for(const s of t.split('/')){ if(s==='..') out.pop(); else if(s&&s!=='.') out.push(s); } return out.join('/').toLowerCase(); };
+  const target=norm(dir+u), dasar=u.split('/').pop().toLowerCase();
+  return daftar.find(k=>norm(k.nama)===target) || daftar.find(k=>k.nama.split('/').pop().toLowerCase()===dasar) || null;
+}
+function eksporGLB(obj){
+  // satuan OBJ/FBX sering cm atau mm: model selebar 20–2000 dianggap cm, di atasnya mm
+  const s=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3()), m=Math.max(s.x,s.y,s.z);
+  if(m>20 && m<=2000) obj.scale.multiplyScalar(0.01); else if(m>2000) obj.scale.multiplyScalar(0.001);
+  obj.updateMatrixWorld(true);
+  return new Promise((ok,gagal)=>{ try{ new THREE.GLTFExporter().parse(obj,ok,{binary:true, embedImages:true, onlyVisible:true, maxTextureSize:2048}); }catch(e){ gagal(e); } });
+}
+async function blobGambar(daftar){
+  // tekstur di dalam ZIP/pilihan berkas → URL blob, supaya loader menemukannya lewat namanya
+  const peta=new Map();
+  for(const k of daftar) if(/\.(jpe?g|png|webp|bmp|gif|tga)$/i.test(k.nama)){
+    const b=await k.ambil(); const tipe=/\.png$/i.test(k.nama)?'image/png':/\.webp$/i.test(k.nama)?'image/webp':'image/jpeg';
+    peta.set(k.nama.split('/').pop().toLowerCase(),URL.createObjectURL(new Blob([b],{type:tipe}))); }
+  const mgr=new THREE.LoadingManager();
+  mgr.setURLModifier(u=>{ const d=decodeURIComponent(u).replace(/\\/g,'/').split('/').pop().toLowerCase(); return peta.get(d)||'data:,'; });
+  const selesai=new Promise(ok=>{ mgr.onLoad=ok; setTimeout(ok,15000); });
+  return {mgr, selesai, buang:()=>peta.forEach(u=>URL.revokeObjectURL(u))};
+}
+async function berkasKeGLB(files){
+  const daftar=[];
+  for(const f of files){
+    if(/\.zip$/i.test(f.name)){ const z=bacaZip(await f.arrayBuffer()); for(const nm of z.nama) daftar.push({nama:nm, ambil:()=>z.ambil(nm)}); }
+    else daftar.push({nama:f.name, ambil:async()=>new Uint8Array(await f.arrayBuffer())});
+  }
+  const utama=daftar.filter(k=>/\.(glb|gltf|obj|fbx)$/i.test(k.nama));
+  if(!utama.length) throw new Error('tidak ada model .glb / .gltf / .obj / .fbx di dalamnya');
+  // satu model per ZIP/pilihan: utamakan glTF (paling lengkap bahannya), lalu FBX, lalu OBJ
+  const k=utama.find(x=>/\.glb$/i.test(x.nama))||utama.find(x=>/\.gltf$/i.test(x.nama))||utama.find(x=>/\.fbx$/i.test(x.nama))||utama[0];
+  const nama=dasarNama(k.nama);
+  if(/\.glb$/i.test(k.nama)) return {nama, buf:(await k.ambil()).buffer};
+  if(/\.gltf$/i.test(k.nama)){
+    const json=JSON.parse(new TextDecoder().decode(await k.ambil())), isi=new Map();
+    for(const uri of [...(json.buffers||[]),...(json.images||[])].map(x=>x&&x.uri).filter(u=>typeof u==='string'&&!/^data:/i.test(u))){
+      if(/^[a-z][a-z0-9+.-]*:/i.test(uri)) throw new Error('glTF merujuk alamat luar ('+uri.slice(0,60)+')');
+      const r=cariRelatif(daftar,k.nama,uri); if(!r) throw new Error('berkas '+uri+' tidak ikut — pilih semua berkasnya atau unggah ZIP-nya');
+      isi.set(uri,await r.ambil()); }
+    return {nama, buf:gltfKeGLB(json,u=>/^data:/i.test(u)?dataURIkeU8(u):isi.get(u))};
+  }
+  const g=await blobGambar(daftar);
+  try{
+    let obj;
+    if(/\.fbx$/i.test(k.nama)){
+      await pakaiLoader('fbx');
+      const b=await k.ambil(); obj=new THREE.FBXLoader(g.mgr).parse(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+    } else {
+      await pakaiLoader('obj');
+      const teksObj=new TextDecoder().decode(await k.ambil()), ol=new THREE.OBJLoader(g.mgr);
+      const mtl=(teksObj.match(/^mtllib\s+(.+?)\s*$/m)||[])[1], km=mtl&&cariRelatif(daftar,k.nama,mtl);
+      if(km){ const ml=new THREE.MTLLoader(g.mgr), mats=ml.parse(new TextDecoder().decode(await km.ambil()),''); mats.preload(); ol.setMaterials(mats); }
+      obj=ol.parse(teksObj);
+    }
+    obj.traverse(n=>{ if(n.isLight||n.isCamera) n.visible=false; });
+    await g.selesai;
+    return {nama, buf:await eksporGLB(obj)};
+  } finally { setTimeout(g.buang,1000); }
+}
+
+/* ---------- SKETCHFAB (JEV-060) ----------
+   Pustaka model terbesar dengan API resmi. Pencarian publik; MENGUNDUH butuh token API
+   milik pengguna sendiri (akun Sketchfab gratis → Settings → Password & API). Token
+   hanya disimpan di perangkat ini dan hanya dikirim ke api.sketchfab.com — tidak pernah
+   masuk berkas proyek atau tautan. Hanya lisensi yang boleh untuk pekerjaan komersial
+   (CC0, CC-BY, CC-BY-SA) yang ditampilkan; NC/ND/Editorial disaring. Atribusi
+   (judul, pembuat, lisensi, tautan) ikut tersimpan di aset. */
+const SKF={token:'', hasil:[], sibuk:false, q:'', t:0};
+try{ SKF.token=localStorage.getItem('sketchfab_token')||''; }catch(e){ /* mode privat */ }
+const SKF_KATA={tidur:'bed', duduk:'sofa', mandi:'bathroom', dapur:'kitchen'};
+function lisensiSketchfab(l){
+  const t=String(l&&(l.label||l.slug||l.fullName)||'');
+  if(/cc0|public domain/i.test(t)) return 'CC0';
+  if(/non.?commercial|no.?deriv|\bnc\b|\bnd\b|editorial|standard|free standard/i.test(t)) return null;
+  if(/share.?alike|\bby-sa\b/i.test(t)) return 'CC-BY-SA 4.0';
+  if(/attribution|\bby\b/i.test(t)) return 'CC-BY 4.0';
+  return null;
+}
+async function cariSketchfab(q){
+  const u='https://api.sketchfab.com/v3/search?type=models&downloadable=true&sort_by=-likeCount&count=24&q='+encodeURIComponent(q);
+  const r=await fetch(u); if(!r.ok) throw new Error('pencarian Sketchfab gagal (HTTP '+r.status+')');
+  const j=await r.json();
+  return (Array.isArray(j.results)?j.results:[]).map(m=>{
+    const uid=String(m&&m.uid||''); if(!/^[a-f0-9]{32}$/.test(uid)) return null;
+    const lis=lisensiSketchfab(m.license); if(!lis) return null;
+    const im=((m.thumbnails&&m.thumbnails.images)||[]).filter(x=>x&&/^https:\/\//.test(x.url)).sort((a,b)=>Math.abs(a.width-256)-Math.abs(b.width-256))[0];
+    const glb=m.archives&&m.archives.glb&&+m.archives.glb.size;
+    return {uid, nama:String(m.name||'model').slice(0,80), pembuat:String(m.user&&(m.user.displayName||m.user.username)||'').slice(0,60),
+      lis, thumb:im?im.url:'', ukuran:glb||0, laman:'https://sketchfab.com/3d-models/'+uid};
+  }).filter(Boolean);
+}
+async function unduhSketchfab(m,onP){
+  if(!SKF.token) throw new Error('masukkan token API Sketchfab dulu');
+  const r=await fetch('https://api.sketchfab.com/v3/models/'+m.uid+'/download',{headers:{Authorization:'Token '+SKF.token}});
+  if(r.status===401||r.status===403) throw new Error('token Sketchfab ditolak — periksa lagi di Settings → Password & API');
+  if(!r.ok) throw new Error('Sketchfab menolak unduhan (HTTP '+r.status+')');
+  const j=await r.json(), pilih=(j.glb&&j.glb.url)?{...j.glb,glb:true}:(j.gltf&&j.gltf.url)?j.gltf:null;
+  if(!pilih||!/^https:\/\//.test(pilih.url)) throw new Error('model ini tidak menyediakan versi glTF');
+  if(+pilih.size>(pilih.glb?ASSET_MAX:ZIP_MAKS)) throw new Error(`ukurannya ${fmt(pilih.size/1048576,1)} MB — terlalu besar`);
+  const rr=await fetch(pilih.url); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
+  const bag=[]; let n=0, total=+pilih.size||0;
+  if(rr.body&&rr.body.getReader){ const rd=rr.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length;
+    if(n>ZIP_MAKS){ rd.cancel(); throw new Error('berkas terlalu besar'); } if(onP) onP(n,total); } }
+  else { const u=new Uint8Array(await rr.arrayBuffer()); bag.push(u); n=u.length; }
+  const buf=new Uint8Array(n); let o=0; for(const b of bag){ buf.set(b,o); o+=b.length; }
+  if(pilih.glb) return buf.buffer;
+  return (await berkasKeGLB([new File([buf],m.uid+'.zip',{type:'application/zip'})])).buf;
+}
+async function pasangModelSketchfab(m){
+  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  const info=$('#galeriInfo'), kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(m.uid)}"]`); if(kartu) kartu.classList.add('muat');
+  try{
+    info.textContent='Mengunduh '+m.nama+'…';
+    const buf=await unduhSketchfab(m,(n,t)=>{ info.textContent=`Mengunduh ${m.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
+    const r=await daftarkanAset(m.nama,buf);
+    Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:m.lis+(m.pembuat?' — '+m.pembuat:'')+' (Sketchfab)'});
+    renderCatalogs(); HIST.label='Model '+m.nama; addObject('model',r.id);
+    info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${m.lis}${m.pembuat?' — '+m.pembuat:''}`;
+  }catch(e){ console.warn('sketchfab',e); info.textContent='Gagal: '+(e.message||e); }
+  finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+}
+function renderGaleriSketchfab(){
+  const g=$('#galeriGrid'); g.textContent='';
+  for(const m of SKF.hasil){
+    const k=el('button','gl-card'); k.dataset.id=m.uid; k.title=`${m.nama} — ${m.pembuat} · ${m.lis}`+(m.ukuran?` · ${fmt(m.ukuran/1048576,1)} MB`:'');
+    const im=document.createElement('img'); im.loading='lazy'; im.alt=''; if(m.thumb) im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
+    k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-lis',m.lis));
+    k.onclick=()=>pasangModelSketchfab(m); g.appendChild(k);
+  }
+  if(!GALERI.sibuk) $('#galeriInfo').textContent=SKF.hasil.length?`${SKF.hasil.length} model berlisensi bebas-komersial (CC0 / CC-BY / CC-BY-SA)`+(SKF.token?' · ketuk untuk mengunduh & memasang':' · masukkan token API untuk mengunduh'):(SKF.q?'Tidak ada model berlisensi bebas-komersial untuk pencarian ini.':'Ketik kata kunci (bahasa Inggris: sofa, bed, toilet, kitchen…) atau pilih ruangan.');
+}
+async function jalankanCariSketchfab(){
+  const q=(GALERI.cari.trim()||SKF_KATA[GALERI.ruang]||'').slice(0,100); SKF.q=q;
+  if(!q){ SKF.hasil=[]; return renderGaleriSketchfab(); }
+  const nomor=++SKF.t; $('#galeriInfo').textContent='Mencari "'+q+'" di Sketchfab…';
+  try{ const h=await cariSketchfab(q); if(nomor!==SKF.t) return; SKF.hasil=h; renderGaleriSketchfab(); }
+  catch(e){ if(nomor===SKF.t) $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
+}
+// situs lain tanpa API unduhan publik: dibuka di tab baru dengan kata kunci yang sama;
+// berkas hasil unduhan (glb / zip glTF / obj / fbx) diunggah lewat tombol di bawahnya
+const SITUS_LAIN=[['CGTrader','https://www.cgtrader.com/free-3d-models?keywords='],['TurboSquid','https://www.turbosquid.com/Search/3D-Models/free/'],
+  ['Free3D','https://free3d.com/3d-models/'],['Poly Pizza','https://poly.pizza/search/'],['Smithsonian 3D','https://3d.si.edu/search/collections?edan_q='],['Fab','https://www.fab.com/search?q=']];
+function renderSitusLain(){
+  const w=$('#galeriSitus'); w.textContent='';
+  const q=(GALERI.cari.trim()||SKF_KATA[GALERI.ruang]||'sofa').slice(0,100);
+  w.appendChild(el('span','hint','Cari juga di:'));
+  for(const [nama,dasar] of SITUS_LAIN){ const a=el('a',null,nama); a.href=dasar+encodeURIComponent(q); a.target='_blank'; a.rel='noopener noreferrer'; w.appendChild(a); }
+  const b=el('button','btn sm ghost','📂 Unggah yang sudah diunduh'); b.title='.glb, .gltf, ZIP glTF, .obj (+.mtl & tekstur, atau ZIP), .fbx';
+  b.onclick=()=>$('#glbInput').click(); w.appendChild(b);
+}
 async function pasangModelPH(a){
   if(GALERI.sibuk) return; GALERI.sibuk=true;
   const res=$('#galeriRes').value||'1k', info=$('#galeriInfo');
@@ -11394,14 +11622,16 @@ function cocokRuang(teks){ return !GALERI.ruang || RUANG_KATA[GALERI.ruang].test
 function renderRuangGaleri(){
   const w=$('#galeriRuang'); w.textContent='';
   for(const [k,label] of RUANG_GALERI){ const b=el('button',null,label); b.type='button'; b.dataset.ruang=k; b.setAttribute('aria-pressed',String((GALERI.ruang||'')===k));
-    b.onclick=()=>{ GALERI.ruang=k; renderRuangGaleri(); renderGaleri(); }; w.appendChild(b); }
+    b.onclick=()=>{ GALERI.ruang=k; renderRuangGaleri(); renderGaleri(); if(GALERI.sumber==='skf') jalankanCariSketchfab(); }; w.appendChild(b); }
 }
 function infoKosongRuang(){
   const nama=(RUANG_GALERI.find(r=>r[0]===GALERI.ruang)||[])[1];
   return GALERI.ruang ? `Belum ada model ${nama.replace(/^\S+\s/,'').toLowerCase()} di sumber ini — coba sumber lain di menu atas, atau pakai model bawaan di tab Objek.` : 'Tidak ada model yang cocok.';
 }
 function renderGaleri(){
+  renderSitusLain();
   if(GALERI.sumber==='khr') return renderGaleriProduk();
+  if(GALERI.sumber==='skf') return renderGaleriSketchfab();
   const g=$('#galeriGrid'), d=GALERI.daftar||[], q=GALERI.cari.trim().toLowerCase();
   const c=d.filter(a=>(GALERI.kat==='semua'||a.kat.includes(GALERI.kat)) && cocokRuang(kataAset(a.nama,a.id,a.tag,a.kat)) &&
     (!q || a.nama.toLowerCase().includes(q) || a.id.includes(q) || a.tag.some(t=>t.toLowerCase().includes(q)) || a.kat.some(t=>t.toLowerCase().includes(q))));
@@ -11439,11 +11669,15 @@ function isiKategoriGaleri(){
     isiOpsi($('#galeriKat'),[['semua',`Semua (${GALERI.daftar.length})`],...Object.entries(hit).sort((a,b)=>b[1]-a[1]).slice(0,24).map(([k,n])=>[k,`${k} (${n})`])]);
   }
   GALERI.kat='semua'; $('#galeriKat').value='semua';
-  $('#galeriRes').hidden=GALERI.sumber==='khr';
+  $('#galeriRes').hidden=GALERI.sumber!=='ph';
+  $('#galeriKat').hidden=GALERI.sumber==='skf';
+  $('#skfBaris').hidden=GALERI.sumber!=='skf';
+  $('#galeriCari').placeholder=GALERI.sumber==='skf'?'Cari di Sketchfab (bahasa Inggris): sofa, bed, toilet, kitchen…':'Cari: chair, sofa, plant, lamp…';
 }
 async function bukaGaleri(){
   $('#galeri').hidden=false; renderRuangGaleri();
   if(GALERI.sumber==='khr'){ isiKategoriGaleri(); return renderGaleri(); }
+  if(GALERI.sumber==='skf'){ isiKategoriGaleri(); $('#skfToken').value=SKF.token; renderGaleri(); return jalankanCariSketchfab(); }
   if(GALERI.daftar){ isiKategoriGaleri(); return renderGaleri(); }
   $('#galeriInfo').textContent='Memuat daftar model…';
   try{
@@ -11455,8 +11689,12 @@ $('#galeriBuka').onclick=bukaGaleri;
 $('#galeriTutup').onclick=()=>{ $('#galeri').hidden=true; };
 $('#galeri').addEventListener('click',e=>{ if(e.target.id==='galeri') $('#galeri').hidden=true; });
 $('#galeriKat').onchange=e=>{ GALERI.kat=e.target.value; renderGaleri(); };
-$('#galeriSumber').onchange=e=>{ GALERI.sumber=e.target.value==='khr'?'khr':'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
-$('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; clearTimeout(GALERI.t); GALERI.t=setTimeout(renderGaleri,150); };
+$('#galeriSumber').onchange=e=>{ GALERI.sumber=['khr','skf'].includes(e.target.value)?e.target.value:'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
+$('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; clearTimeout(GALERI.t);
+  GALERI.t=setTimeout(()=>{ if(GALERI.sumber==='skf'){ renderSitusLain(); jalankanCariSketchfab(); } else renderGaleri(); },GALERI.sumber==='skf'?450:150); };
+$('#skfSimpan').onclick=()=>{ SKF.token=$('#skfToken').value.trim().slice(0,100);
+  try{ if(SKF.token) localStorage.setItem('sketchfab_token',SKF.token); else localStorage.removeItem('sketchfab_token'); }catch(e){ /* mode privat */ }
+  toast(SKF.token?'Token Sketchfab disimpan di perangkat ini':'Token Sketchfab dihapus'); renderGaleri(); };
 $('#glbInput').addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';
   await importModelFiles(files);
@@ -11611,7 +11849,7 @@ function sanitasiProyek(j){
     if(!ID_AMAN.test(k)||!a||typeof a.data!=='string') continue;
     if(a.data.length>ASSET_MAX*1.4 || !/^[A-Za-z0-9+/=\s]*$/.test(a.data.slice(0,4096))) continue;
     assets[k]={ name:teks(a.name,120,'model'), size:angka(a.size,0,ASSET_MAX,0), dims:(Array.isArray(a.dims)?a.dims:[1,1,1]).slice(0,3).map(v=>angka(v,0,1e3,1)),
-                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/(polyhaven\.com\/|github\.com\/KhronosGroup\/glTF-Sample-Assets\/)/.test(a.sumber)?{sumber:a.sumber}:{}),
+                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/(polyhaven\.com\/|github\.com\/KhronosGroup\/glTF-Sample-Assets\/|sketchfab\.com\/3d-models\/[a-f0-9]{32}$)/.test(a.sumber)?{sumber:a.sumber}:{}),
                 ...(typeof a.lisensi==='string'?{lisensi:a.lisensi.slice(0,200)}:{}) };
   }
   const plans={};

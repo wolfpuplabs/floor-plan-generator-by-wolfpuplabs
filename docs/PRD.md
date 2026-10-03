@@ -85,6 +85,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | I-03 | Galeri model fotogrametri (Poly Haven, CC0), tekstur 1K/2K | JEV-031 |
 | I-03a | Sumber kedua: 14 model **produk nyata** terkurasi (sofa, kursi, pouf, lampu, tanaman, dekor, kulkas, mobil — Wayfair, DGG; CC0/CC-BY 4.0) dari Khronos glTF Sample Assets. Tiap berkas dikunci ke commit + **SHA-256 diverifikasi**; kursi/sofa langsung bisa diduduki, lampu langsung menyala; atribusi CC-BY disimpan di aset; lampu bawaan model dibuang | JEV-054 |
 | I-03b | **Pintasan ruangan** di galeri model realistis (Kamar tidur · Sofa & kursi · Kamar mandi · Dapur) untuk kedua sumber; dicocokkan per kata (bukan potongan huruf) | JEV-056 |
+| I-03c | **Sketchfab** di galeri model realistis: cari (kata kunci atau ruangan), hanya lisensi bebas-komersial (CC0/CC-BY/CC-BY-SA), unduh dengan token API milik pengguna (disimpan di perangkat saja), atribusi tersimpan di aset. **Situs lain** (CGTrader, TurboSquid, Free3D, Poly Pizza, Smithsonian 3D, Fab) ditautkan dengan kata kunci yang sama; berkas unduhannya diunggah: **.glb, .gltf + .bin, ZIP, .obj + .mtl + tekstur, .fbx** → diubah ke .glb (satuan cm/mm dikenali) | JEV-060 |
 | I-04 | Situs: tanah, rumput, kerikil, paving, kolam, setapak, pagar | JEV-012 |
 
 ### 5.4 Presentasi & realisme (P1)
