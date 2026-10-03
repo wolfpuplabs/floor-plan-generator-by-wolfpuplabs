@@ -1613,6 +1613,59 @@
     "target": "≥ 30%",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-052",
+   "judul": "Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Hanya 4 lampu terdekat yang memancarkan cahaya; dilihat dari luar/lantai lain, ruangan berlampu menyala tetap gelap — presentasi eksterior malam (fasad, balkon) gagal.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "laporan pengguna 2026-10-03 + screenshot iPad: \"lampunya kalo deket baru nyala, harusnya dari luar juga keliatan\"",
+    "alternatif": [
+     "tambah lampu berbayang (mahal: 6 render bayangan per lampu)",
+     "lampu tanpa bayangan (bocor menembus dinding)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tanpa lampu/bayangan tambahan: satu tekstur atlas + loop 4 lantai di shader"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan \"lampu jauh tidak menyala\"",
+    "target": "0",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
