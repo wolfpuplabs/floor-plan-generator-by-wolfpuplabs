@@ -1998,6 +1998,62 @@
     "target": "≥ 0,5",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-059",
+   "judul": "Tekstur foto untuk objek (foto sendiri / pustaka Poly Haven) + pola tekstur tidak berulang",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Bahan objek katalog adalah tekstur prosedural; desainer ingin memakai foto bahan sungguhan (kain/kulit/kayu pilihan klien). Tekstur yang diulang tiap 0,5–1 m membentuk pola ubin yang langsung terlihat.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"texture object library bisa dari foto? sama jangan tiling\"",
+    "alternatif": [
+     "tekstur resolusi sangat besar tanpa ulang (memori GPU iPad)",
+     "peta UV unik per model (tidak mungkin untuk model prosedural/unggahan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "foto sendiri hanya data:image (jpeg/png/webp) ≤ 3 MB, rujukan Poly Haven hanya id ^[A-Za-z0-9_-]$ dan unduhan hanya dari dl.polyhaven.org; tes sanitasi"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "foto sendiri tetap di perangkat/proyek; tidak diunggah"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "pustaka Poly Haven CC0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tekstur ≤ 1024 px (1K/2K untuk Poly Haven), +1 sampel tekstur per peta di shader; cache Cache Storage"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "% proyek dengan ≥ 1 tekstur foto",
+    "target": "≥ 15%",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
