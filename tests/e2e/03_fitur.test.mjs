@@ -64,3 +64,60 @@ tes['galeri fotogrametri: glTF + bin + tekstur dikemas jadi GLB & dipasang'].ops
   await page.route('https://dl.polyhaven.org/**', r => r.fulfill({ body: fs.readFileSync(path.join(FIX, r.request().url().split('/').pop())), headers: CORS }));
   await page.route('https://cdn.polyhaven.com/**', r => r.fulfill({ body: fs.readFileSync(path.join(FIX, 'kursi_diff_1k.jpg')), headers: { 'content-type': 'image/jpeg' } }));
 } };
+
+// JEV-048: panorama dipilih sendiri (urutan tetap), bukan acak
+const DAFTAR_PL = {
+  gunung_c: { name: 'Gunung C', categories: ['outdoor', 'nature', 'midday'], tags: ['mountain'] },
+  gunung_a: { name: 'Gunung A', categories: ['outdoor', 'nature', 'midday'], tags: ['mountain'] },
+  gunung_b: { name: 'Gunung B', categories: ['outdoor', 'nature', 'midday'], tags: ['mountain'] },
+  gunung_malam: { name: 'Gunung Malam', categories: ['outdoor', 'nature', 'night'], tags: ['mountain'] }
+};
+const unduhan = [];
+const ruteLangit = async (page) => {
+  unduhan.length = 0;
+  await page.route('https://api.polyhaven.com/**', r => {
+    const u = r.request().url();
+    if (u.includes('/assets')) return r.fulfill({ json: DAFTAR_PL, headers: CORS });
+    const id = u.split('/files/')[1];
+    const f = res => ({ hdr: { url: `https://dl.polyhaven.org/x/${id}_${res}.hdr` } });
+    return r.fulfill({ json: { hdri: { '1k': f('1k'), '4k': f('4k') } }, headers: CORS });
+  });
+  await page.route('https://dl.polyhaven.org/**', r => { unduhan.push(r.request().url().split('/x/')[1]); return r.fulfill({ body: hdr, headers: CORS }); });
+  await page.route('https://cdn.polyhaven.com/**', r => r.fulfill({ body: fs.readFileSync(path.join(FIX, 'kursi_diff_1k.jpg')), headers: { 'content-type': 'image/jpeg' } }));
+};
+const tungguId = (page, id) => page.waitForFunction(id => FOTO.id === id && !FOTO.sibuk, id, { timeout: 30000 });
+
+tes['langit 360°: pilih sendiri — ◀ ▶ berurutan, galeri, daftar, tidak diacak'] = async (page) => {
+  await page.evaluate(() => { localStorage.clear(); caches.delete('langit360-v1'); langitP().jenis = 'gunung'; });
+  assert.equal(await page.evaluate(() => langitP().pilih), 'manual', 'bawaan harus pilih sendiri');
+  await page.evaluate(() => mulaiLangitFoto());
+  await tungguId(page, 'gunung_a');                                   // urutan nama, waktu cocok dulu
+  assert.deepEqual(unduhan.slice(0, 2), ['gunung_a_1k.hdr', 'gunung_a_4k.hdr'], 'pratinjau 1K harus dimuat sebelum 4K');
+  await page.evaluate(() => langkahLangit(1)); await tungguId(page, 'gunung_b');
+  await page.evaluate(() => langkahLangit(1)); await tungguId(page, 'gunung_c');
+  await page.evaluate(() => langkahLangit(-1)); await tungguId(page, 'gunung_b');
+  await page.evaluate(() => langkahLangit(-1)); await page.evaluate(() => langkahLangit(-1));
+  await tungguId(page, 'gunung_malam');                               // memutar ke ujung daftar (waktu lain di belakang)
+  // ganti suasana dalam mode pilih sendiri: panorama TIDAK diganti diam-diam
+  await page.evaluate(() => langkahLangit(1)); await tungguId(page, 'gunung_a');
+  await page.evaluate(() => setSuasana('malam')); await page.waitForTimeout(800);
+  assert.equal(await page.evaluate(() => FOTO.id), 'gunung_a');
+  await page.evaluate(() => setSuasana('siang'));
+  // daftar dropdown
+  await page.evaluate(() => { const s = document.getElementById('langitDaftar'); s.value = 'gunung_c'; s.dispatchEvent(new Event('change')); });
+  await tungguId(page, 'gunung_c');
+  // galeri bergambar
+  await page.evaluate(() => bukaPilihLangit());
+  await page.waitForFunction(() => document.querySelectorAll('#plGrid .gl-card').length === 3);   // waktu siang tersaring
+  assert.equal(await page.evaluate(() => document.querySelector('#plGrid .gl-card.on')?.dataset.id), 'gunung_c');
+  await page.locator('#plGrid .gl-card[data-id="gunung_b"]').click();
+  await tungguId(page, 'gunung_b');
+  assert.equal(await page.evaluate(() => document.getElementById('pilihLangit').hidden), true);
+  // sakelar acak: barulah suasana boleh mengganti panorama
+  await page.evaluate(() => { const c = document.getElementById('langitAcakCek'); c.checked = true; c.dispatchEvent(new Event('change')); setSuasana('malam'); });
+  await tungguId(page, 'gunung_malam');
+  // preferensi diingat
+  const pr = await page.evaluate(() => JSON.parse(localStorage.getItem('langitPref')));
+  assert.equal(pr.id, 'gunung_malam'); assert.equal(pr.pilih, 'acak');
+};
+tes['langit 360°: pilih sendiri — ◀ ▶ berurutan, galeri, daftar, tidak diacak'].opsi = { rute: ruteLangit };
