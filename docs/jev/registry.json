@@ -1773,6 +1773,58 @@
     "target": "≥ 15%",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-055",
+   "judul": "Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Kaca berupa lapisan biru 34% yang sama pekat dari semua sudut dan pantulannya dikali alfa, jadi tampak seperti plastik; kaca model (vas, tempat lilin) jadi putih susu karena stub transmisi r128.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"bikin glass shader yg lebih realistic\"",
+    "alternatif": [
+     "transmisi layar penuh (render target refraksi, three r13x) — butuh migrasi three + 1 render ekstra per frame, berat di iPad"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "hanya mengganti keluaran shader bahan kaca; tanpa render pass atau tekstur tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan \"kaca seperti plastik\"",
+    "target": "0",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
