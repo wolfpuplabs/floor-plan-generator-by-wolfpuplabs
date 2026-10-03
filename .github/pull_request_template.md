@@ -1,5 +1,5 @@
 ## Keputusan (JEV)
-<!-- Wajib: rujuk ≥1 item di docs/jev/registry.json yang ber-verdict GO. CI menolak PR tanpa ini. -->
+<!-- Wajib: ajukan ≥1 item di docs/jev/registry.json yang ber-verdict GO pada baris "- Item:" (atau butir yang diawali JEV-###). CI menolak PR tanpa ini. Id yang disebut di tengah kalimat hanya konteks. -->
 - Item: JEV-___
 - Verdict & ROI (dari `node tools/jev.mjs hitung JEV-___`):
 - Metrik keberhasilan & tanggal tinjau:
