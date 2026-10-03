@@ -89,6 +89,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | R-02 | Suasana siang/senja/malam/malam gelap; lampu dengan lumen | JEV-008 |
 | R-03 | Pantulan probe kaca/logam/air | JEV-020 |
 | R-02a | Setiap lampu yang menyala menerangi ruangannya — juga dari kejauhan, dari luar rumah, dan di lantai lain (GI per ruang hingga 4 lantai; 4 lampu terdekat tetap mendapat cahaya langsung berbayang) | JEV-052 |
+| R-02b | Lampu luar (dinding luar, teras, taman) tanpa slot berbayang tetap menerangi sekitarnya dari jauh — dihitung di shader hanya untuk permukaan di luar ruangan, jadi tidak bocor ke dalam rumah | JEV-053 |
 | R-04 | Langit prosedural atau **foto 360° HDRI** per lanskap; unggah 360° sendiri | JEV-030 |
 | R-04a | **Pilih sendiri** (bawaan): daftar urut, ◀ ▶, galeri bergambar dengan saringan lanskap/waktu/kata; pratinjau 1K lalu resolusi penuh; mode **Acak** hanya bila dinyalakan; pilihan terakhir diingat | JEV-048 |
 | R-05 | Mode jalan orang-pertama: WASD/joystick sentuh, tangga, tabrakan, lensa | JEV-007 |
