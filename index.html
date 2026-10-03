@@ -8393,14 +8393,15 @@ function rapikanDenah(img){
         if(x>0) st.push(i-1); if(x<A.w-1) st.push(i+1); if(i>=A.w) st.push(i-A.w); if(i<n-A.w) st.push(i+A.w); }
       const isi=new Uint8Array(n); for(let i=0;i<n;i++) isi[i]=luar[i]?0:1;
       const kk=komponen(isi,A.w,A.h).sort((a,b)=>b.n-a.n)[0];
-      if(kk && kk.n>=0.15*n && (kk.x1-kk.x0+1)*(kk.y1-kk.y0+1)<0.92*n){
+      let terangK=0; if(kk) for(let y=kk.y0;y<=kk.y1;y++) for(let x=kk.x0;x<=kk.x1;x++){ const i=y*A.w+x; if(isi[i]) terangK+=A.L[i]; }
+      if(kk && terangK/kk.n>150 && kk.n>=0.04*n && kk.n>=0.6*(kk.x1-kk.x0+1)*(kk.y1-kk.y0+1) && (kk.x1-kk.x0+1)*(kk.y1-kk.y0+1)<0.92*n){   // kertas = bidang padat, bukan gugus garis
         cx0=Math.round(kk.x0/A.a); cy0=Math.round(kk.y0/A.a); cw=Math.round((kk.x1-kk.x0+1)/A.a); ch=Math.round((kk.y1-kk.y0+1)/A.a);
         // semua yang bukan bidang kertas (latar & benda kecil di atasnya) nanti diputihkan
         luarM=new Uint8Array(n); for(let i=0;i<n;i++) luarM[i]=isi[i]?0:1;
         A0=A; langkah.push('dipotong ke bidang kertas'); ubah=true; } } }
-  // resolusi kerja: gambar kecil diperbesar (garis perabot butuh piksel), raksasa diperkecil
-  const pj=Math.max(cw,ch);
-  let s=1; if(pj<1000) s=Math.min(3,1400/pj); else if(pj>2600) s=2600/pj;
+  // kanvas kerja seukuran asli (dibatasi 4000 px); resolusi akhir diatur paling belakang,
+  // setelah dipotong — supaya denah kecil di gambar besar tidak kehilangan piksel
+  const pj=Math.max(cw,ch), s=pj>4000?4000/pj:1;
   let O=kanvas(Math.max(1,Math.round(cw*s)),Math.max(1,Math.round(ch*s)));
   { const x=ctxOf(O); x.fillStyle='#fff'; x.fillRect(0,0,O.width,O.height); x.imageSmoothingQuality='high'; x.drawImage(img,cx0,cy0,cw,ch,0,0,O.width,O.height);
   }
@@ -8411,14 +8412,13 @@ function rapikanDenah(img){
     mx.putImageData(id,0,0);
     const x=ctxOf(O); x.imageSmoothingEnabled=false;
     x.drawImage(c,cx0*A0.a,cy0*A0.a,cw*A0.a,ch*A0.a,0,0,O.width,O.height); x.imageSmoothingEnabled=true; };
-  if(s>1.05) langkah.push(`diperbesar ${fmt(s,1)}× (gambar kecil)`);
-  else if(s<0.95) langkah.push(`diperkecil ke ${O.width}×${O.height} px`);
   const olah=fn=>{ const x=ctxOf(O), im=x.getImageData(0,0,O.width,O.height); fn(im.data,O.width,O.height); x.putImageData(im,0,0); };
 
   // 2. MODE GELAP: garis terang di latar gelap → dibalik
   let A=kecil(O,O.width,O.height);
   { const h=new Array(256).fill(0); for(const v of A.L) h[v]++; let c=0, med=0; for(;med<256;med++){ c+=h[med]; if(c>=A.L.length/2) break; }
-    if(med<100){ olah(d=>{ for(let p=0;p<d.length;p+=4){ d[p]=255-d[p]; d[p+1]=255-d[p+1]; d[p+2]=255-d[p+2]; } });
+    let terang=0; for(const v of A.L) if(v>200) terang++;
+    if(med<100 && terang<0.25*A.L.length){ olah(d=>{ for(let p=0;p<d.length;p+=4){ d[p]=255-d[p]; d[p+1]=255-d[p+1]; d[p+2]=255-d[p+2]; } });
       langkah.push('warna dibalik (denah mode gelap)'); ubah=true; A=kecil(O,O.width,O.height); } }
 
   // 3. LATAR FOTO tidak rata (bayangan, kertas kekuningan): tiap kanal warna dibagi
@@ -8448,14 +8448,14 @@ function rapikanDenah(img){
     if(kk.length){
       const luasK=k=>(k.x1-k.x0+1)*(k.y1-k.y0+1);
       kk.sort((a,b)=>luasK(b)-luasK(a));
-      const u={...kk[0]}, g=0.06*Math.max(A.w,A.h), pakai=new Set([kk[0]]);
+      const u={...kk[0]}, g=0.1*Math.max(A.w,A.h), pakai=new Set([kk[0]]);
       for(let ulang=true;ulang;){ ulang=false;
         for(const k of kk){ if(pakai.has(k)) continue;
           if(k.x0<=u.x1+g&&k.x1>=u.x0-g&&k.y0<=u.y1+g&&k.y1>=u.y0-g){ pakai.add(k); ulang=true;
             u.x0=Math.min(u.x0,k.x0); u.x1=Math.max(u.x1,k.x1); u.y0=Math.min(u.y0,k.y0); u.y1=Math.max(u.y1,k.y1); } } }
-      const m=Math.round(0.03*Math.max(u.x1-u.x0,u.y1-u.y0));
+      const m=Math.round(0.08*Math.max(u.x1-u.x0,u.y1-u.y0));      // sisakan tepi: garis dimensi & ruang napas pembaca
       const x0=Math.max(0,u.x0-m), y0=Math.max(0,u.y0-m), x1=Math.min(A.w-1,u.x1+m), y1=Math.min(A.h-1,u.y1+m);
-      if((x1-x0+1)*(y1-y0+1)<0.7*A.w*A.h && luasK(kk[0])>0.02*A.w*A.h){
+      if((x1-x0+1)*(y1-y0+1)<0.55*A.w*A.h && luasK(kk[0])>0.02*A.w*A.h){
         const sx=Math.round(x0/A.a), sy=Math.round(y0/A.a), sw=Math.round((x1-x0+1)/A.a), sh=Math.round((y1-y0+1)/A.a);
         const C=kanvas(Math.min(sw,O.width-sx),Math.min(sh,O.height-sy)); ctxOf(C).drawImage(O,sx,sy,C.width,C.height,0,0,C.width,C.height);
         O=C; langkah.push('dipotong ke area denah'); ubah=true; A=kecil(O,O.width,O.height); } } }
@@ -8476,6 +8476,12 @@ function rapikanDenah(img){
         const R=kanvas(nw,nh), x=ctxOf(R); x.fillStyle='#fff'; x.fillRect(0,0,nw,nh); x.imageSmoothingQuality='high';
         x.translate(nw/2,nh/2); x.rotate(-t); x.drawImage(O,-w/2,-h/2);
         O=R; langkah.push(`diluruskan ${fmt(Math.abs(best),1)}°`); ubah=true; } } }
+  // 6. RESOLUSI: gambar kecil diperbesar (garis perabot butuh piksel), raksasa diperkecil
+  { const p=Math.max(O.width,O.height); let f=1;
+    if(p<1000) f=Math.min(3,1400/p); else if(p>2600) f=2600/p;
+    if(Math.abs(f-1)>0.05){ const C=kanvas(Math.round(O.width*f),Math.round(O.height*f)), x=ctxOf(C);
+      x.fillStyle='#fff'; x.fillRect(0,0,C.width,C.height); x.imageSmoothingQuality='high'; x.drawImage(O,0,0,C.width,C.height); O=C;
+      langkah.push(f>1?`diperbesar ${fmt(f,1)}× (gambar kecil)`:`diperkecil ke ${O.width}×${O.height} px`); } }
   return {canvas:O, ubah, langkah};
 }
 const PLAN_MENTAH=new Map();     // gambar upload apa adanya (memori saja): bahan rapikan ulang
