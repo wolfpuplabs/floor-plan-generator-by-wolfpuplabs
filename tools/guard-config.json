@@ -7,7 +7,15 @@
     "cdn.polyhaven.com": "thumbnail galeri model (JEV-031)",
     "polyhaven.com": "tautan kredit sumber aset (JEV-030, JEV-031)",
     "www.w3.org": "namespace SVG (bukan permintaan jaringan)",
-    "github.com": "hanya tautan kredit/sumber lisensi model produk nyata (tidak ada permintaan jaringan) (JEV-054)"
+    "github.com": "hanya tautan kredit/sumber lisensi model produk nyata (tidak ada permintaan jaringan) (JEV-054)",
+    "api.sketchfab.com": "pencarian publik & unduhan model Sketchfab dengan token milik pengguna (hanya dikirim ke host ini); hanya lisensi CC0/CC-BY/CC-BY-SA (JEV-060)",
+    "sketchfab.com": "tautan kredit model & halaman token (tidak ada permintaan jaringan) (JEV-060)",
+    "www.cgtrader.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
+    "www.turbosquid.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
+    "free3d.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
+    "poly.pizza": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
+    "3d.si.edu": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
+    "www.fab.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)"
   },
   "anggaran": {
     "indexHtmlKB": 900,

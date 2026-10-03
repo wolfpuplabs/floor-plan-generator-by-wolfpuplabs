@@ -2054,6 +2054,67 @@
     "target": "≥ 15%",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-060",
+   "judul": "Sumber model dari Sketchfab, CGTrader & situs 3D gratis: pencarian Sketchfab + impor ZIP/OBJ/FBX",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pustaka model terbatas pada Poly Haven & 14 produk Khronos; model dari Sketchfab/CGTrader/TurboSquid/Free3D umumnya berupa ZIP glTF, OBJ+MTL, atau FBX yang tidak bisa diunggah (hanya .glb mandiri).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"resources dari sketchfab, CGtrader, dan free 3d realistic sites\"",
+    "alternatif": [
+     "API CGTrader/TurboSquid (khusus mitra, OAuth, tidak publik)",
+     "pengunduh tak resmi (melanggar ketentuan situs)"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 7,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 6,
+      "menitHemat": 10
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.008
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "ZIP dibaca sendiri dengan batas 200 MB sesudah dibuka (bom zip) & glTF berURL luar ditolak; loader OBJ/MTL/FBX/fflate dimuat lambat, terkunci versi + SRI; hasil tetap lewat uriLuarGLTF (G3) & batas 20 MB"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "token Sketchfab milik pengguna hanya di localStorage perangkat & hanya dikirim ke api.sketchfab.com; tidak masuk berkas proyek/tautan (tes)"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "Sketchfab disaring ke CC0/CC-BY/CC-BY-SA (NC/ND/Editorial dibuang); atribusi judul, pembuat, lisensi, tautan disimpan; situs lain hanya ditautkan"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "+162 KB loader hanya saat mengimpor OBJ/FBX"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "model diimpor dari situs luar / proyek aktif / bulan",
+    "target": "≥ 0,5",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
