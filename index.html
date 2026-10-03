@@ -184,18 +184,24 @@ details#adv>*:not(summary){margin-bottom:8px}
 
 #loader{position:absolute;inset:0;background:rgba(6,6,8,.9);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--accent);font-weight:700;z-index:30;font-size:.9rem}
 #loader.on{display:flex}
-#galeri{position:fixed;inset:0;background:rgba(6,6,8,.72);z-index:35;display:flex;align-items:center;justify-content:center;padding:16px}
-#galeri .gl-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(980px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden}
-#galeri .gl-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
-#galeri .gl-head b{flex:1 1 100%;color:var(--accent)}
-#galeri .gl-head input,#galeri .gl-head select{flex:1 1 140px;min-width:0}
-#galeri .gl-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px 14px;-webkit-overflow-scrolling:touch}
-#galeri .gl-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:stretch;color:var(--txt);font-size:.7rem;cursor:pointer;text-align:center}
-#galeri .gl-card:hover{border-color:var(--accent)}
-#galeri .gl-card.muat{opacity:.5;border-color:var(--warn)}
-#galeri .gl-card img{width:100%;aspect-ratio:1;object-fit:contain;background:#2a2a31;border-radius:5px}
-#galeri .gl-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#galeri .hint{padding:8px 14px 12px;margin:0}
+.gl-modal{position:fixed;inset:0;background:rgba(6,6,8,.72);z-index:35;display:flex;align-items:center;justify-content:center;padding:16px}
+.gl-modal .gl-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(980px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+.gl-modal .gl-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.gl-modal .gl-head b{flex:1 1 100%;color:var(--accent)}
+.gl-modal .gl-head input,.gl-modal .gl-head select{flex:1 1 140px;min-width:0}
+.gl-modal .gl-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px 14px;-webkit-overflow-scrolling:touch}
+.gl-modal .gl-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:stretch;color:var(--txt);font-size:.7rem;cursor:pointer;text-align:center}
+.gl-modal .gl-card:hover{border-color:var(--accent)}
+.gl-modal .gl-card.muat{opacity:.5;border-color:var(--warn)}
+.gl-modal .gl-card img{width:100%;aspect-ratio:1;object-fit:contain;background:#2a2a31;border-radius:5px}
+.gl-modal .gl-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gl-modal .hint{padding:8px 14px 12px;margin:0}
+.gl-modal .gl-grid.lebar{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.gl-modal .gl-grid.lebar .gl-card img{aspect-ratio:2/1;object-fit:cover}
+.gl-modal .gl-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.fps-langit{display:inline-flex;gap:2px}
+.fps-langit #fpsLangitPrev,.fps-langit #fpsLangitNext{min-width:40px;padding-left:8px;padding-right:8px}
+#fpsLangit.aktif{color:var(--accent);border-color:var(--accent)}
 .spinner{width:38px;height:38px;border:3px solid #222;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{100%{transform:rotate(360deg)}}
 #toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f1f26;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:6px;font-size:.76rem;opacity:0;transition:.25s;pointer-events:none;z-index:40}
@@ -428,6 +434,13 @@ details#adv>*:not(summary){margin-bottom:8px}
       </select></div>
       <div id="langitFotoUI" hidden>
         <div class="f-row"><label>Lanskap</label><select id="langitJenis"></select></div>
+        <div class="f-row"><label>Panorama</label><select id="langitDaftar"><option value="">— memuat daftar —</option></select></div>
+        <div class="row" style="gap:6px">
+          <button class="btn ghost sm" id="langitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya" style="flex:0 0 44px">◀</button>
+          <button class="btn ghost sm" id="langitGaleriBtn" title="Pilih panorama dari galeri bergambar">🖼 Pilih dari galeri</button>
+          <button class="btn ghost sm" id="langitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya" style="flex:0 0 44px">▶</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="langitAcakCek"><span>Acak — ganti lanskap/suasana memilih panorama secara acak (mati = pilih sendiri)</span></label>
         <div class="f-row"><label>Resolusi</label><select id="langitRes">
           <option value="2k">2K — ±6 MB, ringan</option>
           <option value="4k">4K — ±20 MB, tajam</option>
@@ -435,7 +448,7 @@ details#adv>*:not(summary){margin-bottom:8px}
         <div class="f-row"><label>Putar</label><input type="range" id="langitPutar" min="0" max="359" step="1" value="0"></div>
         <label class="chk"><input type="checkbox" id="langitEditor" checked><span>Tampilkan juga di tampilan 3D editor (bukan hanya mode jalan)</span></label>
         <div class="row" style="gap:6px;flex-wrap:wrap">
-          <button class="btn ghost sm" id="langitAcak">🎲 Lanskap lain</button>
+          <button class="btn ghost sm" id="langitAcak" title="Muat satu panorama acak dari lanskap ini">🎲 Acak sekali</button>
           <button class="btn ghost sm" id="langitUnggahBtn">📁 Pakai foto 360° sendiri</button>
           <input type="file" id="langitUnggah" accept=".hdr,image/jpeg,image/png,image/webp" hidden>
         </div>
@@ -595,7 +608,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <select id="fpsMood" title="Suasana cahaya">
         <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option><option value="gelap">🌑 Malam gelap</option>
       </select>
-      <button class="btn ghost sm" id="fpsLangit" title="Langit foto 360° — ketuk lagi untuk lanskap acak lain">🏞 Langit</button>
+      <span class="fps-langit"><button class="btn ghost sm" id="fpsLangitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya">◀</button><button class="btn ghost sm" id="fpsLangit" title="Nyalakan langit foto 360°">🏞 Langit</button><button class="btn ghost sm" id="fpsLangitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya">▶</button></span>
       <select id="fpsFov" title="Lebar pandang (lensa)">
         <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option>
       </select>
@@ -615,7 +628,16 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div id="pianoKeys"></div>
     </div>
     <div id="vignette" hidden></div>
-    <div id="galeri" hidden><div class="gl-box">
+    <div id="pilihLangit" class="gl-modal" hidden><div class="gl-box">
+      <div class="gl-head"><b>🏞 Pilih panorama 360° — foto HDRI asli · Poly Haven (CC0)</b>
+        <input type="search" id="plCari" placeholder="Cari: mountain, beach, lake, sunset…">
+        <select id="plJenis"></select>
+        <select id="plWaktu"><option value="semua">Semua waktu</option><option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option></select>
+        <button class="btn sm ghost" id="plTutup" style="flex:0 0 auto">✕ Tutup</button></div>
+      <div class="gl-grid lebar" id="plGrid"></div>
+      <p class="hint" id="plInfo"></p>
+    </div></div>
+    <div id="galeri" class="gl-modal" hidden><div class="gl-box">
       <div class="gl-head"><b>🌐 Model fotogrametri — dipindai dari benda asli · Poly Haven (CC0)</b>
         <input type="search" id="galeriCari" placeholder="Cari: chair, sofa, plant, lamp…">
         <select id="galeriKat"><option value="semua">Semua</option></select>
@@ -725,7 +747,7 @@ const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{}
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
   atap:{ tritisan:0.6, tebal:0.12 },
   site:{ tanah:'none', margin:6 },
-  langit:{ mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true } };   // langit: prosedural atau foto 360°                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
+  langit:{ mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true, pilih:'manual' } };   // langit: prosedural atau foto 360°                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
 
 function newLevel(name,height){
   return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
@@ -10906,7 +10928,7 @@ const LANGIT_JENIS={
 // kecerahan rata-rata langit (luminans linear, belahan atas) yang dituju per suasana —
 // setara langit prosedural, supaya cahaya, eksposur, dan lampu yang sudah dikalibrasi tetap cocok
 const TERANG_FOTO={siang:0.7, senja:0.3, malam:0.012, gelap:0.008};
-const LANGIT_BAWAAN={mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true};
+const LANGIT_BAWAAN={mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true, pilih:'manual'};   // pilih: 'manual' (◀ ▶ / galeri) atau 'acak'
 var FOTO={tex:null, kecil:null, env:null, w:0, h:0, nama:'', id:null, waktu:'siang', rata:1, k:1,
   surya:null, cerah:0.35, warnaSurya:new THREE.Color(1,1,1), warnaLangit:new THREE.Color(1,1,1), cakrawala:new THREE.Color(1,1,1),
   token:0, daftar:null, riwayat:[], sibuk:false, kreditUrl:''};
@@ -11100,7 +11122,7 @@ async function ambilBerkas(url,onP){
     const u=new Uint8Array(n); let o=0; for(const b of bag){ u.set(b,o); o+=b.length; } buf=u.buffer;
   } else buf=await res.arrayBuffer();
   if(cache){ try{ await cache.put(url,new Response(buf.slice(0)));
-    const ks=(await cache.keys()).filter(q=>/\.hdr$/i.test(q.url)); for(const q of ks.slice(0,Math.max(0,ks.length-8))) await cache.delete(q); }catch(e){} }
+    const ks=(await cache.keys()).filter(q=>/\.hdr$/i.test(q.url)); for(const q of ks.slice(0,Math.max(0,ks.length-12))) await cache.delete(q); }catch(e){} }
   return buf;
 }
 async function daftarHDRI(){
@@ -11128,12 +11150,59 @@ function pilihHDRI(daftar,jenis,kecuali){
   else { const b2=c.filter(a=>a.id!==kecuali); if(b2.length) c=b2; }
   return c.length ? c[Math.floor(Math.random()*c.length)] : null;
 }
+const BERKAS_HDRI=new Map();                 // id → jawaban /files (sekali per sesi)
 async function urlHDRI(id,res){
   if(!ID_AMAN.test(id)) throw new Error('id panorama tidak sah');
   if(!/^(1k|2k|4k)$/.test(res)) res='4k';
-  try{ const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors'}); if(r.ok){ const j=await r.json();
-    const f=j.hdri&&(j.hdri[res]||j.hdri['2k']||j.hdri['1k']); if(f&&f.hdr&&f.hdr.url) return f.hdr.url; } }catch(e){}
+  try{
+    let j=BERKAS_HDRI.get(id);
+    if(!j){ const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors'}); if(r.ok){ j=await r.json(); BERKAS_HDRI.set(id,j); } }
+    const f=j&&j.hdri&&(j.hdri[res]||j.hdri['2k']||j.hdri['1k']); if(f&&f.hdr&&f.hdr.url) return f.hdr.url;
+  }catch(e){}
   return `https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/${res}/${id}_${res}.hdr`;
+}
+async function adaDiCache(url){ const c=await bukaCache(); try{ return !!(c && await c.match(url)); }catch(e){ return false; } }
+/* PILIH SENDIRI — daftar panorama lanskap terpilih dalam urutan tetap (nama),
+   yang waktunya cocok dengan suasana di depan. ◀ ▶ melangkah di daftar ini;
+   tidak ada yang diacak kecuali pengguna menyalakan "Acak" atau menekan 🎲. */
+const IKON_WAKTU={siang:'☀', senja:'🌇', malam:'🌙'};
+function isiOpsi(sel,daftar){ sel.replaceChildren(...daftar.map(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; return o; })); }
+function waktuKini(){ return MOOD==='gelap'?'malam':MOOD; }
+function daftarLanskap(jenis){
+  const d=FOTO.daftar||[];
+  const J=LANGIT_JENIS[jenis]&&LANGIT_JENIS[jenis].k ? [LANGIT_JENIS[jenis].k] : Object.values(LANGIT_JENIS).filter(x=>x.k).map(x=>x.k);
+  let c=d.filter(a=>J.some(ks=>ks.some(k=>a.kata.has(k))));
+  if(!c.length) c=d.filter(a=>a.kat.includes('nature')||a.kat.includes('outdoor'));
+  const w=waktuKini(), urut=a=>(a.waktu===w?0:1);
+  return c.slice().sort((a,b)=>urut(a)-urut(b) || a.nama.localeCompare(b.nama));
+}
+async function pastikanDaftarLangit(){ if(!FOTO.daftar) await daftarHDRI(); isiDaftarLangit(); return FOTO.daftar; }
+function isiDaftarLangit(){
+  const sel=$('#langitDaftar'); if(!sel) return;
+  const c=daftarLanskap(langitP().jenis), cur=FOTO.target||FOTO.id;
+  const opsi=c.map(a=>[a.id,(IKON_WAKTU[a.waktu]||'')+' '+a.nama]);
+  if(!c.length) opsi.push(['','— daftar belum dimuat —']);
+  if(cur && !c.some(a=>a.id===cur)) opsi.push([cur,(cur==='unggah'?'📁 ':'')+(FOTO.nama||cur)]);
+  isiOpsi(sel,opsi);
+  if(cur) sel.value=cur;
+}
+async function langkahLangit(arah){
+  if(FOTO.sibukDaftar) return;
+  try{ FOTO.sibukDaftar=true; await pastikanDaftarLangit(); }catch(e){ FOTO.sibukDaftar=false; return toast('Daftar panorama tidak bisa dimuat — periksa koneksi'); }
+  FOTO.sibukDaftar=false;
+  const c=daftarLanskap(langitP().jenis); if(!c.length) return toast('Tidak ada panorama untuk lanskap ini');
+  const cur=FOTO.target||FOTO.id; let i=c.findIndex(a=>a.id===cur);
+  i = i<0 ? (arah>0?0:c.length-1) : (i+arah+c.length)%c.length;
+  langitP().mode='foto';
+  muatLangitFoto({id:c[i].id, nama:c[i].nama, waktu:c[i].waktu});
+  toast(`Panorama ${i+1}/${c.length}: ${c[i].nama}`);
+}
+/* mulai langit foto: panorama terakhir bila ada; selain itu acak (mode Acak) atau yang pertama di daftar */
+function mulaiLangitFoto(){
+  const lp=langitP(); lp.mode='foto'; renderLangitUI();
+  if(lp.id && lp.id!=='unggah') return muatLangitFoto({id:lp.id, nama:lp.nama});
+  if(lp.pilih==='acak') return muatLangitFoto();
+  langkahLangit(1);
 }
 function infoLangit(t){ const e=$('#langitInfo'); if(e) e.textContent=t; const f=$('#fpsLangit'); if(f) f.classList.toggle('on',FOTO.sibuk); }
 /* muat panorama: id tertentu, atau acak dari lanskap terpilih */
@@ -11142,22 +11211,33 @@ async function muatLangitFoto(opsi){
   FOTO.sibuk=true; infoLangit('Mencari panorama…');
   try{
     let pilih=null;
-    if(opsi.id && opsi.id!=='unggah'){ pilih={id:opsi.id, nama:opsi.nama||lp.nama||opsi.id, waktu:null}; }
+    if(opsi.id && opsi.id!=='unggah'){ const a=(FOTO.daftar||[]).find(x=>x.id===opsi.id);
+      pilih={id:opsi.id, nama:opsi.nama||(a&&a.nama)||lp.nama||opsi.id, waktu:opsi.waktu||(a&&a.waktu)||null}; }
     else { const d=await daftarHDRI(); if(token!==FOTO.token) return;
       pilih=pilihHDRI(d,lp.jenis,FOTO.id); if(!pilih) throw new Error('tidak ada panorama untuk lanskap ini'); }
+    FOTO.target=pilih.id; isiDaftarLangit();
     infoLangit('Mengunduh '+pilih.nama+'…');
-    const url=await urlHDRI(pilih.id,lp.res||'4k'); if(token!==FOTO.token) return;
-    const buf=await ambilBerkas(url,(n,t)=>{ if(token===FOTO.token) infoLangit(`Mengunduh ${pilih.nama} — ${t?Math.round(n/t*100)+'%':(n/1048576).toFixed(1)+' MB'}`); });
+    const res=lp.res||'4k', url=await urlHDRI(pilih.id,res); if(token!==FOTO.token) return;
+    // pratinjau cepat: 1K (±1,5 MB) tampil dulu, resolusi penuh menyusul — ◀ ▶ terasa responsif
+    if(res!=='1k' && !(await adaDiCache(url))){
+      try{
+        const b1=await ambilBerkas(await urlHDRI(pilih.id,'1k'),(n,t)=>{ if(token===FOTO.token) infoLangit(`Pratinjau ${pilih.nama} — ${t?Math.round(n/t*100)+'%':(n/1048576).toFixed(1)+' MB'}`); });
+        if(token!==FOTO.token) return;
+        pasangPano(bacaHDR(b1),{id:pilih.id, nama:pilih.nama, waktu:pilih.waktu, kredit:'https://polyhaven.com/a/'+pilih.id});
+        FOTO.target=pilih.id;
+      }catch(e){ if(token!==FOTO.token) return; }
+    }
+    const buf=await ambilBerkas(url,(n,t)=>{ if(token===FOTO.token) infoLangit(`Mengunduh ${pilih.nama} ${res.toUpperCase()} — ${t?Math.round(n/t*100)+'%':(n/1048576).toFixed(1)+' MB'}`); });
     if(token!==FOTO.token) return;
     infoLangit('Memproses '+pilih.nama+'…'); await new Promise(r=>setTimeout(r,30));
     const P=bacaHDR(buf); if(token!==FOTO.token) return;
     pasangPano(P,{id:pilih.id, nama:pilih.nama, waktu:pilih.waktu, kredit:'https://polyhaven.com/a/'+pilih.id});
     FOTO.riwayat.push(pilih.id); if(FOTO.riwayat.length>10) FOTO.riwayat.shift();
-    FOTO.sibuk=false; renderLangitUI();
+    FOTO.sibuk=false; FOTO.target=null; renderLangitUI(); isiDaftarLangit();
     toast('Langit 360°: '+pilih.nama+' — Poly Haven (CC0)');
   }catch(e){
     if(token!==FOTO.token) return;
-    FOTO.sibuk=false;
+    FOTO.sibuk=false; FOTO.target=null;
     console.warn('langit foto',e);
     if(!FOTO.tex){ lp.mode='prosedural'; kembaliProsedural(); }
     renderLangitUI();
@@ -11177,7 +11257,7 @@ async function unggahLangit(file){
   }catch(e){ FOTO.sibuk=false; renderLangitUI(); infoLangit('Berkas tidak bisa dipakai: '+(e.message||e)); toast('Panorama tidak terbaca'); }
 }
 function kembaliProsedural(){ dasarCahaya(); terapkanEnv(); pasBayangMatahari(); bayangKotor(); terapkanLangit(); if(typeof PROBE!=='undefined') PROBE.kotor=true; }
-function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); }
+function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; FOTO.target=null; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); }
 /* putar panorama: hanya arah (latar, pantulan, matahari) yang ikut berubah */
 let PUTAR_T=0;
 function putarLangit(deg){
@@ -11185,13 +11265,15 @@ function putarLangit(deg){
   kubahFoto.material.uniforms.putar.value=FOTO.putarU();
   clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); },180);
 }
-function simpanPrefLangit(){ try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor})); }catch(e){} }
+function simpanPrefLangit(){ try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor,pilih:lp.pilih,id:lp.id!=='unggah'?lp.id:null,nama:lp.nama})); }catch(e){} }
 function renderLangitUI(){
   const lp=langitP(), e=id=>$(id);
   if(!e('#langitMode')) return;
   e('#langitMode').value=lp.mode; e('#langitJenis').value=lp.jenis; e('#langitRes').value=lp.res;
   e('#langitPutar').value=lp.putar||0; e('#langitEditor').checked=lp.editor!==false;
   e('#langitFotoUI').hidden=lp.mode!=='foto';
+  e('#langitAcakCek').checked=lp.pilih==='acak';
+  const f=e('#fpsLangit'); if(f){ f.classList.toggle('aktif',lp.mode==='foto'); f.title=lp.mode==='foto'?'Langit foto 360° aktif — ketuk untuk kembali ke langit prosedural':'Nyalakan langit foto 360°'; }
   if(!FOTO.sibuk) infoLangit(lp.mode!=='foto' ? '' : FOTO.tex ? `${FOTO.nama} · ${FOTO.w}×${FOTO.h}`+(FOTO.id!=='unggah'?' · Poly Haven (CC0)':'')+(FOTO.surya?'':' · berawan: bayangan lembut') : '');
   const k=e('#langitKredit'); if(k){ k.hidden=!(FOTO.tex&&FOTO.kreditUrl&&lp.mode==='foto'); k.href=FOTO.kreditUrl||'#'; }
   simpanPrefLangit();
@@ -11200,6 +11282,7 @@ function renderLangitUI(){
    saat malam) diganti foto lain dari lanskap yang sama */
 function langitIkutSuasana(){
   if(!fotoAktif()) return;
+  if(langitP().pilih!=='acak'){ isiDaftarLangit(); return; }        // pilihan pengguna dihormati — tidak diganti diam-diam
   const w=MOOD==='gelap'?'malam':MOOD;
   if(FOTO.waktu && FOTO.waktu!==w && FOTO.id!=='unggah' && !FOTO.sibuk && FOTO.daftar && FOTO.daftar.some(a=>a.waktu===w)) muatLangitFoto();
 }
@@ -11614,15 +11697,56 @@ $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[M
 $('#fpsMood').onchange=e=>{ setSuasana(e.target.value); e.target.blur(); };
 /* langit foto 360° */
 $('#langitJenis').innerHTML=Object.entries(LANGIT_JENIS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
-$('#langitMode').onchange=e=>{ if(e.target.value==='foto'){ langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); } else matikanLangitFoto(); };
-$('#langitJenis').onchange=e=>{ langitP().jenis=e.target.value; renderLangitUI(); if(langitP().mode==='foto') muatLangitFoto(); };
+$('#langitMode').onchange=e=>{ if(e.target.value==='foto') mulaiLangitFoto(); else matikanLangitFoto(); };
+$('#langitJenis').onchange=e=>{ const lp=langitP(); lp.jenis=e.target.value; renderLangitUI(); isiDaftarLangit();
+  if(lp.mode!=='foto') return; if(lp.pilih==='acak') muatLangitFoto(); else { FOTO.target=null; FOTO.id=null; langkahLangit(1); } };
+$('#langitDaftar').onchange=e=>{ const id=e.target.value; if(id&&id!=='unggah'){ langitP().mode='foto'; muatLangitFoto({id}); } };
+$('#langitPrev').onclick=()=>langkahLangit(-1);
+$('#langitNext').onclick=()=>langkahLangit(1);
+$('#langitAcakCek').onchange=e=>{ langitP().pilih=e.target.checked?'acak':'manual'; renderLangitUI(); toast(e.target.checked?'Acak: 🎲 dan ganti suasana memilih panorama acak':'Pilih sendiri: panorama hanya berganti lewat ◀ ▶ atau galeri'); };
+$('#langitGaleriBtn').onclick=()=>bukaPilihLangit();
+/* galeri panorama: thumbnail tiap HDRI, saring lanskap/waktu/kata — ketuk untuk memasang */
+const PL={jenis:null, waktu:'semua', cari:''};
+function renderPilihLangit(){
+  const g=$('#plGrid'), q=PL.cari.trim().toLowerCase(), cur=FOTO.target||FOTO.id;
+  let c=daftarLanskap(PL.jenis||langitP().jenis);
+  if(PL.waktu!=='semua') c=c.filter(a=>a.waktu===PL.waktu);
+  if(q) c=c.filter(a=>a.nama.toLowerCase().includes(q)||a.id.includes(q)||[...a.kata].some(k=>k.includes(q)));
+  g.innerHTML='';
+  for(const a of c.slice(0,200)){
+    const k=el('button','gl-card'+(a.id===cur?' on':'')); k.dataset.id=a.id; k.title=a.nama;
+    const im=document.createElement('img'); im.loading='lazy'; im.alt='';
+    im.src=`https://cdn.polyhaven.com/asset_img/thumbs/${encodeURIComponent(a.id)}.png?width=320&height=160`;
+    im.onerror=()=>{ im.style.visibility='hidden'; };
+    k.appendChild(im); k.appendChild(el('span',null,(IKON_WAKTU[a.waktu]||'')+' '+a.nama));
+    k.onclick=()=>{ $('#pilihLangit').hidden=true; langitP().mode='foto'; renderLangitUI(); muatLangitFoto({id:a.id, nama:a.nama, waktu:a.waktu}); };
+    g.appendChild(k);
+  }
+  $('#plInfo').textContent=c.length?`${c.length} panorama${c.length>200?' (200 pertama — persempit pencarian)':''} · ☀ siang · 🌇 senja · 🌙 malam · ketuk untuk memasang`:'Tidak ada panorama yang cocok.';
+}
+async function bukaPilihLangit(){
+  $('#pilihLangit').hidden=false; PL.jenis=langitP().jenis; $('#plJenis').value=PL.jenis;
+  PL.waktu=waktuKini(); $('#plWaktu').value=PL.waktu;
+  if(!FOTO.daftar){ $('#plGrid').innerHTML=''; $('#plInfo').textContent='Memuat daftar panorama…';
+    try{ await pastikanDaftarLangit(); }catch(e){ $('#plInfo').textContent='Daftar tidak bisa dimuat ('+(e.message||e)+') — perlu koneksi internet.'; return; } }
+  renderPilihLangit();
+}
+isiOpsi($('#plJenis'),Object.entries(LANGIT_JENIS).map(([k,v])=>[k,v.l]));
+$('#plJenis').onchange=e=>{ PL.jenis=e.target.value; renderPilihLangit(); };
+$('#plWaktu').onchange=e=>{ PL.waktu=e.target.value; renderPilihLangit(); };
+$('#plCari').oninput=e=>{ PL.cari=e.target.value; clearTimeout(PL.t); PL.t=setTimeout(renderPilihLangit,150); };
+$('#plTutup').onclick=()=>{ $('#pilihLangit').hidden=true; };
+$('#pilihLangit').addEventListener('click',e=>{ if(e.target.id==='pilihLangit') $('#pilihLangit').hidden=true; });
 $('#langitRes').onchange=e=>{ langitP().res=e.target.value; renderLangitUI(); if(langitP().mode==='foto' && FOTO.id && FOTO.id!=='unggah') muatLangitFoto({id:FOTO.id, nama:FOTO.nama}); };
 $('#langitPutar').oninput=e=>putarLangit(e.target.value);
 $('#langitEditor').onchange=e=>{ langitP().editor=e.target.checked; renderLangitUI(); terapkanLangit(); };
-$('#langitAcak').onclick=()=>{ langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); };
+$('#langitAcak').onclick=()=>{ langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); };   // acak sekali, atas permintaan
 $('#langitUnggahBtn').onclick=()=>$('#langitUnggah').click();
 $('#langitUnggah').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f){ langitP().mode='foto'; renderLangitUI(); unggahLangit(f); } };
-$('#fpsLangit').onclick=e=>{ e.currentTarget.blur(); if(FOTO.sibuk) return toast('Panorama sedang dimuat…'); langitP().mode='foto'; renderLangitUI(); muatLangitFoto(); };
+// mode jalan: 🏞 = sakelar foto 360° ↔ prosedural · ◀ ▶ = panorama sebelumnya/berikutnya
+$('#fpsLangit').onclick=e=>{ e.currentTarget.blur(); if(langitP().mode==='foto'){ matikanLangitFoto(); toast('Langit prosedural'); } else mulaiLangitFoto(); };
+$('#fpsLangitPrev').onclick=e=>{ e.currentTarget.blur(); langkahLangit(-1); };
+$('#fpsLangitNext').onclick=e=>{ e.currentTarget.blur(); langkahLangit(1); };
 
 function enterFPS(){
   if(FPS.on) return;
@@ -12167,8 +12291,9 @@ setSuasana('siang');
 window.__siap=true;
 // pilihan langit terakhir di perangkat ini: bila foto 360°, langsung dimuat (dari cache bila pernah diunduh)
 try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
-  if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false});
-    if(pr.mode==='foto'){ langitP().mode='foto'; muatLangitFoto(); } } }catch(e){}
+  if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false,
+      pilih:pr.pilih==='acak'?'acak':'manual', id:typeof pr.id==='string'&&ID_AMAN.test(pr.id)?pr.id:null, nama:typeof pr.nama==='string'?pr.nama.slice(0,120):''});
+    if(pr.mode==='foto') mulaiLangitFoto(); } }catch(e){}
 renderLangitUI();
 renderLevels();
 setTool('select');

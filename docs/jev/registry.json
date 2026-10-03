@@ -1391,6 +1391,67 @@
      "status": "lolos"
     }
    }
+  },
+  {
+   "id": "JEV-048",
+   "judul": "Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Langit 360° hanya bisa diacak; pengguna tidak bisa memilih atau kembali ke panorama yang cocok untuk presentasi, dan tiap ganti menunggu unduhan 4K (±20 MB).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"kasih toggle ganti HDRI jangan random\"",
+    "alternatif": [
+     "tetap acak + tombol kembali (tidak menyelesaikan pemilihan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 6,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.003
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "nama/id dari API lewat esc() & ID_AMAN"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "thumbnail hanya dimuat saat galeri dibuka"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "CC0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pratinjau 1K dulu, resolusi penuh menyusul; cache lokal"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel + title"
+    }
+   },
+   "metrik": {
+    "nama": "% pemuatan langit 360° yang dipilih manual (bukan acak)",
+    "target": "≥ 50%",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
