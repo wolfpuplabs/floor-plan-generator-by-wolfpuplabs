@@ -695,7 +695,22 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x0e0e11);
 scene.fog=new THREE.Fog(0x0e0e11, 70, 190);
 
-const camera=new THREE.PerspectiveCamera(45, viewport.clientWidth/viewport.clientHeight, 0.05, 600);
+let camera=new THREE.PerspectiveCamera(45, viewport.clientWidth/viewport.clientHeight, 0.05, 600);
+/* tampak atas, depan, dan iso memakai proyeksi paralel (ortografis) seperti
+   gambar kerja; 3D, Mata, dan mode jalan tetap perspektif */
+const kameraPersp=camera, kameraOrto=new THREE.OrthographicCamera(-8,8,6,-6,0.1,4000);
+function aturOrto(halfH){
+  const asp=Math.max(0.2,viewport.clientWidth/Math.max(1,viewport.clientHeight));
+  kameraOrto.top=halfH; kameraOrto.bottom=-halfH; kameraOrto.left=-halfH*asp; kameraOrto.right=halfH*asp; kameraOrto.updateProjectionMatrix();
+}
+function pakaiKamera(orto){
+  const baru=orto?kameraOrto:kameraPersp; if(camera===baru) return;
+  baru.position.copy(camera.position); baru.quaternion.copy(camera.quaternion); baru.up.copy(camera.up);
+  if(orto){ const h=camera.position.distanceTo(orbit.target)*Math.tan(camera.fov/2*D2R); kameraOrto.zoom=1; aturOrto(Math.max(0.5,h)); }
+  camera=baru; orbit.object=baru; gizmo.camera=baru;
+  if(typeof terapkanLangit==='function') terapkanLangit();
+  orbit.update();
+}
 camera.position.set(14,14,18);
 
 const renderer=new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
@@ -846,12 +861,12 @@ function majuKamera(m){
 { let cubit=null;
   renderer.domElement.addEventListener('wheel',e=>{
     if(typeof FPS!=='undefined'&&FPS.on) return;
-    if(e.deltaY<0 && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp(Math.abs(e.deltaY)*0.004,0.12,0.6));
+    if(e.deltaY<0 && camera.isPerspectiveCamera && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp(Math.abs(e.deltaY)*0.004,0.12,0.6));
   },{passive:true});
   renderer.domElement.addEventListener('touchmove',e=>{
     if((typeof FPS!=='undefined'&&FPS.on)||e.touches.length!==2){ cubit=null; return; }
     const a=e.touches[0], b=e.touches[1], d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-    if(cubit!=null && d>cubit+1 && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp((d-cubit)*0.012,0.02,0.5));
+    if(cubit!=null && d>cubit+1 && camera.isPerspectiveCamera && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp((d-cubit)*0.012,0.02,0.5));
     cubit=d;
   },{passive:true});
   renderer.domElement.addEventListener('touchend',()=>{ cubit=null; },{passive:true}); }
@@ -939,8 +954,9 @@ function fitViewport(){
   aturInspector();
   const w=viewport.clientWidth, h=viewport.clientHeight;
   if(!w||!h) return;
-  camera.aspect=w/h;
-  camera.updateProjectionMatrix();
+  kameraPersp.aspect=w/h;
+  kameraPersp.updateProjectionMatrix();
+  aturOrto(kameraOrto.top);
   renderer.setSize(w,h);
 }
 addEventListener('resize',fitViewport);
@@ -1035,6 +1051,9 @@ const FX_SEMBUNYI=[];
 /* AO: kedalaman ½ resolusi → AO → blur; hasil di FX.rtB */
 function fxHitungAO(W,H){
   if(FX.rtD.width!==W||FX.rtD.height!==H){ FX.rtD.setSize(W,H); FX.rtA.setSize(W,H); FX.rtB.setSize(W,H); }
+  if(camera.isOrthographicCamera){                 // AO layar dihitung untuk proyeksi perspektif: di tampak ortho dianggap 1
+    const cc=renderer.getClearColor(new THREE.Color()), ca=renderer.getClearAlpha();
+    renderer.setClearColor(0xffffff,1); renderer.setRenderTarget(FX.rtB); renderer.clear(); renderer.setClearColor(cc,ca); return; }
   FX_SEMBUNYI.length=0;
   scene.traverseVisible(o=>{ if(o.isSprite||o.isLine||o.isLineSegments||(o.isMesh&&o.material&&!Array.isArray(o.material)&&o.material.transparent)) FX_SEMBUNYI.push(o); });
   for(const o of FX_SEMBUNYI) o.visible=false;
@@ -1208,6 +1227,8 @@ const clock=new THREE.Clock();
   if(FPS.on) fpsStep(dt); else orbit.update();
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
+  if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
+    for(const sp of DIM.grp.children) if(sp.isSprite&&sp.userData.labelK){ const k=sp.userData.labelK*s; sp.scale.set(k*sp.material.userData.rasio,k,1); } }
   BAYANG_JEDA-=dt;
   if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
   renderFrame();
@@ -3381,8 +3402,9 @@ function stepProbe(dt){
   PROBE.cam.position.copy(pos); PROBE.cam.update(renderer,scene);
   renderer.toneMapping=tm; renderer.setRenderTarget(rtLama);
   sembunyi.forEach((o,i)=>o.visible=dulu[i]);
-  const baru=PROBE.pm.fromCubemap(PROBE.rt.texture).texture;
-  if(PROBE.env) PROBE.env.dispose(); PROBE.env=baru;
+  // render target PMREM lama dibuang utuh (bukan hanya teksturnya) — kalau tidak, memori GPU bocor tiap pembaruan
+  const rtBaru=PROBE.pm.fromCubemap(PROBE.rt.texture), baru=rtBaru.texture;
+  if(PROBE.envRT) PROBE.envRT.dispose(); PROBE.envRT=rtBaru; PROBE.env=baru;
   if(tertutup){ const k=kotakRuang(P,id); GI_U.pbMin.value.set(k.x0,el0,k.z0); GI_U.pbMax.value.set(k.x1,el0+H,k.z1); }
   else { GI_U.pbMin.value.set(1,0,0); GI_U.pbMax.value.set(0,0,0); }
   GI_U.pbPos.value.copy(pos);
@@ -3914,7 +3936,9 @@ function buildSitus(){
   else { const strips=slabStrips(x0,x1,z0,z1,lubang); if(!strips.length) return null; snapStripSeams(strips,1e-6);
     geo=slabGeometry(strips,T,(x,z)=>x>=x0&&x<=x1&&z>=z0&&z<=z1&&!lubang.some(p=>pointInPoly(x,z,p))); }
   uvDunia(geo,mat.userData.ukuran);
-  const g=new THREE.Mesh(geo,Array.isArray(geo.groups)&&geo.groups.length>1?[mat,mat]:mat);
+  // satu bahan untuk tiap indeks grup (BoxGeometry punya 6, pelat berlubang 2) — indeks tanpa bahan membuat raycast mode jalan error
+  const nGrup=(geo.groups||[]).reduce((a,g)=>Math.max(a,g.materialIndex+1),0);
+  const g=new THREE.Mesh(geo,nGrup>1?Array(nGrup).fill(mat):mat);
   g.position.y=-0.02; g.receiveShadow=true; g.castShadow=false; g.userData.situs=true;
   return g;
 }
@@ -4894,7 +4918,7 @@ function hentikanMusik(id){
 /* iOS/iPadOS baru mengizinkan audio pada akhir sentuhan (touchend/click), bukan
    pointerdown tempat tombol aksi bekerja — konteks dilanjutkan di sana juga */
 for(const ev of ['touchend','pointerup','click','keydown'])
-  addEventListener(ev,()=>{ const c=AUDIO.ctx; if(c && c.state!=='running' && AUDIO.main.size){ c.resume().catch(()=>{});
+  addEventListener(ev,()=>{ const c=AUDIO.ctx; if(c && c.state!=='running'){ c.resume().catch(()=>{});
     const s=c.createBufferSource(); s.buffer=c.createBuffer(1,1,22050); s.connect(c.destination); s.start(0); } },{passive:true,capture:true});
 function hentikanSemuaMusik(){ for(const id of [...AUDIO.main.keys()]) hentikanMusik(id); }
 /* ---------- EFEK SUARA INTERAKSI — disintesis, tanpa berkas rekaman ---------- */
@@ -4953,6 +4977,83 @@ function sfxAksi(t){
   else if(t.jenis==='audio') sfx('klik',titik);
 }
 
+/* ---------- LANGKAH KAKI — bunyi menurut permukaan yang dipijak ---------- */
+const LANGKAH={jarak:0, kiri:false};
+function permukaanPijak(obj){
+  let o=obj;
+  while(o&&o!==worldRoot){
+    if(o.userData.situs) return {rumput:'rumput',tanah:'tanah',kerikil:'kerikil',paving:'keras'}[(PROJECT.site||{}).tanah]||'keras';
+    if(o.userData.kind==='obj'){ const lv=PROJECT.levels[fpsLevelAt(FPS.feet)], ob=lv&&lv.objects.find(x=>x.id===o.userData.id);
+      if(ob&&ob.kind==='stair') return 'kayu';
+      if(ob&&ob.kind==='area'){ const j=ob.params.jenis; return j==='dek'?'kayu':j==='paving'?'keras':j==='kerikil'?'kerikil':j==='tanah'?'tanah':j==='rumput'?'rumput':'keras'; }
+      if(ob&&ob.kind==='garis'&&/^setapak/.test(ob.params.jenis||'')) return ob.params.jenis==='setapak_kerikil'?'kerikil':'keras'; }
+    o=o.parent;
+  }
+  const f=(PROJECT.finish||{}).floor; return f==='parket'?'kayu':'keras';
+}
+function bunyiLangkah(jenis,cepat){
+  if(!SFX.on) return;
+  const ctx=AUDIO.ctx; if(!ctx||ctx.state!=='running') return;
+  const t=ctx.currentTime+0.005, v=(cepat?1.25:1)*(0.85+Math.random()*0.3), d=ctx.createStereoPanner?ctx.createStereoPanner():null;
+  const keluar=d||AUDIO.master; if(d){ d.pan.value=LANGKAH.kiri?-0.18:0.18; d.connect(AUDIO.master); setTimeout(()=>{ try{ d.disconnect(); }catch(e){} },800); }
+  LANGKAH.kiri=!LANGKAH.kiri;
+  const filt=(tipe,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=tipe; b.frequency.value=f; if(q) b.Q.value=q; b.connect(keluar); return b; };
+  if(jenis==='keras'){                                    // ubin / beton: tumit lalu telapak
+    derau(ctx,t,0.03,envGain(ctx,filt('bandpass',2600,1.3),t,0.001,0.22*v,0.03));
+    derau(ctx,t+0.05,0.05,envGain(ctx,filt('bandpass',1400,1),t+0.05,0.003,0.12*v,0.05));
+    osc(ctx,'sine',140,t,t+0.08,envGain(ctx,keluar,t,0.002,0.12*v,0.06));
+  } else if(jenis==='kayu'){                              // papan kayu: dentum rendah
+    osc(ctx,'sine',95+Math.random()*20,t,t+0.14,envGain(ctx,keluar,t,0.002,0.32*v,0.12));
+    derau(ctx,t,0.06,envGain(ctx,filt('bandpass',900,1.2),t,0.002,0.16*v,0.06));
+  } else if(jenis==='rumput'){                            // daun rumput tersibak
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.14*v,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2); g.connect(filt('bandpass',2400,0.8));
+    derau(ctx,t,0.22,g); osc(ctx,'sine',80,t,t+0.08,envGain(ctx,keluar,t,0.004,0.08*v,0.07));
+  } else if(jenis==='kerikil'){                           // kerikil berderak
+    for(let i=0;i<7;i++){ const tt=t+i*0.018+Math.random()*0.012; derau(ctx,tt,0.012,envGain(ctx,filt('bandpass',2500+Math.random()*2500,2),tt,0.001,(0.1+Math.random()*0.12)*v,0.012)); }
+  } else {                                                // tanah: gedebuk tumpul
+    derau(ctx,t,0.09,envGain(ctx,filt('lowpass',500),t,0.004,0.3*v,0.08));
+  }
+}
+function stepLangkah(jarak,cepat,pijak){
+  LANGKAH.jarak+=jarak;
+  const langkah=cepat?0.95:0.72;
+  if(LANGKAH.jarak>=langkah){ LANGKAH.jarak-=langkah; bunyiLangkah(permukaanPijak(pijak),cepat); }
+}
+/* ---------- PERAPIAN — gemuruh lembut + letupan kayu, dari posisi apinya ---------- */
+const SUARA_API=new Map();
+function stepSuaraApi(dt){
+  const ctx=AUDIO.ctx;
+  const aktif = ctx && ctx.state==='running' && FPS.on && SFX.on;
+  const hidup=new Set();
+  if(aktif) for(const L of LAMPU_PASANG){
+    if(L.jenis!=='api'||MATI.has(L.id)) continue;
+    if(L.pos.distanceTo(camera.position)>14) continue;
+    hidup.add(L.id);
+    let S=SUARA_API.get(L.id);
+    if(!S){
+      const pan=ctx.createPanner(); pan.panningModel='HRTF'; pan.distanceModel='inverse'; pan.refDistance=1.2; pan.rolloffFactor=1.1;
+      pan.positionX ? (pan.positionX.value=L.pos.x, pan.positionY.value=L.pos.y, pan.positionZ.value=L.pos.z) : pan.setPosition(L.pos.x,L.pos.y,L.pos.z);
+      const bus=ctx.createGain(); bus.gain.setValueAtTime(0.0001,ctx.currentTime); bus.gain.exponentialRampToValueAtTime(1,ctx.currentTime+1.2); bus.connect(pan); pan.connect(AUDIO.master);
+      // gemuruh: derau merah (lowpass) yang diulang terus
+      const src=ctx.createBufferSource(); src.buffer=AUDIO.derau; src.loop=true;
+      const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=380; const g=ctx.createGain(); g.gain.value=0.09;
+      src.connect(lp); lp.connect(g); g.connect(bus); src.start();
+      S={pan,bus,src,t:0}; SUARA_API.set(L.id,S);
+    }
+    S.t-=dt;
+    if(S.t<=0){                                        // letupan acak, kadang beruntun
+      const n=Math.random()<0.25?2+((Math.random()*3)|0):1;
+      for(let i=0;i<n;i++){ const tt=ctx.currentTime+0.01+i*(0.02+Math.random()*0.05);
+        const hp=ctx.createBiquadFilter(); hp.type='bandpass'; hp.frequency.value=1800+Math.random()*3500; hp.Q.value=1.5; hp.connect(S.bus);
+        derau(ctx,tt,0.008+Math.random()*0.01,envGain(ctx,hp,tt,0.0006,0.12+Math.random()*0.35,0.008+Math.random()*0.02)); }
+      S.t=0.05+Math.random()*0.45;
+    }
+  }
+  for(const [id,S] of SUARA_API) if(!hidup.has(id)){        // padam, menjauh, atau keluar mode jalan
+    const t=ctx?ctx.currentTime:0; try{ S.bus.gain.cancelScheduledValues(t); S.bus.gain.setValueAtTime(Math.max(S.bus.gain.value,0.0001),t); S.bus.gain.exponentialRampToValueAtTime(0.0001,t+0.5); }catch(e){}
+    setTimeout(()=>{ try{ S.src.stop(); S.pan.disconnect(); }catch(e){} },700); SUARA_API.delete(id);
+  }
+}
 /* ---------- PIANO — tuts di layar / keyboard, bunyi piano sintesis di posisi pianonya ---------- */
 const PIANO={buka:false, grp:null, okt:60, lagu:null, tunda:[], tekan:new Map()};
 const LAGU_PIANO={
@@ -4975,13 +5076,14 @@ function pianoBus(){
     PIANO.bus=ctx.createGain(); PIANO.bus.gain.value=1.4; PIANO.bus.connect(PIANO.pan); PIANO.pan.connect(AUDIO.master);
     const kirim=ctx.createGain(); kirim.gain.value=0.35; PIANO.bus.connect(kirim); kirim.connect(AUDIO.gema);
   }
-  const p=pianoTitik()||camera.position;
+  // di mode jalan suara datang dari pianonya; di editor (kamera jauh) langsung di telinga
+  const p=(FPS.on&&pianoTitik())||camera.position;
   PIANO.pan.positionX ? (PIANO.pan.positionX.value=p.x, PIANO.pan.positionY.value=p.y, PIANO.pan.positionZ.value=p.z) : PIANO.pan.setPosition(p.x,p.y,p.z);
   return ctx;
 }
-function bunyiPiano(m,t,dur,v){
+function bunyiPiano(m,t,dur,v,tujuan){
   const ctx=pianoBus(); if(!ctx) return;
-  t=t||ctx.currentTime; const d=PIANO.bus;
+  t=t||ctx.currentTime; const d=tujuan||PIANO.bus;
   ALAT.piano(ctx,d,t,m,Math.max(dur||1.2,0.6),v||0.32);
   osc(ctx,'sine',mf(m)*3.01,t,t+0.4,envGain(ctx,d,t,0.002,(v||0.32)*0.12,0.35));   // dentang palu
 }
@@ -5002,6 +5104,7 @@ function gambarTuts(){
 }
 function bukaPiano(grp){
   PIANO.grp=grp||null; PIANO.buka=true;
+  const ctx=audioSiap(); if(ctx&&ctx.state!=='running') ctx.resume().catch(()=>{});
   $('#pianoPanel').hidden=false; gambarTuts(); pianoBus();
   if(FPS.on){ FPS.keys.clear(); FPS.move=null; if(document.exitPointerLock&&document.pointerLockElement) document.exitPointerLock(); }
   toast('🎹 Ketuk tuts, atau pakai keyboard: A S D F G H J K L (putih) · W E T Y U O P (hitam) · Z / X ganti oktaf');
@@ -5010,23 +5113,36 @@ function tutupPiano(){
   PIANO.buka=false; $('#pianoPanel').hidden=true; hentikanLaguPiano();
   if(FPS.on && !('ontouchstart' in window) && renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
 }
-function hentikanLaguPiano(){ for(const t of PIANO.tunda) clearTimeout(t); PIANO.tunda=[]; PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu';
-  if(PIANO.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; PIANO.bus.gain.cancelScheduledValues(t); PIANO.bus.gain.setValueAtTime(PIANO.bus.gain.value,t);
-    PIANO.bus.gain.linearRampToValueAtTime(0.0001,t+0.25); PIANO.bus.gain.linearRampToValueAtTime(1.4,t+0.3); } }
+/* lagu dijadwalkan bertahap (±0,35 detik ke depan) lewat jalur suaranya sendiri:
+   Berhenti memutus jalur itu, jadi not yang sudah terjadwal ikut diam seketika */
+function hentikanLaguPiano(){
+  const lg=PIANO.lagu; PIANO.lagu=null;
+  for(const t of PIANO.tunda) clearTimeout(t); PIANO.tunda=[];
+  if(lg){ clearInterval(lg.timer);
+    if(lg.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; lg.bus.gain.cancelScheduledValues(t); lg.bus.gain.setValueAtTime(lg.bus.gain.value,t); lg.bus.gain.linearRampToValueAtTime(0,t+0.05);
+      setTimeout(()=>{ try{ lg.bus.disconnect(); }catch(e){} },120); } }
+  document.querySelectorAll('#pianoKeys .pk.on').forEach(k=>k.classList.remove('on'));
+  $('#pianoMain').textContent='▶ Mainkan lagu';
+}
 function mainkanLaguPiano(kunci){
   hentikanLaguPiano();
   const L=LAGU_PIANO[kunci], ctx=pianoBus(); if(!L||!ctx) return;
-  PIANO.lagu=kunci; $('#pianoMain').textContent='■ Berhenti';
-  const spb=60/L.bpm, t0=ctx.currentTime+0.15; let b=0;
-  for(const [m,dur,iring] of L.n){
-    const t=t0+b*spb;
-    bunyiPiano(m,t,dur*spb*1.1,0.3);
-    if(iring) for(const x of iring) bunyiPiano(x,t,dur*spb*2,0.16);
-    const ms=(t-ctx.currentTime)*1000;
-    PIANO.tunda.push(setTimeout(()=>tandaiTuts(m,true),ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
-    b+=dur;
-  }
-  PIANO.tunda.push(setTimeout(()=>{ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; PIANO.tunda=[]; },(t0-ctx.currentTime+b*spb)*1000+300));
+  const bus=ctx.createGain(); bus.gain.value=1; bus.connect(PIANO.bus);
+  const lg={kunci, bus, timer:0}; PIANO.lagu=lg; $('#pianoMain').textContent='■ Berhenti';
+  const spb=60/L.bpm; let i=0, t=ctx.currentTime+0.15;
+  const jadwal=()=>{
+    if(PIANO.lagu!==lg) return;
+    while(i<L.n.length && t<ctx.currentTime+0.35){
+      const [m,dur,iring]=L.n[i];
+      bunyiPiano(m,t,dur*spb*1.1,0.3,bus);
+      if(iring) for(const x of iring) bunyiPiano(x,t,dur*spb*2,0.16,bus);
+      const ms=Math.max(0,(t-ctx.currentTime)*1000);
+      PIANO.tunda.push(setTimeout(()=>{ if(PIANO.lagu===lg) tandaiTuts(m,true); },ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
+      t+=dur*spb; i++;
+    }
+    if(i>=L.n.length && ctx.currentTime>t+0.2){ clearInterval(lg.timer); if(PIANO.lagu===lg){ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; } }
+  };
+  lg.timer=setInterval(jadwal,50); jadwal();
 }
 { const box=$('#pianoKeys');
   box.addEventListener('pointerdown',e=>{ const k=e.target.closest('.pk'); if(!k) return; e.preventDefault(); e.stopPropagation();
@@ -5075,7 +5191,15 @@ function kumpulkanAudio(){
   for(const id of [...AUDIO.main.keys()]) if(!AUDIO.grup.has(id)) hentikanMusik(id);   // alatnya dihapus
 }
 const audioRay=new THREE.Raycaster();
+function telingaIkutKamera(){
+  const L=AUDIO.ctx.listener, p=camera.position, f=new THREE.Vector3(); camera.getWorldDirection(f);
+  if(L.positionX){ L.positionX.value=p.x; L.positionY.value=p.y; L.positionZ.value=p.z;
+    L.forwardX.value=f.x; L.forwardY.value=f.y; L.forwardZ.value=f.z; L.upX.value=0; L.upY.value=1; L.upZ.value=0; }
+  else { L.setPosition(p.x,p.y,p.z); L.setOrientation(f.x,f.y,f.z,0,1,0); }
+}
 function stepAudio(dt){
+  if(AUDIO.ctx) telingaIkutKamera();                // piano, langkah, perapian juga butuh telinga di kamera
+  stepSuaraApi(dt);
   if(!AUDIO.grup.size) return;
   let gerak=false;
   for(const [id,info] of AUDIO.grup){
@@ -5093,11 +5217,7 @@ function stepAudio(dt){
   }
   if(gerak) bayangKotor();
   if(!AUDIO.ctx || !AUDIO.main.size) return;
-  // pendengar = kamera
-  const L=AUDIO.ctx.listener, p=camera.position, f=new THREE.Vector3(); camera.getWorldDirection(f);
-  if(L.positionX){ L.positionX.value=p.x; L.positionY.value=p.y; L.positionZ.value=p.z;
-    L.forwardX.value=f.x; L.forwardY.value=f.y; L.forwardZ.value=f.z; L.upX.value=0; L.upY.value=1; L.upZ.value=0; }
-  else { L.setPosition(p.x,p.y,p.z); L.setOrientation(f.x,f.y,f.z,0,1,0); }
+  const p=camera.position;
   // dinding di antara pendengar dan alat meredam suara (frekuensi tinggi dulu)
   AUDIO.occT-=dt; if(AUDIO.occT>0) return; AUDIO.occT=0.25;
   for(const [id,P] of AUDIO.main){
@@ -6307,7 +6427,8 @@ function labelSprite(teks,warna){
     mat=new THREE.SpriteMaterial({map:t, depthTest:false, sizeAttenuation:false, transparent:true});
     mat.userData.rasio=W/H; LABELCACHE.set(key,mat);
   }
-  const sp=new THREE.Sprite(mat), k=0.03*Math.tan(camera.fov/2*D2R)/Math.tan(22.5*D2R);
+  const sp=new THREE.Sprite(mat), k=camera.isOrthographicCamera ? 0.03/Math.tan(22.5*D2R)*camera.top/camera.zoom : 0.03*Math.tan(camera.fov/2*D2R)/Math.tan(22.5*D2R);
+  sp.userData.labelK=0.03/Math.tan(22.5*D2R);
   sp.scale.set(k*mat.userData.rasio,k,1); sp.renderOrder=21; sp.raycast=()=>{};
   return sp;
 }
@@ -6406,11 +6527,26 @@ function setView(k){
   for(const o of lv.objects){ x0=Math.min(x0,o.x); x1=Math.max(x1,o.x); z0=Math.min(z0,o.z); z1=Math.max(z1,o.z); }
   if(x0>x1){ x0=-5; x1=5; z0=-5; z1=5; }
   const cx=(x0+x1)/2, cz=(z0+z1)/2, ukuran=Math.max(x1-x0,z1-z0,4), el0=levelElevation(PROJECT.active);
-  const asp=Math.max(0.5,camera.aspect);
+  const asp=Math.max(0.5,viewport.clientWidth/Math.max(1,viewport.clientHeight));
   let fov=45, pos, tgt=new THREE.Vector3(cx,el0+1.0,cz);
+  const orto = k==='atas'||k==='depan'||k==='iso';
+  const hOrto0 = camera.isOrthographicCamera ? camera.top/camera.zoom : camera.position.distanceTo(orbit.target)*Math.tan(camera.fov/2*D2R);
+  pakaiKamera(orto);
+  if(orto){
+    // proyeksi paralel: jarak kamera tidak mengubah ukuran, bingkai dari tinggi frustum
+    const tinggi=PROJECT.levels.reduce((a,l)=>a+(l.height||3.2),0);
+    let arah, halfH;
+    if(k==='atas'){ arah=new THREE.Vector3(0,1,0.0001); tgt.y=el0; halfH=Math.max((z1-z0),(x1-x0)/asp)/2*1.18+0.6; }
+    else if(k==='depan'){ arah=new THREE.Vector3(0,0,1); tgt.set(cx,tinggi/2,cz); halfH=Math.max(tinggi+1,(x1-x0)/asp)/2*1.15+0.4; }
+    else { arah=new THREE.Vector3(1,0.82,1).normalize(); const r=0.5*Math.hypot(x1-x0,z1-z0)+1.2; halfH=Math.max(r*0.82,r/asp)*1.05; }
+    pos=tgt.clone().addScaledVector(arah,60);
+    camera.zoom=1;
+    VIEW.anim={t:0,p0:camera.position.clone(),t0:orbit.target.clone(),p1:pos,t1:tgt,h0:Math.max(0.5,hOrto0),h1:halfH};
+    VIEW.cur=k; $$('#viewbar button').forEach(b=>b.classList.toggle('active',b.dataset.view===k));
+    return;
+  }
   const mata = k==='mata' ? pandanganMata(lv) : null;
   if(mata){ fov=60; pos=mata.pos; tgt=mata.tgt; }
-  else if(k==='atas'){ fov=28; const d=(ukuran*1.2)/(2*Math.tan(fov/2*D2R))/Math.min(1,asp)+2; pos=new THREE.Vector3(cx,el0+d,cz+0.001); tgt.y=el0; }
   else {
     // bola pembungkus bangunan dibingkai utuh, arah pandang miring standar
     const r=0.5*Math.hypot(x1-x0,z1-z0)+1.2, d=r/Math.sin(fov/2*D2R)/Math.min(1,asp)*0.92;
@@ -6424,7 +6560,8 @@ function stepView(dt){
   const a=VIEW.anim; if(!a) return;
   a.t=Math.min(1,a.t+dt/0.45); const e=a.t<0.5?2*a.t*a.t:1-Math.pow(-2*a.t+2,2)/2;
   camera.position.lerpVectors(a.p0,a.p1,e); orbit.target.lerpVectors(a.t0,a.t1,e);
-  camera.fov=a.f0+(a.f1-a.f0)*e; camera.updateProjectionMatrix();
+  if(a.h1!=null){ if(camera.isOrthographicCamera) aturOrto(a.h0+(a.h1-a.h0)*e); }
+  else if(camera.isPerspectiveCamera){ camera.fov=a.f0+(a.f1-a.f0)*e; camera.updateProjectionMatrix(); }
   if(a.t>=1){ VIEW.anim=null; rebuildDims(); }
 }
 $$('#viewbar button').forEach(b=>b.onclick=()=>setView(b.dataset.view));
@@ -10433,7 +10570,7 @@ scene.add(kubahLangit);
 function terapkanLangit(){
   if(FPS.on){ const s=SUASANA[MOOD]; isiLangit(kubahLangit.material.uniforms,MOOD,false); kubahLangit.visible=true;
     scene.background=new THREE.Color(s.langit[1]); scene.fog=new THREE.Fog(s.kabut[0],s.kabut[1],s.kabut[2]); }
-  else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=new THREE.Fog(0x0e0e11,70,190); }
+  else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=camera.isOrthographicCamera?null:new THREE.Fog(0x0e0e11,70,190); }
 }
 function setSuasana(k){
   const s=SUASANA[k]||SUASANA.siang; MOOD=SUASANA[k]?k:'siang';
@@ -10703,6 +10840,7 @@ function fpsGround(px,pz,feetY){
     while(o && o!==worldRoot){ if(!o.visible){ tampak=false; break; } if(o.userData.perabot) perabot=true; o=o.parent; }
     if(!tampak) continue;                          // lantai yang disembunyikan tidak dipijak
     if(perabot) continue;                          // sofa, meja, karpet: dilewati, bukan dinaiki
+    FPS.pijak=h.object;
     return h.point.y;
   }
   return null;
@@ -10776,6 +10914,8 @@ function fpsStep(dt){
   const tanah=levelElevation(0);
   if(FPS.feet<tanah){ FPS.feet=tanah; FPS.vy=0; }
 
+  { const dj=Math.hypot(px-camera.position.x,pz-camera.position.z);
+    if(dj>1e-4 && FPS.vy===0) stepLangkah(dj,FPS.keys.has('shift'),FPS.pijak); }
   camera.position.set(px, FPS.feet+FPS.eye, pz);
   stepBidik(dt);
   const lv=PROJECT.levels[fpsLevelAt(FPS.feet)];
@@ -10862,7 +11002,8 @@ function enterFPS(){
   if(FPS.on) return;
   const lv=L();
   if(!lv.walls.length) return toast('Belum ada ruangan untuk dijelajahi.');
-  FPS.save={pos:camera.position.clone(), target:orbit.target.clone(), tool:TOOL};
+  FPS.save={pos:camera.position.clone(), target:orbit.target.clone(), tool:TOOL, orto:camera.isOrthographicCamera, view:VIEW.cur, ortoTop:kameraOrto.top, ortoZoom:kameraOrto.zoom};
+  if(camera.isOrthographicCamera){ pakaiKamera(false); camera.fov=45; camera.updateProjectionMatrix(); }
   // berdiri di tengah denah lantai aktif
   let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
   for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2);
@@ -10886,6 +11027,7 @@ function enterFPS(){
   if(g!=null && Math.abs(g-FPS.feet)<1.5) FPS.feet=g;
   camera.position.set(px,FPS.feet+FPS.eye,pz);
   FPS.fovEditor=camera.fov; camera.fov=FPS.fov; camera.updateProjectionMatrix();
+  if(SFX.on){ const c=audioSiap(); if(c&&c.state!=='running') c.resume().catch(()=>{}); }   // ketukan tombol Walk = gestur sah iOS: langkah & perapian langsung bersuara
   FPS.on=true; FPS.paused=false;
   rebuildScene();                            // semua lantai jadi padat
   terapkanLangit();
@@ -10917,7 +11059,7 @@ function exitFPS(){
   if(document.exitPointerLock) document.exitPointerLock();
   orbit.enabled=true;
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
-  if(FPS.save){ camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); orbit.update(); }
+  if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
   $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   $('#levelbar').hidden=false;
   viewport.style.cursor='';
