@@ -4938,15 +4938,26 @@ function sfx(jenis,titik){
     osc(ctx,'square',2200,t,t+0.03,envGain(ctx,d,t,0.0005,0.08,0.02));
     derau(ctx,t+0.045,0.01,envGain(ctx,hp,t+0.045,0.0008,0.22,0.01));
   } else if(jenis==='pintuBuka'||jenis==='pintuTutup'){
-    const lp=filt('lowpass',900); lp.connect(d);
-    const bpK=filt('bandpass',2400,2); bpK.connect(d); derau(ctx,t,0.05,envGain(ctx,bpK,t,0.001,0.25,0.04));   // klik gagang
-    if(jenis==='pintuBuka'){                                  // derit engsel
-      const bp=filt('bandpass',700,9); bp.connect(d);
-      const o=osc(ctx,'sawtooth',150,t+0.08,t+0.7,envGain(ctx,bp,t+0.08,0.08,0.18,0.55));
-      o.frequency.setValueAtTime(150,t+0.08); o.frequency.linearRampToValueAtTime(115,t+0.6);
-    } else {                                                  // bantingan daun pintu
-      osc(ctx,'sine',85,t+0.03,t+0.35,envGain(ctx,d,t+0.03,0.003,0.9,0.28));
-      derau(ctx,t+0.03,0.12,envGain(ctx,lp,t+0.03,0.002,0.6,0.12));
+    // gagang: dua ketukan logam kecil (lidah kunci masuk/keluar), lembut
+    const gagang=(tt,k)=>{ const bp=filt('bandpass',3200,4); bp.connect(d); derau(ctx,tt,0.012,envGain(ctx,bp,tt,0.0008,0.09*k,0.012));
+      osc(ctx,'sine',1850,tt,tt+0.05,envGain(ctx,d,tt,0.0008,0.025*k,0.04)); };
+    if(jenis==='pintuBuka'){
+      gagang(t,1); gagang(t+0.07,0.7);
+      // ayunan daun: desir udara + derit engsel halus (sinus bergetar, bukan gergaji)
+      const lp=filt('bandpass',500,0.7); lp.connect(d);
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t+0.1); g.gain.exponentialRampToValueAtTime(0.05,t+0.35); g.gain.exponentialRampToValueAtTime(0.0001,t+0.9); g.connect(lp); derau(ctx,t+0.1,0.85,g);
+      const dr=ctx.createGain(); dr.gain.setValueAtTime(0.0001,t+0.15); dr.gain.exponentialRampToValueAtTime(0.018,t+0.3); dr.gain.exponentialRampToValueAtTime(0.0001,t+0.7); dr.connect(d);
+      const o=osc(ctx,'triangle',520,t+0.15,t+0.72,dr); o.frequency.setValueAtTime(520,t+0.15); o.frequency.linearRampToValueAtTime(610,t+0.5); o.frequency.linearRampToValueAtTime(560,t+0.7);
+      const vib=ctx.createOscillator(), vg=ctx.createGain(); vib.frequency.value=23; vg.gain.value=14; vib.connect(vg); vg.connect(o.frequency); vib.start(t+0.15); vib.stop(t+0.72);
+    } else {
+      // daun menutup: desir singkat, benturan kayu teredam ke kusen, lalu lidah kunci
+      const lp=filt('bandpass',450,0.7); lp.connect(d);
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.04,t+0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+0.32); g.connect(lp); derau(ctx,t,0.34,g);
+      const tb=t+0.3, kayu=filt('lowpass',650); kayu.connect(d);
+      osc(ctx,'sine',110,tb,tb+0.22,envGain(ctx,d,tb,0.004,0.32,0.18));
+      osc(ctx,'sine',185,tb,tb+0.12,envGain(ctx,d,tb,0.003,0.12,0.09));
+      derau(ctx,tb,0.08,envGain(ctx,kayu,tb,0.002,0.22,0.07));
+      gagang(tb+0.02,0.8);
     }
   } else if(jenis==='gorden'){                                // kain bergeser
     const bp=filt('bandpass',3200,0.7); bp.connect(d);
@@ -4994,24 +5005,30 @@ function permukaanPijak(obj){
 function bunyiLangkah(jenis,cepat){
   if(!SFX.on) return;
   const ctx=AUDIO.ctx; if(!ctx||ctx.state!=='running') return;
-  const t=ctx.currentTime+0.005, v=(cepat?1.25:1)*(0.85+Math.random()*0.3), d=ctx.createStereoPanner?ctx.createStereoPanner():null;
-  const keluar=d||AUDIO.master; if(d){ d.pan.value=LANGKAH.kiri?-0.18:0.18; d.connect(AUDIO.master); setTimeout(()=>{ try{ d.disconnect(); }catch(e){} },800); }
+  // langkah dibuat lembut: lebih pelan, tanpa klik tajam, lewat lowpass yang memotong desis tinggi
+  const t=ctx.currentTime+0.005, v=0.55*(cepat?1.2:1)*(0.85+Math.random()*0.3);
+  const lembut=ctx.createBiquadFilter(); lembut.type='lowpass'; lembut.frequency.value=jenis==='kerikil'?3800:jenis==='rumput'?2600:1600; lembut.Q.value=0.5;
+  const d=ctx.createStereoPanner?ctx.createStereoPanner():null;
+  if(d){ d.pan.value=LANGKAH.kiri?-0.12:0.12; lembut.connect(d); d.connect(AUDIO.master); } else lembut.connect(AUDIO.master);
+  setTimeout(()=>{ try{ lembut.disconnect(); if(d) d.disconnect(); }catch(e){} },900);
   LANGKAH.kiri=!LANGKAH.kiri;
+  const keluar=lembut;
   const filt=(tipe,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=tipe; b.frequency.value=f; if(q) b.Q.value=q; b.connect(keluar); return b; };
-  if(jenis==='keras'){                                    // ubin / beton: tumit lalu telapak
-    derau(ctx,t,0.03,envGain(ctx,filt('bandpass',2600,1.3),t,0.001,0.22*v,0.03));
-    derau(ctx,t+0.05,0.05,envGain(ctx,filt('bandpass',1400,1),t+0.05,0.003,0.12*v,0.05));
-    osc(ctx,'sine',140,t,t+0.08,envGain(ctx,keluar,t,0.002,0.12*v,0.06));
+  const lembutEnv=(dest,tt,a,p,l)=>envGain(ctx,dest,tt,a,p,l);
+  if(jenis==='keras'){                                    // ubin / beton: tumit lalu telapak, teredam
+    derau(ctx,t,0.05,lembutEnv(filt('bandpass',900,0.9),t,0.004,0.09*v,0.05));
+    derau(ctx,t+0.06,0.06,lembutEnv(filt('bandpass',600,0.8),t+0.06,0.008,0.05*v,0.06));
+    osc(ctx,'sine',95,t,t+0.1,lembutEnv(keluar,t,0.004,0.09*v,0.08));
   } else if(jenis==='kayu'){                              // papan kayu: dentum rendah
-    osc(ctx,'sine',95+Math.random()*20,t,t+0.14,envGain(ctx,keluar,t,0.002,0.32*v,0.12));
-    derau(ctx,t,0.06,envGain(ctx,filt('bandpass',900,1.2),t,0.002,0.16*v,0.06));
-  } else if(jenis==='rumput'){                            // daun rumput tersibak
-    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.14*v,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2); g.connect(filt('bandpass',2400,0.8));
-    derau(ctx,t,0.22,g); osc(ctx,'sine',80,t,t+0.08,envGain(ctx,keluar,t,0.004,0.08*v,0.07));
-  } else if(jenis==='kerikil'){                           // kerikil berderak
-    for(let i=0;i<7;i++){ const tt=t+i*0.018+Math.random()*0.012; derau(ctx,tt,0.012,envGain(ctx,filt('bandpass',2500+Math.random()*2500,2),tt,0.001,(0.1+Math.random()*0.12)*v,0.012)); }
+    osc(ctx,'sine',85+Math.random()*15,t,t+0.16,lembutEnv(keluar,t,0.005,0.16*v,0.14));
+    derau(ctx,t,0.06,lembutEnv(filt('bandpass',500,1),t,0.004,0.06*v,0.06));
+  } else if(jenis==='rumput'){                            // rumput tersibak
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.07*v,t+0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22); g.connect(filt('bandpass',1700,0.7));
+    derau(ctx,t,0.24,g); osc(ctx,'sine',70,t,t+0.08,lembutEnv(keluar,t,0.006,0.05*v,0.07));
+  } else if(jenis==='kerikil'){                           // kerikil berderak, halus
+    for(let i=0;i<6;i++){ const tt=t+i*0.02+Math.random()*0.012; derau(ctx,tt,0.014,lembutEnv(filt('bandpass',1800+Math.random()*1600,1.5),tt,0.002,(0.04+Math.random()*0.05)*v,0.014)); }
   } else {                                                // tanah: gedebuk tumpul
-    derau(ctx,t,0.09,envGain(ctx,filt('lowpass',500),t,0.004,0.3*v,0.08));
+    derau(ctx,t,0.09,lembutEnv(filt('lowpass',380),t,0.006,0.16*v,0.08));
   }
 }
 function stepLangkah(jarak,cepat,pijak){
@@ -6590,6 +6607,7 @@ const VT_NAMA=m=>m.kind==='void'?'void':m.kind==='area'?(JENIS_AREA[m.type]||'ar
 function mulaiTraceVoid(gantiId){ mulaiTrace({kind:'void'},gantiId); }
 function mulaiTrace(mode,gantiId){
   if(FPS.on) return;
+  akhiriTrace();                                   // tracing sebelumnya (dan alas denahnya) dibersihkan dulu
   VT.mode=mode||{kind:'void'};
   VT.pts=[]; VT.ganti=gantiId||null;
   if(!VT.grp.parent) helperRoot.add(VT.grp);
@@ -6602,7 +6620,7 @@ function mulaiTrace(mode,gantiId){
     const m=new THREE.Mesh(new THREE.PlaneGeometry(pl.w/pxm,pl.h/pxm),
       new THREE.MeshBasicMaterial({map:tex, transparent:true, opacity:0.55, depthWrite:false, toneMapped:false}));
     m.rotation.x=-Math.PI/2; m.position.set(pl.dx||0, levelElevation(PROJECT.active)+0.012, pl.dz||0);
-    m.renderOrder=24; m.userData.noExport=true; m.raycast=()=>{};
+    m.renderOrder=24; m.userData.noExport=true; m.userData.alasDenah=true; m.raycast=()=>{};
     VT.alas=m; helperRoot.add(m);
   }
   setView('atas');
@@ -6614,7 +6632,9 @@ function mulaiTrace(mode,gantiId){
 function akhiriTrace(){
   VT.pts=[]; VT.ganti=null;
   while(VT.grp.children.length){ const c=VT.grp.children.pop(); c.geometry&&c.geometry.dispose(); }
-  if(VT.alas){ helperRoot.remove(VT.alas); VT.alas.geometry.dispose(); VT.alas.material.map.dispose(); VT.alas.material.dispose(); VT.alas=null; }
+  // semua alas denah dibuang — termasuk yang tertinggal saat tracing dimulai ulang sebelum selesai
+  for(const m of helperRoot.children.filter(c=>c.userData.alasDenah)){ helperRoot.remove(m); m.geometry.dispose(); if(m.material.map) m.material.map.dispose(); m.material.dispose(); }
+  VT.alas=null;
   $('#traceBar').hidden=true;
 }
 function titikTrace(e){
@@ -10072,7 +10092,9 @@ $('#autoCal').addEventListener('change',e=>{ $('#manual-cal').hidden=e.target.ch
 /* ======================================================================
    UI — LANTAI
    ====================================================================== */
+function lepasTraceLantai(){ if(TOOL==='voidTrace') setTool('select'); else akhiriTrace(); }   // tracing (dan alasnya) milik lantai sebelumnya
 function setActiveLevel(i){
+  lepasTraceLantai();
   PROJECT.active=clamp(i,0,PROJECT.levels.length-1);
   SEL=null;
   renderLevels(); rebuildScene();
@@ -10104,6 +10126,7 @@ function renderLevels(){
   const del=el('button','btn sm danger','Hapus Lantai Ini');
   del.onclick=()=>{
     if(PROJECT.levels.length<2) return toast('Minimal harus ada satu lantai.');
+    lepasTraceLantai();
     PROJECT.levels.splice(PROJECT.active,1);
     PROJECT.active=clamp(PROJECT.active,0,PROJECT.levels.length-1);
     SEL=null; HIST.label='Hapus lantai'; renderLevels(); rebuildScene();
@@ -10122,6 +10145,7 @@ function renderLevels(){
   syncPlanPanel();
 }
 function addLevel(copy){
+  lepasTraceLantai();
   const src=L();
   const lv=newLevel('Lantai '+(PROJECT.levels.length+1), src?src.height:3.2);
   if(copy&&src){
