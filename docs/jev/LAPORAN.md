@@ -5,13 +5,14 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 31 GO · 3 DEFER · 5 NO-GO dari 39 item.
+**Ringkasan:** 32 GO · 3 DEFER · 5 NO-GO dari 40 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-052 | Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) | terkirim | 0.65 | 61,4 jt | 1,7 jt | 73.5× | 36.2× | 0.3 bln | 14 | **GO** |
 | JEV-056 | Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model | terkirim | 0.65 | 65,5 jt | 2 jt | 66.2× | 32.6× | 0.3 bln | 15 | **GO** |
 | JEV-055 | Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model | terkirim | 0.60 | 28,4 jt | 0,9 jt | 62.0× | 30.5× | 0.3 bln | 16 | **GO** |
+| JEV-057 | Redesign UI/UX: kartu Mulai + rumah contoh, tab berikon (Tampilan terpisah), toolbar berlabel + menu Lainnya, pencarian furnitur, target sentuh ≥ 44 px | terkirim | 0.60 | 44,6 jt | 1,5 jt | 58.4× | 28.7× | 0.3 bln | 17 | **GO** |
 | JEV-053 | Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah | terkirim | 0.65 | 30,7 jt | 1,2 jt | 50.2× | 24.6× | 0.4 bln | 20 | **GO** |
 | JEV-045 | RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan) | usulan | 0.45 | 309,8 jt | 12,8 jt | 47.6× | 23.3× | 0.4 bln | 21 | **DEFER** |
 | JEV-044 | Tekstur PBR foto untuk dinding & lantai (CC0) | usulan | 0.55 | 60,6 jt | 3 jt | 39.4× | 19.2× | 0.5 bln | 25 | **GO** |
@@ -56,6 +57,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-052 Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) — GO.** ROI 73.5× ≥ 1, payback 0.3 bln.
 - **JEV-056 Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model — GO.** ROI 66.2× ≥ 1, payback 0.3 bln.
 - **JEV-055 Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model — GO.** ROI 62.0× ≥ 1, payback 0.3 bln.
+- **JEV-057 Redesign UI/UX: kartu Mulai + rumah contoh, tab berikon (Tampilan terpisah), toolbar berlabel + menu Lainnya, pencarian furnitur, target sentuh ≥ 44 px — GO.** ROI 58.4× ≥ 1, payback 0.3 bln.
 - **JEV-053 Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah — GO.** ROI 50.2× ≥ 1, payback 0.4 bln.
 - **JEV-045 RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan) — DEFER.** ROI 47.6× menjanjikan, tetapi biaya 12,8 jt > 10 jt dengan bukti "anekdot" — validasi murah dulu (wawancara/prototipe) hingga bukti ≥ uji-pengguna. _Hipotesis ROI tertinggi di backlog — validasi dengan 5 wawancara arsitek/kontraktor sebelum dibangun (naikkan bukti ke uji-pengguna)._
 - **JEV-044 Tekstur PBR foto untuk dinding & lantai (CC0) — GO.** ROI 39.4× ≥ 1, payback 0.5 bln.

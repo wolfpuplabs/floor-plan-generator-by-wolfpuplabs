@@ -250,6 +250,83 @@ details#adv>*:not(summary){margin-bottom:8px}
 #fpsKnob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(78,201,176,.5);border:1px solid rgba(78,201,176,.8)}
 #app.nosidebar #sidebar{display:none}
 #toolbar button.on{background:#2a3d39;color:var(--accent)}
+/* ---------- TAMPILAN BARU (JEV-057): lebih lega, berlabel, ramah sentuh ----------
+   Huruf dasar 14 px, tab berikon, judul bagian tanpa huruf kapital semua (lebih
+   mudah dibaca), tombol utama ≥ 40 px, cincin fokus untuk keyboard. */
+:root{--panel:#18181d;--panel2:#202027;--line:#30303a;--txt:#ececf1;--muted:#a6a6b3}
+body{font-size:14px}
+#sidebar{width:368px;min-width:368px}
+#sidebar header{padding:16px 18px 12px}
+#sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
+#sidebar header p{font-size:.78rem}
+.tabs{padding:6px;gap:4px;background:var(--panel);border-bottom:1px solid var(--line)}
+.tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;border-radius:9px;border-bottom:none;text-transform:none;letter-spacing:0;font-size:.74rem;font-weight:600}
+.tabs button .ti{font-size:1.15rem;line-height:1}
+.tabs button.active{background:#1f2f2c;color:var(--accent);border-bottom:none}
+.tab-body{padding:16px 18px 40px;gap:12px}
+.section-title{text-transform:none;letter-spacing:.1px;font-size:.9rem;font-weight:700;color:var(--txt);border-bottom:none;padding-bottom:0;margin-top:12px;display:flex;align-items:center;gap:8px}
+.section-title .no{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#06201b;font-size:.76rem;font-weight:800;align-items:center;justify-content:center;flex:none}
+.group>label{font-size:.8rem}
+.hint{font-size:.78rem;line-height:1.5}
+.chk{font-size:.84rem}
+button.btn{text-transform:none;letter-spacing:.1px;font-size:.88rem;border-radius:9px;min-height:42px}
+button.btn.sm{font-size:.8rem;min-height:36px;border-radius:8px;padding:7px 10px}
+input[type=text],input[type=number],input[type=search],select,input[type=file]{border-radius:8px;min-height:38px;font-size:.86rem}
+input[type=search]{background:#212128;color:var(--txt);border:1px solid var(--line);padding:7px 10px;width:100%;font-family:inherit;outline:none}
+input[type=search]:focus{border-color:var(--accent)}
+.cat-item{font-size:.7rem;border-radius:9px;min-height:44px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.info>summary{cursor:pointer;font-size:.8rem;color:var(--accent);list-style:none;padding:2px 0}
+details.info>summary::-webkit-details-marker{display:none}
+details.info>summary::before{content:'ⓘ  ';}
+details.info[open]>summary{margin-bottom:6px}
+/* tombol utama tetap terlihat saat panel digulir */
+.cta-lekat{position:sticky;bottom:-40px;z-index:3;display:flex;flex-direction:column;gap:6px;margin:0 -18px;padding:12px 18px 14px;background:linear-gradient(to top,var(--panel) 78%,rgba(24,24,29,0))}
+.cta-lekat #generateBtn{min-height:48px;font-size:.95rem;background:linear-gradient(135deg,#1aa58b,#0e8ecf)}
+/* toolbar: ikon di atas label kecil — tetap terbaca tanpa tooltip */
+#toolbar{padding:5px;gap:2px;border-radius:12px}
+#toolbar button{flex-direction:column;justify-content:center;gap:2px;min-width:52px;min-height:48px;padding:6px 6px 5px;border-radius:9px}
+#toolbar .ic{font-size:1.05rem}
+#toolbar .lb{font-size:.62rem;font-weight:600;line-height:1}
+#viewport.sempit #toolbar .lb{display:block}
+#viewport.sempit #toolbar button{padding:6px 5px 5px}
+#viewport.rapat #toolbar button{min-width:46px;padding:6px 3px 5px}
+#undoBtn,#redoBtn{font-size:inherit;padding:6px 6px 5px}
+#toolbar button.on{background:#2a3d39;color:var(--accent)}
+#toolMenu{z-index:42;display:flex;flex-direction:column;gap:2px;padding:6px;min-width:250px;border-radius:12px}
+#toolMenu[hidden]{display:none}
+#toolMenu button{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--txt);padding:10px 12px;border-radius:8px;font:inherit;font-size:.86rem;text-align:left;cursor:pointer;min-height:44px}
+#toolMenu button:hover{background:#2a2a33}
+#toolMenu button.active,#toolMenu button.on{color:var(--accent);background:#1f2f2c}
+#toolMenu .ic{width:22px;text-align:center;font-size:1rem}
+#toolMenu .lb{flex:1}
+#toolMenu kbd{background:#2a2a33;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:600 .66rem/1.4 inherit;color:var(--muted)}
+#toolMenu .sep{height:1px;background:var(--line);margin:4px 6px}
+/* kartu Mulai pada layar kosong */
+#mulaiKartu{left:50%;top:50%;transform:translate(-50%,-50%);z-index:25;width:min(620px,calc(100% - 32px));padding:22px 22px 18px;border-radius:16px}
+#mulaiKartu h2{font-size:1.2rem;margin-bottom:4px}
+#mulaiKartu>p{color:var(--muted);font-size:.86rem;margin-bottom:14px}
+.mulai-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.mulai-grid button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--txt);font:inherit;cursor:pointer;min-height:96px}
+.mulai-grid button:hover{border-color:var(--accent);background:#1f2a29}
+.mulai-grid .mi{font-size:1.5rem}
+.mulai-grid b{font-size:.95rem}
+.mulai-grid small{color:var(--muted);font-size:.76rem;line-height:1.35}
+#mulaiContoh{border-color:#2f6b60}
+.mulai-tutup{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;width:36px;height:36px;border-radius:8px}
+.mulai-tutup:hover{background:#2a2a33;color:var(--txt)}
+@media (max-width:520px){ .mulai-grid{grid-template-columns:1fr} }
+.panduan{margin:0 0 4px 18px;display:flex;flex-direction:column;gap:6px;font-size:.82rem;line-height:1.45;color:var(--txt)}
+.panduan b{color:var(--accent)}
+#viewbar button{min-height:36px;padding:6px 11px;font-size:.74rem}
+#hint{font-size:.78rem}
+@media (pointer:coarse){
+  #toolbar button{min-height:50px}
+  #viewbar button,#levelbar button{min-height:44px;min-width:44px}
+  .cat-item{min-height:52px}
+  .f-row input,.f-row select{min-height:40px}
+}
+@media (max-width:900px){ #sidebar{width:min(368px,88vw);min-width:0} }
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -270,22 +347,23 @@ details#adv>*:not(summary){margin-bottom:8px}
   <aside id="sidebar">
     <header>
       <h1>Arsitek 3D</h1>
-      <p>Denah 2D → dinding vektor, multi-lantai, tangga & furnitur</p>
+      <p>Denah 2D jadi rumah 3D — siap ditata &amp; dijelajahi</p>
     </header>
-    <nav class="tabs">
-      <button data-tab="plan" class="active">Denah</button>
-      <button data-tab="levels">Lantai</button>
-      <button data-tab="objects">Objek</button>
-      <button data-tab="file">File</button>
+    <nav class="tabs" role="tablist" aria-label="Panel">
+      <button data-tab="plan" class="active" role="tab"><span class="ti" aria-hidden="true">📐</span>Denah</button>
+      <button data-tab="levels" role="tab"><span class="ti" aria-hidden="true">🏢</span>Lantai</button>
+      <button data-tab="objects" role="tab"><span class="ti" aria-hidden="true">🛋</span>Objek</button>
+      <button data-tab="tampilan" role="tab"><span class="ti" aria-hidden="true">🎨</span>Tampilan</button>
+      <button data-tab="file" role="tab"><span class="ti" aria-hidden="true">💾</span>File</button>
     </nav>
 
     <!-- ============ TAB DENAH ============ -->
     <div class="tab-body" data-panel="plan">
-      <div class="section-title">Layer denah per lantai</div>
+      <div class="section-title"><span class="no">1</span>Unggah gambar denah</div>
       <div id="plan-layers"></div>
-      <p class="hint">Tiap lantai punya gambar denahnya sendiri. Pilih lantai di atas, lalu upload denahnya — lantai 2 boleh desain yang berbeda dari lantai 1.</p>
+      <details class="info"><summary>Punya lebih dari satu lantai?</summary><p class="hint">Tiap lantai punya gambar denahnya sendiri. Pilih lantai di atas, lalu unggah denahnya — lantai 2 boleh desain yang berbeda dari lantai 1.</p></details>
       <div class="group">
-        <label>1. Upload gambar denah untuk <b id="plan-lvname">Lantai 1</b></label>
+        <label>Gambar denah untuk <b id="plan-lvname">Lantai 1</b> (foto, PNG, JPG)</label>
         <input type="file" id="upload" accept="image/*">
         <input type="file" id="uploadNew" accept="image/*" hidden>
       </div>
@@ -297,7 +375,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       </div>
       <label class="chk"><input type="checkbox" id="showBelow" checked><span>Tampilkan dinding lantai bawah di pratinjau</span></label>
 
-      <div class="section-title">2. Skala Denah</div>
+      <div class="section-title"><span class="no">2</span>Atur skala</div>
       <div class="group">
         <label>Lebar bangunan (angka dimensi di denah)</label>
         <div class="row">
@@ -308,11 +386,12 @@ details#adv>*:not(summary){margin-bottom:8px}
           </select>
         </div>
         <span class="val" id="pxm-val">– px/m</span>
-        <p class="hint">Isi lebar <b>bangunannya</b>, bukan lebar berkas gambar — margin kosong di sekitar denah diabaikan sendiri. Ambil dari garis dimensi terluar, misalnya 40'. Skala ini menentukan tebal dinding, lebar pintu, dan ukuran ruang.</p>
+        <details class="info"><summary>Lebar yang mana?</summary><p class="hint">Isi lebar <b>bangunannya</b>, bukan lebar berkas gambar — margin kosong di sekitar denah diabaikan sendiri. Ambil dari garis dimensi terluar, misalnya 40'. Skala ini menentukan tebal dinding, lebar pintu, dan ukuran ruang.</p></details>
       </div>
 
-      <div class="section-title">3. Deteksi Otomatis</div>
-      <p class="hint" id="cal-info">Mengikuti kaidah gambar kerja: <b>semua garis tebal dibaca sebagai dinding</b> — termasuk sekat tipis, dinding lengkung, dan dinding kaca — blok masif kecil sebagai <b>kolom</b>, dan garis tipis sebagai <b>simbol</b>: busur ayun pintu, kaca jendela, pintu geser, tangga (lurus, L, U, berputar, lengkung, putar; arah naik dari panah), perabot sanitair, serta <b>perabot</b> (ranjang, nakas, sofa, kursi, meja makan, meja tamu, island, deret dapur, lemari, mesin cuci) yang langsung dipasang 3D sesuai ukuran &amp; arahnya. Arsiran, garis as/grid, dan balok putus-putus diabaikan. Ambang hitam, tebal dinding, dan pelurusan siku dihitung sendiri dari gambarnya. Tidak ada yang perlu disetel.</p>
+      <div class="section-title"><span class="no">3</span>Deteksi otomatis</div>
+      <p class="hint">Dinding, pintu, jendela, tangga, dan perabot dibaca sendiri dari gambar — tidak ada yang perlu disetel.</p>
+      <details class="info"><summary>Apa saja yang dibaca?</summary><p class="hint" id="cal-info">Mengikuti kaidah gambar kerja: <b>semua garis tebal dibaca sebagai dinding</b> — termasuk sekat tipis, dinding lengkung, dan dinding kaca — blok masif kecil sebagai <b>kolom</b>, dan garis tipis sebagai <b>simbol</b>: busur ayun pintu, kaca jendela, pintu geser, tangga (lurus, L, U, berputar, lengkung, putar; arah naik dari panah), perabot sanitair, serta <b>perabot</b> (ranjang, nakas, sofa, kursi, meja makan, meja tamu, island, deret dapur, lemari, mesin cuci) yang langsung dipasang 3D sesuai ukuran &amp; arahnya. Arsiran, garis as/grid, dan balok putus-putus diabaikan. Ambang hitam, tebal dinding, dan pelurusan siku dihitung sendiri dari gambarnya. Tidak ada yang perlu disetel.</p></details>
       <label class="chk"><input type="checkbox" id="showOverlay" checked><span>Tampilkan overlay hasil deteksi</span></label>
       <details id="symref">
         <summary>Referensi simbol yang dikenali</summary>
@@ -355,7 +434,7 @@ details#adv>*:not(summary){margin-bottom:8px}
         <label class="chk"><input type="checkbox" id="doHeal" checked><span>Rapikan sambungan (L / T / X)</span></label>
       </details>
 
-      <div class="section-title">4. Standar Bangunan</div>
+      <div class="section-title"><span class="no">4</span>Standar bangunan</div>
       <div class="group">
         <label>Tinggi lantai ke lantai (m)</label>
         <div class="row">
@@ -378,11 +457,13 @@ details#adv>*:not(summary){margin-bottom:8px}
           <option value="longgar">Longgar — ikut tebakan lemah</option>
         </select>
       </div>
-      <button class="btn" id="generateBtn">Generate Dinding 3D</button>
-      <button class="btn ghost sm" id="generateNewBtn">Generate ke lantai baru</button>
+      <div class="cta-lekat">
+        <button class="btn" id="generateBtn">✨ Buat dinding 3D</button>
+        <button class="btn ghost sm" id="generateNewBtn">Buat ke lantai baru</button>
+      </div>
       <div id="stats">Belum ada denah diproses.</div>
 
-      <div class="section-title">5. Posisi Lantai Ini</div>
+      <div class="section-title"><span class="no">5</span>Rapikan posisi lantai</div>
       <p class="hint">Geser seluruh dinding, bukaan, dan objek lantai aktif bila belum pas di atas lantai bawahnya.</p>
       <div class="nudge">
         <button class="btn sm ghost" data-nudge="0,-1" title="Geser ke belakang (−Z)">▲</button>
@@ -411,6 +492,10 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div id="lvl-props" class="group"></div>
       <button class="btn sm ghost" id="autoVoidBtn">Lubangi Pelat dari Tangga Lantai Bawah</button>
       <p class="hint">Membuat void di pelat lantai ini tepat di tempat ruang bebas kepala tangga di bawahnya kurang dari 2,00 m.</p>
+    </div>
+
+    <!-- ============ TAB TAMPILAN ============ -->
+    <div class="tab-body" data-panel="tampilan" hidden>
       <div class="section-title">Material Finishing</div>
       <div class="f-row"><label>Muka dalam</label><select id="finIn"></select></div>
       <div class="f-row" id="finInColorRow" hidden><label>Warna dalam</label><input type="color" id="finInColor" value="#efece5"></div>
@@ -485,31 +570,9 @@ details#adv>*:not(summary){margin-bottom:8px}
 
     <!-- ============ TAB OBJEK ============ -->
     <div class="tab-body" data-panel="objects" hidden>
-      <div class="section-title">Tangga</div>
-      <div class="cat-grid" id="cat-stairs"></div>
-      <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
-      <div class="section-title">Struktur</div>
-      <div class="cat-grid" id="cat-struct"></div>
-      <div class="section-title">Lingkungan &amp; Taman</div>
-      <div class="f-grid">
-        <div class="group"><label>Tanah situs</label><select id="situsTanah">
-          <option value="none">Tidak ada</option><option value="rumput">Rumput</option><option value="tanah">Tanah</option><option value="kerikil">Kerikil</option><option value="paving">Paving</option></select></div>
-        <div class="group"><label>Luas di luar bangunan (m)</label><input type="number" id="situsMargin" value="6" min="0" max="60" step="1"></div>
-      </div>
-      <div class="cat-grid" id="cat-situs"></div>
-      <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs. Pohon, bunga, gazebo, dan perabot taman lain ada di katalog <b>Taman &amp; Luar</b> di bawah.</p>
-      <div class="section-title">Void (Lubang Pelat Lantai)</div>
-      <div class="cat-grid" id="cat-void"></div>
-      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
-      <div class="section-title">Model Sendiri (.glb)</div>
-      <div class="group"><label>Unggah model</label>
-        <input type="file" id="glbInput" multiple></div>
-      <button class="btn sm" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)">🌐 Model realistis (fotogrametri & produk nyata)</button>
-      <div id="model-list" class="group"></div>
-      <p class="hint">Terima <b>.glb</b> (glTF biner) dan <b>.gltf</b> yang sudah memuat datanya sendiri. Berkasnya ikut tersimpan di dalam proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas. Berkas juga bisa dijatuhkan langsung ke viewport.</p>
-      <p class="hint">Di iPhone/iPad, pilih berkasnya lewat <b>Browse</b> di aplikasi Files — daftar berkas sengaja tidak disaring, sebab iOS mengunci berkas .glb bila penyaringnya dipasang.</p>
-      <div class="section-title">Furnitur &amp; Sanitair</div>
-      <div class="row"><select id="furn-filter">
+      <div class="section-title">Furnitur &amp; sanitair</div>
+      <input type="search" id="furnCari" placeholder="Cari: sofa, kloset, kulkas, lampu…" aria-label="Cari furnitur" autocomplete="off">
+      <div class="row"><select id="furn-filter" aria-label="Kategori furnitur">
         <option value="all">Semua kategori</option>
         <option value="dekor">Dekorasi Dinding</option>
         <option value="lampu">Pencahayaan</option>
@@ -529,6 +592,30 @@ details#adv>*:not(summary){margin-bottom:8px}
       </select></div>
       <div class="cat-grid" id="cat-furn"></div>
       <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
+      <div class="section-title">Model realistis &amp; model sendiri</div>
+      <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)">🌐 Jelajahi model realistis</button>
+      <p class="hint">Fotogrametri Poly Haven &amp; produk nyata — saring per ruangan: kamar tidur, sofa, kamar mandi, dapur.</p>
+      <div class="group"><label>Unggah model sendiri (.glb / .gltf)</label>
+        <input type="file" id="glbInput" multiple></div>
+      <div id="model-list" class="group"></div>
+      <details class="info"><summary>Format &amp; batas berkas</summary><p class="hint">Terima <b>.glb</b> (glTF biner) dan <b>.gltf</b> yang sudah memuat datanya sendiri. Berkasnya ikut tersimpan di dalam proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas. Berkas juga bisa dijatuhkan langsung ke viewport.</p>
+      <p class="hint">Di iPhone/iPad, pilih berkasnya lewat <b>Browse</b> di aplikasi Files — daftar berkas sengaja tidak disaring, sebab iOS mengunci berkas .glb bila penyaringnya dipasang.</p></details>
+      <div class="section-title">Tangga</div>
+      <div class="cat-grid" id="cat-stairs"></div>
+      <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
+      <div class="section-title">Struktur</div>
+      <div class="cat-grid" id="cat-struct"></div>
+      <div class="section-title">Lingkungan &amp; Taman</div>
+      <div class="f-grid">
+        <div class="group"><label>Tanah situs</label><select id="situsTanah">
+          <option value="none">Tidak ada</option><option value="rumput">Rumput</option><option value="tanah">Tanah</option><option value="kerikil">Kerikil</option><option value="paving">Paving</option></select></div>
+        <div class="group"><label>Luas di luar bangunan (m)</label><input type="number" id="situsMargin" value="6" min="0" max="60" step="1"></div>
+      </div>
+      <div class="cat-grid" id="cat-situs"></div>
+      <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs. Pohon, bunga, gazebo, dan perabot taman lain ada di katalog <b>Taman &amp; Luar</b> di atas.</p>
+      <div class="section-title">Void (Lubang Pelat Lantai)</div>
+      <div class="cat-grid" id="cat-void"></div>
+      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
     </div>
 
     <!-- ============ TAB FILE ============ -->
@@ -558,11 +645,13 @@ details#adv>*:not(summary){margin-bottom:8px}
   </aside>
 
   <main id="viewport">
-    <div class="float" id="toolbar">
-      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)"><span class="ic">☰</span></button>
+    <!-- Toolbar: alat yang sering dipakai selalu berlabel (layar sentuh tidak punya
+         tooltip); alat yang jarang dipakai dikumpulkan di menu ⋯ Lainnya -->
+    <div class="float" id="toolbar" role="toolbar" aria-label="Alat">
+      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)" aria-label="Panel samping"><span class="ic">☰</span><span class="lb">Panel</span></button>
       <div class="sep"></div>
-      <button id="undoBtn" title="Urung (Ctrl+Z)" disabled><span class="ic">↶</span></button>
-      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" disabled><span class="ic">↷</span></button>
+      <button id="undoBtn" title="Urung (Ctrl+Z)" aria-label="Urung" disabled><span class="ic">↶</span><span class="lb">Urung</span></button>
+      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" aria-label="Ulang" disabled><span class="ic">↷</span><span class="lb">Ulang</span></button>
       <div class="sep"></div>
       <button data-tool="select" class="active" title="Pilih (Q)"><span class="ic">↖</span><span class="lb">Pilih</span></button>
       <button data-tool="translate" title="Geser (W)"><span class="ic">✥</span><span class="lb">Geser</span></button>
@@ -570,19 +659,33 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button data-tool="scale" title="Skala (R)"><span class="ic">⤡</span><span class="lb">Skala</span></button>
       <div class="sep"></div>
       <button data-tool="wall" title="Gambar dinding (L)"><span class="ic">▭</span><span class="lb">Dinding</span></button>
-      <button id="railBtn" title="Gambar railing / pagar balkon (K)"><span class="ic">╫</span><span class="lb">Railing</span></button>
-      <button data-tool="measure" title="Ukur jarak (M)"><span class="ic">⟷</span><span class="lb">Ukur</span></button>
+      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam rumah (orang pertama)"><span class="ic">🚶</span><span class="lb">Jalan</span></button>
+      <button id="toolMore" title="Alat lainnya" aria-haspopup="true" aria-expanded="false" aria-controls="toolMenu"><span class="ic">⋯</span><span class="lb">Lainnya</span></button>
+      <button id="helpBtn" title="Panduan &amp; pintasan (?)" aria-label="Bantuan"><span class="ic">?</span><span class="lb">Bantuan</span></button>
+    </div>
+    <div class="float" id="toolMenu" role="menu" aria-label="Alat lainnya" hidden>
+      <button id="railBtn" role="menuitem" title="Gambar railing / pagar balkon (K)"><span class="ic">╫</span><span class="lb">Railing / pagar balkon</span><kbd>K</kbd></button>
+      <button data-tool="measure" role="menuitem" title="Ukur jarak (M)"><span class="ic">⟷</span><span class="lb">Ukur jarak</span><kbd>M</kbd></button>
+      <button id="dimBtn" role="menuitem" title="Tampilkan dimensi (N)"><span class="ic">↔</span><span class="lb">Dimensi</span><kbd>N</kbd></button>
+      <button id="snapBtn" role="menuitem" class="active" title="Snap ke grid 5 cm / 15°"><span class="ic">⌗</span><span class="lb">Snap grid 5 cm / 15°</span></button>
       <div class="sep"></div>
-      <button id="snapBtn" class="active" title="Snap ke grid 5 cm / 15°"><span class="ic">⌗</span><span class="lb">Snap</span></button>
-      <button id="dimBtn" title="Tampilkan dimensi (N)"><span class="ic">↔</span><span class="lb">Dimensi</span></button>
-      <button id="dupBtn" title="Duplikat (Ctrl+D)"><span class="ic">⧉</span><span class="lb">Duplikat</span></button>
-      <button id="delBtn" title="Hapus (Del)"><span class="ic">✕</span><span class="lb">Hapus</span></button>
+      <button id="dupBtn" role="menuitem" title="Duplikat (Ctrl+D)"><span class="ic">⧉</span><span class="lb">Duplikat terpilih</span><kbd>Ctrl D</kbd></button>
+      <button id="delBtn" role="menuitem" title="Hapus (Del)"><span class="ic">✕</span><span class="lb">Hapus terpilih</span><kbd>Del</kbd></button>
       <div class="sep"></div>
-      <button id="wallModeBtn" title="Tembok solid atau tembus pandang (G)"><span class="ic">◫</span><span class="lb">Solid</span></button>
-      <button id="roofBtn" title="Plat atap buka / tutup (T)"><span class="ic">⌂</span><span class="lb">Atap</span></button>
-      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam ruangan (orang pertama)"><span class="ic">🚶</span><span class="lb">Walk</span></button>
-      <button id="arBtn" title="Lihat model di AR / 3D viewer"><span class="ic">◈</span><span class="lb">AR</span></button>
-      <button id="helpBtn" title="Pintasan keyboard (?)"><span class="ic">?</span></button>
+      <button id="wallModeBtn" role="menuitem" title="Tembok solid atau tembus pandang (G)"><span class="ic">◫</span><span class="lb">Tembok: solid</span><kbd>G</kbd></button>
+      <button id="roofBtn" role="menuitem" title="Plat atap buka / tutup (T)"><span class="ic">⌂</span><span class="lb">Atap</span><kbd>T</kbd></button>
+      <button id="arBtn" role="menuitem" title="Lihat model di AR / 3D viewer"><span class="ic">◈</span><span class="lb">AR / 3D viewer</span></button>
+    </div>
+    <div class="float" id="mulaiKartu" role="dialog" aria-labelledby="mulaiJudul" hidden>
+      <button class="mulai-tutup" id="mulaiTutup" aria-label="Tutup">✕</button>
+      <h2 id="mulaiJudul">Mulai mendesain</h2>
+      <p>Pilih salah satu cara — semuanya bisa digabung nanti.</p>
+      <div class="mulai-grid">
+        <button id="mulaiUnggah"><span class="mi" aria-hidden="true">📄</span><b>Unggah denah</b><small>Foto atau gambar denah → dinding, pintu, jendela &amp; perabot 3D otomatis</small></button>
+        <button id="mulaiGambar"><span class="mi" aria-hidden="true">✏️</span><b>Gambar dinding</b><small>Ketuk titik-titik di lantai, ketuk dua kali untuk selesai</small></button>
+        <button id="mulaiContoh"><span class="mi" aria-hidden="true">🏠</span><b>Coba rumah contoh</b><small>Rumah 2 kamar lengkap dengan perabot — langsung bisa dijelajahi</small></button>
+        <button id="mulaiBuka"><span class="mi" aria-hidden="true">📂</span><b>Buka proyek</b><small>Berkas .json yang pernah disimpan</small></button>
+      </div>
     </div>
     <div class="float" id="viewbar">
       <button data-view="persp" title="Perspektif (1)">3D</button>
@@ -592,7 +695,14 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button data-view="mata" title="Setinggi mata di dalam ruangan (5)">Mata</button>
     </div>
     <div class="float" id="helpPanel" hidden>
-      <h3>Pintasan</h3>
+      <h3>Panduan cepat</h3>
+      <ol class="panduan">
+        <li><b>Denah</b> — unggah gambar denah, isi lebar bangunan, tekan <b>Buat dinding 3D</b>. Atau gambar dinding sendiri.</li>
+        <li><b>Objek</b> — cari &amp; ketuk furnitur; ketuk objek di layar untuk menggeser, memutar, atau mengubah ukurannya.</li>
+        <li><b>Jalan</b> — masuk ke dalam rumah: joystick/WASD untuk berjalan, ketuk pintu, lampu, kursi untuk berinteraksi.</li>
+        <li><b>File</b> — simpan proyek (.json), gambar (.png), atau buka di AR.</li>
+      </ol>
+      <h3 style="margin-top:12px">Pintasan</h3>
       <div class="kbgrid">
         <kbd>Q</kbd><span>Pilih</span><kbd>W</kbd><span>Geser</span><kbd>E</kbd><span>Putar</span><kbd>R</kbd><span>Skala</span>
         <kbd>L</kbd><span>Gambar dinding</span><kbd>K</kbd><span>Gambar railing</span><kbd>M</kbd><span>Ukur jarak</span><kbd>N</kbd><span>Dimensi</span>
@@ -2673,7 +2783,7 @@ function renderAtapUI(){
   const t=$('#atapTritisan'); if(t) t.value=String(P.tritisan??0.6);
   const a=$('#atapMode'); if(a) a.value=ATAP_TUTUP?'tutup':'buka';
   const lbl=ATAP_TUTUP?'Tertutup':'Terbuka';
-  const b=$('#roofBtn'); if(b){ b.classList.toggle('on',ATAP_TUTUP); b.querySelector('.lb').textContent='Atap'; b.title='Plat atap: '+lbl.toLowerCase()+' — ketuk untuk '+(ATAP_TUTUP?'membuka':'menutup')+' (T)'; }
+  const b=$('#roofBtn'); if(b){ b.classList.toggle('on',ATAP_TUTUP); b.querySelector('.lb').textContent='Plat atap: '+lbl.toLowerCase(); b.title='Plat atap: '+lbl.toLowerCase()+' — ketuk untuk '+(ATAP_TUTUP?'membuka':'menutup')+' (T)'; }
   const f=$('#fpsRoof'); if(f) f.textContent='Atap: '+lbl;
 }
 function toggleAtap(v){
@@ -6032,6 +6142,7 @@ function rebuildScene(){
   if(window.__siap) terapkanPantulan();       // MOOD & finishing sudah terdefinisi
   rebuildDims();
   pasBayangMatahari();
+  perbaruiMulai();
 }
 function rebuildScene0(){
   while(worldRoot.children.length){
@@ -7151,7 +7262,7 @@ function toggleHelp(v){
   const h=$('#helpPanel'); h.hidden = v===undefined ? !h.hidden : !v;
   // arti ikon diambil langsung dari toolbar — di layar sentuh tidak ada tooltip
   const g=$('#ikonLegend');
-  if(!h.hidden && !g.childElementCount) for(const bt of $$('#toolbar button')){
+  if(!h.hidden && !g.childElementCount) for(const bt of $$('#toolbar button,#toolMenu button')){
     const ic=bt.querySelector('.ic'); if(!ic) continue;
     const d=document.createElement('span'); d.innerHTML='<b></b>'; d.firstChild.textContent=ic.textContent;
     d.append(' '+({undoBtn:'Urung',redoBtn:'Ulang'}[bt.id]||(bt.title||'').replace(/\s*\([^)]*\)\s*$/,''))); g.appendChild(d);
@@ -7310,7 +7421,7 @@ function setTool(t){
   if(TOOL==='voidTrace' && t!=='voidTrace') akhiriTrace();
   TOOL=t;
   if(t!=='wall') DRAW_RAIL=false;
-  $$('#toolbar button[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t && !(t==='wall'&&DRAW_RAIL)));
+  $$('#toolbar button[data-tool],#toolMenu button[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t && !(t==='wall'&&DRAW_RAIL)));
   const rb=$('#railBtn'); if(rb) rb.classList.toggle('active',t==='wall'&&DRAW_RAIL);
   if(t!=='wall' && t!=='measure'){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
   if(t==='measure'){ drawState=null; gizmo.detach(); setHint('Klik dua titik untuk mengukur jarak — menempel ke ujung dinding. <b>Del</b> hapus semua ukuran.'); }
@@ -10785,15 +10896,19 @@ function renderCatalogs(){
 
   const cf=$('#cat-furn'); cf.innerHTML='';
   requestAnimationFrame(isiThumbAntri);
-  const filt=$('#furn-filter').value;
+  const filt=$('#furn-filter').value, cari=($('#furnCari').value||'').trim().toLowerCase();
+  let ada=0;
   for(const [k,v] of Object.entries(FURN)){
     if(filt!=='all'&&v.c!==filt) continue;
+    if(cari && !(v.l+' '+k.replace(/_/g,' ')+' '+v.c.replace(/_/g,' ')).toLowerCase().includes(cari)) continue;
+    ada++;
     const b=el('div','cat-item');
     b.innerHTML=ikonObjek('furn',k)+v.l;
     b.title=`${v.f[0]}×${v.f[1]} m`;
     b.onclick=()=>addObject('furn',k);
     cf.appendChild(b);
   }
+  if(!ada) cf.appendChild(el('p','hint','Tidak ada furnitur yang cocok — coba kata lain atau pilih "Semua kategori".'));
 }
 $('#furn-filter').addEventListener('change',renderCatalogs);
 
@@ -11175,17 +11290,69 @@ viewport.addEventListener('drop',async e=>{
 /* ======================================================================
    UI — TOOLBAR & TAB
    ====================================================================== */
-$$('#toolbar button[data-tool]').forEach(b=>b.onclick=()=>{ DRAW_RAIL=false; setTool(b.dataset.tool); });
+$$('#toolbar button[data-tool],#toolMenu button[data-tool]').forEach(b=>b.onclick=()=>{ DRAW_RAIL=false; setTool(b.dataset.tool); });
 $('#railBtn').onclick=()=>{ DRAW_RAIL=true; setTool('wall'); };
 $('#undoBtn').onclick=undo;
 $('#redoBtn').onclick=redo;
 $('#snapBtn').onclick=()=>{ SNAP=!SNAP; $('#snapBtn').classList.toggle('active',SNAP); refreshSelectionVisual(); toast('Snap '+(SNAP?'aktif (5 cm / 15°)':'nonaktif')); };
 $('#dupBtn').onclick=duplicateSelection;
 $('#delBtn').onclick=deleteSelection;
-$$('.tabs button').forEach(b=>b.onclick=()=>{
-  $$('.tabs button').forEach(x=>x.classList.toggle('active',x===b));
-  $$('.tab-body').forEach(p=>p.hidden = p.dataset.panel!==b.dataset.tab);
-});
+function pilihTab(t){
+  $$('.tabs button').forEach(x=>{ x.classList.toggle('active',x.dataset.tab===t); x.setAttribute('aria-selected',String(x.dataset.tab===t)); });
+  $$('.tab-body').forEach(p=>p.hidden = p.dataset.panel!==t);
+}
+$$('.tabs button').forEach(b=>b.onclick=()=>pilihTab(b.dataset.tab));
+
+/* ---------- UI RAMAH PENGGUNA (JEV-057) ----------
+   Menu ⋯ Lainnya: alat yang jarang dipakai tidak memakan lebar toolbar, sehingga
+   alat utama tetap berlabel di iPad (layar sentuh tidak punya tooltip). */
+function bukaMenuAlat(v){
+  const m=$('#toolMenu'), b=$('#toolMore'), buka=v===undefined?m.hidden:v;
+  m.hidden=!buka; b.setAttribute('aria-expanded',String(buka)); b.classList.toggle('on',buka);
+  if(buka){ const vr=viewport.getBoundingClientRect(), r=b.getBoundingClientRect();
+    m.style.top=(r.bottom-vr.top+6)+'px'; m.style.left=Math.max(12,Math.min(r.left-vr.left,vr.width-m.offsetWidth-12))+'px'; }
+}
+$('#toolMore').onclick=e=>{ e.stopPropagation(); bukaMenuAlat(); };
+$('#toolMenu').addEventListener('click',e=>{ if(e.target.closest('button')) bukaMenuAlat(false); });
+document.addEventListener('pointerdown',e=>{ if(!$('#toolMenu').hidden && !e.target.closest('#toolMenu,#toolMore')) bukaMenuAlat(false); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#toolMenu').hidden) bukaMenuAlat(false); });
+/* Kartu Mulai: layar 3D kosong tidak memberi petunjuk apa pun kepada pengguna baru.
+   Tampil selama proyek belum berisi dinding/objek dan belum ditutup. */
+function proyekKosong(){ return PROJECT.levels.every(lv=>!lv.walls.length && !lv.objects.length); }
+function perbaruiMulai(){
+  const k=document.getElementById('mulaiKartu'); if(!k) return;
+  let jalan=false; try{ jalan=FPS.on; }catch(_){ /* belum terdefinisi saat inisialisasi */ }
+  k.hidden = k.dataset.tutup==='1' || jalan || !proyekKosong();
+}
+function tutupMulai(){ $('#mulaiKartu').dataset.tutup='1'; perbaruiMulai(); }
+$('#mulaiTutup').onclick=tutupMulai;
+$('#mulaiUnggah').onclick=()=>{ tutupMulai(); setSidebar(true); pilihTab('plan'); $('#upload').click(); };
+$('#mulaiGambar').onclick=()=>{ tutupMulai(); setView('atas'); setTool('wall'); toast('Ketuk titik awal dinding di lantai, lalu titik-titik berikutnya'); };
+$('#mulaiContoh').onclick=()=>{ muatProyekObjek(rumahContoh()); setView('persp'); };
+$('#mulaiBuka').onclick=()=>$('#loadInput').click();
+/* Rumah contoh 10 × 8 m: kamar tidur, kamar mandi, dapur, ruang keluarga —
+   cara tercepat melihat apa yang bisa dilakukan aplikasi ini. */
+function rumahContoh(){
+  let n=0; const id=p=>p+(++n);
+  const bk=(type,at,width,sill,head)=>({id:id('o'),type,at,width,sill:sill||0,head:head||2.1,hinge:'L',swing:1});
+  const W=(x1,z1,x2,z2,ops)=>({id:id('w'),x1,z1,x2,z2,thickness:0.15,height:0,openings:ops||[]});
+  const F=(type,x,z,rotY)=>({id:id('f'),kind:'furn',type,x,y:0,z,rotY:rotY||0,sx:1,sy:1,sz:1,params:{}});
+  const P=Math.PI;
+  return {name:'Rumah contoh', levels:[{name:'Lantai 1', height:3.2,
+    walls:[W(-5,-4,5,-4,[bk('window_slide',1.75,1.4,0.9),bk('window_slide',5.5,2,0.9),bk('window',8.75,1,1.0)]),
+           W(5,-4,5,4,[bk('door',5.5,1)]),
+           W(5,4,-5,4,[bk('window_slide',3.5,2,0.9),bk('window',8.25,0.6,1.5)]),
+           W(-5,4,-5,-4,[bk('window',6,1.2,0.9)]),
+           W(-1.5,-4,-1.5,4,[bk('door',3.2,0.8),bk('door',6,0.7)]),
+           W(-5,0.5,-1.5,0.5), W(2.5,-4,2.5,-1)],
+    objects:[F('bed_double',-3.25,-2.9), F('nightstand',-4.45,-3.65), F('nightstand',-2.05,-3.65), F('wardrobe',-3.6,0.12,P),
+             F('toilet',-4.6,3.57,P), F('vanity',-1.83,3.2,-P/2), F('shower_box',-4.47,1.03),
+             F('kitchen',3.75,-3.62), F('fridge',4.57,-2.25,-P/2), F('dining4',3.6,0.2),
+             F('sofa3',0.6,3.4,P), F('coffee_table',0.6,2.3), F('rug',0.6,2.2), F('tv_set',0.6,0.55), F('floor_lamp',2.0,3.55), F('plant',4.5,3.5),
+             F('pendant',0.6,2.2), F('pendant',-3.25,-1.8), F('pendant',3.75,-2.5), F('pendant',-3.2,2.2)]}]};
+}
+/* Pencarian furnitur: 120+ objek terlalu banyak untuk digulir di iPad */
+$('#furnCari').addEventListener('input',()=>{ clearTimeout($('#furnCari')._t); $('#furnCari')._t=setTimeout(renderCatalogs,120); });
 
 /* ======================================================================
    FILE
@@ -11271,40 +11438,43 @@ $('#loadInput').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return; e.target.value='';
   if(f.size>BATAS_PROYEK.berkasMB*1048576) return toast(`Berkas proyek ${fmt(f.size/1048576,0)} MB melebihi batas ${BATAS_PROYEK.berkasMB} MB`);
   const rd=new FileReader();
-  rd.onload=ev=>{
-    const KUNCI=['name','pxPerMeter','levels','active','assets','plans','finish','atap','site','langit'];
-    const cadangan=Object.fromEntries(KUNCI.map(k=>[k,PROJECT[k]]));
-    try{
-      let j; try{ j=JSON.parse(ev.target.result); }catch(_){ throw new Error('bukan JSON yang sah'); }
-      const B=sanitasiProyek(j);
-      for(const k of KUNCI) PROJECT[k]=B[k];
-      PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
-      renderSitusUI();
-      renderFinishUI(); renderAtapUI();
-      SEL=null; $('#projName').value=PROJECT.name;
-      renderLevels(); renderCatalogs(); rebuildScene();
-      resetHistory('Proyek dimuat');
-      if(PROJECT.langit.mode==='foto') muatLangitFoto({id:PROJECT.langit.id, nama:PROJECT.langit.nama});
-      else if(FOTO.tex) matikanLangitFoto(); else renderLangitUI();
-      toast('Proyek dimuat: '+PROJECT.name);
-      if(Object.keys(PROJECT.assets).length){
-        loadProjectAssets().then(r=>{
-          renderCatalogs(); rebuildScene();
-          toast(r.gagal ? `${r.total-r.gagal}/${r.total} model dimuat, ${r.gagal} gagal`
-                        : `${r.total} model dari pustaka dimuat`);
-        });
-      }
-    }catch(err){
-      // pulihkan proyek lama utuh — berkas rusak tidak boleh meninggalkan setengah proyek
-      for(const [k,v] of Object.entries(cadangan)) PROJECT[k]=v;
-      PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null; SEL=null;
-      try{ renderSitusUI(); renderFinishUI(); renderAtapUI(); renderLevels(); renderCatalogs(); rebuildScene(); }catch(e2){ console.error(e2); }
-      console.warn('muat proyek gagal',err);
-      toast('Gagal memuat: '+err.message+' — proyek sebelumnya tetap utuh');
-    }
-  };
+  rd.onload=ev=>muatProyekObjek(ev.target.result);
   rd.readAsText(f);
 });
+/* teks JSON (berkas) atau objek (rumah contoh) → proyek; atomik: gagal = proyek lama utuh */
+function muatProyekObjek(sumber){
+  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','finish','atap','site','langit'];
+  const cadangan=Object.fromEntries(KUNCI.map(k=>[k,PROJECT[k]]));
+  try{
+    let j=sumber;
+    if(typeof sumber==='string'){ try{ j=JSON.parse(sumber); }catch(_){ throw new Error('bukan JSON yang sah'); } }
+    const B=sanitasiProyek(j);
+    for(const k of KUNCI) PROJECT[k]=B[k];
+    PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
+    renderSitusUI();
+    renderFinishUI(); renderAtapUI();
+    SEL=null; $('#projName').value=PROJECT.name;
+    renderLevels(); renderCatalogs(); rebuildScene();
+    resetHistory('Proyek dimuat');
+    if(PROJECT.langit.mode==='foto') muatLangitFoto({id:PROJECT.langit.id, nama:PROJECT.langit.nama});
+    else if(FOTO.tex) matikanLangitFoto(); else renderLangitUI();
+    toast('Proyek dimuat: '+PROJECT.name);
+    if(Object.keys(PROJECT.assets).length){
+      loadProjectAssets().then(r=>{
+        renderCatalogs(); rebuildScene();
+        toast(r.gagal ? `${r.total-r.gagal}/${r.total} model dimuat, ${r.gagal} gagal`
+                      : `${r.total} model dari pustaka dimuat`);
+      });
+    }
+  }catch(err){
+    // pulihkan proyek lama utuh — berkas rusak tidak boleh meninggalkan setengah proyek
+    for(const [k,v] of Object.entries(cadangan)) PROJECT[k]=v;
+    PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null; SEL=null;
+    try{ renderSitusUI(); renderFinishUI(); renderAtapUI(); renderLevels(); renderCatalogs(); rebuildScene(); }catch(e2){ console.error(e2); }
+    console.warn('muat proyek gagal',err);
+    toast('Gagal memuat: '+err.message+' — proyek sebelumnya tetap utuh');
+  }
+}
 $('#exportObjBtn').onclick=()=>{
   let out=`# ${PROJECT.name} — Arsitek 3D\n`, off=1, n=0;
   const v=new THREE.Vector3();
@@ -11909,7 +12079,7 @@ $('#sideBtn').onclick=toggleSidebar;
 function toggleWallGhost(){
   WALL_GHOST=!WALL_GHOST;
   const t='Tembok: '+(WALL_GHOST?'Ghost':'Solid');
-  $('#wallModeBtn .lb').textContent=WALL_GHOST?'Ghost':'Solid';
+  $('#wallModeBtn .lb').textContent='Tembok: '+(WALL_GHOST?'tembus pandang':'solid');
   $('#wallModeBtn').classList.toggle('on',WALL_GHOST);
   $('#fpsWall').textContent=t;
   rebuildScene();
@@ -12405,7 +12575,7 @@ function enterFPS(){
   setSidebar(false);                         // jalan-jalan memakai seluruh layar
   select(null); setTool('select');
   orbit.enabled=false;
-  $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true; $('#viewbar').hidden=true; $('#helpPanel').hidden=true;
+  $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true; $('#viewbar').hidden=true; $('#helpPanel').hidden=true; $('#toolMenu').hidden=true; $('#mulaiKartu').hidden=true;
   $('#fpsFull').hidden=!BISA_LAYAR_PENUH;    // iPhone & sebagian iPad tidak mengizinkannya
   FPS.info='';
   $('#levelbar').hidden=true;
@@ -12430,6 +12600,7 @@ function exitFPS(){
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
   if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
   $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
+  setTimeout(perbaruiMulai,0);          // FPS.on baru dimatikan di akhir fungsi ini
   $('#levelbar').hidden=false;
   viewport.style.cursor='';
   if(FPS.sidebarWas) setSidebar(true);
@@ -12907,6 +13078,10 @@ $('#fxOn').onchange=e=>{ setFX(e.target.checked); toast(e.target.checked?'Efek r
 try{ for(const k of ['ai_token','ai_space','ai_prompt']) localStorage.removeItem(k); }catch(e){}   // sisa integrasi Hugging Face lama
 pasangPantulanLogam();
 setSuasana('siang');
+// layar sempit (iPad tegak, ponsel): panel samping melayang menutupi separuh layar dan
+// kartu Mulai — pengguna baru melihat layarnya dulu; panel dibuka lewat ☰ Panel
+if(window.innerWidth<900 && proyekKosong()) setSidebar(false);
+perbaruiMulai();
 window.__siap=true;
 // pilihan langit terakhir di perangkat ini: bila foto 360°, langsung dimuat (dari cache bila pernah diunduh)
 try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');

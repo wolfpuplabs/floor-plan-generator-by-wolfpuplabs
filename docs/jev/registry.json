@@ -1882,6 +1882,66 @@
     "target": "≥ 40%",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-057",
+   "judul": "Redesign UI/UX: kartu Mulai + rumah contoh, tab berikon (Tampilan terpisah), toolbar berlabel + menu Lainnya, pencarian furnitur, target sentuh ≥ 44 px",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengguna baru disambut layar 3D kosong tanpa petunjuk; toolbar 21 ikon kehilangan labelnya di iPad (layar sentuh tanpa tooltip); pengaturan render tersembunyi di tab \"Lantai\"; 120+ furnitur hanya bisa digulir; tombol 30–36 px di bawah anjuran sentuh 44 px.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"redesign UI/UX yg lebih user friendly\" (pemakai utama: iPad Chrome)",
+    "alternatif": [
+     "framework UI (React/Vue) — membongkar 12 rb baris, risiko regresi besar",
+     "hanya tema warna baru — tidak menyelesaikan penemuan fitur & ukuran sentuh"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.9,
+      "pakaiPerTahun": 8,
+      "menitHemat": 6
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.006
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "elemen baru dibuat lewat HTML statis/el(); ratchet innerHTML tetap 32; rumah contoh lewat sanitasiProyek() yang sama"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "+15 KB CSS/HTML; tanpa pustaka baru"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol ≥ 44 px, aria-label/role pada tombol ikon, tab & menu, cincin fokus — membayar sebagian TD-08"
+    }
+   },
+   "metrik": {
+    "nama": "% sesi baru yang menghasilkan ≥ 1 dinding/objek dalam 5 menit",
+    "target": "≥ 60%",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
