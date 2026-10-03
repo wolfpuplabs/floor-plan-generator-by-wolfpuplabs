@@ -89,6 +89,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | R-01 | Mutu render Cepat/Halus/Tinggi; PBR, AO, bloom, HDR + eksposur otomatis, GI per ruang, bayangan halus | JEV-008 |
 | R-02 | Suasana siang/senja/malam/malam gelap; lampu dengan lumen | JEV-008 |
 | R-03 | Pantulan probe kaca/logam/air | JEV-020 |
+| R-03a | **Kaca realistis**: bening bila dilihat tegak lurus (±96% latar lolos), memantul kuat dari sudut miring (Fresnel, IOR 1,5), pantulan ditambahkan ke latar (bukan dikali alfa) sehingga malam hari kaca memantulkan ruangan, warna hijau-biru makin terasa pada lintasan miring (Beer–Lambert). Kaca model glTF (`KHR_materials_transmission`) memakai shader yang sama | JEV-055 |
 | R-02a | Setiap lampu yang menyala menerangi ruangannya — juga dari kejauhan, dari luar rumah, dan di lantai lain (GI per ruang hingga 4 lantai; 4 lampu terdekat tetap mendapat cahaya langsung berbayang) | JEV-052 |
 | R-02b | Lampu luar (dinding luar, teras, taman) tanpa slot berbayang tetap menerangi sekitarnya dari jauh — dihitung di shader hanya untuk permukaan di luar ruangan, jadi tidak bocor ke dalam rumah | JEV-053 |
 | R-04 | Langit prosedural atau **foto 360° HDRI** per lanskap; unggah 360° sendiri | JEV-030 |

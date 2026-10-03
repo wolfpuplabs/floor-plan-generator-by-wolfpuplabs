@@ -1712,7 +1712,7 @@ const matPelat  = ()=>[matTepiPelat(),matTepiPelat(),matLantai(),matTepiPelat(),
 const MAT={
   wall      : new THREE.MeshStandardMaterial({color:0xefece5, roughness:.92, metalness:0}),
   wallStruct: new THREE.MeshStandardMaterial({color:0xdedad0, roughness:.95, metalness:0}),
-  glass     : new THREE.MeshPhysicalMaterial({color:0xaddcf5, roughness:.06, metalness:0, transparent:true, opacity:.34, transmission:.75, ior:1.5, side:THREE.DoubleSide}),
+  glass     : new THREE.MeshPhysicalMaterial({color:0xd3e8e6, roughness:.06, metalness:0, transparent:true, opacity:.34, transmission:.75, ior:1.5, side:THREE.DoubleSide}),
   frame     : new THREE.MeshStandardMaterial({color:0x6d5741, roughness:.7}),
   door      : new THREE.MeshStandardMaterial({color:0x9c6b3f, roughness:.62}),
   slab      : new THREE.MeshStandardMaterial({color:0x6e6a66, roughness:.95}),
@@ -1727,6 +1727,46 @@ const MAT={
   plant     : new THREE.MeshStandardMaterial({color:0x4f8352, roughness:.9}),
   water     : new THREE.MeshPhysicalMaterial({color:0x8fd0e8, roughness:.1, transparent:true, opacity:.55})
 };
+/* KACA REALISTIS — kaca lama berupa lapisan biru 34% yang sama pekat dari arah mana
+   pun, sehingga terlihat seperti plastik. Kaca sungguhan:
+   (1) hampir bening bila dilihat tegak lurus, tetapi memantul kuat saat dilihat
+       miring (Fresnel, IOR 1,5: 4% → 100%);
+   (2) pantulannya DITAMBAHKAN ke apa yang ada di belakangnya, tidak meredupkannya,
+       jadi bahan memakai blending premultiplied: tujuan × (1 − α) + sumber;
+   (3) menyerap cahaya sepanjang lintasannya di dalam kaca (Beer–Lambert): makin
+       miring, lintasannya makin panjang dan warna hijau-biru kaca makin terasa.
+   Pantulan tetap dari probe ruangan + koreksi kotak (KOTAK_PANTUL), karena
+   pasangGIShader ikut dipanggil. */
+const KACA_SERAP_BENING=new THREE.Vector3(9,3.5,5.5);       // koefisien serap per meter (R,G,B) kaca float hijau-biru
+function kacaRealistis(m,o){
+  o=o||{};
+  const u={kacaSerap:{value:(o.serap||KACA_SERAP_BENING).clone()}, kacaTebal:{value:o.tebal!=null?o.tebal:0.006}, kacaKabut:{value:o.kabut!=null?o.kabut:0.02}};
+  m.transparent=true; m.depthWrite=false; m.opacity=1;
+  if('transmission' in m) m.transmission=0;              // stub transmisi r128 hanya mengurangi alfa — diganti model di bawah
+  m.blending=THREE.CustomBlending; m.blendEquation=THREE.AddEquation;
+  m.blendSrc=THREE.OneFactor; m.blendDst=THREE.OneMinusSrcAlphaFactor;
+  m.blendSrcAlpha=THREE.OneFactor; m.blendDstAlpha=THREE.OneMinusSrcAlphaFactor;
+  m.userData.kaca=u;
+  m.customProgramCacheKey=()=>'kaca';
+  m.onBeforeCompile=sh=>{
+    pasangGIShader(sh);
+    Object.assign(sh.uniforms,u);
+    sh.fragmentShader=sh.fragmentShader
+      .replace('#include <common>','#include <common>\nuniform vec3 kacaSerap; uniform float kacaTebal, kacaKabut;')
+      .replace('gl_FragColor = vec4( outgoingLight, diffuseColor.a );',`{
+        float NdV=clamp(abs(dot(geometry.normal,geometry.viewDir)),0.0,1.0);
+        float F=0.04+0.96*pow(1.0-NdV,5.0);                       // Schlick, IOR 1,5
+        vec3 T=exp(-kacaSerap*kacaTebal/max(NdV,0.08));            // Beer–Lambert sepanjang lintasan miring
+        float tembus=(1.0-F)*dot(T,vec3(0.3333))*(1.0-kacaKabut);  // bagian latar yang lolos
+        vec3 spek=reflectedLight.directSpecular+reflectedLight.indirectSpecular;
+        vec3 badan=(reflectedLight.directDiffuse+reflectedLight.indirectDiffuse)*(1.0-tembus-F*0.9);
+        gl_FragColor=vec4(spek+max(badan,vec3(0.0))+totalEmissiveRadiance, clamp(1.0-tembus,0.0,1.0));
+      }`);
+  };
+  m.needsUpdate=true;
+  return m;
+}
+kacaRealistis(MAT.glass);
 const ghostCache=new Map();
 /* Tembok tembus pandang untuk lantai aktif: lebih pekat daripada lantai lain
    yang dihantukan, supaya dindingnya masih terasa ada. */
@@ -3471,7 +3511,7 @@ Object.assign(MAT,{
 function pasangPantulanLogam(env){
   env=env||studioEnv();
   const lain=[[MAT.silver,0.9],[MAT.cdDisc,1],[MAT.vinylRec,0.6],[MAT.smoke,0.8]].filter(([m])=>m);   // perangkat audio (dibuat belakangan)
-  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8],...lain]){ m.envMap=(typeof PROBE!=='undefined'&&PROBE.aktif&&PROBE.env)||env; m.envMapIntensity=k; m.needsUpdate=true; }
+  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,1],...lain]){ m.envMap=(typeof PROBE!=='undefined'&&PROBE.aktif&&PROBE.env)||env; m.envMapIntensity=k; m.needsUpdate=true; }
   if(typeof PROBE!=='undefined') PROBE.kotor=true;
 }
 /* ---------- PROBE PANTULAN — kaca, logam, cermin, air memantulkan ruangan
@@ -6330,7 +6370,11 @@ function prepareAssetObject(root){
   const wrap=new THREE.Group();
   wrap.add(root);
   wrap.updateMatrixWorld(true);
-  wrap.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
+  wrap.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true;
+    // kaca model (KHR_materials_transmission) memakai shader kaca yang sama dengan jendela:
+    // stub transmisi r128 membuatnya buram seperti plastik dan menghilangkan pantulan
+    for(const b of [].concat(m.material||[])) if(b && b.transmission>0 && !b.userData.kaca){ kacaRealistis(b,{tebal:0.004}); m.castShadow=false; }
+  } });
   const s3=new THREE.Box3().setFromObject(wrap).getSize(new THREE.Vector3());
   return {obj:wrap, fit, dims:[+s3.x.toFixed(3),+s3.y.toFixed(3),+s3.z.toFixed(3)]};
 }
