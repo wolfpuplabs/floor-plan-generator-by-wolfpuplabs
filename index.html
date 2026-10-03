@@ -890,10 +890,16 @@ renderer.shadowMap.autoUpdate=false;
    menerangi kamar gelap di sebelahnya. Disisipkan ke semua MeshStandard lewat
    onBeforeCompile bawaan prototipe (bahan dengan onBeforeCompile sendiri
    memanggil pasangGIShader juga). */
+/* hingga GI_MAKS lantai sekaligus: peta ruang tiap lantai ditumpuk dalam satu atlas,
+   warna pantul 2 baris per lantai — ruangan berlampu menyala di lantai lain (atau
+   dilihat dari luar) tetap terang, bukan hanya lantai tempat kamera berada */
+const GI_MAKS=4;
 const GI_U={
   giPeta:{value:new THREE.DataTexture(new Uint8Array(4),1,1,THREE.LuminanceFormat)},
-  giWarna:{value:new THREE.DataTexture(new Uint8Array(256*2*4),256,2,THREE.RGBAFormat)},
-  giInfo:{value:new THREE.Vector4(0,0,1,1)}, giLantai:{value:new THREE.Vector2(-1e4,-1e4)}, giSkala:{value:0},
+  giWarna:{value:new THREE.DataTexture(new Uint8Array(256*2*GI_MAKS*4),256,2*GI_MAKS,THREE.RGBAFormat)},
+  giInfo:{value:Array.from({length:GI_MAKS},()=>new THREE.Vector4(0,0,1,1))},
+  giBatas:{value:Array.from({length:GI_MAKS},()=>new THREE.Vector3(0,0,0))},
+  giLantai:{value:Array.from({length:GI_MAKS},()=>new THREE.Vector2(-1e4,-1e4))}, giSkala:{value:0},
   // kotak ruangan untuk koreksi paralaks pantulan probe (min.x > max.x = mati)
   pbMin:{value:new THREE.Vector3(1,0,0)}, pbMax:{value:new THREE.Vector3(0,0,0)}, pbPos:{value:new THREE.Vector3()}
 };
@@ -904,7 +910,7 @@ function pasangGIShader(sh){
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos;')
     .replace('#include <project_vertex>','#include <project_vertex>\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
   sh.fragmentShader=sh.fragmentShader
-    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo; uniform vec2 giLantai; uniform float giSkala; uniform vec3 pbMin, pbMax, pbPos;')
+    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo['+GI_MAKS+']; uniform vec3 giBatas['+GI_MAKS+']; uniform vec2 giLantai['+GI_MAKS+']; uniform float giSkala; uniform vec3 pbMin, pbMax, pbPos;')
     .replace('#include <envmap_physical_pars_fragment>',THREE.ShaderChunk.envmap_physical_pars_fragment.replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
       `reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
       #ifdef KOTAK_PANTUL
@@ -917,11 +923,16 @@ function pasangGIShader(sh){
     .replace('#include <lights_fragment_end>',`if(giSkala>0.0){
       vec3 nW=inverseTransformDirection(geometry.normal,viewMatrix);
       vec3 q=vGIPos+vec3(nW.x,0.0,nW.z)*0.25;
-      vec2 uv=vec2((q.x-giInfo.x)*giInfo.z,(q.z-giInfo.y)*giInfo.w);
-      if(q.y>giLantai.x && q.y<giLantai.y && uv.x>0.0 && uv.y>0.0 && uv.x<1.0 && uv.y<1.0){
-        float id=floor(texture2D(giPeta,uv).r*255.0+0.5);
-        vec3 atas=texture2D(giWarna,vec2((id+0.5)/256.0,0.25)).rgb, bawah=texture2D(giWarna,vec2((id+0.5)/256.0,0.75)).rgb;
-        irradiance+=mix(bawah,atas,0.5*nW.y+0.5)*giSkala*PI;
+      for(int i=0;i<${GI_MAKS};i++){
+        if(q.y>giLantai[i].x && q.y<giLantai[i].y){
+          vec2 lu=vec2((q.x-giInfo[i].x)*giInfo[i].z,(q.z-giInfo[i].y)*giInfo[i].w);
+          if(lu.x>0.0 && lu.y>0.0 && lu.x<giBatas[i].x && lu.y<giBatas[i].y){
+            float id=floor(texture2D(giPeta,vec2(lu.x,lu.y+giBatas[i].z)).r*255.0+0.5), r=float(i)*2.0;
+            vec3 atas=texture2D(giWarna,vec2((id+0.5)/256.0,(r+0.5)/${2*GI_MAKS}.0)).rgb, bawah=texture2D(giWarna,vec2((id+0.5)/256.0,(r+1.5)/${2*GI_MAKS}.0)).rgb;
+            irradiance+=mix(bawah,atas,0.5*nW.y+0.5)*giSkala*PI;
+            break;
+          }
+        }
       }
     }
     #include <lights_fragment_end>`);
@@ -5440,43 +5451,70 @@ const _giW=new THREE.Color(), _giF=new THREE.Color(), _giL=new THREE.Color(0xffc
 function warnaPantul(hex,out){ out.set(hex); const m=Math.max(out.r,out.g,out.b,1e-3), lum=0.2126*out.r+0.7152*out.g+0.0722*out.b;
   out.multiplyScalar(1/m).lerp(new THREE.Color(1,1,1),0.45).multiplyScalar(clamp(lum*1.25,0.15,1)); return out; }
 const GI_KINI={peta:null, sidik:''};
-const GI_FLUKS=new Float32Array(256);
-function stepGI(){
-  const idx=FPS.on?RUANG_KAMERA.idx:PROJECT.active, lv=PROJECT.levels[idx], P=lv&&petaRuang(lv);
-  if(!P){ GI_U.giSkala.value=0; return; }
-  // peta ruang lantai ini → tekstur (hanya bila berganti lantai / scene dibangun ulang)
-  if(GI_KINI.peta!==P){
-    GI_KINI.peta=P;
-    const d=new Uint8Array(P.nx*P.nz); for(let k=0;k<d.length;k++){ const v=P.lab[k]; d[k]= v>0 && !P.bocor[v] ? 1+((v-1)%254) : 0; }
-    // sel dinding diberi nomor ruang terdekat (melebar ±50 cm): tepi plafon &
-    // lantai yang menempel dinding tidak kehilangan pantulannya jadi garis gelap
-    let muka=[]; for(let k=0;k<d.length;k++) if(d[k]) muka.push(k);
-    for(let langkah=0;langkah<5&&muka.length;langkah++){ const baru=[];
-      for(const k of muka){ const i=k%P.nx;
-        for(const kk of [i>0?k-1:-1, i<P.nx-1?k+1:-1, k-P.nx, k+P.nx]) if(kk>=0&&kk<d.length&&!d[kk]&&P.lab[kk]<0){ d[kk]=d[k]; baru.push(kk); } }
-      muka=baru; }
-    const t=GI_U.giPeta.value; t.image={data:d,width:P.nx,height:P.nz}; t.needsUpdate=true;
-    GI_U.giInfo.value.set(P.x0,P.z0,1/(P.nx*P.C),1/(P.nz*P.C));
+const GI_FLUKS=new Float32Array(256*GI_MAKS);
+/* lantai yang ikut GI: yang tampak, terdekat dengan ketinggian kamera dulu */
+function lantaiGI(){
+  const tampak=PROJECT.levels.map((lv,i)=>i).filter(i=>levelGroups[i] && levelGroups[i].visible && (FPS.on || i===PROJECT.active || $('#otherLevels').value==='solid'));
+  const yk=FPS.on?camera.position.y:levelElevation(PROJECT.active);
+  return tampak.sort((a,b)=>Math.abs(levelElevation(a)-yk)-Math.abs(levelElevation(b)-yk)).slice(0,GI_MAKS).sort((a,b)=>a-b);
+}
+/* lampu yang tidak memegang slot lampu berbayang tidak punya cahaya langsung;
+   pantulannya dinaikkan sebesar ini supaya ruangannya tetap tampak menyala dari
+   luar / lantai lain. Saat lampu itu mendapat slot, tambahan ini memudar seiring
+   cahaya langsungnya menyala (tanpa kedip). */
+const GI_LANGSUNG=2.2;
+function stepGI(s){
+  const lvs=lantaiGI(), peta=lvs.map(i=>petaRuang(PROJECT.levels[i]));
+  // atlas peta ruang (dibangun ulang hanya bila susunan lantai / petanya berubah)
+  if(!GI_KINI.peta || GI_KINI.peta.length!==peta.length || peta.some((P,k)=>P!==GI_KINI.peta[k])){
+    GI_KINI.peta=peta;
+    const W=Math.max(1,...peta.map(P=>P?P.nx:1)), H=Math.max(1,peta.reduce((s,P)=>s+(P?P.nz:0),0)), d=new Uint8Array(W*H);
+    let off=0;
+    for(let k=0;k<GI_MAKS;k++){
+      const P=peta[k];
+      if(!P){ GI_U.giLantai.value[k].set(-1e4,-1e4); continue; }
+      const dd=new Uint8Array(P.nx*P.nz); for(let q=0;q<dd.length;q++){ const v=P.lab[q]; dd[q]= v>0 && !P.bocor[v] ? 1+((v-1)%254) : 0; }
+      // sel dinding diberi nomor ruang terdekat (melebar ±50 cm): tepi plafon &
+      // lantai yang menempel dinding tidak kehilangan pantulannya jadi garis gelap
+      let muka=[]; for(let q=0;q<dd.length;q++) if(dd[q]) muka.push(q);
+      for(let langkah=0;langkah<5&&muka.length;langkah++){ const b2=[];
+        for(const q of muka){ const x=q%P.nx;
+          for(const qq of [x>0?q-1:-1, x<P.nx-1?q+1:-1, q-P.nx, q+P.nx]) if(qq>=0&&qq<dd.length&&!dd[qq]&&P.lab[qq]<0){ dd[qq]=dd[q]; b2.push(qq); } }
+        muka=b2; }
+      for(let r=0;r<P.nz;r++) d.set(dd.subarray(r*P.nx,(r+1)*P.nx),(off+r)*W);
+      if(!P.giLuas){ P.giLuas=new Float32Array(256); for(let r=1;r<P.luas.length;r++) P.giLuas[1+((r-1)%254)]+=P.luas[r]; }
+      const lv=PROJECT.levels[lvs[k]], el=levelElevation(lvs[k]);
+      GI_U.giInfo.value[k].set(P.x0,P.z0,1/(W*P.C),1/(H*P.C));
+      GI_U.giBatas.value[k].set(P.nx/W,P.nz/H,off/H);
+      GI_U.giLantai.value[k].set(el-0.05,el+lv.height+0.05);
+      off+=P.nz;
+    }
+    const t=GI_U.giPeta.value; t.image={data:d,width:W,height:H}; t.needsUpdate=true;
+    GI_KINI.sidik='';
   }
-  const el=levelElevation(idx); GI_U.giLantai.value.set(el-0.05,el+lv.height+0.05);
-  // fluks lampu yang benar-benar menyala (termasuk pudarnya) per ruang
+  // fluks per ruang dari SEMUA lampu yang menyala di lantai-lantai itu
   GI_FLUKS.fill(0); let ada=false;
-  for(const l of KOLAM){ const L=l.userData.L; if(!L || !l.intensity || L.idx!==idx || !L.ruang || P.bocor[L.ruang]) continue;
-    GI_FLUKS[1+((L.ruang-1)%254)]+=l.intensity; ada=true; }
-  const f=PROJECT.finish||{};
-  warnaPantul((LANTAI[f.floor]||{}).warna ?? 0xcccccc,_giF).multiply(_giL);      // dari bawah: pantulan lantai → plafon
-  warnaPantul(f.in==='warna'&&f.inColor ? f.inColor : ((FINISH[f.in]||{}).warna ?? 0xefece5),_giW).multiply(_giL);   // dari atas & samping
-  const skala=4, W=GI_U.giWarna.value, D=W.image.data; let sidik='';
-  for(let id=1;id<255;id++){
-    const fl=GI_FLUKS[id]; let e=0;
-    if(fl>0){ let luas=0; for(let r=1;r<P.luas.length;r++) if(1+((r-1)%254)===id) luas+=P.luas[r];
-      e=0.1*fl*clamp(Math.sqrt(15/Math.max(luas,1)),0.45,1.6)/skala; sidik+=id+':'+e.toFixed(3)+';'; }
-    _giA.copy(_giW).multiplyScalar(e); _giB.copy(_giF).multiplyScalar(e);
-    const o=id*4, o2=(256+id)*4;
-    D[o]=Math.min(255,_giA.r*255); D[o+1]=Math.min(255,_giA.g*255); D[o+2]=Math.min(255,_giA.b*255); D[o+3]=255;
-    D[o2]=Math.min(255,_giB.r*255); D[o2+1]=Math.min(255,_giB.g*255); D[o2+2]=Math.min(255,_giB.b*255); D[o2+3]=255;
+  for(const L of LAMPU_PASANG){
+    if(MATI.has(L.id) || !L.ruang) continue;
+    const k=lvs.indexOf(L.idx), P=peta[k]; if(k<0 || !P || P.bocor[L.ruang]) continue;
+    const slot=KOLAM.find(l=>l.userData.L && l.userData.L.id===L.id), f=slot?(slot.userData.f||0):0;
+    GI_FLUKS[k*256+1+((L.ruang-1)%254)]+=L.kuat*s.lamp*(1+GI_LANGSUNG*(1-f*f)); ada=true;
   }
-  if(sidik!==GI_KINI.sidik){ GI_KINI.sidik=sidik; W.needsUpdate=true; }
+  const fin=PROJECT.finish||{};
+  warnaPantul((LANTAI[fin.floor]||{}).warna ?? 0xcccccc,_giF).multiply(_giL);      // dari bawah: pantulan lantai → plafon
+  warnaPantul(fin.in==='warna'&&fin.inColor ? fin.inColor : ((FINISH[fin.in]||{}).warna ?? 0xefece5),_giW).multiply(_giL);   // dari atas & samping
+  const skala=4, Wt=GI_U.giWarna.value, D=Wt.image.data; let sidik='';
+  for(let k=0;k<GI_MAKS;k++){ const P=peta[k];
+    for(let id=1;id<255;id++){
+      const fl=P?GI_FLUKS[k*256+id]:0; let e=0;
+      if(fl>0){ e=0.1*fl*clamp(Math.sqrt(15/Math.max(P.giLuas[id],1)),0.45,1.6)/skala; sidik+=k+'.'+id+':'+e.toFixed(3)+';'; }
+      _giA.copy(_giW).multiplyScalar(e); _giB.copy(_giF).multiplyScalar(e);
+      const o=(2*k*256+id)*4, o2=((2*k+1)*256+id)*4;
+      D[o]=Math.min(255,_giA.r*255); D[o+1]=Math.min(255,_giA.g*255); D[o+2]=Math.min(255,_giA.b*255); D[o+3]=255;
+      D[o2]=Math.min(255,_giB.r*255); D[o2+1]=Math.min(255,_giB.g*255); D[o2+2]=Math.min(255,_giB.b*255); D[o2+3]=255;
+    }
+  }
+  if(sidik!==GI_KINI.sidik){ GI_KINI.sidik=sidik; Wt.needsUpdate=true; }
   GI_U.giSkala.value = ada ? skala : 0;
 }
 /* Empat lampu titik berbayang dibagi ke lampu yang paling berarti bagi kamera:
@@ -5534,7 +5572,7 @@ function stepLampu(dt){
     const u=l.userData; u.f=clamp((u.f??1)+(u.tuju?1:-1)*dt*3.5,0,1);        // redup/nyala ±0,3 dtk
     const kedip = L.jenis==='api' ? 0.82+0.18*Math.sin(tk*11+L.pos.x)*Math.sin(tk*7.3+L.pos.z) : 1;
     l.intensity=L.kuat*s.lamp*kedip*u.f*u.f; }
-  stepGI();
+  stepGI(s);
 }
 
 function buildObject(o, lv){
