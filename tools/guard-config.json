@@ -1,12 +1,13 @@
 {
   "_catatan": "Setiap host luar adalah keputusan privasi/hukum/ketersediaan. Menambah host = entri JEV baru (lihat docs/jev/registry.json) + alasan di sini.",
   "hostDiizinkan": {
-    "cdn.jsdelivr.net": "pustaka three.js r128 & model-viewer — terkunci versi + SRI (JEV-040)",
+    "cdn.jsdelivr.net": "pustaka three.js r128 & model-viewer — terkunci versi + SRI (JEV-040); model produk nyata Khronos — terkunci commit + SHA-256 (JEV-054)",
     "api.polyhaven.com": "daftar & berkas HDRI/model CC0 (JEV-030, JEV-031)",
     "dl.polyhaven.org": "unduhan HDRI/model CC0 (JEV-030, JEV-031)",
     "cdn.polyhaven.com": "thumbnail galeri model (JEV-031)",
     "polyhaven.com": "tautan kredit sumber aset (JEV-030, JEV-031)",
-    "www.w3.org": "namespace SVG (bukan permintaan jaringan)"
+    "www.w3.org": "namespace SVG (bukan permintaan jaringan)",
+    "github.com": "hanya tautan kredit/sumber lisensi model produk nyata (tidak ada permintaan jaringan) (JEV-054)"
   },
   "anggaran": {
     "indexHtmlKB": 900,
