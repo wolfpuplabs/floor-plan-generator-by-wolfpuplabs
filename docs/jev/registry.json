@@ -1825,6 +1825,63 @@
     "target": "0",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-056",
+   "judul": "Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Kasur, sofa, kloset, bathtub, wastafel, kulkas, kompor dan kitchen set bawaan tersusun dari balok bersudut tajam berwarna polos, sehingga render terlihat seperti mainan. Sumber CC0 realistis untuk ranjang/sanitair/dapur hampir tidak ada (Khronos hanya punya 1 kulkas; Poly Haven tidak terjangkau untuk diverifikasi).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"tambah resources realistisnya di bagian bed, sofa, sanitary sama kitchen\"",
+    "alternatif": [
+     "unduh model pihak ketiga per kategori (lisensi NC/tak jelas, ukuran besar, tidak offline)",
+     "Sketchfab (perlu akun/OAuth)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 8,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.8,
+      "upliftMenang": 0.008
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa masukan baru; teks pintasan ruangan dibuat lewat el()/textContent"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tanpa host baru — semua geometri & tekstur dibuat di peramban"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "karya sendiri, tanpa aset pihak ketiga"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "≤ 27 rb titik per ranjang, ≤ 12 ms bangun; geometri & tekstur 256² dipakai ulang antarobjek"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol pintasan ≥ 36 px, aria-pressed"
+    }
+   },
+   "metrik": {
+    "nama": "% proyek berisi ≥ 1 kasur/sofa/sanitair/dapur yang dirender mode jalan",
+    "target": "≥ 40%",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }
