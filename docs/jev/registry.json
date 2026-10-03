@@ -1942,6 +1942,62 @@
     "target": "≥ 60%",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-058",
+   "judul": "Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Untuk menunjukkan desain ke klien, pengguna harus mengirim berkas .json dan klien harus memasang/membuka aplikasi lalu bisa tak sengaja mengubahnya. Tidak ada cara mengirim \"rumah untuk dijelajahi\".",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"bisa share link ke orang biar bisa nyoba jalan2 tapi ngga bisa ngedit\"",
+    "alternatif": [
+     "server penyimpanan proyek + akun (biaya hosting, data klien di server, privasi)",
+     "ekspor video/gambar (tidak bisa dijelajahi)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.015
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "isi tautan = masukan tak tepercaya: dibatasi 6 MB kode / 20 MB sesudah dibuka (bom kompresi), lewat sanitasiProyek() (G2); model hanya rujukan Poly Haven / Khronos ber-SHA-256"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "fragmen URL tidak pernah dikirim ke server; tanpa backend, tanpa akun"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "model katalog diunduh penerima dari sumber aslinya (CC0/CC-BY, atribusi ikut)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "rumah contoh ±1,3 KB; proyek dibuka setelah halaman tampil"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "tautan dibuat per proyek aktif / bulan",
+    "target": "≥ 0,5",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }

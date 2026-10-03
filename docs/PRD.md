@@ -72,6 +72,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | E-06 | Atap dak mengikuti tapak, tritisan & tebal bisa diatur | — | JEV-010 |
 | E-07 | Tampak cepat: 3D, atas, depan, iso (ortogonal), mata | Atas/depan tanpa perspektif | JEV-011 |
 | E-08 | **UI ramah pengguna**: kartu *Mulai* pada proyek kosong (unggah denah · gambar dinding · rumah contoh · buka proyek); 5 tab berikon (pengaturan render/material/tampilan di tab **Tampilan**); toolbar ikon + label dengan alat jarang dipakai di menu **⋯ Lainnya**; langkah bernomor & tombol *Buat dinding 3D* menempel; pencarian furnitur; target sentuh ≥ 44 px, `aria-label` & cincin fokus | Toolbar satu baris berlabel di iPad landscape dengan panel terbuka; rumah contoh dimuat & bisa langsung dijelajahi | JEV-057 |
+| E-09 | **Tautan lihat-saja**: proyek dipadatkan ke fragmen URL (`#lihat=…`, tidak pernah dikirim ke server); penerima melihat & jalan-jalan (pintu, lampu, duduk) tanpa alat edit; model katalog Poly Haven/produk nyata ikut sebagai rujukan dan diunduh ulang; model unggahan sendiri tidak ikut (disebutkan saat membuat tautan) | Rumah contoh ±1,3 KB; tautan rusak, bom kompresi & isi jahat ditolak/disaring tanpa merusak aplikasi | JEV-058 |
 
 ### 5.3 Isi ruang & lingkungan (P1)
 
