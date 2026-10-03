@@ -5076,13 +5076,14 @@ function pianoBus(){
     PIANO.bus=ctx.createGain(); PIANO.bus.gain.value=1.4; PIANO.bus.connect(PIANO.pan); PIANO.pan.connect(AUDIO.master);
     const kirim=ctx.createGain(); kirim.gain.value=0.35; PIANO.bus.connect(kirim); kirim.connect(AUDIO.gema);
   }
-  const p=pianoTitik()||camera.position;
+  // di mode jalan suara datang dari pianonya; di editor (kamera jauh) langsung di telinga
+  const p=(FPS.on&&pianoTitik())||camera.position;
   PIANO.pan.positionX ? (PIANO.pan.positionX.value=p.x, PIANO.pan.positionY.value=p.y, PIANO.pan.positionZ.value=p.z) : PIANO.pan.setPosition(p.x,p.y,p.z);
   return ctx;
 }
-function bunyiPiano(m,t,dur,v){
+function bunyiPiano(m,t,dur,v,tujuan){
   const ctx=pianoBus(); if(!ctx) return;
-  t=t||ctx.currentTime; const d=PIANO.bus;
+  t=t||ctx.currentTime; const d=tujuan||PIANO.bus;
   ALAT.piano(ctx,d,t,m,Math.max(dur||1.2,0.6),v||0.32);
   osc(ctx,'sine',mf(m)*3.01,t,t+0.4,envGain(ctx,d,t,0.002,(v||0.32)*0.12,0.35));   // dentang palu
 }
@@ -5112,23 +5113,36 @@ function tutupPiano(){
   PIANO.buka=false; $('#pianoPanel').hidden=true; hentikanLaguPiano();
   if(FPS.on && !('ontouchstart' in window) && renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
 }
-function hentikanLaguPiano(){ for(const t of PIANO.tunda) clearTimeout(t); PIANO.tunda=[]; PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu';
-  if(PIANO.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; PIANO.bus.gain.cancelScheduledValues(t); PIANO.bus.gain.setValueAtTime(PIANO.bus.gain.value,t);
-    PIANO.bus.gain.linearRampToValueAtTime(0.0001,t+0.25); PIANO.bus.gain.linearRampToValueAtTime(1.4,t+0.3); } }
+/* lagu dijadwalkan bertahap (±0,35 detik ke depan) lewat jalur suaranya sendiri:
+   Berhenti memutus jalur itu, jadi not yang sudah terjadwal ikut diam seketika */
+function hentikanLaguPiano(){
+  const lg=PIANO.lagu; PIANO.lagu=null;
+  for(const t of PIANO.tunda) clearTimeout(t); PIANO.tunda=[];
+  if(lg){ clearInterval(lg.timer);
+    if(lg.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; lg.bus.gain.cancelScheduledValues(t); lg.bus.gain.setValueAtTime(lg.bus.gain.value,t); lg.bus.gain.linearRampToValueAtTime(0,t+0.05);
+      setTimeout(()=>{ try{ lg.bus.disconnect(); }catch(e){} },120); } }
+  document.querySelectorAll('#pianoKeys .pk.on').forEach(k=>k.classList.remove('on'));
+  $('#pianoMain').textContent='▶ Mainkan lagu';
+}
 function mainkanLaguPiano(kunci){
   hentikanLaguPiano();
   const L=LAGU_PIANO[kunci], ctx=pianoBus(); if(!L||!ctx) return;
-  PIANO.lagu=kunci; $('#pianoMain').textContent='■ Berhenti';
-  const spb=60/L.bpm, t0=ctx.currentTime+0.15; let b=0;
-  for(const [m,dur,iring] of L.n){
-    const t=t0+b*spb;
-    bunyiPiano(m,t,dur*spb*1.1,0.3);
-    if(iring) for(const x of iring) bunyiPiano(x,t,dur*spb*2,0.16);
-    const ms=(t-ctx.currentTime)*1000;
-    PIANO.tunda.push(setTimeout(()=>tandaiTuts(m,true),ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
-    b+=dur;
-  }
-  PIANO.tunda.push(setTimeout(()=>{ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; PIANO.tunda=[]; },(t0-ctx.currentTime+b*spb)*1000+300));
+  const bus=ctx.createGain(); bus.gain.value=1; bus.connect(PIANO.bus);
+  const lg={kunci, bus, timer:0}; PIANO.lagu=lg; $('#pianoMain').textContent='■ Berhenti';
+  const spb=60/L.bpm; let i=0, t=ctx.currentTime+0.15;
+  const jadwal=()=>{
+    if(PIANO.lagu!==lg) return;
+    while(i<L.n.length && t<ctx.currentTime+0.35){
+      const [m,dur,iring]=L.n[i];
+      bunyiPiano(m,t,dur*spb*1.1,0.3,bus);
+      if(iring) for(const x of iring) bunyiPiano(x,t,dur*spb*2,0.16,bus);
+      const ms=Math.max(0,(t-ctx.currentTime)*1000);
+      PIANO.tunda.push(setTimeout(()=>{ if(PIANO.lagu===lg) tandaiTuts(m,true); },ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
+      t+=dur*spb; i++;
+    }
+    if(i>=L.n.length && ctx.currentTime>t+0.2){ clearInterval(lg.timer); if(PIANO.lagu===lg){ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; } }
+  };
+  lg.timer=setInterval(jadwal,50); jadwal();
 }
 { const box=$('#pianoKeys');
   box.addEventListener('pointerdown',e=>{ const k=e.target.closest('.pk'); if(!k) return; e.preventDefault(); e.stopPropagation();
@@ -5203,6 +5217,7 @@ function stepAudio(dt){
   }
   if(gerak) bayangKotor();
   if(!AUDIO.ctx || !AUDIO.main.size) return;
+  const p=camera.position;
   // dinding di antara pendengar dan alat meredam suara (frekuensi tinggi dulu)
   AUDIO.occT-=dt; if(AUDIO.occT>0) return; AUDIO.occT=0.25;
   for(const [id,P] of AUDIO.main){
