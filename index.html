@@ -7029,7 +7029,7 @@ function ciriSimbol(ink,W,c,P){
       for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) if(at(x,y)){ const u=(x-cx)/rx, v=(y-cy)/ry, r=Math.hypot(u,v);
         const k=Math.floor(((Math.atan2(v,u)+Math.PI)/(2*Math.PI))*32)%32; if(r>rm[k]) rm[k]=r; }
       const u=[...rm].sort((a,b)=>a-b);
-      if(u[3]<0.84 || u[28]-u[3]>0.2) bulat=false; }
+      if(u[3]<0.6 || u[28]-u[3]>0.45) bulat=false; }
   }
   const kotak = cov.filter(v=>v>=0.6).length>=3;
   return {bw,bh,cov,garisH,garisV,padat,bulat,kotak};
@@ -7178,7 +7178,9 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
       return st.variant==='straight' ? sep>-0.3&&sep<pj+0.3&&sam<(st.width||1)/2+0.3
                                      : Math.hypot(ux,uz)<Math.max(pj*0.6,(st.width||1)*1.6); })) continue;
     const q={c,f,L:L2,S:S2,x:pusat.x,z:pusat.z,horiz:c.bw>=c.bh};
-    if(!f.kotak&&!f.bulat) bacaMiring(q);
+    if(!f.kotak){ bacaMiring(q);
+      // kotak yang diputar tampak "bulat" (pojok kosong) — kotak minimumnya membuktikan bukan
+      if(q.miring&&q.miring.f.kotak) f.bulat=false; }
     kand.push(q);
   }
   // bagian di dalam simbol lain (bantal, bak cuci di meja dapur) bukan perabot tersendiri
@@ -7411,7 +7413,7 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     const rata=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length-0.5:0, aH=rata(f.garisH), aV=rata(f.garisV);
     const sandar = Math.max(Math.abs(aH),Math.abs(aV))<0.12 ? null : Math.abs(aH)>=Math.abs(aV) ? (aH<0?0:2) : (aV<0?3:1);
     m.pakaiMiring=true; yakin=0.65;
-    if(Lm>=0.55&&Lm<=1.15&&Sm>=0.5&&Lm/Sm<1.4&&dalamN&&luasRuang(q)>=6){ pasang(q,'armchair',sandar!=null?sandar:2); q.duduk=true; }
+    if(Lm>=0.6&&Lm<=1.15&&Sm>=0.5&&Lm/Sm<1.4&&dalamN&&luasRuang(q)>=6){ pasang(q,'armchair',sandar!=null?sandar:2); q.duduk=true; }
     else if(Lm>=1.4&&Lm<=3.4&&Sm>=0.65&&Sm<=1.12&&dalamN&&luasRuang(q)>=8){
       const pj=m.horiz?[0,2]:[3,1]; pasang(q,Lm<1.95?'sofa2':'sofa3',sandar!=null&&pj.includes(sandar)?sandar:pj[0]); q.duduk=true; }
     else if(Lm>=1.75&&Lm<=2.45&&Sm>=0.85&&Sm<=2.15&&dalamN>=2){
