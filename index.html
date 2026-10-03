@@ -244,6 +244,8 @@ details#adv>*:not(summary){margin-bottom:8px}
         <input type="file" id="upload" accept="image/*">
         <input type="file" id="uploadNew" accept="image/*" hidden>
       </div>
+      <label class="chk"><input type="checkbox" id="rapikan" checked><span><b>Rapikan gambar dulu</b> sebelum dibaca — potong ke area denah, balik mode gelap, ratakan latar foto, luruskan yang miring, samakan resolusi</span></label>
+      <p class="hint" id="rapikan-info"></p>
       <div id="preview-box">
         <div class="ph">Pratinjau denah &amp; hasil deteksi<br>akan tampil di sini</div>
         <canvas id="canvas2d"></canvas>
@@ -323,6 +325,14 @@ details#adv>*:not(summary){margin-bottom:8px}
 
       <label class="chk"><input type="checkbox" id="alignBelow" checked><span>Sejajarkan otomatis dengan lantai bawah (dinding atas menumpu dinding bawah)</span></label>
       <label class="chk"><input type="checkbox" id="doFurn" checked><span><b>Deteksi perabot dari simbol</b> — matikan bila hasilnya kurang pas; bisa dinyalakan/dimatikan lagi setelah generate tanpa mengulang</span></label>
+      <div class="group" id="furnSensRow">
+        <label>Kepekaan perabot</label>
+        <select id="furnSens">
+          <option value="ketat">Ketat — hanya yang jelas (ranjang, sofa, sanitair, dapur)</option>
+          <option value="normal" selected>Normal</option>
+          <option value="longgar">Longgar — ikut tebakan lemah</option>
+        </select>
+      </div>
       <button class="btn" id="generateBtn">Generate Dinding 3D</button>
       <button class="btn ghost sm" id="generateNewBtn">Generate ke lantai baru</button>
       <div id="stats">Belum ada denah diproses.</div>
@@ -7013,6 +7023,13 @@ function ciriSimbol(ink,W,c,P){
       let ada=false; for(let y=ay;y<=ay+ky&&!ada;y++) for(let x=ax;x<=ax+kx;x++) if(at(x,y)){ ada=true; break; }
       if(ada) pojok++; }
     bulat = n>0 && pojok<=1 && di>=0.55*n && sudut.reduce((a,b)=>a+b,0)>=14 && Math.min(cov[0],cov[2])<0.75;
+    // tepi terluar tiap arah harus menempel elips: kotak yang diputar 30–45° juga
+    // berpojok kosong, tapi jari-jari tepinya naik-turun 0,7–1,0 (lingkaran ±1)
+    if(bulat){ const rm=new Float32Array(32);
+      for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) if(at(x,y)){ const u=(x-cx)/rx, v=(y-cy)/ry, r=Math.hypot(u,v);
+        const k=Math.floor(((Math.atan2(v,u)+Math.PI)/(2*Math.PI))*32)%32; if(r>rm[k]) rm[k]=r; }
+      const u=[...rm].sort((a,b)=>a-b);
+      if(u[3]<0.6 || u[28]-u[3]>0.45) bulat=false; }
   }
   const kotak = cov.filter(v=>v>=0.6).length>=3;
   return {bw,bh,cov,garisH,garisV,padat,bulat,kotak};
@@ -7115,6 +7132,34 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
       gabung=dilate(ink,W,H,1); } }
   const kand=[];
   if(window.__dbgPerabot) window.__dbgPerabot={ink,W,H,P,kand};
+  // SIMBOL MIRING (kursi santai diputar 30–45°, meja serong): sudut kotak minimum
+  // dicari dari sebaran pikselnya, lalu simbol dibaca ulang di bingkainya sendiri
+  const tanda=new Uint8Array(W*H);
+  const bacaMiring=q=>{
+    const px=q.c.px; if(px.length<30) return;
+    const step=Math.max(1,Math.floor(px.length/2500)), xs=[], ys=[];
+    for(let i=0;i<px.length;i+=step){ const p=px[i], x=p%W; xs.push(x); ys.push((p-x)/W); }
+    const kotakDi=deg=>{ const a=deg*D2R, cs=Math.cos(a), sn=Math.sin(a); let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+      for(let i=0;i<xs.length;i++){ const u=xs[i]*cs+ys[i]*sn, v=-xs[i]*sn+ys[i]*cs; if(u<u0)u0=u; if(u>u1)u1=u; if(v<v0)v0=v; if(v>v1)v1=v; }
+      return {l:(u1-u0)*(v1-v0),u0,u1,v0,v1}; };
+    const nol=kotakDi(0).l; let best=0, bl=nol;
+    for(let d=3;d<90;d+=3){ const l=kotakDi(d).l; if(l<bl){ bl=l; best=d; } }
+    for(let d=best-2.5;d<=best+2.5;d+=0.5){ const l=kotakDi(d).l; if(l<bl){ bl=l; best=d; } }
+    if(!(best>=8&&best<=82&&bl<0.8*nol)) return;
+    const k=kotakDi(best), a=best*D2R, cs=Math.cos(a), sn=Math.sin(a);
+    const Wl=Math.ceil(k.u1-k.u0)+5, Hl=Math.ceil(k.v1-k.v0)+5; if(Wl*Hl>400000) return;
+    for(const p of px) tanda[p]=1;
+    const il=new Uint8Array(Wl*Hl); let lx0=1e9,lx1=-1,ly0=1e9,ly1=-1;
+    for(let iv=0;iv<Hl;iv++) for(let iu=0;iu<Wl;iu++){
+      const u=k.u0-2+iu, v=k.v0-2+iv, x=Math.round(u*cs-v*sn), y=Math.round(u*sn+v*cs);
+      if(x<0||y<0||x>=W||y>=H) continue; const i=y*W+x;
+      if(tanda[i]&&ink[i]){ il[iv*Wl+iu]=1; if(iu<lx0)lx0=iu; if(iu>lx1)lx1=iu; if(iv<ly0)ly0=iv; if(iv>ly1)ly1=iv; } }
+    for(const p of px) tanda[p]=0;
+    if(lx1<0) return;
+    const cl={x0:lx0,y0:ly0,x1:lx1,y1:ly1,bw:lx1-lx0+1,bh:ly1-ly0+1};
+    const fl=ciriSimbol(il,Wl,cl,P);
+    q.miring={deg:best, cs, sn, f:fl, bw:cl.bw, bh:cl.bh, L:Math.max(cl.bw,cl.bh)/P, S:Math.min(cl.bw,cl.bh)/P, horiz:cl.bw>=cl.bh};
+  };
   for(let c of components(gabung,W,H)){
     const L=Math.max(c.bw,c.bh)/P, S=Math.min(c.bw,c.bh)/P;
     if(L<0.3||L>3.6||S<0.25) continue;
@@ -7132,7 +7177,11 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
       const ux=pusat.x-st.x, uz=pusat.z-st.z, sep=ux*dx+uz*dz, sam=Math.abs(ux*dz-uz*dx);
       return st.variant==='straight' ? sep>-0.3&&sep<pj+0.3&&sam<(st.width||1)/2+0.3
                                      : Math.hypot(ux,uz)<Math.max(pj*0.6,(st.width||1)*1.6); })) continue;
-    kand.push({c,f,L:L2,S:S2,x:pusat.x,z:pusat.z,horiz:c.bw>=c.bh});
+    const q={c,f,L:L2,S:S2,x:pusat.x,z:pusat.z,horiz:c.bw>=c.bh};
+    if(!f.kotak){ bacaMiring(q);
+      // kotak yang diputar tampak "bulat" (pojok kosong) — kotak minimumnya membuktikan bukan
+      if(q.miring&&q.miring.f.kotak) f.bulat=false; }
+    kand.push(q);
   }
   // bagian di dalam simbol lain (bantal, bak cuci di meja dapur) bukan perabot tersendiri
   for(let i=kand.length-1;i>=0;i--){ const a=kand[i].c;
@@ -7172,9 +7221,11 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
       const u=(x-c.x0)/c.bw, v=(y-c.y0)/c.bh; if(Math.abs(u-v)<0.04) a++; if(Math.abs(u+v-1)<0.04) b++; }
     return Math.max(a,b)>=0.7*Math.hypot(c.bw,c.bh); };     // garis diagonal utuh dari sudut ke sudut
   const out=[], pakai=new Set();
+  let yakin=0.8;                           // keyakinan aturan yang sedang berjalan (0..1)
   const pasang=(q,jenis,punggung,lebar,dalam)=>{
     pakai.add(q);
     const f=FURN[jenis]; if(!f) return;
+    if(q.miring&&q.miring.pakaiMiring) return pasangMiring(q,jenis,punggung);
     let rotY, eX, eZ;
     if(punggung!=null){
       const [bx,bz]=SISI_ARAH[punggung]; rotY=Math.atan2(-bx,-bz);
@@ -7187,9 +7238,24 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     }
     if(lebar) eX=lebar; if(dalam) eZ=dalam;
     const bebas=jenis==='kitchen';
-    out.push({kind:jenis, x:q.x, z:q.z, rotY,
+    out.push({kind:jenis, x:q.x, z:q.z, rotY, yakin,
       sx:clamp(eX/f.f[0], bebas?0.35:0.72, bebas?2.6:1.4), sz:clamp(eZ/f.f[1],0.72,1.4)});
   };
+  // simbol miring: sisi lokal → arah dunia lewat sudut bingkainya
+  const pasangMiring=(q,jenis,punggung)=>{
+    const m=q.miring, f=FURN[jenis], ke=(dx,dy)=>[dx*m.cs-dy*m.sn, dx*m.sn+dy*m.cs];
+    let rotY, eX, eZ;
+    if(punggung!=null){
+      const [bx,bz]=ke(...SISI_ARAH[punggung]); rotY=Math.atan2(-bx,-bz);
+      const sx0=punggung===0||punggung===2; eX=(sx0?m.bw:m.bh)/P; eZ=(sx0?m.bh:m.bw)/P;
+    } else {
+      const panjangX=f.f[0]>=f.f[1], [ax,az]=m.horiz?ke(1,0):ke(0,1);
+      rotY=-Math.atan2(az,ax) + (panjangX?0:Math.PI/2);
+      eX=panjangX?m.L:m.S; eZ=panjangX?m.S:m.L;
+    }
+    out.push({kind:jenis, x:q.x, z:q.z, rotY, yakin, sx:clamp(eX/f.f[0],0.72,1.4), sz:clamp(eZ/f.f[1],0.72,1.4)});
+  };
+  const miring=kand.filter(q=>q.miring); for(const q of miring) pakai.add(q);
   // 1. RANJANG — 1,75–2,4 m × 0,85–2,1 m; kepala di sisi pendek yang terbuka/menempel dinding/berbantal
   for(const q of kand){
     if(!(q.L>=1.5&&q.L<=2.45&&q.S>=0.85&&q.S<=2.15&&q.f.kotak)) continue;
@@ -7339,7 +7405,37 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     pasang(q, sofa ? (q.L<1.95?'sofa2':'sofa3') : 'armchair', punggung);
     q.duduk=true;
   }
+  // 3a. SIMBOL MIRING: kursi santai / sofa / ranjang / meja yang digambar serong
+  const beresMiring=new Set();
+  for(const q of miring){
+    const m=q.miring, f=m.f, Lm=m.L, Sm=m.S; if(!f.kotak) continue;
+    const dalamN=[...f.garisH,...f.garisV].filter(t=>t>0.06&&t<0.94).length;
+    const rata=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length-0.5:0, aH=rata(f.garisH), aV=rata(f.garisV);
+    const sandar = Math.max(Math.abs(aH),Math.abs(aV))<0.12 ? null : Math.abs(aH)>=Math.abs(aV) ? (aH<0?0:2) : (aV<0?3:1);
+    m.pakaiMiring=true; yakin=0.65;
+    if(Lm>=0.6&&Lm<=1.15&&Sm>=0.5&&Lm/Sm<1.4&&dalamN&&luasRuang(q)>=6){ pasang(q,'armchair',sandar!=null?sandar:2); q.duduk=true; }
+    else if(Lm>=1.4&&Lm<=3.4&&Sm>=0.65&&Sm<=1.12&&dalamN&&luasRuang(q)>=8){
+      const pj=m.horiz?[0,2]:[3,1]; pasang(q,Lm<1.95?'sofa2':'sofa3',sandar!=null&&pj.includes(sandar)?sandar:pj[0]); q.duduk=true; }
+    else if(Lm>=1.75&&Lm<=2.45&&Sm>=0.85&&Sm<=2.15&&dalamN>=2){
+      const pd=m.horiz?[3,1]:[0,2], g=m.horiz?f.garisV:f.garisH;
+      const kepala = g.filter(t=>t<0.36).length>=g.filter(t=>t>0.64).length ? pd[0] : pd[1];
+      pasang(q, Sm<1.25?'bed_single':Sm<1.72?'bed_double':'bed_king', kepala); }
+    else m.pakaiMiring=false;
+    if(m.pakaiMiring) beresMiring.add(q);
+    yakin=0.8;
+  }
   const duduk=kand.filter(q=>q.duduk);
+  // meja serong di dekat tempat duduk
+  for(const q of miring){
+    const m=q.miring; if(beresMiring.has(q)||!m.f.kotak) continue;
+    const dekat=duduk.some(d=>jarak(d,q)<2.6&&seruang(d,q));
+    if(!dekat) continue;
+    m.pakaiMiring=true; yakin=0.6;
+    if(m.L>=0.75&&m.L<=1.8&&m.S>=0.4) pasang(q,'coffee_table',null);
+    else if(m.L>=0.35&&m.L<=0.72&&m.L/m.S<1.3) pasang(q,'side_table',null);
+    else m.pakaiMiring=false;
+    yakin=0.8;
+  }
   // 3b. MEJA MAKAN + KURSI dalam satu simbol: satu rongga besar di tengah (daun meja)
   //     dikelilingi rongga-rongga kecil (dudukan kursi) di luar daun meja
   for(const q of kand){
@@ -7368,10 +7464,12 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     if(pakai.has(q)||!q.f.bulat) continue;
     const D=(q.L+q.S)/2, oval=q.L/q.S>=1.25;
     const dekatDuduk=duduk.some(d=>jarak(d,q)<2.6&&seruang(d,q));
+    yakin = dekatDuduk||D>=1.6 ? 0.75 : 0.55;
     if(oval && q.L<=1.7 && dekatDuduk) pasang(q,'coffee_table',null);          // meja tamu oval
     else if(D>=1.6&&D<=3.0) pasang(q,'dining_round',null,D,D);                  // meja bulat + kursi dalam satu simbol
     else if(D>=0.7&&D<1.6) pasang(q, dekatDuduk&&D<1.0?'coffee_table':'dining_round', null, dekatDuduk&&D<1.0?null:D+0.8, dekatDuduk&&D<1.0?null:D+0.8);
     else if(D>=0.35&&D<0.7) pasang(q,'side_table',null);
+    yakin=0.8;
   }
   // 5. DERET DAPUR / LEMARI — strip 0,5–0,78 m menempel dinding di sisi panjangnya
   for(const q of kand){
@@ -7388,10 +7486,10 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
         sx:clamp(q.L/2/f.f[0],0.72,1.4), sz:clamp(q.S/f.f[1],0.72,1.4)});
       continue;
     }
-    if(kamar){ pasang(q, q.L>=2.0?'wardrobe3':'wardrobe', s); continue; }
+    if(kamar){ yakin=0.7; pasang(q, q.L>=2.0?'wardrobe3':'wardrobe', s); yakin=0.8; continue; }
     // deret dapur harus punya tanda dapur: sekat kabinet / bak cuci / tungku, bukan sekadar kotak panjang
     const lintang=(q.horiz?q.f.garisV:q.f.garisH).length, isi=q.f.padat>0.05;
-    if(q.S>=0.55 && q.L>=1.7 && (lintang>=2 || isi)){ pasang(q,'kitchen',s,q.L,null); q.dapur=true; }
+    if(q.S>=0.55 && q.L>=1.7 && (lintang>=2 || isi)){ yakin=0.65; pasang(q,'kitchen',s,q.L,null); yakin=0.8; q.dapur=true; }
   }
   const dapur=kand.filter(q=>q.dapur);
   // 5b. KONSOL / SET TV: strip ramping menempel dinding di ruang yang ada tempat duduknya
@@ -7400,7 +7498,7 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     if(!(q.L>=0.9&&q.L<=2.8&&q.S>=0.2&&q.S<=0.62&&q.L/q.S>=2.5)) continue;
     const [s,d]=dekatDinding(q,sisiPanjang(q)); if(d>0.35) continue;
     if(!duduk.some(o=>seruang(o,q)&&jarak(o,q)<6)) continue;
-    pasang(q,'tv_set',s);
+    yakin=0.6; pasang(q,'tv_set',s); yakin=0.8;
   }
   // 7. NAKAS (di samping kepala ranjang) & MESIN CUCI (kotak ±60 cm berisi huruf/lingkaran)
   for(const q of kand){
@@ -7409,13 +7507,13 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     const [s,d]=dekatDinding(q,[0,1,2,3]);
     const r=ranjang.find(r=>diKepala(r,q));
     if(!r && q.L>=0.52 && q.f.kotak && q.f.padat>0.012 && d<0.4 && !diagonal1(q) && !hasCrossDiagonals(q.c,W)
-       && !duduk.some(o=>seruang(o,q)&&jarak(o,q)<3)){ pasang(q,'washer',s); continue; }
+       && !duduk.some(o=>seruang(o,q)&&jarak(o,q)<3)){ yakin=0.45; pasang(q,'washer',s); yakin=0.8; continue; }
   }
   // 7b. MEJA SUDUT kecil (kotak/bulat 35–70 cm) di dekat tempat duduk
   for(const q of kand){
     if(pakai.has(q)) continue;
     if(!(q.L>=0.35&&q.L<=0.72&&q.S>=0.33&&q.L/q.S<1.3&&(q.f.kotak||q.f.bulat))) continue;
-    if(duduk.some(o=>seruang(o,q)&&jarak(o,q)<2.2)) pasang(q,'side_table',null);
+    if(duduk.some(o=>seruang(o,q)&&jarak(o,q)<2.2)){ yakin=0.55; pasang(q,'side_table',null); yakin=0.8; }
   }
   // 8. SANITAIR yang belum terbaca di resolusi olah dinding (kloset, wastafel, meja wastafel, bathtub, shower)
   // hanya di ruang kecil (kamar mandi/WC) atau berdekatan dengan sanitair lain —
@@ -7437,7 +7535,7 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     if(!jenis) continue;
     // kloset & bak cuci menghadap menjauhi dinding: punggung di sisi terdekat dinding
     const pg = jenis==='toilet' ? dekatDinding(q,sisiPendek(q))[0] : jenis==='bathtub'||jenis==='shower' ? null : dekatDinding(q,sisiPanjang(q))[0];
-    pasang(q,jenis,pg);
+    yakin=0.6; pasang(q,jenis,pg); yakin=0.8;
   }
   // 6a. MEJA MAKAN yang kursinya menempel jadi satu simbol: kotak inti (meja) +
   //     tonjolan 25–75 cm (kursi) di dua sisi yang berhadapan atau lebih
@@ -7480,10 +7578,10 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
       pasang(q,jenis,null); continue;
     }
     const dw=dekatDinding(q,[0,1,2,3])[1];
-    if(dapur.some(d=>jarak(d,q)<3.2&&seruang(d,q)) && q.S>=0.55 && dw>0.4){ pasang(q,'island',null); continue; }
-    if(duduk.some(d=>jarak(d,q)<2.4) && q.L<=1.6 && dw>0.3){ pasang(q,'coffee_table',null); continue; }
+    if(dapur.some(d=>jarak(d,q)<3.2&&seruang(d,q)) && q.S>=0.55 && dw>0.4){ yakin=0.7; pasang(q,'island',null); yakin=0.8; continue; }
+    if(duduk.some(d=>jarak(d,q)<2.4) && q.L<=1.6 && dw>0.3){ yakin=0.7; pasang(q,'coffee_table',null); yakin=0.8; continue; }
     if(dw<0.25 && q.S<=0.85 && q.L>=1.0 && q.L<=1.9 && luasRuang(q)>=6 && !out.some(o=>/toilet|vanity|washbasin|bathtub|shower/.test(o.kind)&&Math.hypot(o.x-q.x,o.z-q.z)<2.5)){
-      pasang(q,'desk',dekatDinding(q,sisiPanjang(q))[0]); continue; }
+      yakin=0.5; pasang(q,'desk',dekatDinding(q,sisiPanjang(q))[0]); yakin=0.8; continue; }
   }
   return out;
 }
@@ -8177,7 +8275,7 @@ function extractPlan(opt){
     if(detectFix){
       for(const f of detectFixtures(thin,w,h,pxm,symSegs)){
         const c=toM(f.cx,f.cy);
-        fixtures.push({kind:f.kind, x:c.x, z:c.z,
+        fixtures.push({kind:f.kind, x:c.x, z:c.z, yakin:luasRuangDi(c.x,c.z,walls)<8?0.7:0.5,
                        rotY:(f.bw>=f.bh?0:Math.PI/2), w:f.bw/pxm, d:f.bh/pxm});
       }
       // perabot lain dari salinan gambar beresolusi tinggi. Sanitair dari pembacaan
@@ -8341,17 +8439,180 @@ function syncPlanPanel(force){
   LAST_RESULT=PLAN_RES.get(lv.id)||null;
   const ph=$('#preview-box .ph');
   if(!pl){
+    $('#rapikan-info').textContent='';
     canvas2d.style.display='none';
     if(ph){ ph.style.display=''; ph.innerHTML=`<b>${lv.name}</b> belum punya gambar denah.<br>Upload denah khusus lantai ini di atas.`; }
     updatePxm();
     return;
   }
   $('#realWidth').value=pl.realWidth; $('#unit').value=pl.unit||'m';
+  $('#rapikan-info').textContent=pl.rapi||'';
   const img=PLAN_IMG.get(lv.id);
   if(img&&img.complete&&img.naturalWidth) return showPlanImage(img,pl);
   const im=new Image();
   im.onload=()=>{ PLAN_IMG.set(lv.id,im); if(L()&&L().id===lv.id&&PROJECT.plans[lv.id]===pl) showPlanImage(im,pl); };
   im.src=pl.img;
+}
+/* ---------- RAPIKAN DENAH: gambar apa pun dibawa ke syarat pembaca ----------
+   kertas putih, garis gelap, tegak lurus sumbu, berisi denah saja, resolusi cukup.
+   Tiap langkah hanya dijalankan bila gambarnya memang butuh — denah yang sudah
+   bersih keluar apa adanya (ubah=false), jadi hasil bacaannya tidak bergeser. */
+function rapikanDenah(img){
+  const W0=img.naturalWidth||img.width, H0=img.naturalHeight||img.height, langkah=[];
+  let ubah=false;
+  const kanvas=(w,h)=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; };
+  const ctxOf=c=>c.getContext('2d',{willReadFrequently:true});
+  const lumOf=(d,n)=>{ const L=new Uint8Array(n); for(let i=0,p=0;i<n;i++,p+=4) L[i]=d[p+3]<40?255:(d[p]*0.299+d[p+1]*0.587+d[p+2]*0.114)|0; return L; };
+  // salinan kecil (≤ 600 px) untuk analisis
+  const kecil=(src,sw,sh,sx=0,sy=0,cw=sw,ch=sh)=>{ const a=Math.min(1,600/Math.max(cw,ch)), w=Math.max(8,Math.round(cw*a)), h=Math.max(8,Math.round(ch*a));
+    const c=kanvas(w,h), x=ctxOf(c); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.imageSmoothingQuality='high'; x.drawImage(src,sx,sy,cw,ch,0,0,w,h);
+    const d=x.getImageData(0,0,w,h).data; return {w,h,a,d,L:lumOf(d,w*h)}; };
+  const komponen=(m,w,h)=>{ const lab=new Int32Array(w*h), out=[]; let id=0; const st=[];
+    for(let i0=0;i0<w*h;i0++){ if(!m[i0]||lab[i0]) continue; id++; let n=0,x0=w,x1=0,y0=h,y1=0; st.push(i0); lab[i0]=id;
+      while(st.length){ const i=st.pop(), x=i%w, y=(i-x)/w; n++; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=x+dx, yy=y+dy; if(xx<0||yy<0||xx>=w||yy>=h) continue; const j=yy*w+xx; if(m[j]&&!lab[j]){ lab[j]=id; st.push(j); } } }
+      out.push({n,x0,x1,y0,y1}); }
+    return out; };
+
+  // 1. KERTAS di dalam screenshot / foto: latar = warna tepi gambar yang seragam & gelap
+  //    (meja, UI mode gelap). Diisi banjir dari tepi menurut KEMIRIPAN WARNA dengan latar,
+  //    bukan sekadar gelap — sisi kertas yang kena bayangan tetap terhitung kertas.
+  let cx0=0, cy0=0, cw=W0, ch=H0, luarM=null, A0=null;
+  { const A=kecil(img,W0,H0), n=A.w*A.h, tepi=[];
+    for(let x=0;x<A.w;x++) tepi.push(x,(A.h-1)*A.w+x); for(let y=1;y<A.h-1;y++) tepi.push(y*A.w,y*A.w+A.w-1);
+    const med=c=>{ const v=tepi.map(i=>A.d[i*4+c]).sort((a,b)=>a-b); return v[v.length>>1]; };
+    const lr=med(0), lg=med(1), lb=med(2), beda=i=>Math.max(Math.abs(A.d[i*4]-lr),Math.abs(A.d[i*4+1]-lg),Math.abs(A.d[i*4+2]-lb));
+    const seragam=tepi.filter(i=>beda(i)<=34).length/tepi.length;
+    if(seragam>=0.6 && lr*0.299+lg*0.587+lb*0.114<185){
+      const luar=new Uint8Array(n), st=tepi.slice();
+      while(st.length){ const i=st.pop(); if(luar[i]||beda(i)>34) continue; luar[i]=1; const x=i%A.w;
+        if(x>0) st.push(i-1); if(x<A.w-1) st.push(i+1); if(i>=A.w) st.push(i-A.w); if(i<n-A.w) st.push(i+A.w); }
+      const isi=new Uint8Array(n); for(let i=0;i<n;i++) isi[i]=luar[i]?0:1;
+      const kk=komponen(isi,A.w,A.h).sort((a,b)=>b.n-a.n)[0];
+      let terangK=0; if(kk) for(let y=kk.y0;y<=kk.y1;y++) for(let x=kk.x0;x<=kk.x1;x++){ const i=y*A.w+x; if(isi[i]) terangK+=A.L[i]; }
+      if(kk && terangK/kk.n>150 && kk.n>=0.04*n && kk.n>=0.6*(kk.x1-kk.x0+1)*(kk.y1-kk.y0+1) && (kk.x1-kk.x0+1)*(kk.y1-kk.y0+1)<0.92*n){   // kertas = bidang padat, bukan gugus garis
+        cx0=Math.round(kk.x0/A.a); cy0=Math.round(kk.y0/A.a); cw=Math.round((kk.x1-kk.x0+1)/A.a); ch=Math.round((kk.y1-kk.y0+1)/A.a);
+        // semua yang bukan bidang kertas (latar & benda kecil di atasnya) nanti diputihkan
+        luarM=new Uint8Array(n); for(let i=0;i<n;i++) luarM[i]=isi[i]?0:1;
+        A0=A; langkah.push('dipotong ke bidang kertas'); ubah=true; } } }
+  // kanvas kerja seukuran asli (dibatasi 4000 px); resolusi akhir diatur paling belakang,
+  // setelah dipotong — supaya denah kecil di gambar besar tidak kehilangan piksel
+  const pj=Math.max(cw,ch), s=pj>4000?4000/pj:1;
+  let O=kanvas(Math.max(1,Math.round(cw*s)),Math.max(1,Math.round(ch*s)));
+  { const x=ctxOf(O); x.fillStyle='#fff'; x.fillRect(0,0,O.width,O.height); x.imageSmoothingQuality='high'; x.drawImage(img,cx0,cy0,cw,ch,0,0,O.width,O.height);
+  }
+  // latar di sela kertas miring → putih (dilebarkan 1 px supaya tepi kertas ikut hilang)
+  const putihkanLuar=()=>{ if(!luarM) return;
+    const M=dilate(luarM,A0.w,A0.h,1), c=kanvas(A0.w,A0.h), mx=ctxOf(c), id=mx.createImageData(A0.w,A0.h);
+    for(let i=0;i<M.length;i++){ id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=255; id.data[i*4+3]=M[i]?255:0; }
+    mx.putImageData(id,0,0);
+    const x=ctxOf(O); x.imageSmoothingEnabled=false;
+    x.drawImage(c,cx0*A0.a,cy0*A0.a,cw*A0.a,ch*A0.a,0,0,O.width,O.height); x.imageSmoothingEnabled=true; };
+  const olah=fn=>{ const x=ctxOf(O), im=x.getImageData(0,0,O.width,O.height); fn(im.data,O.width,O.height); x.putImageData(im,0,0); };
+
+  // 2. MODE GELAP: garis terang di latar gelap → dibalik
+  let A=kecil(O,O.width,O.height);
+  { const h=new Array(256).fill(0); for(const v of A.L) h[v]++; let c=0, med=0; for(;med<256;med++){ c+=h[med]; if(c>=A.L.length/2) break; }
+    let terang=0; for(const v of A.L) if(v>200) terang++;
+    if(med<100 && terang<0.25*A.L.length){ olah(d=>{ for(let p=0;p<d.length;p+=4){ d[p]=255-d[p]; d[p+1]=255-d[p+1]; d[p+2]=255-d[p+2]; } });
+      langkah.push('warna dibalik (denah mode gelap)'); ubah=true; A=kecil(O,O.width,O.height); } }
+
+  // 3. LATAR FOTO tidak rata (bayangan, kertas kekuningan): tiap kanal warna dibagi
+  //    perkiraan latarnya (maksimum lokal yang lebih lebar dari garis mana pun)
+  { const w=A.w, h=A.h, r=Math.max(3,Math.round(Math.max(w,h)/28)), t=new Uint8Array(w*h), bg=[0,1,2].map(()=>new Uint8Array(w*h));
+    for(let ch3=0;ch3<3;ch3++){ const B=bg[ch3];
+      for(let y=0;y<h;y++) for(let x=0;x<w;x++){ let m=0; for(let k=Math.max(0,x-r);k<=Math.min(w-1,x+r);k++){ const v=A.d[(y*w+k)*4+ch3]; if(v>m) m=v; } t[y*w+x]=m; }
+      for(let x=0;x<w;x++) for(let y=0;y<h;y++){ let m=0; for(let k=Math.max(0,y-r);k<=Math.min(h-1,y+r);k++) if(t[k*w+x]>m) m=t[k*w+x]; B[y*w+x]=m; } }
+    const bl=new Uint8Array(w*h); for(let i=0;i<w*h;i++) bl[i]=(bg[0][i]*0.299+bg[1][i]*0.587+bg[2][i]*0.114)|0;
+    const u=[...bl].sort((a,b)=>a-b), p5=u[Math.floor(u.length*0.05)], p95=u[Math.floor(u.length*0.95)];
+    const pw=i=>Math.max(bg[0][i],bg[1][i],bg[2][i])-Math.min(bg[0][i],bg[1][i],bg[2][i]);
+    const tint=[...Array(w*h).keys()].filter((_,i)=>i%7===0).map(pw).sort((a,b)=>a-b);
+    if(p95-p5>28 || p95<200 || tint[tint.length>>1]>22){
+      const c=kanvas(w,h), x=ctxOf(c), id=x.createImageData(w,h);
+      for(let i=0;i<w*h;i++){ for(let k=0;k<3;k++) id.data[i*4+k]=Math.max(40,bg[k][i]); id.data[i*4+3]=255; }
+      x.putImageData(id,0,0);
+      const B=kanvas(O.width,O.height), bx=ctxOf(B); bx.imageSmoothingQuality='high'; bx.filter=`blur(${Math.max(2,r/A.a/2)}px)`; bx.drawImage(c,0,0,O.width,O.height);
+      const bd=bx.getImageData(0,0,O.width,O.height).data;
+      olah(d=>{ for(let p=0;p<d.length;p+=4) for(let k=0;k<3;k++) d[p+k]=Math.min(255,d[p+k]*255/Math.max(40,bd[p+k])); });
+      langkah.push('latar foto diratakan'); ubah=true; } }
+  putihkanLuar(); A=kecil(O,O.width,O.height);
+
+  // 4. ISI DENAH: gugus tinta utama + yang berdekatan; tepi kosong, logo & tulisan jauh dibuang
+  const paper=paperLevel(A.d,A.w,A.h);
+  const tinta=new Uint8Array(A.w*A.h); for(let i=0;i<tinta.length;i++) tinta[i]=A.L[i]<paper*0.7?1:0;
+  { const kk=komponen(tinta,A.w,A.h).filter(k=>k.n>=3);
+    if(kk.length){
+      const luasK=k=>(k.x1-k.x0+1)*(k.y1-k.y0+1);
+      kk.sort((a,b)=>luasK(b)-luasK(a));
+      const u={...kk[0]}, g=0.1*Math.max(A.w,A.h), pakai=new Set([kk[0]]);
+      for(let ulang=true;ulang;){ ulang=false;
+        for(const k of kk){ if(pakai.has(k)) continue;
+          if(k.x0<=u.x1+g&&k.x1>=u.x0-g&&k.y0<=u.y1+g&&k.y1>=u.y0-g){ pakai.add(k); ulang=true;
+            u.x0=Math.min(u.x0,k.x0); u.x1=Math.max(u.x1,k.x1); u.y0=Math.min(u.y0,k.y0); u.y1=Math.max(u.y1,k.y1); } } }
+      const m=Math.round(0.08*Math.max(u.x1-u.x0,u.y1-u.y0));      // sisakan tepi: garis dimensi & ruang napas pembaca
+      const x0=Math.max(0,u.x0-m), y0=Math.max(0,u.y0-m), x1=Math.min(A.w-1,u.x1+m), y1=Math.min(A.h-1,u.y1+m);
+      if((x1-x0+1)*(y1-y0+1)<0.55*A.w*A.h && luasK(kk[0])>0.02*A.w*A.h){
+        const sx=Math.round(x0/A.a), sy=Math.round(y0/A.a), sw=Math.round((x1-x0+1)/A.a), sh=Math.round((y1-y0+1)/A.a);
+        const C=kanvas(Math.min(sw,O.width-sx),Math.min(sh,O.height-sy)); ctxOf(C).drawImage(O,sx,sy,C.width,C.height,0,0,C.width,C.height);
+        O=C; langkah.push('dipotong ke area denah'); ubah=true; A=kecil(O,O.width,O.height); } } }
+
+  // 5. MIRING: sudut yang membuat proyeksi baris/kolom tinta paling tajam
+  { const pts=[]; const p2=paperLevel(A.d,A.w,A.h);
+    for(let y=0;y<A.h;y++) for(let x=0;x<A.w;x++) if(A.L[y*A.w+x]<p2*0.7) pts.push(x-A.w/2,y-A.h/2);
+    if(pts.length>200){
+      const D=Math.ceil(Math.hypot(A.w,A.h))+2, rb=new Float32Array(D), kb=new Float32Array(D);
+      const skor=deg=>{ const c=Math.cos(deg*D2R), sn=Math.sin(deg*D2R); rb.fill(0); kb.fill(0);
+        for(let i=0;i<pts.length;i+=2){ const x=pts[i], y=pts[i+1]; rb[(y*c-x*sn+D/2)|0]++; kb[(x*c+y*sn+D/2)|0]++; }
+        let v=0; for(let i=0;i<D;i++) v+=rb[i]*rb[i]+kb[i]*kb[i]; return v; };
+      let best=0, bs=skor(0);
+      for(let d=-15;d<=15;d+=0.5){ const v=skor(d); if(v>bs){ bs=v; best=d; } }
+      for(let d=best-0.45;d<=best+0.45;d+=0.05){ const v=skor(d); if(v>bs){ bs=v; best=d; } }
+      if(Math.abs(best)>=0.4 && bs>1.04*skor(0)){
+        const t=best*D2R, w=O.width, h=O.height, nw=Math.ceil(Math.abs(w*Math.cos(t))+Math.abs(h*Math.sin(t))), nh=Math.ceil(Math.abs(w*Math.sin(t))+Math.abs(h*Math.cos(t)));
+        const R=kanvas(nw,nh), x=ctxOf(R); x.fillStyle='#fff'; x.fillRect(0,0,nw,nh); x.imageSmoothingQuality='high';
+        x.translate(nw/2,nh/2); x.rotate(-t); x.drawImage(O,-w/2,-h/2);
+        O=R; langkah.push(`diluruskan ${fmt(Math.abs(best),1)}°`); ubah=true; } } }
+  // 6. RESOLUSI: gambar kecil diperbesar (garis perabot butuh piksel), raksasa diperkecil
+  { const p=Math.max(O.width,O.height); let f=1;
+    if(p<1000) f=Math.min(3,1400/p); else if(p>2600) f=2600/p;
+    if(Math.abs(f-1)>0.05){ const C=kanvas(Math.round(O.width*f),Math.round(O.height*f)), x=ctxOf(C);
+      x.fillStyle='#fff'; x.fillRect(0,0,C.width,C.height); x.imageSmoothingQuality='high'; x.drawImage(O,0,0,C.width,C.height); O=C;
+      langkah.push(f>1?`diperbesar ${fmt(f,1)}× (gambar kecil)`:`diperkecil ke ${O.width}×${O.height} px`); } }
+  return {canvas:O, ubah, langkah};
+}
+const PLAN_MENTAH=new Map();     // gambar upload apa adanya (memori saja): bahan rapikan ulang
+function pasangGambarDenah(lv,raw,name){
+  PLAN_MENTAH.set(lv.id,{img:raw,name});
+  let src=raw, hiSrc=raw, info='';
+  if($('#rapikan').checked){
+    try{
+      const r=rapikanDenah(raw);
+      if(r.ubah){ src=r.canvas; hiSrc=r.canvas; }
+      else hiSrc=r.canvas;                 // hanya diperbesar: pembaca dinding tetap memakai gambar asli
+      info = r.ubah ? 'Dirapikan: '+r.langkah.join(' · ')
+           : 'Gambar sudah memenuhi syarat — tidak diubah'+(r.langkah.length?' (hanya '+r.langkah.join(', ')+' untuk pembacaan perabot)':'');
+    }catch(e){ console.warn('rapikan denah gagal:',e); info='Gagal merapikan — gambar dipakai apa adanya'; }
+  } else info='Gambar dipakai apa adanya (rapikan dimatikan)';
+  const sw=src.naturalWidth||src.width, sh=src.naturalHeight||src.height;
+  let w=sw,h=sh;
+  const k=PROC_MAX/Math.max(w,h);
+  if(k<1){ w=Math.round(w*k); h=Math.round(h*k); }
+  canvas2d.width=w; canvas2d.height=h;
+  ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
+  ctx2d.drawImage(src,0,0,w,h);
+  // yang disimpan versi seukuran kanvas proses: cukup untuk deteksi ulang, berkas proyek tetap kecil
+  const stored=new Image(); stored.src=canvas2d.toDataURL('image/png');
+  const lama=PROJECT.plans[lv.id];
+  PROJECT.plans[lv.id]={ img:stored.src, w, h, name:name||'denah',
+    realWidth:parseFloat($('#realWidth').value)||12, unit:$('#unit').value, dx:0, dz:0, rapi:info };
+  if(lama&&lama.name===name&&lama.realWidth) PROJECT.plans[lv.id].realWidth=lama.realWidth;
+  PLAN_IMG.set(lv.id,stored);
+  PLAN_ASLI.set(lv.id,hiSrc);              // resolusi tinggi, hanya di memori: untuk garis perabot yang tipis
+  PLAN_RES.delete(lv.id);
+  LAST_RESULT=null; SRC_IMG=stored;
+  PLAN_SHOWN=null;
+  $('#rapikan-info').textContent=info;
+  return {w,h};
 }
 function loadPlanFile(f,toNewLevel){
   if(!f) return;
@@ -8367,21 +8628,7 @@ function loadPlanFile(f,toNewLevel){
         SEL=null; HIST.label='Tambah lantai';
       }
       const lv=L();
-      let w=img.width,h=img.height;
-      const k=PROC_MAX/Math.max(w,h);
-      if(k<1){ w=Math.round(w*k); h=Math.round(h*k); }
-      canvas2d.width=w; canvas2d.height=h;
-      ctx2d.fillStyle='#fff'; ctx2d.fillRect(0,0,w,h);
-      ctx2d.drawImage(img,0,0,w,h);
-      // yang disimpan versi seukuran kanvas proses: cukup untuk deteksi ulang, berkas proyek tetap kecil
-      const stored=new Image(); stored.src=canvas2d.toDataURL('image/png');
-      PROJECT.plans[lv.id]={ img:stored.src, w, h, name:f.name||'denah',
-        realWidth:parseFloat($('#realWidth').value)||12, unit:$('#unit').value, dx:0, dz:0 };
-      PLAN_IMG.set(lv.id,stored);
-      PLAN_ASLI.set(lv.id,img);               // resolusi asli, hanya di memori: untuk garis perabot yang tipis
-      PLAN_RES.delete(lv.id);
-      LAST_RESULT=null; SRC_IMG=stored;
-      PLAN_SHOWN=null;
+      const {w,h}=pasangGambarDenah(lv,img,f.name||'denah');
       if(toNewLevel){ renderLevels(); rebuildScene(); }
       else syncPlanPanel(true);
       toast(`Denah ${lv.name} dimuat (${w}×${h} px)`);
@@ -8391,6 +8638,12 @@ function loadPlanFile(f,toNewLevel){
   };
   rd.readAsDataURL(f);
 }
+$('#rapikan').addEventListener('change',()=>{
+  const lv=L(), m=lv&&PLAN_MENTAH.get(lv.id);
+  if(!m){ toast('Berlaku untuk gambar denah berikutnya yang diupload'); return; }
+  pasangGambarDenah(lv,m.img,m.name); syncPlanPanel(true);
+  toast($('#rapikan').checked?'Denah dirapikan ulang — klik Generate untuk membaca lagi':'Memakai gambar asli — klik Generate untuk membaca lagi');
+});
 $('#upload').addEventListener('change',e=>loadPlanFile(e.target.files[0],false));
 $('#uploadNew').addEventListener('change',e=>loadPlanFile(e.target.files[0],true));
 /* skala disimpan per lantai: lantai atas boleh lebih kecil dari lantai bawah */
@@ -8472,10 +8725,20 @@ function drawOverlay(res){
     if(c.shape==='round'){ ctx2d.beginPath(); ctx2d.arc(x,y,c.w*pxm/2,0,Math.PI*2); ctx2d.fill(); }
     else ctx2d.fillRect(x-c.w*pxm/2,y-c.d*pxm/2,c.w*pxm,c.d*pxm);
   }
-  for(const f of (res.fixtures||[])){
-    ctx2d.strokeStyle='#e67e22';
-    ctx2d.strokeRect(f.x*pxm+w/2-f.w*pxm/2, f.z*pxm+h/2-f.d*pxm/2, f.w*pxm, f.d*pxm);
-  }
+  // perabot yang dipasang dari simbol: tapak + nama, supaya terlihat simbol mana jadi apa
+  { const ox=pl?pl.dx||0:0, oz=pl?pl.dz||0:0;
+    ctx2d.font=`600 ${Math.max(9,Math.round(w/85))}px system-ui,sans-serif`; ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+    for(const o of L().objects){
+      if(!(o.fromPlan&&o.kind==='furn')) continue;
+      const d=FURN[o.type]; if(!d) continue;
+      const fw=d.f[0]*(o.sx||1)*pxm, fd=d.f[1]*(o.sz||1)*pxm, x=(o.x-ox)*pxm+w/2, y=(o.z-oz)*pxm+h/2;
+      ctx2d.save(); ctx2d.translate(x,y); ctx2d.rotate(-(o.rotY||0));
+      ctx2d.globalAlpha=0.9; ctx2d.strokeStyle='#e67e22'; ctx2d.lineWidth=1.5; ctx2d.strokeRect(-fw/2,-fd/2,fw,fd);
+      ctx2d.restore();
+      const t=d.l; ctx2d.globalAlpha=0.85; const tw=ctx2d.measureText(t).width+6, th=Math.max(11,Math.round(w/70));
+      ctx2d.fillStyle='rgba(255,255,255,0.85)'; ctx2d.fillRect(x-tw/2,y-th/2,tw,th);
+      ctx2d.fillStyle='#b9560f'; ctx2d.fillText(t,x,y);
+    } }
   // simbol busur ayun pintu yang terbaca
   if(res.arcs){
     ctx2d.globalAlpha=0.9; ctx2d.lineWidth=2;
@@ -8640,17 +8903,23 @@ function runGenerate(toNewLevel){
 }
 $('#generateBtn').onclick=()=>runGenerate(false);
 try{ if(localStorage.getItem('doFurn')==='0') $('#doFurn').checked=false; }catch(e){}
-$('#doFurn').onchange=()=>{
+const BATAS_YAKIN={ketat:0.75, normal:0.5, longgar:0};
+try{ const v=localStorage.getItem('furnSens'); if(v&&BATAS_YAKIN[v]!=null) $('#furnSens').value=v; }catch(e){}
+const pasangUlangPerabot=()=>{
   const on=$('#doFurn').checked;
-  try{ localStorage.setItem('doFurn',on?'1':'0'); }catch(e){}
+  try{ localStorage.setItem('doFurn',on?'1':'0'); localStorage.setItem('furnSens',$('#furnSens').value); }catch(e){}
+  $('#furnSensRow').style.opacity=on?'':'0.5';
   const lv=L(), res=PLAN_RES.get(lv.id);
   if(!res){ if(on) toast('Perabot akan dibaca saat denah di-generate'); return; }
   if(SEL&&SEL.kind==='obj'){ const o=lv.objects.find(x=>x.id===SEL.id); if(o&&o.fromPlan&&o.kind==='furn') select(null); }
   const n=pasangPerabotDenah(lv,res);
   HIST.label=on?'Pasang perabot dari denah':'Buang perabot dari denah';
-  rebuildScene(); renderInspector();
-  toast(on?`${n} perabot dari simbol denah dipasang`:'Perabot dari simbol denah dibuang — dinding & tangga tetap');
+  rebuildScene(); renderInspector(); drawOverlay(LAST_RESULT);
+  toast(on?`${n} perabot dari simbol denah dipasang (${$('#furnSens').value})`:'Perabot dari simbol denah dibuang — dinding & tangga tetap');
 };
+$('#doFurn').onchange=pasangUlangPerabot;
+$('#furnSens').onchange=pasangUlangPerabot;
+$('#furnSensRow').style.opacity=$('#doFurn').checked?'':'0.5';
 $('#generateNewBtn').onclick=()=>runGenerate(true);
 $('#showOverlay').addEventListener('change',()=>drawOverlay(LAST_RESULT));
 $('#showBelow').addEventListener('change',()=>drawOverlay(LAST_RESULT));
@@ -8667,16 +8936,17 @@ function levelBelow(i){
 function pasangPerabotDenah(lv,res){
   lv.objects=lv.objects.filter(o=>!(o.fromPlan&&o.kind==='furn'));
   if(!res||!$('#doFurn').checked) return 0;
+  const batas=BATAS_YAKIN[$('#furnSens').value]??0.5, lolos=f=>(f.yakin??0.8)>=batas;
   const pl=PROJECT.plans[lv.id], ox=pl?pl.dx||0:0, oz=pl?pl.dz||0:0;
   let n=0;
-  for(const f of (res.fixtures||[])){
+  for(const f of (res.fixtures||[]).filter(lolos)){
     const o={id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
              x:f.x+ox, y:0, z:f.z+oz, rotY:f.rotY, sx:1, sy:1, sz:1, params:{}};
     faceNearestWall(o, lv.walls);
     lv.objects.push(o); n++;
   }
   // perabot dari simbol: arah & ukuran sudah dihitung dari gambarnya
-  for(const f of (res.furniture||[])){
+  for(const f of (res.furniture||[]).filter(lolos)){
     lv.objects.push({id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
       x:f.x+ox, y:0, z:f.z+oz, rotY:f.rotY, sx:+f.sx.toFixed(3), sy:1, sz:+f.sz.toFixed(3), params:paramsAwal('furn',f.kind)||{}});
     n++;
