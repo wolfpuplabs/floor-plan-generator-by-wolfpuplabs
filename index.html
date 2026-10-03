@@ -305,7 +305,6 @@ details#adv>*:not(summary){margin-bottom:8px}
         <label class="chk"><input type="checkbox" id="doDoors" checked><span>Baca simbol busur ayun pintu</span></label>
         <label class="chk"><input type="checkbox" id="doOpen" checked><span>Deteksi bukaan dari potongan dinding</span></label>
         <label class="chk"><input type="checkbox" id="doStairs" checked><span>Baca simbol tangga</span></label>
-        <label class="chk"><input type="checkbox" id="doFix" checked><span>Baca perabot sanitair</span></label>
         <label class="chk"><input type="checkbox" id="doHeal" checked><span>Rapikan sambungan (L / T / X)</span></label>
       </details>
 
@@ -323,6 +322,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       </div>
 
       <label class="chk"><input type="checkbox" id="alignBelow" checked><span>Sejajarkan otomatis dengan lantai bawah (dinding atas menumpu dinding bawah)</span></label>
+      <label class="chk"><input type="checkbox" id="doFurn" checked><span><b>Deteksi perabot dari simbol</b> — matikan bila hasilnya kurang pas; bisa dinyalakan/dimatikan lagi setelah generate tanpa mengulang</span></label>
       <button class="btn" id="generateBtn">Generate Dinding 3D</button>
       <button class="btn ghost sm" id="generateNewBtn">Generate ke lantai baru</button>
       <div id="stats">Belum ada denah diproses.</div>
@@ -4650,6 +4650,13 @@ function buildObject(o, lv){
     g.traverse(m=>{ if(m.isMesh) m.receiveShadow=true; });
     hiasNyala(g,o);
   }
+  // flip (cermin kiri–kanan): model dibungkus grup yang dicerminkan, jadi skala
+  // grup luar tetap positif dan gizmo/skala tidak ikut terbalik
+  if(o.flip && (o.kind==='furn'||o.kind==='model')){
+    const w=new THREE.Group(); Object.assign(w.userData,g.userData); g.userData={};
+    if(w.userData.lampuTitik) w.userData.lampuTitik=w.userData.lampuTitik.clone().setX(-w.userData.lampuTitik.x);
+    g.scale.x*=-1; w.add(g); g=w;
+  }
   g.position.set(o.x,o.y||0,o.z);
   g.rotation.y=o.rotY||0;
   // ukuran void sudah termasuk skalanya di dalam poligon, jadi grupnya tidak
@@ -5121,6 +5128,7 @@ function renderInspector(){
     else if(!ASSET_OBJ.has(d.type)) ins.appendChild(el('div','badge warn','⚠ Berkas model gagal diurai.'));
     else ins.appendChild(el('div','badge ok',`Ukuran asli ${a.dims.map(v=>fmt(v,2)).join(' × ')} m`
         + (a.fit!==1 ? ` (sudah diskalakan otomatis ×${fmt(a.fit,3)})` : '')));
+    tombolFlip(ins,d);
     addTransformFields(ins,d,true);
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
@@ -5142,6 +5150,7 @@ function renderInspector(){
       else toast('Tidak ada dinding dalam jarak 6 m');
     };
     ins.appendChild(bw);
+    tombolFlip(ins,d);
     if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
     addTransformFields(ins,d,true);
   }
@@ -5153,6 +5162,16 @@ function renderInspector(){
   row.appendChild(bdup); row.appendChild(bdel); ins.appendChild(row);
 }
 
+function flipObjek(d){
+  d.flip=!d.flip; HIST.label='Flip objek'; rebuildScene(); renderInspector();
+  toast(d.flip?'Objek dicerminkan (kiri ↔ kanan)':'Cermin dibatalkan');
+}
+function tombolFlip(ins,d){
+  const b=el('button','btn sm ghost'+(d.flip?' on':''),'⇋ Flip kiri–kanan'+(d.flip?' (aktif)':''));
+  b.title='Cerminkan objek (mis. sofa L, kitchen set L, ranjang dengan nakas satu sisi)';
+  b.onclick=()=>flipObjek(d);
+  ins.appendChild(b);
+}
 function addTransformFields(ins,d,withScale){
   fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
   fRow(ins,'Y (m)',numInput(d.y||0,0.05,v=>{ d.y=v; rebuildScene(); }));
@@ -8524,7 +8543,7 @@ function runGenerate(toNewLevel){
         detectOpen:      AUTO || $('#doOpen').checked,
         detectDoors:     AUTO || $('#doDoors').checked,
         detectStairsOpt: AUTO || $('#doStairs').checked,
-        detectFix:       AUTO || $('#doFix').checked,
+        detectFix:       true,             // selalu dibaca; #doFurn hanya menentukan dipasang atau tidak
         hi,
         heal:            AUTO || $('#doHeal').checked,
         auto:            AUTO || $('#autoCal').checked,
@@ -8570,17 +8589,7 @@ function runGenerate(toNewLevel){
         lv.objects.push({id:uid('ob'), kind:'column', type:c.shape, fromPlan:true,
           x:c.x, y:0, z:c.z, rotY:0, sx:1, sy:1, sz:1, params:{w:clamp(c.w,0.15,1.2), d:clamp(c.d,0.15,1.2)}});
       }
-      for(const f of res.fixtures){
-        const o={id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
-                 x:f.x, y:0, z:f.z, rotY:f.rotY, sx:1, sy:1, sz:1, params:{}};
-        faceNearestWall(o, lv.walls);
-        lv.objects.push(o);
-      }
-      // perabot dari simbol: arah & ukuran sudah dihitung dari gambarnya
-      for(const f of (res.furniture||[])){
-        lv.objects.push({id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
-          x:f.x, y:0, z:f.z, rotY:f.rotY, sx:+f.sx.toFixed(3), sy:1, sz:+f.sz.toFixed(3), params:paramsAwal('furn',f.kind)||{}});
-      }
+      pasangPerabotDenah(lv,res);
       PROJECT.pxPerMeter=res.pxm;
       LAST_RESULT=res;
       PLAN_RES.set(lv.id,res);
@@ -8630,6 +8639,18 @@ function runGenerate(toNewLevel){
   },30);
 }
 $('#generateBtn').onclick=()=>runGenerate(false);
+try{ if(localStorage.getItem('doFurn')==='0') $('#doFurn').checked=false; }catch(e){}
+$('#doFurn').onchange=()=>{
+  const on=$('#doFurn').checked;
+  try{ localStorage.setItem('doFurn',on?'1':'0'); }catch(e){}
+  const lv=L(), res=PLAN_RES.get(lv.id);
+  if(!res){ if(on) toast('Perabot akan dibaca saat denah di-generate'); return; }
+  if(SEL&&SEL.kind==='obj'){ const o=lv.objects.find(x=>x.id===SEL.id); if(o&&o.fromPlan&&o.kind==='furn') select(null); }
+  const n=pasangPerabotDenah(lv,res);
+  HIST.label=on?'Pasang perabot dari denah':'Buang perabot dari denah';
+  rebuildScene(); renderInspector();
+  toast(on?`${n} perabot dari simbol denah dipasang`:'Perabot dari simbol denah dibuang — dinding & tangga tetap');
+};
 $('#generateNewBtn').onclick=()=>runGenerate(true);
 $('#showOverlay').addEventListener('change',()=>drawOverlay(LAST_RESULT));
 $('#showBelow').addEventListener('change',()=>drawOverlay(LAST_RESULT));
@@ -8640,6 +8661,27 @@ $('#showBelow').addEventListener('change',()=>drawOverlay(LAST_RESULT));
 function levelBelow(i){
   for(let k=i-1;k>=0;k--) if(PROJECT.levels[k].walls.length) return PROJECT.levels[k];
   return null;
+}
+/* perabot hasil baca simbol denah: dibuang dulu, lalu dipasang lagi bila #doFurn aktif.
+   Koordinat hasil deteksi ada di sistem gambar, jadi ikut geseran lantai (pl.dx/dz). */
+function pasangPerabotDenah(lv,res){
+  lv.objects=lv.objects.filter(o=>!(o.fromPlan&&o.kind==='furn'));
+  if(!res||!$('#doFurn').checked) return 0;
+  const pl=PROJECT.plans[lv.id], ox=pl?pl.dx||0:0, oz=pl?pl.dz||0:0;
+  let n=0;
+  for(const f of (res.fixtures||[])){
+    const o={id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
+             x:f.x+ox, y:0, z:f.z+oz, rotY:f.rotY, sx:1, sy:1, sz:1, params:{}};
+    faceNearestWall(o, lv.walls);
+    lv.objects.push(o); n++;
+  }
+  // perabot dari simbol: arah & ukuran sudah dihitung dari gambarnya
+  for(const f of (res.furniture||[])){
+    lv.objects.push({id:uid('ob'), kind:'furn', type:f.kind, fromPlan:true,
+      x:f.x+ox, y:0, z:f.z+oz, rotY:f.rotY, sx:+f.sx.toFixed(3), sy:1, sz:+f.sz.toFixed(3), params:paramsAwal('furn',f.kind)||{}});
+    n++;
+  }
+  return n;
 }
 function shiftLevel(lv,dx,dz){
   if(dx||dz){
