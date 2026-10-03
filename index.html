@@ -143,6 +143,21 @@ details#adv>*:not(summary){margin-bottom:8px}
 #levelbar button{background:none;border:none;color:var(--muted);padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit}
 #levelbar button.active{background:var(--accent);color:#06201b}
 #levelbar button:hover:not(.active){background:#2a2a33;color:var(--txt)}
+#pianoPanel{left:50%;bottom:14px;transform:translateX(-50%);width:min(860px,calc(100% - 24px));padding:8px 10px 10px;z-index:40;touch-action:none;user-select:none;-webkit-user-select:none}
+#pianoPanel[hidden]{display:none}
+#pianoPanel .pp-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:.78rem}
+#pianoPanel .pp-head select{max-width:220px}
+#pianoOkt{font-size:.72rem;color:var(--muted);min-width:92px;text-align:center}
+#pianoKeys{position:relative;height:150px;border-radius:6px;overflow:hidden;background:#111}
+#pianoKeys .pk{position:absolute;top:0;box-sizing:border-box;border-radius:0 0 5px 5px;cursor:pointer}
+#pianoKeys .pk.putih{height:100%;background:linear-gradient(#f4f1ea,#fffdf8);border:1px solid #2a2a2a}
+#pianoKeys .pk.putih span{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:.62rem;color:#888}
+#pianoKeys .pk.hitam{height:60%;background:linear-gradient(#2a2a2e,#0b0b0d);z-index:2;border:1px solid #000}
+#pianoKeys .pk.putih.on{background:linear-gradient(#d8f3ea,#bfe9da)}
+#pianoKeys .pk.hitam.on{background:linear-gradient(#3e8f78,#21584a)}
+#traceBar{bottom:58px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 8px;z-index:30}
+#traceBar[hidden]{display:none}
+#traceBar #traceInfo{font-size:.72rem;color:var(--muted);padding:0 6px;white-space:nowrap}
 #hint{bottom:12px;left:12px;padding:7px 12px;font-size:.72rem;color:var(--muted);max-width:60%}
 #hint b{color:var(--accent)}
 
@@ -418,6 +433,14 @@ details#adv>*:not(summary){margin-bottom:8px}
       <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
       <div class="section-title">Struktur</div>
       <div class="cat-grid" id="cat-struct"></div>
+      <div class="section-title">Lingkungan &amp; Taman</div>
+      <div class="f-grid">
+        <div class="group"><label>Tanah situs</label><select id="situsTanah">
+          <option value="none">Tidak ada</option><option value="rumput">Rumput</option><option value="tanah">Tanah</option><option value="kerikil">Kerikil</option><option value="paving">Paving</option></select></div>
+        <div class="group"><label>Luas di luar bangunan (m)</label><input type="number" id="situsMargin" value="6" min="0" max="60" step="1"></div>
+      </div>
+      <div class="cat-grid" id="cat-situs"></div>
+      <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs. Pohon, bunga, gazebo, dan perabot taman lain ada di katalog <b>Taman &amp; Luar</b> di bawah.</p>
       <div class="section-title">Void (Lubang Pelat Lantai)</div>
       <div class="cat-grid" id="cat-void"></div>
       <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
@@ -443,6 +466,7 @@ details#adv>*:not(summary){margin-bottom:8px}
         <option value="kamar_mandi">Kamar Mandi</option>
         <option value="kerja">Ruang Kerja</option>
         <option value="audio">Audio &amp; Musik</option>
+        <option value="taman">Taman &amp; Luar</option>
         <option value="lain">Lainnya</option>
       </select></div>
       <div class="cat-grid" id="cat-furn"></div>
@@ -507,6 +531,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <button data-view="atas" title="Tampak atas / denah (2)">Atas</button>
       <button data-view="depan" title="Tampak depan (3)">Depan</button>
       <button data-view="iso" title="Isometri (4)">Iso</button>
+      <button data-view="mata" title="Setinggi mata di dalam ruangan (5)">Mata</button>
     </div>
     <div class="float" id="helpPanel" hidden>
       <h3>Pintasan</h3>
@@ -528,14 +553,32 @@ details#adv>*:not(summary){margin-bottom:8px}
       <select id="fpsMood" title="Suasana cahaya">
         <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option><option value="gelap">🌑 Malam gelap</option>
       </select>
+      <select id="fpsFov" title="Lebar pandang (lensa)">
+        <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option>
+      </select>
+      <button class="btn ghost sm" id="fpsSfx" title="Efek suara interaksi">🔊 SFX</button>
       <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
       <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
       <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
       <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
+    <div class="float" id="pianoPanel" hidden>
+      <div class="pp-head"><b>🎹 Piano</b>
+        <select id="pianoLagu" title="Lagu"></select>
+        <button class="btn sm" id="pianoMain">▶ Mainkan lagu</button>
+        <button class="btn sm ghost" id="pianoTurun" title="Oktaf turun (Z)">◀</button><span id="pianoOkt"></span><button class="btn sm ghost" id="pianoNaik" title="Oktaf naik (X)">▶</button>
+        <button class="btn sm ghost" id="pianoTutup">✕ Tutup</button></div>
+      <div id="pianoKeys"></div>
+    </div>
     <div id="vignette" hidden></div>
     <div id="fpsAim" hidden><div id="fpsDot"></div><button id="fpsAct" hidden></button></div>
+    <div class="float" id="traceBar" hidden>
+      <span id="traceInfo">0 titik</span>
+      <button class="btn sm" id="traceDone">✓ Selesai</button>
+      <button class="btn sm ghost" id="traceUndo">↶ Hapus titik</button>
+      <button class="btn sm ghost" id="traceCancel">✕ Batal</button>
+    </div>
     <div class="float" id="hint">Upload denah lalu <b>Generate</b>, atau gambar dinding manual dengan <b>+ Dinding</b>.</div>
     <div id="loader"><div class="spinner"></div><span id="loader-txt">Memproses denah…</span></div>
     <div id="toast"></div>
@@ -616,7 +659,8 @@ const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{}
   plans:{},                       // gambar denah per lantai: { [levelId]: {img,w,h,realWidth,unit,dx,dz} }
   // finishing dinding dibedakan muka dalam dan muka luar, seperti gambar kerja
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
-  atap:{ tritisan:0.6, tebal:0.12 } };             // plat atap (dak) di atas lantai teratas
+  atap:{ tritisan:0.6, tebal:0.12 },
+  site:{ tanah:'none', margin:6 } };                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
 
 function newLevel(name,height){
   return { id:uid('lv'), name:name||'Lantai', height:height||3.2, walls:[], objects:[], slab:true, visible:true };
@@ -747,7 +791,9 @@ renderer.shadowMap.autoUpdate=false;
 const GI_U={
   giPeta:{value:new THREE.DataTexture(new Uint8Array(4),1,1,THREE.LuminanceFormat)},
   giWarna:{value:new THREE.DataTexture(new Uint8Array(256*2*4),256,2,THREE.RGBAFormat)},
-  giInfo:{value:new THREE.Vector4(0,0,1,1)}, giLantai:{value:new THREE.Vector2(-1e4,-1e4)}, giSkala:{value:0}
+  giInfo:{value:new THREE.Vector4(0,0,1,1)}, giLantai:{value:new THREE.Vector2(-1e4,-1e4)}, giSkala:{value:0},
+  // kotak ruangan untuk koreksi paralaks pantulan probe (min.x > max.x = mati)
+  pbMin:{value:new THREE.Vector3(1,0,0)}, pbMax:{value:new THREE.Vector3(0,0,0)}, pbPos:{value:new THREE.Vector3()}
 };
 for(const k of ["giPeta","giWarna"]){ const t=GI_U[k].value; t.magFilter=t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; t.unpackAlignment=1; t.needsUpdate=true; }
 function pasangGIShader(sh){
@@ -756,7 +802,16 @@ function pasangGIShader(sh){
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos;')
     .replace('#include <project_vertex>','#include <project_vertex>\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
   sh.fragmentShader=sh.fragmentShader
-    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo; uniform vec2 giLantai; uniform float giSkala;')
+    .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo; uniform vec2 giLantai; uniform float giSkala; uniform vec3 pbMin, pbMax, pbPos;')
+    .replace('#include <envmap_physical_pars_fragment>',THREE.ShaderChunk.envmap_physical_pars_fragment.replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
+      `reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
+      #ifdef KOTAK_PANTUL
+      if(pbMax.x>pbMin.x){                      // pantulan dari probe dikoreksi ke dinding ruangan (box projection)
+        vec3 rmax=(pbMax-vGIPos)/reflectVec, rmin=(pbMin-vGIPos)/reflectVec;
+        vec3 rr=max(rmax,rmin); float t=min(min(rr.x,rr.y),rr.z);
+        reflectVec=normalize(vGIPos+reflectVec*t-pbPos);
+      }
+      #endif`))
     .replace('#include <lights_fragment_end>',`if(giSkala>0.0){
       vec3 nW=inverseTransformDirection(geometry.normal,viewMatrix);
       vec3 q=vGIPos+vec3(nW.x,0.0,nW.z)*0.25;
@@ -771,7 +826,7 @@ function pasangGIShader(sh){
 }
 THREE.MeshStandardMaterial.prototype.onBeforeCompile=function(sh){ pasangGIShader(sh); };
 let BAYANG_KOTOR=2, BAYANG_JEDA=0;
-function bayangKotor(){ BAYANG_KOTOR=Math.max(BAYANG_KOTOR,1); }
+function bayangKotor(){ BAYANG_KOTOR=Math.max(BAYANG_KOTOR,1); if(typeof PROBE!=='undefined') PROBE.kotor=true; }
 // kanvas jadi anak pertama: efek filter CSS (color grading) membuatnya dilukis seperti
 // elemen berposisi, jadi harus berada sebelum toolbar & panel agar tidak menutupinya
 viewport.insertBefore(renderer.domElement, viewport.firstChild);
@@ -779,6 +834,27 @@ viewport.insertBefore(renderer.domElement, viewport.firstChild);
 const orbit=new THREE.OrbitControls(camera, renderer.domElement);
 orbit.enableDamping=true; orbit.dampingFactor=.07;
 orbit.maxPolarAngle=Math.PI*0.495; orbit.target.set(0,1.5,0);
+orbit.minDistance=0.3;
+/* zoom tidak mentok di titik pusat: bila sudah dekat dan tetap di-zoom masuk,
+   kamera dan titik pusatnya maju bersama — bisa masuk menembus ke dalam ruangan */
+function majuKamera(m){
+  const d=new THREE.Vector3().subVectors(orbit.target,camera.position).normalize().multiplyScalar(m);
+  camera.position.add(d); orbit.target.add(d);
+  const el0=typeof levelElevation==='function'?levelElevation(PROJECT.active):0;
+  if(orbit.target.y<el0+0.05){ const k=el0+0.05-orbit.target.y; orbit.target.y+=k; camera.position.y+=k; }
+}
+{ let cubit=null;
+  renderer.domElement.addEventListener('wheel',e=>{
+    if(typeof FPS!=='undefined'&&FPS.on) return;
+    if(e.deltaY<0 && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp(Math.abs(e.deltaY)*0.004,0.12,0.6));
+  },{passive:true});
+  renderer.domElement.addEventListener('touchmove',e=>{
+    if((typeof FPS!=='undefined'&&FPS.on)||e.touches.length!==2){ cubit=null; return; }
+    const a=e.touches[0], b=e.touches[1], d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    if(cubit!=null && d>cubit+1 && camera.position.distanceTo(orbit.target)<=orbit.minDistance*1.8) majuKamera(clamp((d-cubit)*0.012,0.02,0.5));
+    cubit=d;
+  },{passive:true});
+  renderer.domElement.addEventListener('touchend',()=>{ cubit=null; },{passive:true}); }
 
 const hemiL=new THREE.HemisphereLight(0xdfefff,0x2a2a2a,0.55), ambL=new THREE.AmbientLight(0xffffff,0.25);
 hemiL.userData.base=0.55; ambL.userData.base=0.25;
@@ -875,7 +951,7 @@ if(window.ResizeObserver) new ResizeObserver(()=>aturInspector()).observe(docume
 /* Keadaan mode jalan-jalan dideklarasikan di sini, bukan di modulnya jauh di
    bawah: loop render langsung berjalan begitu baris ini dilewati, sehingga ia
    tidak boleh menyentuh const yang belum sempat dibuat. */
-const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:2.3, run:3.9,
+const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:2.3, run:3.9, fov:65,
             vy:0, feet:0, keys:new Set(), look:null, move:null, save:null };
 /* =====================================================================
    EFEK REALISTIS REAL-TIME — ambient occlusion layar (sudut ruangan, kaki
@@ -1130,7 +1206,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); }   // setelah semua modul selesai dimuat
+  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   BAYANG_JEDA-=dt;
   if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
@@ -2125,6 +2201,9 @@ const voidD = o => Math.max(0.2,(o.params.d||1)*(o.sz||1));
    di sudut +x/+z — sudut lain dicapai dengan memutar void). */
 function voidLocalPoly(o){
   const w=voidW(o), d=voidD(o), hw=w/2, hd=d/2;
+  // bentuk bebas hasil tracing: titik disimpan ternormalisasi (−0,5..0,5) terhadap
+  // lebar & panjang, jadi skala gizmo dan isian ukuran tetap berlaku
+  if(o.params.shape==='poly' && o.params.pts && o.params.pts.length>=3) return o.params.pts.map(([u,v])=>[u*w,v*d]);
   if(o.params.shape!=='L') return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]];
   const cw=clamp((o.params.cw||w/2)*(o.sx||1),0.05,w-0.05);
   const cd=clamp((o.params.cd||d/2)*(o.sz||1),0.05,d-0.05);
@@ -3164,17 +3243,61 @@ function rugTex(gaya){
     else { c.fillStyle='#b9b0a2'; c.fillRect(0,0,S,S); bintik(26000,.35,'#7d7466'); bintik(12000,.3,'#e6dfd3'); }
   });
 }
-function fireTex(){
-  return decoTex('api',256,(c,S,R)=>{
-    c.fillStyle='#120a05'; c.fillRect(0,0,S,S);
-    for(let i=0;i<46;i++){
-      const x=R()*S, h=S*(0.35+R()*0.55), w=S*(0.05+R()*0.08);
-      const g=c.createLinearGradient(0,S,0,S-h);
-      g.addColorStop(0,'rgba(255,240,180,0.95)'); g.addColorStop(0.35,'rgba(255,150,40,0.8)'); g.addColorStop(1,'rgba(160,30,0,0)');
-      c.fillStyle=g; c.beginPath(); c.moveTo(x-w,S); c.quadraticCurveTo(x-w*0.3,S-h*0.6,x,S-h); c.quadraticCurveTo(x+w*0.3,S-h*0.6,x+w,S); c.fill();
-    }
-  });
+/* API HIDUP: simulasi api berbasis sel (ala "doom fire") — baris bawah panas,
+   panas merambat ke atas sambil meluruh acak dan bergeser oleh angin kecil.
+   Satu tekstur dipakai bersama semua perapian; diperbarui ±30 kali per detik. */
+const API={W:48, H:64, sel:null, cv:null, tex:null, t:0, angin:0, pal:null};
+function apiTex(){
+  if(API.tex) return API.tex;
+  API.sel=new Uint8Array(API.W*API.H);
+  for(let x=0;x<API.W;x++) API.sel[(API.H-1)*API.W+x]=36;
+  API.pal=[]; for(let i=0;i<=36;i++){ const t=i/36;
+    API.pal.push([Math.min(255,Math.round(40+t*600)), Math.round(Math.max(0,t-0.25)*1.6*255*0.95), Math.round(Math.max(0,t-0.72)*3.6*255)].map(v=>clamp(v,0,255))); }
+  API.pal[0]=[0,0,0];
+  API.sim=document.createElement('canvas'); API.sim.width=API.W; API.sim.height=API.H;
+  API.img=API.sim.getContext('2d').createImageData(API.W,API.H);
+  // sel simulasi diperbesar dengan penghalusan + blur: lidah api lembut, bukan kotak-kotak
+  API.cv=document.createElement('canvas'); API.cv.width=192; API.cv.height=256;
+  API.tex=new THREE.CanvasTexture(API.cv); if(THREE.sRGBEncoding) API.tex.encoding=THREE.sRGBEncoding;
+  for(let i=0;i<60;i++) apiLangkah();
+  return API.tex;
 }
+function apiLangkah(){
+  const {W,H,sel}=API;
+  API.angin=clamp(API.angin+(Math.random()-0.5)*0.4,-1,1);
+  // dasar api berdenyut: tidak semua titik sama panas
+  for(let x=0;x<W;x++){ const tepi=Math.min(x,W-1-x)/(W*0.18); sel[(H-1)*W+x]=Math.round(clamp(tepi,0,1)*(30+Math.random()*6)); }
+  for(let x=0;x<W;x++) for(let y=1;y<H;y++){
+    const src=y*W+x, p=sel[src];
+    if(!p){ sel[src-W]=0; continue; }
+    const r=(Math.random()*3)|0, dx=r-1+(Math.random()<Math.abs(API.angin)*0.3?Math.sign(API.angin):0);
+    const dst=src-W+clamp(dx,-x,W-1-x);
+    sel[dst]=Math.max(0,p-((Math.random()*2.3)|0));             // peluruhan rata-rata ±1,1 per baris: lidah api meruncing
+  }
+  const d=API.img.data;
+  for(let i=0;i<W*H;i++){ const c=API.pal[sel[i]]; d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
+  API.sim.getContext('2d').putImageData(API.img,0,0);
+  const c=API.cv.getContext('2d'); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+  c.filter='blur(3px)'; c.drawImage(API.sim,0,0,API.cv.width,API.cv.height); c.filter='none';
+  if(API.tex) API.tex.needsUpdate=true;
+}
+function stepApi(dt){
+  if(!API.tex) return;
+  API.t+=dt; if(API.t<1/30) return; API.t=0;
+  apiLangkah();
+  const m=DECOTEX.get('m_api'); if(m) m.emissiveIntensity=1.5*(0.82+0.18*Math.random());
+  if(API.lidah) API.lidah.opacity=0.75+0.25*Math.random();
+}
+/* lidah api 3D di depan dinding tungku: dua bidang bersilang, cahaya aditif
+   (hitam = tak terlihat); ikut padam bersama halo */
+function lidahApi(w,h){
+  if(!API.lidah) API.lidah=new THREE.MeshBasicMaterial({map:apiTex(), transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, toneMapped:false});
+  const g=new THREE.Group();
+  for(const a of [-0.45,0.45]){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),API.lidah); m.rotation.y=a; m.position.y=h/2;
+    m.userData.halo=true; m.userData.noExport=true; m.raycast=()=>{}; m.castShadow=false; m.receiveShadow=false; g.add(m); }
+  return g;
+}
+function fireTex(){ return apiTex(); }
 const dekoMat=(key,opt)=>{ if(!DECOTEX.has('m_'+key)) DECOTEX.set('m_'+key,new THREE.MeshStandardMaterial(opt)); return DECOTEX.get('m_'+key); };
 Object.assign(MAT,{
   brass     : new THREE.MeshStandardMaterial({color:0xc9a25a, roughness:.3,  metalness:.9}),
@@ -3210,7 +3333,61 @@ Object.assign(MAT,{
 function pasangPantulanLogam(env){
   env=env||studioEnv();
   const lain=[[MAT.silver,0.9],[MAT.cdDisc,1],[MAT.vinylRec,0.6],[MAT.smoke,0.8]].filter(([m])=>m);   // perangkat audio (dibuat belakangan)
-  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8],...lain]){ m.envMap=env; m.envMapIntensity=k; m.needsUpdate=true; }
+  for(const [m,k] of [[MAT.mirror,1],[MAT.brass,0.9],[MAT.steel,0.9],[MAT.metal,0.8],[MAT.blackMetal,0.5],[MAT.glass,0.8],...lain]){ m.envMap=(typeof PROBE!=='undefined'&&PROBE.aktif&&PROBE.env)||env; m.envMapIntensity=k; m.needsUpdate=true; }
+  if(typeof PROBE!=='undefined') PROBE.kotor=true;
+}
+/* ---------- PROBE PANTULAN — kaca, logam, cermin, air memantulkan ruangan
+   sungguhan: kamera kubus merekam adegan dari posisi pengamat, diolah PMREM,
+   dan arah pantulnya dikoreksi ke kotak ruangan (paralaks) ---------- */
+const PROBE={rt:null, cam:null, pm:null, env:null, pos:new THREE.Vector3(1e9,0,0), ruang:-1, kotor:true, jeda:0, aktif:false, kotak:new Map()};
+function bahanPantul(){ return [MAT.mirror,MAT.glass,MAT.steel,MAT.brass,MAT.metal,MAT.blackMetal,MAT.silver,MAT.cdDisc,MAT.air,MAT.airKolam].filter(Boolean); }
+function pantulKotor(){ PROBE.kotor=true; }
+function kotakRuang(P,id){
+  const k=P.lab.length+':'+id; if(PROBE.kotak.get(k)&&PROBE.kotak.get(k).P===P) return PROBE.kotak.get(k);
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for(let j=0;j<P.nz;j++) for(let i=0;i<P.nx;i++) if(P.lab[j*P.nx+i]===id){ x0=Math.min(x0,i); x1=Math.max(x1,i); z0=Math.min(z0,j); z1=Math.max(z1,j); }
+  const r={P, x0:P.x0+x0*P.C, x1:P.x0+(x1+1)*P.C, z0:P.z0+z0*P.C, z1:P.z0+(z1+1)*P.C}; PROBE.kotak.set(k,r); return r;
+}
+function terapkanProbe(env){
+  for(const m of bahanPantul()){
+    if(!m.defines||m.defines.KOTAK_PANTUL===undefined){ m.defines=Object.assign(m.defines||{},{KOTAK_PANTUL:''}); m.needsUpdate=true; }
+    m.envMap=env||studioEnv();
+  }
+}
+function stepProbe(dt){
+  PROBE.jeda-=dt; if(PROBE.jeda>0) return;
+  const p=camera.position, idx=FPS.on?fpsLevelAt(FPS.feet):PROJECT.active, lv=PROJECT.levels[idx]; if(!lv) return;
+  const el0=levelElevation(idx), H=lv.height||3.2, P=petaRuang(lv);
+  let id=0;
+  if(P && p.y>el0+0.05 && p.y<el0+H-0.05){ const i=Math.floor((p.x-P.x0)/P.C), j=Math.floor((p.z-P.z0)/P.C);
+    if(i>=0&&j>=0&&i<P.nx&&j<P.nz) id=P.lab[j*P.nx+i]>0?P.lab[j*P.nx+i]:ruangDi(P,p.x,p.z); }
+  const tertutup=id>0 && !P.bocor[id];
+  if(!(FPS.on||tertutup)){                                  // editor, kamera di luar: pantulan langit
+    if(PROBE.aktif){ PROBE.aktif=false; GI_U.pbMin.value.set(1,0,0); GI_U.pbMax.value.set(0,0,0); terapkanProbe(null); }
+    return; }
+  if(PROBE.aktif && !PROBE.kotor && id===PROBE.ruang && p.distanceTo(PROBE.pos)<1.2) return;
+  PROBE.jeda=0.35;
+  if(!PROBE.rt){
+    const hf=renderer.capabilities.isWebGL2;
+    PROBE.rt=new THREE.WebGLCubeRenderTarget(256,{type:hf?THREE.HalfFloatType:THREE.UnsignedByteType, generateMipmaps:false, minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter});
+    PROBE.cam=new THREE.CubeCamera(0.05,90,PROBE.rt); PROBE.pm=new THREE.PMREMGenerator(renderer); PROBE.pm.compileCubemapShader();
+  }
+  const pos=new THREE.Vector3(p.x, clamp(p.y,el0+0.4,el0+H-0.3), p.z);
+  // alat bantu editor tidak ikut terpantul
+  const sembunyi=[helperRoot,DIM.grp,grid,gizmo,selBox].filter(Boolean), dulu=sembunyi.map(o=>o.visible);
+  sembunyi.forEach(o=>o.visible=false);
+  const tm=renderer.toneMapping; if(FX.on&&renderer.capabilities.isWebGL2) renderer.toneMapping=THREE.NoToneMapping;
+  const rtLama=renderer.getRenderTarget();
+  PROBE.cam.position.copy(pos); PROBE.cam.update(renderer,scene);
+  renderer.toneMapping=tm; renderer.setRenderTarget(rtLama);
+  sembunyi.forEach((o,i)=>o.visible=dulu[i]);
+  const baru=PROBE.pm.fromCubemap(PROBE.rt.texture).texture;
+  if(PROBE.env) PROBE.env.dispose(); PROBE.env=baru;
+  if(tertutup){ const k=kotakRuang(P,id); GI_U.pbMin.value.set(k.x0,el0,k.z0); GI_U.pbMax.value.set(k.x1,el0+H,k.z1); }
+  else { GI_U.pbMin.value.set(1,0,0); GI_U.pbMax.value.set(0,0,0); }
+  GI_U.pbPos.value.copy(pos);
+  PROBE.pos.copy(p); PROBE.ruang=id; PROBE.kotor=false; PROBE.aktif=true;
+  terapkanProbe(baru);
 }
 const BUKU=[0x8e3b2e,0x2f4858,0xd9a441,0x7d8f69,0xe9e1d3,0x3d3a36,0xb89b72].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
 function books(n,x0,y,z,R){ const g=new THREE.Group(); let x=x0;
@@ -3525,6 +3702,7 @@ function fireplaceModern(){ const g=new THREE.Group(), H=ceilH(), w=2.0, d=0.45;
   g.add(boxUV(w,H,d,finMat(FINISH,'beton'),0,H/2,0));
   g.add(box(1.4,0.5,0.02,MAT.firebox,0,0.75,d/2+0.001));
   g.add(box(1.34,0.36,0.01,fireMat(),0,0.72,d/2+0.012));
+  { const f=lidahApi(1.1,0.3); f.scale.z=0.15; f.position.set(0,0.54,d/2+0.018); g.add(f); }
   for(let i=0;i<12;i++) g.add(sph(0.03,MAT.stone,-0.6+i*0.11,0.53,d/2+0.02,0.6,8));
   g.add(box(1.4,0.5,0.01,MAT.glass,0,0.75,d/2+0.03));
   g.add(box(w+0.2,0.08,0.55,MAT.stone,0,0.04,d/2+0.275-0.1));   // hearth menjorok 45 cm
@@ -3535,6 +3713,7 @@ function fireplaceClassic(){ const g=new THREE.Group(), H=ceilH(), d=0.5;
   g.add(box(0.8,0.7,0.02,MAT.firebox,0,0.45,d/2+0.001));
   g.add(box(0.72,0.5,0.01,fireMat(),0,0.38,d/2+0.012));
   for(const [x,z,r] of [[-0.12,0,0.2],[0.12,0,-0.2],[0,0.05,0]]){ const l=cyl(0.045,0.045,0.55,MAT.bark,x,0.16,d/2-0.05+z*0.1,10); l.rotation.z=Math.PI/2; l.rotation.y=r; g.add(l); }
+  { const f=lidahApi(0.5,0.42); f.position.set(0,0.18,d/2-0.05); g.add(f); }
   g.add(box(1.85,0.08,0.3,MAT.woodDark,0,1.19,d/2-0.02));       // rak mantel ±1,2 m
   g.add(box(1.7,0.05,0.5,MAT.stone,0,0.025,d/2+0.2));           // hearth
   g.add(vase(-0.6,1.23,d/2-0.05,0.25,MAT.ceramic)); g.add(cyl(0.025,0.025,0.18,MAT.ceramic,0.6,1.32,d/2-0.05,10)); g.add(sph(0.012,MAT.glow,0.6,1.43,d/2-0.05,1.6,8));
@@ -3545,7 +3724,275 @@ function woodStove(){ const g=new THREE.Group(), H=ceilH();
   for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.04,0.18,0.04,MAT.blackMetal,sx*0.22,0.11,sz*0.18));
   g.add(box(0.55,0.6,0.45,MAT.blackMetal,0,0.5,0));
   g.add(box(0.36,0.3,0.01,fireMat(),0,0.48,0.226)); g.add(box(0.38,0.32,0.01,MAT.glass,0,0.48,0.232));
+  { const f=lidahApi(0.26,0.22); f.position.set(0,0.36,0.12); g.add(f); }
   g.add(cyl(0.075,0.075,H-0.8,MAT.blackMetal,0,0.8+(H-0.8)/2,-0.05,18)); return g; }
+
+/* ======================================================================
+   LINGKUNGAN & TAMAN — tanah situs, area bentuk bebas (rumput, kerikil,
+   tanah, paving, dek), kolam renang & kolam ikan, jalan setapak, pagar.
+   Bentuknya digambar dengan tracing; titiknya disimpan dalam meter relatif
+   terhadap pusat objek, skala gizmo dilebur ke titik-titiknya.
+   ====================================================================== */
+const JENIS_AREA={rumput:'Rumput', kerikil:'Kerikil', tanah:'Tanah / bedeng', paving:'Paving batu', dek:'Dek kayu',
+                  kolam_renang:'Kolam renang', kolam_ikan:'Kolam ikan'};
+const JENIS_GARIS={setapak_batu:'Setapak batu pijakan', setapak_kerikil:'Setapak kerikil', setapak_paving:'Setapak paving',
+                   pagar_picket:'Pagar kayu picket', pagar_kayu:'Pagar kayu horizontal', pagar_besi:'Pagar besi', pagar_tanaman:'Pagar tanaman (semak)'};
+function teksturSitus(jenis){
+  return decoTex('situs_'+jenis,512,(c,S,R)=>{
+    const noda=(n,warna,r0,r1)=>{ for(let i=0;i<n;i++){ c.fillStyle=warna[(R()*warna.length)|0]; const r=r0+R()*(r1-r0); c.beginPath(); c.arc(R()*S,R()*S,r,0,7); c.fill(); } };
+    if(jenis==='rumput'){
+      c.fillStyle='#4f7a32'; c.fillRect(0,0,S,S); noda(900,['#5a8a38','#46702b','#638f3d','#3f6526'],3,9);
+      c.lineWidth=1.2; for(let i=0;i<5000;i++){ const x=R()*S, y=R()*S; c.strokeStyle=['#6fa046','#3b5f24','#7cab4f','#557f33'][(R()*4)|0];
+        c.beginPath(); c.moveTo(x,y); c.lineTo(x+(R()-0.5)*4,y-3-R()*6); c.stroke(); }
+    } else if(jenis==='kerikil'){
+      c.fillStyle='#8d877c'; c.fillRect(0,0,S,S); noda(5200,['#a8a296','#7b766c','#c2bdb2','#6a665e','#9b958a','#b3ab9b'],1.5,4.5);
+    } else if(jenis==='tanah'){
+      c.fillStyle='#5b4330'; c.fillRect(0,0,S,S); noda(2600,['#6a4f39','#4d3828','#735842','#3f2e21'],1,6);
+    } else if(jenis==='paving'){
+      c.fillStyle='#6d6a64'; c.fillRect(0,0,S,S); const n=4, u=S/n;
+      for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const v=150+((R()*40)|0); c.fillStyle=`rgb(${v},${v-6},${v-14})`; c.fillRect(i*u+3,j*u+3,u-6,u-6); }
+      noda(1500,['rgba(0,0,0,.08)','rgba(255,255,255,.07)'],1,3);
+    } else if(jenis==='dek'){
+      const n=8, u=S/n; for(let i=0;i<n;i++){ const v=((R()*30)|0); c.fillStyle=`rgb(${140+v},${96+v*0.7|0},${60+v*0.4|0})`; c.fillRect(0,i*u,S,u-3); c.fillStyle='#3a2617'; c.fillRect(0,i*u+u-3,S,3);
+        for(let k=0;k<30;k++){ c.strokeStyle='rgba(60,35,15,.18)'; c.beginPath(); const y=i*u+R()*(u-4); c.moveTo(0,y); c.bezierCurveTo(S*0.3,y+R()*3,S*0.6,y-R()*3,S,y); c.stroke(); } }
+    } else if(jenis==='ubin_kolam'){
+      c.fillStyle='#e9f4f6'; c.fillRect(0,0,S,S); const n=16, u=S/n;
+      for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const v=((R()*16)|0); c.fillStyle=`rgb(${70+v},${165+v},${196+v})`; c.fillRect(i*u+1.5,j*u+1.5,u-3,u-3); }
+    } else if(jenis==='batu_kolam'){
+      c.fillStyle='#2f3a33'; c.fillRect(0,0,S,S); noda(1800,['#3b473f','#26302a','#4a554c'],2,8);
+    }
+  });
+}
+function matSitus(jenis,ukuran){
+  const key='m_situs_'+jenis;
+  if(!DECOTEX.has(key)){
+    const t=teksturSitus(jenis); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+    const kasar={rumput:.95,kerikil:.92,tanah:.97,paving:.8,dek:.7,ubin_kolam:.35,batu_kolam:.9}[jenis]??.9;
+    DECOTEX.set(key,new THREE.MeshStandardMaterial({map:t, roughness:kasar}));
+  }
+  const m=DECOTEX.get(key); m.userData.ukuran=ukuran||{rumput:2,kerikil:1.2,tanah:1.5,paving:2,dek:1.6,ubin_kolam:2,batu_kolam:1.5}[jenis]||2;
+  return m;
+}
+/* UV dari koordinat dunia (x,z) supaya pola menyambung antarbidang */
+function uvDunia(geo,ukuran,ox=0,oz=0){
+  const p=geo.attributes.position, uv=new Float32Array(p.count*2);
+  for(let i=0;i<p.count;i++){ uv[i*2]=(p.getX(i)+ox)/ukuran; uv[i*2+1]=(p.getZ(i)+oz)/ukuran; }
+  geo.setAttribute('uv',new THREE.BufferAttribute(uv,2)); return geo;
+}
+function bentukXZ(pts){ const sh=new THREE.Shape(); sh.moveTo(pts[0][0],-pts[0][1]); for(const p of pts.slice(1)) sh.lineTo(p[0],-p[1]); return sh; }
+function bidangXZ(pts,y){ const g=new THREE.ShapeGeometry(bentukXZ(pts)); g.rotateX(-Math.PI/2); g.translate(0,y,0); return g; }
+function ekstrusiXZ(pts,tebal,yAtas){ const g=new THREE.ExtrudeGeometry(bentukXZ(pts),{depth:tebal,bevelEnabled:false}); g.rotateX(-Math.PI/2); g.translate(0,yAtas-tebal,0); return g; }
+if(!MAT.air){
+  const nm=decoTex('air_normal',256,(c,S,R)=>{ const im=c.createImageData(S,S), h=new Float32Array(S*S);
+    for(let k=0;k<6;k++){ const fx=(1+((R()*4)|0)), fy=(1+((R()*4)|0)), ph=R()*7; for(let y=0;y<S;y++) for(let x=0;x<S;x++) h[y*S+x]+=Math.sin((x*fx+y*fy)/S*Math.PI*2+ph)/(k+1); }
+    for(let y=0;y<S;y++) for(let x=0;x<S;x++){ const dx=h[y*S+(x+1)%S]-h[y*S+(x+S-1)%S], dy=h[((y+1)%S)*S+x]-h[((y+S-1)%S)*S+x], i=(y*S+x)*4;
+      im.data[i]=128-dx*40; im.data[i+1]=128-dy*40; im.data[i+2]=255; im.data[i+3]=255; } c.putImageData(im,0,0); });
+  nm.wrapS=nm.wrapT=THREE.RepeatWrapping; nm.repeat.set(0.35,0.35);
+  MAT.air=new THREE.MeshStandardMaterial({color:0x2a8fb8, roughness:0.06, metalness:0.2, transparent:true, opacity:0.72, normalMap:nm, normalScale:new THREE.Vector2(0.35,0.35), depthWrite:false});
+  MAT.airKolam=new THREE.MeshStandardMaterial({color:0x2f5a3c, roughness:0.08, metalness:0.15, transparent:true, opacity:0.82, normalMap:nm, normalScale:new THREE.Vector2(0.25,0.25), depthWrite:false});
+  MAT.daunAir=new THREE.MeshStandardMaterial({color:0x3f7d34, roughness:0.6, side:THREE.DoubleSide});
+  MAT.coping=new THREE.MeshStandardMaterial({color:0xe7e1d6, roughness:0.7});
+  MAT.batuTaman=new THREE.MeshStandardMaterial({color:0x8b8579, roughness:0.95, flatShading:true});
+  MAT.pagarPutih=new THREE.MeshStandardMaterial({color:0xf3f1ec, roughness:0.6});
+  MAT.daunTaman=new THREE.MeshStandardMaterial({color:0x3c6e2f, roughness:0.85, flatShading:true});
+  MAT.daunTaman2=new THREE.MeshStandardMaterial({color:0x4f8a3a, roughness:0.85, flatShading:true});
+  MAT.daunTaman3=new THREE.MeshStandardMaterial({color:0x2f5a27, roughness:0.85, flatShading:true});
+  MAT.kulitPohon=new THREE.MeshStandardMaterial({color:0x5a4130, roughness:0.95});
+}
+function stepAir(dt){ const n=MAT.air.normalMap; n.offset.x+=dt*0.015; n.offset.y+=dt*0.009; }
+const luasPoli=P=>{ let a=0; for(let i=0;i<P.length;i++){ const p=P[i], q=P[(i+1)%P.length]; a+=p[0]*q[1]-q[0]*p[1]; } return a/2; };
+const titikDalam=(P,R)=>{ const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]);
+  for(let k=0;k<40;k++){ const x=Math.min(...xs)+R()*(Math.max(...xs)-Math.min(...xs)), z=Math.min(...zs)+R()*(Math.max(...zs)-Math.min(...zs)); if(pointInPoly(x,z,P)) return [x,z]; } return null; };
+function areaPoli(o){ return (o.params.pts||[]).map(([x,z])=>[x*(o.sx||1),z*(o.sz||1)]); }
+function areaDunia(o){ const a=o.rotY||0, c=Math.cos(a), s=Math.sin(a); return areaPoli(o).map(([x,z])=>[o.x+x*c+z*s, o.z-x*s+z*c]); }
+function buildArea(o){
+  const g=new THREE.Group(), P=areaPoli(o), j=o.params.jenis||'rumput';
+  if(P.length<3) return g;
+  const R=acak(o.id.split('').reduce((a,c)=>a*31+c.charCodeAt(0),3));
+  if(j==='rumput'||j==='tanah'){
+    const m=new THREE.Mesh(uvDunia(bidangXZ(P,j==='rumput'?0.008:0.004),matSitus(j).userData.ukuran,o.x,o.z),matSitus(j)); m.receiveShadow=true; g.add(m);
+  } else if(j==='kerikil'||j==='paving'||j==='dek'){
+    const t={kerikil:0.03,paving:0.04,dek:0.15}[j];
+    const geo=uvDunia(ekstrusiXZ(P,t,t),matSitus(j).userData.ukuran,o.x,o.z);
+    const m=new THREE.Mesh(geo,matSitus(j)); m.castShadow=j==='dek'; m.receiveShadow=true; g.add(m);
+  } else {
+    const renang=j==='kolam_renang', dalam=clamp(o.params.kedalaman||(renang?1.4:0.6),0.2,3);
+    const muka=renang?-0.12:-0.16, dindingMat=renang?matSitus('ubin_kolam'):matSitus('batu_kolam');
+    const arah=luasPoli(P)>0?1:-1;
+    for(let i=0;i<P.length;i++){
+      const a=P[i], b=P[(i+1)%P.length], dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz); if(len<0.02) continue;
+      const nx=arah*dz/len, nz=-arah*dx/len;                     // normal keluar
+      const w=new THREE.Mesh(new THREE.PlaneGeometry(len,dalam),dindingMat); w.material.side=THREE.DoubleSide;
+      w.position.set((a[0]+b[0])/2,-dalam/2,(a[1]+b[1])/2); w.rotation.y=-Math.atan2(dz,dx); w.receiveShadow=true;
+      { const p=w.geometry.attributes.position, uv=w.geometry.attributes.uv; for(let k=0;k<p.count;k++) uv.setXY(k,(p.getX(k)+len/2)/1,(p.getY(k))/1); uv.needsUpdate=true; }
+      g.add(w);
+      if(renang){ const cp=box(len+0.34,0.06,0.34,MAT.coping,(a[0]+b[0])/2+nx*0.17,0.03,(a[1]+b[1])/2+nz*0.17); cp.rotation.y=-Math.atan2(dz,dx); g.add(cp); }
+      else { const n=Math.max(1,Math.round(len/0.3));
+        for(let k=0;k<n;k++){ const t=(k+0.5)/n, r=0.11+R()*0.09, s=sph(r,MAT.batuTaman,a[0]+dx*t+nx*0.06,0.02,a[1]+dz*t+nz*0.06,0.55+R()*0.3,6);
+          s.rotation.y=R()*6; g.add(s); } }
+    }
+    const lantai=new THREE.Mesh(uvDunia(bidangXZ(P,-dalam),renang?2:1.5,o.x,o.z),dindingMat); lantai.receiveShadow=true; g.add(lantai);
+    const air=new THREE.Mesh(bidangXZ(P,muka),renang?MAT.air:MAT.airKolam); air.renderOrder=3; air.userData.air=true; g.add(air);
+    if(renang){                                                   // tangga besi di sisi terpanjang
+      let bi=0, bl=0; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], l=Math.hypot(b[0]-a[0],b[1]-a[1]); if(l>bl){ bl=l; bi=i; } }
+      const a=P[bi], b=P[(bi+1)%P.length], dx=(b[0]-a[0])/bl, dz=(b[1]-a[1])/bl, nx=arah*dz, nz=-arah*dx, mx=(a[0]+b[0])/2-nx*0.12, mz=(a[1]+b[1])/2-nz*0.12;
+      for(const s of [-0.25,0.25]){ g.add(cyl(0.02,0.02,1.9,MAT.steel,mx+dx*s,-0.05,mz+dz*s,10));             // pegangan tegak
+        const atas=box(0.04,0.04,0.34,MAT.steel,mx+dx*s+nx*0.17,0.9,mz+dz*s+nz*0.17); atas.rotation.y=-Math.atan2(nz,nx)+Math.PI/2; g.add(atas);
+        g.add(cyl(0.02,0.02,0.9,MAT.steel,mx+dx*s+nx*0.34,0.45,mz+dz*s+nz*0.34,10)); }
+      for(const y of [-0.3,-0.6,-0.9]){ const st=box(0.5,0.03,0.08,MAT.steel,mx-nx*0.02,y,mz-nz*0.02); st.rotation.y=-Math.atan2(dz,dx); g.add(st); }
+    } else {                                                      // teratai
+      const n=Math.max(2,Math.round(Math.abs(luasPoli(P))*1.2));
+      for(let k=0;k<n;k++){ const p=titikDalam(P,R); if(!p) continue; const r=0.12+R()*0.1;
+        const d=new THREE.Mesh(new THREE.CircleGeometry(r,14,0.4,Math.PI*1.85),MAT.daunAir); d.rotation.x=-Math.PI/2; d.rotation.z=R()*6; d.position.set(p[0],muka+0.005,p[1]); g.add(d);
+        if(R()<0.4) g.add(sph(0.045,dekoMat('bungaTeratai',{color:0xf0a8c4,roughness:.6}),p[0],muka+0.04,p[1],0.8,8)); }
+    }
+  }
+  return g;
+}
+/* ---------- garis: jalan setapak & pagar ---------- */
+function garisPoli(o){ return (o.params.pts||[]).map(([x,z])=>[x*(o.sx||1),z*(o.sz||1)]); }
+function sepanjang(P,jarak,fn){                                   // titik-titik berjarak sama di sepanjang polyline
+  let sisa=jarak/2;
+  for(let i=0;i<P.length-1;i++){ const a=P[i], b=P[i+1], dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz); if(len<1e-6) continue;
+    let t=sisa; while(t<=len){ fn(a[0]+dx*t/len,a[1]+dz*t/len,dx/len,dz/len); t+=jarak; } sisa=t-len; }
+}
+function buildGaris(o){
+  const g=new THREE.Group(), P=garisPoli(o), j=o.params.jenis||'setapak_batu';
+  if(P.length<2) return g;
+  const R=acak(o.id.split('').reduce((a,c)=>a*31+c.charCodeAt(0),5));
+  const lebar=clamp(o.params.lebar||0.8,0.3,3), tinggi=clamp(o.params.tinggi||1.2,0.4,2.5);
+  const segmen=(fn)=>{ for(let i=0;i<P.length-1;i++){ const a=P[i], b=P[i+1], dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz); if(len<1e-6) continue; fn(a,b,len,-Math.atan2(dz,dx),dx/len,dz/len); } };
+  if(j==='setapak_batu'){
+    sepanjang(P,0.62,(x,z,ux,uz)=>{ const geo=new THREE.CylinderGeometry(1,1,0.05,7); const m=msh(geo,MAT.batuTaman,x+uz*(R()-0.5)*0.12,0.025,z-ux*(R()-0.5)*0.12);
+      m.scale.set(0.24+R()*0.06,1,0.2+R()*0.06); m.rotation.y=R()*6; g.add(m); });
+  } else if(j==='setapak_kerikil'||j==='setapak_paving'){
+    const mat=matSitus(j==='setapak_kerikil'?'kerikil':'paving'), t=j==='setapak_kerikil'?0.03:0.04;
+    segmen((a,b,len,ry)=>{ const m=box(len,t,lebar,mat,(a[0]+b[0])/2,t/2,(a[1]+b[1])/2); m.rotation.y=ry; m.castShadow=false; uvDunia(m.geometry,mat.userData.ukuran); g.add(m); });
+    for(const p of P.slice(1,-1)){ const c=cyl(lebar/2,lebar/2,t,mat,p[0],t/2-0.001,p[1],20); c.castShadow=false; g.add(c); }
+  } else {
+    // pagar: tiang di tiap titik sudut dan tiap ±2 m
+    const tiang=(x,z)=>{
+      if(j==='pagar_tanaman') return;
+      const mat=j==='pagar_besi'?MAT.blackMetal:j==='pagar_picket'?MAT.pagarPutih:MAT.woodDark, s=j==='pagar_besi'?0.05:0.09;
+      g.add(box(s,tinggi+0.05,s,mat,x,(tinggi+0.05)/2,z)); };
+    for(const p of P) tiang(p[0],p[1]);
+    segmen((a,b,len,ry,ux,uz)=>{
+      const n=Math.max(1,Math.round(len/2)); for(let k=1;k<n;k++) tiang(a[0]+ux*len*k/n,a[1]+uz*len*k/n);
+      const tengah=(t,y)=>[a[0]+ux*t, y, a[1]+uz*t];
+      const rel=(y,h,tb,mat)=>{ const m=box(len,h,tb,mat,(a[0]+b[0])/2,y,(a[1]+b[1])/2); m.rotation.y=ry; g.add(m); };
+      if(j==='pagar_picket'){
+        rel(0.25,0.06,0.03,MAT.pagarPutih); rel(tinggi-0.25,0.06,0.03,MAT.pagarPutih);
+        for(let t=0.07;t<len-0.04;t+=0.13){ const [x,y,z]=tengah(t,0); const m=box(0.075,tinggi-0.08,0.02,MAT.pagarPutih,x,(tinggi-0.08)/2,z); m.rotation.y=ry; g.add(m);
+          const ujung=box(0.053,0.053,0.02,MAT.pagarPutih,x,tinggi-0.08,z); ujung.rotation.order='YXZ'; ujung.rotation.y=ry; ujung.rotation.z=Math.PI/4; g.add(ujung); }
+      } else if(j==='pagar_kayu'){
+        for(let y=0.08;y<tinggi-0.06;y+=0.15) rel(y+0.06,0.12,0.03,MAT.wood);
+      } else if(j==='pagar_besi'){
+        rel(0.1,0.04,0.04,MAT.blackMetal); rel(tinggi-0.04,0.04,0.04,MAT.blackMetal);
+        for(let t=0.06;t<len-0.03;t+=0.12){ const [x,,z]=tengah(t,0); g.add(cyl(0.012,0.012,tinggi-0.12,MAT.blackMetal,x,tinggi/2,z,6)); }
+      } else {                                                    // semak rapat: beberapa bongkah daun
+        const n2=Math.max(1,Math.round(len/0.45));
+        for(let k=0;k<n2;k++){ const [x,,z]=tengah((k+0.5)/n2*len,0); const m=box(len/n2*1.15,tinggi*(0.92+R()*0.12),0.5+R()*0.08,[MAT.daunTaman,MAT.daunTaman2,MAT.daunTaman3][k%3],x,tinggi*0.48,z); m.rotation.y=ry; g.add(m); }
+      }
+    });
+  }
+  return g;
+}
+/* ---------- tanah situs: bidang luas di sekeliling bangunan, berlubang di kolam ---------- */
+function buildSitus(){
+  const st=PROJECT.site; if(!st||!st.tanah||st.tanah==='none') return null;
+  const lv=PROJECT.levels[0]; if(!lv) return null;
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  const ikut=(x,z)=>{ x0=Math.min(x0,x); x1=Math.max(x1,x); z0=Math.min(z0,z); z1=Math.max(z1,z); };
+  for(const w of lv.walls){ ikut(w.x1,w.z1); ikut(w.x2,w.z2); }
+  for(const o of lv.objects){ if(o.kind==='area'||o.kind==='garis') for(const [x,z] of (o.kind==='area'?areaDunia(o):garisPoli(o).map(([x,z])=>[o.x+x,o.z+z]))) ikut(x,z); else ikut(o.x,o.z); }
+  if(x0>x1){ x0=-6; x1=6; z0=-6; z1=6; }
+  const m=clamp(st.margin??6,0,60); x0-=m; x1+=m; z0-=m; z1+=m;
+  const lubang=lv.objects.filter(o=>o.kind==='area'&&/^kolam/.test(o.params.jenis||'')).map(areaDunia).filter(p=>p.length>=3);
+  const mat=matSitus(st.tanah), T=0.05;
+  let geo;
+  if(!lubang.length){ geo=new THREE.BoxGeometry(x1-x0,T,z1-z0); geo.translate((x0+x1)/2,-T/2,(z0+z1)/2); }
+  else { const strips=slabStrips(x0,x1,z0,z1,lubang); if(!strips.length) return null; snapStripSeams(strips,1e-6);
+    geo=slabGeometry(strips,T,(x,z)=>x>=x0&&x<=x1&&z>=z0&&z<=z1&&!lubang.some(p=>pointInPoly(x,z,p))); }
+  uvDunia(geo,mat.userData.ukuran);
+  const g=new THREE.Mesh(geo,Array.isArray(geo.groups)&&geo.groups.length>1?[mat,mat]:mat);
+  g.position.y=-0.02; g.receiveShadow=true; g.castShadow=false; g.userData.situs=true;
+  return g;
+}
+
+/* ---------- katalog taman ---------- */
+function pohonRindang(){ const g=new THREE.Group(), R=acak(11);
+  const b=cyl(0.12,0.18,2.2,MAT.kulitPohon,0,1.1,0,10); g.add(b);
+  for(const [x,y,z,r] of [[0,3.1,0,1.1],[0.6,2.8,0.3,0.8],[-0.6,2.9,-0.2,0.85],[0.1,2.6,-0.65,0.75],[-0.2,3.6,0.3,0.7],[0.4,3.4,-0.4,0.7]]){
+    const m=msh(new THREE.IcosahedronGeometry(r,1),[MAT.daunTaman,MAT.daunTaman2,MAT.daunTaman3][(R()*3)|0],x,y,z); m.rotation.set(R()*3,R()*3,R()*3); g.add(m); }
+  return g; }
+function pohonCemara(){ const g=new THREE.Group(); g.add(cyl(0.08,0.12,0.9,MAT.kulitPohon,0,0.45,0,8));
+  [[1.0,1.6,1.3],[0.8,1.4,2.2],[0.55,1.2,3.0]].forEach(([r,h,y],i)=>{ const m=msh(new THREE.ConeGeometry(r,h,9),i%2?MAT.daunTaman3:MAT.daunTaman,0,y,0); m.rotation.y=i; g.add(m); });
+  return g; }
+function pohonPalem(){ const g=new THREE.Group(); let x=0,y=0,a=0;
+  for(let i=0;i<9;i++){ const s=cyl(0.11-i*0.006,0.12-i*0.006,0.45,MAT.kulitPohon,x,y+0.22,0,8); s.rotation.z=a; g.add(s); x-=Math.sin(a)*0.45; y+=Math.cos(a)*0.45; a+=0.035; }
+  // pelepah melengkung: tiga ruas makin menunduk dan makin sempit ke ujung
+  for(let i=0;i<11;i++){ const r=i/11*Math.PI*2+(i%2)*0.15, d=new THREE.Group(); d.position.set(x,y+0.05,0); d.rotation.y=r;
+    let px=0, py=0, a=0.25-(i%3)*0.12;
+    [[0.6,0.26],[0.55,0.2],[0.5,0.12]].forEach(([l,w],k)=>{ const daun=box(l,0.015,w,k%2?MAT.daunTaman:MAT.daunTaman2,px+Math.cos(a)*l/2,py+Math.sin(a)*l/2,0);
+      daun.rotation.z=a; d.add(daun); px+=Math.cos(a)*l; py+=Math.sin(a)*l; a-=0.45; });
+    g.add(d); }
+  return g; }
+function semak(){ const g=new THREE.Group(), R=acak(23);
+  for(const [x,y,z,r] of [[0,0.35,0,0.42],[0.28,0.28,0.12,0.3],[-0.25,0.3,-0.1,0.32],[0.05,0.5,-0.2,0.28]]){ const m=msh(new THREE.IcosahedronGeometry(r,1),[MAT.daunTaman,MAT.daunTaman2][(R()*2)|0],x,y,z); m.scale.y=0.85; g.add(m); }
+  return g; }
+function rumpunBunga(R0){ const g=new THREE.Group(), R=acak(R0||37);
+  const warna=[0xd8344a,0xf2c230,0xf08cb8,0xffffff,0x8a5bd6,0xf07a2c];
+  for(let i=0;i<14;i++){ const a=R()*6.28, r=R()*0.25, x=Math.cos(a)*r, z=Math.sin(a)*r, h=0.25+R()*0.25;
+    g.add(cyl(0.006,0.006,h,MAT.leaf,x,h/2,z,4));
+    g.add(sph(0.035+R()*0.02,dekoMat('bunga'+(i%6),{color:warna[((R()*6)|0)], roughness:.6}),x,h+0.02,z,0.75,8));
+    const daun=box(0.08,0.005,0.03,MAT.leaf,x+0.03,h*0.45,z); daun.rotation.y=R()*6; g.add(daun); }
+  const rimbun=msh(new THREE.IcosahedronGeometry(0.22,1),MAT.daunTaman2,0,0.1,0); rimbun.scale.y=0.45; g.add(rimbun);
+  return g; }
+function bedengBunga(){ const g=new THREE.Group(), w=1.6, d=0.6, h=0.35;
+  for(const [x,z,ww,dd] of [[0,-d/2,w,0.05],[0,d/2,w,0.05],[-w/2,0,0.05,d],[w/2,0,0.05,d]]) g.add(box(ww,h,dd,MAT.wood,x,h/2,z));
+  g.add(box(w-0.06,0.02,d-0.06,matSitus('tanah'),0,h-0.04,0));
+  for(const x of [-0.5,0,0.5]){ const b=rumpunBunga(53+x*10); b.position.set(x,h-0.05,0); b.scale.setScalar(0.85); g.add(b); }
+  return g; }
+function potTaman(){ const g=new THREE.Group(); g.add(cyl(0.32,0.24,0.6,MAT.terracotta,0,0.3,0,20)); g.add(cyl(0.3,0.3,0.02,matSitus('tanah'),0,0.58,0,20));
+  const s=semak(); s.scale.setScalar(0.75); s.position.y=0.5; g.add(s); return g; }
+function bangkuTaman(){ const g=new THREE.Group(), w=1.5;
+  for(let i=0;i<4;i++) g.add(box(w,0.03,0.09,MAT.wood,0,0.44,-0.17+i*0.11));
+  for(let i=0;i<3;i++){ const s=box(w,0.09,0.025,MAT.wood,0,0.62+i*0.12,-0.27); s.rotation.x=-0.18; g.add(s); }
+  for(const sx of [-1,1]){ g.add(box(0.05,0.44,0.5,MAT.blackMetal,sx*(w/2-0.1),0.22,0)); g.add(box(0.05,0.5,0.04,MAT.blackMetal,sx*(w/2-0.1),0.7,-0.27)); }
+  return g; }
+function lampuTaman(){ const g=new THREE.Group(); g.add(cyl(0.05,0.06,1.0,MAT.blackMetal,0,0.5,0,10));
+  g.add(box(0.2,0.025,0.2,MAT.blackMetal,0,1.0,0)); g.add(sph(0.07,MAT.glow,0,1.1,0,1.2,12));
+  g.add(msh(new THREE.ConeGeometry(0.16,0.14,4),MAT.blackMetal,0,1.27,0)); return g; }
+function gazebo(){ const g=new THREE.Group(), s=3.0, h=2.5;
+  g.add(box(s,0.15,s,matSitus('dek'),0,0.075,0));
+  for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.14,h,0.14,MAT.woodDark,sx*(s/2-0.12),0.15+h/2,sz*(s/2-0.12)));
+  const atap=msh(new THREE.ConeGeometry(s*0.82,1.2,4),dekoMat('atapGazebo',{color:0x5a3b2a,roughness:.85,flatShading:true}),0,0.15+h+0.6,0); atap.rotation.y=Math.PI/4; g.add(atap);
+  for(const [x,z,ry] of [[0,-(s/2-0.35),0],[-(s/2-0.35),0,Math.PI/2]]){ const b=box(s-0.6,0.05,0.4,MAT.wood,x,0.6,z); b.rotation.y=ry; g.add(b); }
+  return g; }
+function pergola(){ const g=new THREE.Group(), w=3.0, d=3.0, h=2.4;
+  for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.15,h,0.15,MAT.wood,sx*(w/2-0.1),h/2,sz*(d/2-0.1)));
+  for(const sz of [-1,1]) g.add(box(w+0.3,0.2,0.08,MAT.wood,0,h-0.1,sz*(d/2-0.1)));
+  for(let i=0;i<9;i++) g.add(box(0.06,0.14,d+0.4,MAT.wood,-w/2+0.15+i*(w-0.3)/8,h+0.07,0));
+  return g; }
+function ayunan(){ const g=new THREE.Group(), w=2.0, h=2.1;
+  for(const sx of [-1,1]) for(const sz of [-1,1]){ const k=box(0.08,h*1.06,0.08,MAT.wood,sx*w/2,h/2,sz*0.35); k.rotation.x=-sz*0.32; g.add(k); }
+  g.add(box(w+0.2,0.1,0.1,MAT.wood,0,h,0));
+  for(const x of [-0.25,0.25]){ g.add(cyl(0.008,0.008,1.45,MAT.steel,x,h-0.72,0,4)); }
+  g.add(box(0.6,0.04,0.25,MAT.wood,0,h-1.45,0)); return g; }
+function kursiJemur(){ const g=new THREE.Group();
+  g.add(box(0.65,0.05,1.3,MAT.wood,0,0.3,0.15)); const s=box(0.65,0.05,0.7,MAT.wood,0,0.55,-0.7); s.rotation.x=-0.75; g.add(s);
+  g.add(box(0.6,0.06,1.25,MAT.linen,0,0.35,0.15)); for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.05,0.3,0.05,MAT.wood,sx*0.28,0.15,sz*0.55+0.1));
+  return g; }
+function payungTaman(){ const g=new THREE.Group(); g.add(cyl(0.3,0.32,0.08,MAT.stone,0,0.04,0,20)); g.add(cyl(0.025,0.025,2.4,MAT.wood,0,1.2,0,8));
+  const kanopi=msh(new THREE.ConeGeometry(1.4,0.45,8,1,true),dekoMat('kanopiPayung',{color:0xece4d4,roughness:.85,side:THREE.DoubleSide}),0,2.25,0); g.add(kanopi); return g; }
+function airMancur(){ const g=new THREE.Group();
+  g.add(cyl(0.9,0.95,0.4,MAT.stone,0,0.2,0,32)); const a1=cyl(0.82,0.82,0.02,MAT.air,0,0.37,0,32); a1.userData.air=true; g.add(a1);
+  g.add(cyl(0.12,0.16,0.9,MAT.stone,0,0.8,0,16)); g.add(cyl(0.45,0.25,0.15,MAT.stone,0,1.3,0,24));
+  const a2=cyl(0.4,0.4,0.02,MAT.air,0,1.37,0,24); a2.userData.air=true; g.add(a2); g.add(cyl(0.06,0.08,0.35,MAT.stone,0,1.55,0,12));
+  return g; }
+function batuHias(){ const g=new THREE.Group(), R=acak(71);
+  for(const [x,z,r] of [[0,0,0.35],[0.45,0.15,0.22],[-0.35,0.25,0.18],[0.15,-0.35,0.15]]){ const m=msh(new THREE.DodecahedronGeometry(r,0),MAT.batuTaman,x,r*0.55,z); m.scale.y=0.7; m.rotation.set(R()*3,R()*3,R()*3); g.add(m); }
+  return g; }
 
 /* ---------- LAIN-LAIN ---------- */
 function ottoman(){ const g=new THREE.Group(); g.add(cyl(0.3,0.3,0.36,MAT.velvet2,0,0.24,0,32)); g.add(cyl(0.3,0.26,0.06,MAT.woodDark,0,0.03,0,32)); return g; }
@@ -3688,6 +4135,22 @@ const FURN={
   bench       :{l:'Bangku',             i:'🪑', c:'ruang',   f:[1.2,0.4],   b:bench},
   rattan_chair:{l:'Kursi Rotan',        i:'🪑', c:'ruang',   f:[0.84,0.84], b:rattanChair},
   piano       :{l:'Piano Tegak',        i:'🎹', c:'ruang',   f:[1.5,1.0],   b:piano,          wall:1, back:0.3},
+  pohon       :{l:'Pohon Rindang',      i:'🌳', c:'taman',   f:[2.4,2.4],   b:pohonRindang},
+  pohon_cemara:{l:'Pohon Cemara',       i:'🌲', c:'taman',   f:[2.0,2.0],   b:pohonCemara},
+  pohon_palem :{l:'Pohon Palem',        i:'🌴', c:'taman',   f:[3.0,3.0],   b:pohonPalem},
+  semak       :{l:'Semak',              i:'🌿', c:'taman',   f:[1.0,0.8],   b:semak},
+  bunga       :{l:'Rumpun Bunga',       i:'🌷', c:'taman',   f:[0.6,0.6],   b:()=>rumpunBunga(37)},
+  bedeng_bunga:{l:'Bedeng Bunga',       i:'🌼', c:'taman',   f:[1.6,0.6],   b:bedengBunga},
+  pot_taman   :{l:'Pot Taman',          i:'🪴', c:'taman',   f:[0.65,0.65], b:potTaman},
+  bangku_taman:{l:'Bangku Taman',       i:'🪑', c:'taman',   f:[1.5,0.6],   b:bangkuTaman},
+  lampu_taman :{l:'Lampu Taman',        i:'🏮', c:'taman',   f:[0.25,0.25], b:lampuTaman},
+  gazebo      :{l:'Gazebo',             i:'⛩️', c:'taman',   f:[3.0,3.0],   b:gazebo},
+  pergola     :{l:'Pergola',            i:'🏗️', c:'taman',   f:[3.2,3.4],   b:pergola},
+  ayunan      :{l:'Ayunan',             i:'🎠', c:'taman',   f:[2.2,1.0],   b:ayunan},
+  kursi_jemur :{l:'Kursi Berjemur',     i:'🏖️', c:'taman',   f:[0.65,2.0],  b:kursiJemur},
+  payung_taman:{l:'Payung Taman',       i:'⛱️', c:'taman',   f:[2.8,2.8],   b:payungTaman},
+  air_mancur  :{l:'Air Mancur',         i:'⛲', c:'taman',   f:[1.9,1.9],   b:airMancur},
+  batu_hias   :{l:'Batu Hias',          i:'🪨', c:'taman',   f:[1.1,0.9],   b:batuHias},
   room_divider:{l:'Partisi Lipat',      i:'🪟', c:'ruang',   f:[1.4,0.5],   b:roomDivider},
   coat_rack   :{l:'Gantungan Baju',     i:'🧥', c:'ruang',   f:[0.5,0.5],   b:coatRack},
   floor_vase  :{l:'Vas Lantai + Pampas',i:'🏺', c:'ruang',   f:[0.6,0.6],   b:floorVase},
@@ -3821,7 +4284,7 @@ const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table
   arc_lamp:'lampu',wall_sconce:'lampu',floor_lamp:'lampu',downlight:'lampu',ceiling_flush:'lampu',ceiling_panel:'lampu',
   kitchen_line:'lampu',kitchen_l2:'lampu',kitchen_u:'lampu',kitchen_par:'lampu',kitchen_isl:'lampu',
   fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
-  music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio'};
+  music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio', piano:'piano', lampu_taman:'lampu'};
 const KUAT_LAMPU={chandelier:1.6,pendant:1.1,pendant_trio:1.4,table_lamp:0.6,night_lamp:0.6,arc_lamp:0.9,wall_sconce:0.55,
   floor_lamp:0.8,kitchen_line:0.8,kitchen_l2:0.8,kitchen_u:0.8,kitchen_par:0.8,kitchen_isl:0.9,fire_modern:1.3,fire_classic:1.3,wood_stove:0.9};
 /* TERANG LAMPU DALAM LUMEN — nilai bawaan = lampu LED rumahan yang umum dijual
@@ -4434,6 +4897,164 @@ for(const ev of ['touchend','pointerup','click','keydown'])
   addEventListener(ev,()=>{ const c=AUDIO.ctx; if(c && c.state!=='running' && AUDIO.main.size){ c.resume().catch(()=>{});
     const s=c.createBufferSource(); s.buffer=c.createBuffer(1,1,22050); s.connect(c.destination); s.start(0); } },{passive:true,capture:true});
 function hentikanSemuaMusik(){ for(const id of [...AUDIO.main.keys()]) hentikanMusik(id); }
+/* ---------- EFEK SUARA INTERAKSI — disintesis, tanpa berkas rekaman ---------- */
+const SFX={on:true};
+try{ SFX.on=localStorage.getItem('sfx_on')!=='0'; }catch(e){}
+function sfx(jenis,titik){
+  if(!SFX.on) return;
+  const ctx=audioSiap(); if(!ctx) return;
+  const t=ctx.currentTime+0.01;
+  let d=AUDIO.master;
+  if(titik){ const p=ctx.createPanner(); p.panningModel='HRTF'; p.distanceModel='inverse'; p.refDistance=1.2; p.rolloffFactor=1;
+    p.positionX ? (p.positionX.value=titik.x, p.positionY.value=titik.y, p.positionZ.value=titik.z) : p.setPosition(titik.x,titik.y,titik.z);
+    p.connect(AUDIO.master); d=p; setTimeout(()=>{ try{ p.disconnect(); }catch(e){} },2500); }
+  const filt=(tipe,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=tipe; b.frequency.value=f; if(q) b.Q.value=q; return b; };
+  if(jenis==='klik'){                                          // sakelar / tombol
+    const hp=filt('highpass',2500); hp.connect(d); derau(ctx,t,0.012,envGain(ctx,hp,t,0.0008,0.5,0.012));
+    osc(ctx,'square',2200,t,t+0.03,envGain(ctx,d,t,0.0005,0.08,0.02));
+    derau(ctx,t+0.045,0.01,envGain(ctx,hp,t+0.045,0.0008,0.22,0.01));
+  } else if(jenis==='pintuBuka'||jenis==='pintuTutup'){
+    const lp=filt('lowpass',900); lp.connect(d);
+    const bpK=filt('bandpass',2400,2); bpK.connect(d); derau(ctx,t,0.05,envGain(ctx,bpK,t,0.001,0.25,0.04));   // klik gagang
+    if(jenis==='pintuBuka'){                                  // derit engsel
+      const bp=filt('bandpass',700,9); bp.connect(d);
+      const o=osc(ctx,'sawtooth',150,t+0.08,t+0.7,envGain(ctx,bp,t+0.08,0.08,0.18,0.55));
+      o.frequency.setValueAtTime(150,t+0.08); o.frequency.linearRampToValueAtTime(115,t+0.6);
+    } else {                                                  // bantingan daun pintu
+      osc(ctx,'sine',85,t+0.03,t+0.35,envGain(ctx,d,t+0.03,0.003,0.9,0.28));
+      derau(ctx,t+0.03,0.12,envGain(ctx,lp,t+0.03,0.002,0.6,0.12));
+    }
+  } else if(jenis==='gorden'){                                // kain bergeser
+    const bp=filt('bandpass',3200,0.7); bp.connect(d);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.35,t+0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+0.75); g.connect(bp);
+    const hpK=filt('highpass',6000); hpK.connect(d); derau(ctx,t,0.8,g); derau(ctx,t,0.15,envGain(ctx,hpK,t,0.001,0.08,0.1));
+  } else if(jenis==='tvNyala'||jenis==='tvMati'){
+    sfx('klik',titik);
+    const o=osc(ctx,'sine',jenis==='tvNyala'?600:1500,t+0.04,t+0.25,envGain(ctx,d,t+0.04,0.005,0.12,0.18));
+    o.frequency.exponentialRampToValueAtTime(jenis==='tvNyala'?1500:500,t+0.2);
+    if(jenis==='tvNyala'){ const hp=filt('highpass',1500); hp.connect(d); derau(ctx,t+0.05,0.35,envGain(ctx,hp,t+0.05,0.02,0.12,0.3)); }
+  } else if(jenis==='apiNyala'){                              // korek + sambaran api
+    const hp=filt('highpass',3000); hp.connect(d); derau(ctx,t,0.04,envGain(ctx,hp,t,0.001,0.5,0.04));
+    const lp=filt('lowpass',600); lp.connect(d);
+    lp.frequency.setValueAtTime(300,t+0.05); lp.frequency.exponentialRampToValueAtTime(2200,t+0.4);
+    derau(ctx,t+0.05,0.9,envGain(ctx,lp,t+0.05,0.12,0.7,0.8));
+    for(let i=0;i<7;i++){ const tt=t+0.25+Math.random()*0.8; derau(ctx,tt,0.008,envGain(ctx,hp,tt,0.0005,0.25+Math.random()*0.3,0.008)); }
+  } else if(jenis==='apiPadam'){                              // desis padam
+    const bp=filt('bandpass',4500,1.2); bp.connect(d); derau(ctx,t,0.7,envGain(ctx,bp,t,0.02,0.3,0.65));
+  }
+}
+function sfxAksi(t){
+  const titik = t.jenis==='bukaan' ? null : (()=>{ const b=new THREE.Box3().setFromObject(t.grp); return b.getCenter(new THREE.Vector3()); })();
+  if(t.jenis==='bukaan') sfx(bukaan(t.o)>0.5?'pintuTutup':'pintuBuka');
+  else if(t.jenis==='lampu') sfx('klik',titik);
+  else if(t.jenis==='api') sfx(MATI.has(t.id)?'apiNyala':'apiPadam',titik);
+  else if(t.jenis==='tv') sfx(TV_NYALA.has(t.id)?'tvMati':'tvNyala',titik);
+  else if(t.jenis==='gorden') sfx('gorden',titik);
+  else if(t.jenis==='audio') sfx('klik',titik);
+}
+
+/* ---------- PIANO — tuts di layar / keyboard, bunyi piano sintesis di posisi pianonya ---------- */
+const PIANO={buka:false, grp:null, okt:60, lagu:null, tunda:[], tekan:new Map()};
+const LAGU_PIANO={
+  // karya domain publik
+  elise:{l:'Für Elise — Beethoven', bpm:132, n:[[76,.5],[75,.5],[76,.5],[75,.5],[76,.5],[71,.5],[74,.5],[72,.5],[69,1.5,[45,52,57]],[60,.5],[64,.5],[69,.5],[71,1.5,[40,52,56]],[64,.5],[68,.5],[71,.5],[72,1.5,[45,52,57]],[64,.5],
+    [76,.5],[75,.5],[76,.5],[75,.5],[76,.5],[71,.5],[74,.5],[72,.5],[69,1.5,[45,52,57]],[60,.5],[64,.5],[69,.5],[71,1.5,[40,52,56]],[64,.5],[72,.5],[71,.5],[69,2,[45,52,57]]]},
+  ode:{l:'Ode to Joy — Beethoven', bpm:112, n:[[64,1,[48,55]],[64,1],[65,1],[67,1],[67,1,[43,55]],[65,1],[64,1],[62,1],[60,1,[48,55]],[60,1],[62,1],[64,1],[64,1.5,[43,55]],[62,.5],[62,2],
+    [64,1,[48,55]],[64,1],[65,1],[67,1],[67,1,[43,55]],[65,1],[64,1],[62,1],[60,1,[48,55]],[60,1],[62,1],[64,1],[62,1.5,[43,55]],[60,.5],[60,2,[48,55]]]},
+  twinkle:{l:'Twinkle Twinkle Little Star', bpm:100, n:[[60,1,[48]],[60,1],[67,1,[52]],[67,1],[69,1,[53]],[69,1],[67,2,[52]],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,1,[43]],[62,1],[60,2,[48]],
+    [67,1,[52]],[67,1],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,2,[43]],[67,1,[52]],[67,1],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,2,[43]],
+    [60,1,[48]],[60,1],[67,1,[52]],[67,1],[69,1,[53]],[69,1],[67,2,[52]],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,1,[43]],[62,1],[60,2,[48]]]}
+};
+const KEY_PUTIH=['a','s','d','f','g','h','j','k','l',';',"'"], KEY_HITAM={w:1,e:3,t:6,y:8,u:10,o:13,p:15};
+const PUTIH_SEMI=[0,2,4,5,7,9,11];
+function pianoTitik(){ if(!PIANO.grp) return null; const b=new THREE.Box3().setFromObject(PIANO.grp); const c=b.getCenter(new THREE.Vector3()); c.y=1.0; return c; }
+function pianoBus(){
+  const ctx=audioSiap(); if(!ctx) return null;
+  if(!PIANO.bus){
+    PIANO.pan=ctx.createPanner(); PIANO.pan.panningModel='HRTF'; PIANO.pan.distanceModel='inverse'; PIANO.pan.refDistance=1.5; PIANO.pan.rolloffFactor=0.8;
+    PIANO.bus=ctx.createGain(); PIANO.bus.gain.value=1.4; PIANO.bus.connect(PIANO.pan); PIANO.pan.connect(AUDIO.master);
+    const kirim=ctx.createGain(); kirim.gain.value=0.35; PIANO.bus.connect(kirim); kirim.connect(AUDIO.gema);
+  }
+  const p=pianoTitik()||camera.position;
+  PIANO.pan.positionX ? (PIANO.pan.positionX.value=p.x, PIANO.pan.positionY.value=p.y, PIANO.pan.positionZ.value=p.z) : PIANO.pan.setPosition(p.x,p.y,p.z);
+  return ctx;
+}
+function bunyiPiano(m,t,dur,v){
+  const ctx=pianoBus(); if(!ctx) return;
+  t=t||ctx.currentTime; const d=PIANO.bus;
+  ALAT.piano(ctx,d,t,m,Math.max(dur||1.2,0.6),v||0.32);
+  osc(ctx,'sine',mf(m)*3.01,t,t+0.4,envGain(ctx,d,t,0.002,(v||0.32)*0.12,0.35));   // dentang palu
+}
+function tandaiTuts(m,on){
+  const e=document.querySelector(`#pianoKeys [data-m="${m}"]`); if(e) e.classList.toggle('on',on);
+}
+function mainkanTuts(m){ bunyiPiano(m); tandaiTuts(m,true); setTimeout(()=>tandaiTuts(m,false),180); }
+function gambarTuts(){
+  const box=$('#pianoKeys'); box.innerHTML='';
+  const awal=PIANO.okt, putih=[];
+  for(let m=awal;m<=awal+24;m++) if(PUTIH_SEMI.includes(((m%12)+12)%12)) putih.push(m);
+  const lb=100/putih.length;
+  putih.forEach((m,i)=>{ const k=el('div','pk putih'); k.dataset.m=m; k.style.left=(i*lb)+'%'; k.style.width=lb+'%';
+    if(m%12===0) k.appendChild(el('span',null,'C'+(m/12-1))); box.appendChild(k); });
+  putih.forEach((m,i)=>{ if(i===putih.length-1) return; const n=((m%12)+12)%12; if(n===4||n===11) return;
+    const k=el('div','pk hitam'); k.dataset.m=m+1; k.style.left=((i+1)*lb-lb*0.32)+'%'; k.style.width=(lb*0.64)+'%'; box.appendChild(k); });
+  $('#pianoOkt').textContent='Oktaf C'+(awal/12-1)+'–C'+(awal/12+1);
+}
+function bukaPiano(grp){
+  PIANO.grp=grp||null; PIANO.buka=true;
+  $('#pianoPanel').hidden=false; gambarTuts(); pianoBus();
+  if(FPS.on){ FPS.keys.clear(); FPS.move=null; if(document.exitPointerLock&&document.pointerLockElement) document.exitPointerLock(); }
+  toast('🎹 Ketuk tuts, atau pakai keyboard: A S D F G H J K L (putih) · W E T Y U O P (hitam) · Z / X ganti oktaf');
+}
+function tutupPiano(){
+  PIANO.buka=false; $('#pianoPanel').hidden=true; hentikanLaguPiano();
+  if(FPS.on && !('ontouchstart' in window) && renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+}
+function hentikanLaguPiano(){ for(const t of PIANO.tunda) clearTimeout(t); PIANO.tunda=[]; PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu';
+  if(PIANO.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; PIANO.bus.gain.cancelScheduledValues(t); PIANO.bus.gain.setValueAtTime(PIANO.bus.gain.value,t);
+    PIANO.bus.gain.linearRampToValueAtTime(0.0001,t+0.25); PIANO.bus.gain.linearRampToValueAtTime(1.4,t+0.3); } }
+function mainkanLaguPiano(kunci){
+  hentikanLaguPiano();
+  const L=LAGU_PIANO[kunci], ctx=pianoBus(); if(!L||!ctx) return;
+  PIANO.lagu=kunci; $('#pianoMain').textContent='■ Berhenti';
+  const spb=60/L.bpm, t0=ctx.currentTime+0.15; let b=0;
+  for(const [m,dur,iring] of L.n){
+    const t=t0+b*spb;
+    bunyiPiano(m,t,dur*spb*1.1,0.3);
+    if(iring) for(const x of iring) bunyiPiano(x,t,dur*spb*2,0.16);
+    const ms=(t-ctx.currentTime)*1000;
+    PIANO.tunda.push(setTimeout(()=>tandaiTuts(m,true),ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
+    b+=dur;
+  }
+  PIANO.tunda.push(setTimeout(()=>{ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; PIANO.tunda=[]; },(t0-ctx.currentTime+b*spb)*1000+300));
+}
+{ const box=$('#pianoKeys');
+  box.addEventListener('pointerdown',e=>{ const k=e.target.closest('.pk'); if(!k) return; e.preventDefault(); e.stopPropagation();
+    const m=+k.dataset.m; PIANO.tekan.set(e.pointerId,m); bunyiPiano(m); tandaiTuts(m,true); });
+  box.addEventListener('pointerover',e=>{ if(!PIANO.tekan.has(e.pointerId)) return; const k=e.target.closest('.pk'); if(!k) return;
+    const m=+k.dataset.m; if(PIANO.tekan.get(e.pointerId)===m) return; tandaiTuts(PIANO.tekan.get(e.pointerId),false); PIANO.tekan.set(e.pointerId,m); bunyiPiano(m); tandaiTuts(m,true); });
+  for(const ev of ['pointerup','pointercancel','pointerleave']) box.addEventListener(ev,e=>{ const m=PIANO.tekan.get(e.pointerId); if(m!=null){ tandaiTuts(m,false); PIANO.tekan.delete(e.pointerId); } });
+  $('#pianoPanel').addEventListener('pointerdown',e=>e.stopPropagation());
+  $('#pianoTutup').onclick=tutupPiano;
+  $('#pianoMain').onclick=()=>{ if(PIANO.lagu) hentikanLaguPiano(); else mainkanLaguPiano($('#pianoLagu').value); };
+  $('#pianoTurun').onclick=()=>{ PIANO.okt=Math.max(36,PIANO.okt-12); gambarTuts(); };
+  $('#pianoNaik').onclick=()=>{ PIANO.okt=Math.min(72,PIANO.okt+12); gambarTuts(); };
+  $('#pianoLagu').innerHTML=Object.entries(LAGU_PIANO).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
+}
+/* keyboard komputer → tuts (dipakai baik di mode jalan maupun editor selama panel terbuka) */
+addEventListener('keydown',e=>{
+  if(!PIANO.buka || /input|select|textarea/i.test(e.target.tagName)) return;
+  const k=e.key.toLowerCase();
+  if(k==='escape'){ tutupPiano(); e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if(e.repeat){ e.preventDefault(); e.stopImmediatePropagation(); return; }
+  let m=null;
+  const iw=KEY_PUTIH.indexOf(k); if(iw>=0) m=PIANO.okt+Math.floor(iw/7)*12+PUTIH_SEMI[iw%7];
+  else if(KEY_HITAM[k]!=null) m=PIANO.okt+KEY_HITAM[k];
+  else if(k==='z'){ PIANO.okt=Math.max(36,PIANO.okt-12); gambarTuts(); }
+  else if(k==='x'){ PIANO.okt=Math.min(72,PIANO.okt+12); gambarTuts(); }
+  if(m!=null) mainkanTuts(m);
+  e.preventDefault(); e.stopImmediatePropagation();
+},true);
 function terapkanAudio(g,on){
   g.traverse(m=>{ if(m.isMesh && m.userData.led) m.material = on ? MAT[m.userData.led] : MAT.ledOff; });
 }
@@ -4645,6 +5266,8 @@ function buildObject(o, lv){
   if(o.kind==='stair') g=buildStair(o,lv);
   else if(o.kind==='column') g=buildColumn(o,lv);
   else if(o.kind==='void') g=buildVoid(o);
+  else if(o.kind==='area') g=buildArea(o);
+  else if(o.kind==='garis') g=buildGaris(o);
   else if(o.kind==='model'){
     const tpl=ASSET_OBJ.get(o.type);
     g = tpl ? tpl.clone(true) : missingModelBox();
@@ -4671,10 +5294,11 @@ function buildObject(o, lv){
   g.rotation.y=o.rotY||0;
   // ukuran void sudah termasuk skalanya di dalam poligon, jadi grupnya tidak
   // diskalakan lagi; gizmo tetap menskalakan grup secara langsung saat ditarik
-  if(o.kind==='void'||o.kind==='column') g.scale.set(1,1,1);
+  if(o.kind==='void'||o.kind==='column'||o.kind==='area'||o.kind==='garis') g.scale.set(1,1,1);
   else g.scale.set(o.sx||1,o.sy||1,o.sz||1);
   Object.assign(g.userData,{kind:'obj', id:o.id});   // jangan menimpa keterangan lampu dari hiasNyala
-  if(o.kind==='furn'||o.kind==='model') g.userData.perabot=true;   // bukan pijakan di mode jalan
+  if(o.kind==='furn') g.userData.perabot=true;                     // bukan pijakan di mode jalan
+  if(o.kind==='model'){ if(o.params&&o.params.collider===false) g.userData.perabot=true; else g.userData.modelPijak=true; }   // model: permukaan rendahnya bisa dipijak
   return g;
 }
 
@@ -4686,7 +5310,7 @@ function buildObject(o, lv){
    satu per satu.
    ====================================================================== */
 const HIST={stack:[], idx:-1, limit:60, label:'Edit properti', timer:null};
-const snapState=()=>JSON.stringify({levels:PROJECT.levels, active:PROJECT.active});
+const snapState=()=>JSON.stringify({levels:PROJECT.levels, active:PROJECT.active, site:PROJECT.site});
 
 function pushHistory(){
   const s=snapState();
@@ -4707,6 +5331,7 @@ function applyHistory(i){
   const d=JSON.parse(e.s);
   PROJECT.levels=d.levels;
   PROJECT.active=clamp(d.active,0,d.levels.length-1);
+  if(d.site){ PROJECT.site=d.site; renderSitusUI(); }
   SEL=null;
   HIST.idx=i;
   renderLevels(); rebuildScene();
@@ -4793,6 +5418,9 @@ function rebuildScene0(){
     worldRoot.add(lg);
     levelGroups[idx]=lg;
   });
+  if(typeof PROBE!=='undefined') PROBE.kotor=true;
+  if(typeof LIHAT_COL!=='undefined' && LIHAT_COL.size) gambarColliderDebug();
+  { const situs=buildSitus(); if(situs){ if(levelGroups[0]&&!levelGroups[0].visible) situs.visible=false; worldRoot.add(situs); } }
   refreshSelectionVisual();
   updateStatsBar();
   scheduleHistory();
@@ -4862,6 +5490,10 @@ function commitGizmo(){
     if(d.kind==='column'){                      // skala dilebur jadi ukuran kolom
       d.params.w=clamp((d.params.w||0.3)*d.sx,0.1,3);
       d.params.d=clamp((d.params.d||0.3)*(d.type==='round'?d.sx:d.sz),0.1,3);
+      d.y=0; d.sx=d.sy=d.sz=1;
+    }
+    if(d.kind==='area'||d.kind==='garis'){       // skala dilebur ke titik-titiknya
+      d.params.pts=(d.params.pts||[]).map(([x,z])=>[+(x*d.sx).toFixed(4),+(z*d.sz).toFixed(4)]);
       d.y=0; d.sx=d.sy=d.sz=1;
     }
     if(d.kind==='void'){                        // skala dilebur jadi ukuran lubang
@@ -5083,11 +5715,16 @@ function renderInspector(){
   } else if(d.kind==='void'){
     const h=el('h3',null,'Void'); h.appendChild(el('span','tag','lubang pelat'));
     ins.appendChild(h);
-    fRow(ins,'Bentuk',selInput([['rect','Persegi'],['L','Bentuk L']],d.params.shape==='L'?'L':'rect',v=>{
+    const bentukOpsi=[['rect','Persegi'],['L','Bentuk L']].concat(d.params.pts?[['poly','Bebas (tracing)']]:[]);
+    fRow(ins,'Bentuk',selInput(bentukOpsi,d.params.shape==='L'?'L':d.params.shape==='poly'&&d.params.pts?'poly':'rect',v=>{
       d.params.shape=v;
       if(v==='L'){ d.params.cw=d.params.cw||voidW(d)/2; d.params.cd=d.params.cd||voidD(d)/2; }
       rebuildScene(); renderInspector();
     }));
+    const bt=el('button','btn sm ghost','✎ Gambar ulang keliling (tracing)');
+    bt.title='Telusuri ulang tepi void titik demi titik'; bt.onclick=()=>mulaiTraceVoid(d.id);
+    ins.appendChild(bt);
+    if(d.params.shape==='poly'&&d.params.pts) ins.appendChild(el('p','hint',`${d.params.pts.length} titik sudut — lebar & panjang di bawah menskalakan seluruh bentuk.`));
     fRow(ins,'Lebar X (m)',numInput(voidW(d),0.05,v=>{ d.params.w=clamp(v,0.3,40); d.sx=1; rebuildScene(); renderInspector(); },0.3,40));
     fRow(ins,'Panjang Z (m)',numInput(voidD(d),0.05,v=>{ d.params.d=clamp(v,0.3,40); d.sz=1; rebuildScene(); renderInspector(); },0.3,40));
     if(d.params.shape==='L'){
@@ -5130,6 +5767,24 @@ function renderInspector(){
     }
     ins.appendChild(el('div','badge ok','Lubang ini memotong pelat lantai ' + L().name + '. Kotak hijau hanya penanda di editor — tidak ikut diekspor, tetapi pagarnya ikut.'));
 
+  } else if(d.kind==='area'||d.kind==='garis'){
+    const isArea=d.kind==='area', daftar=isArea?JENIS_AREA:JENIS_GARIS, j=d.params.jenis||d.type;
+    const h=el('h3',null,isArea?'Area':'Jalur'); h.appendChild(el('span','tag',daftar[j]||j)); ins.appendChild(h);
+    // jenis hanya bisa diganti dalam kelompoknya (kolam tetap kolam, pagar tetap pagar)
+    const klp=k=>/^kolam/.test(k)?'kolam':/^pagar/.test(k)?'pagar':/^setapak/.test(k)?'setapak':'permukaan';
+    fRow(ins,'Jenis',selInput(Object.entries(daftar).filter(([k])=>klp(k)===klp(j)),j,v=>{ d.params.jenis=v; d.type=v;
+      if(/^kolam/.test(v)) d.params.kedalaman=v==='kolam_renang'?1.4:0.6; rebuildScene(); renderInspector(); }));
+    const P=isArea?areaPoli(d):garisPoli(d);
+    if(isArea) ins.appendChild(el('p','hint',`${P.length} titik sudut · luas ${fmt(Math.abs(luasPoli(P)),2)} m²`));
+    else { let pj=0; for(let i=0;i<P.length-1;i++) pj+=Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1]); ins.appendChild(el('p','hint',`${P.length} titik · panjang ${fmt(pj,2)} m`)); }
+    if(/^kolam/.test(j)) fRow(ins,'Kedalaman (m)',numInput(d.params.kedalaman||1.4,0.1,v=>{ d.params.kedalaman=clamp(v,0.2,3); rebuildScene(); },0.2,3));
+    if(/^setapak_(kerikil|paving)/.test(j)) fRow(ins,'Lebar (m)',numInput(d.params.lebar||0.8,0.05,v=>{ d.params.lebar=clamp(v,0.3,3); rebuildScene(); },0.3,3));
+    if(/^pagar/.test(j)) fRow(ins,'Tinggi (m)',numInput(d.params.tinggi||1.2,0.05,v=>{ d.params.tinggi=clamp(v,0.4,2.5); rebuildScene(); },0.4,2.5));
+    if(j==='kolam_renang' && (d.params.kedalaman||1.4)>1.5) ins.appendChild(el('div','badge warn','⚠ Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.'));
+    const bt=el('button','btn sm ghost','✎ Gambar ulang (tracing)'); bt.onclick=()=>mulaiTrace({kind:d.kind,type:j},d.id); ins.appendChild(bt);
+    fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
+    fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
+    fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
   } else if(d.kind==='model'){
     const a=PROJECT.assets[d.type];
     const h=el('h3',null,'Model'); h.appendChild(el('span','tag',a?a.name:'hilang'));
@@ -5143,6 +5798,18 @@ function renderInspector(){
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
       ins.appendChild(el('p','hint',`Ukuran terpasang ${fmt(sz,2)} × ${fmt(szz,2)} m, tinggi ${fmt(sy,2)} m.`));
+      ins.appendChild(el('div','section-title','Collider'));
+      d.params=d.params||{};
+      const cl=el('label','chk'), cc=document.createElement('input'); cc.type='checkbox'; cc.checked=d.params.collider!==false;
+      cc.onchange=()=>{ d.params.collider=cc.checked; HIST.label='Collider model'; rebuildScene(); renderInspector(); };
+      cl.appendChild(cc); cl.appendChild(el('span',null,'Collider otomatis — model menghalangi & bisa dipijak di mode jalan')); ins.appendChild(cl);
+      if(d.params.collider!==false && ASSET_OBJ.has(d.type)){
+        const col=colliderModel(d.type);
+        if(col) ins.appendChild(el('p','hint',`Dibuat otomatis dari ${col.nTri.toLocaleString('id')} segitiga: ${col.isi.toLocaleString('id')} sel ${fmt(col.C*100,0)} cm. Bagian setinggi badan menghalangi, permukaan ≤ ${fmt(LANGKAH_MAX*100,0)} cm bisa dinaiki.`));
+        const bl=el('button','btn sm ghost',LIHAT_COL.has(d.id)?'🙈 Sembunyikan collider':'👁 Lihat collider');
+        bl.onclick=()=>{ if(LIHAT_COL.has(d.id)) LIHAT_COL.delete(d.id); else LIHAT_COL.add(d.id); gambarColliderDebug(); renderInspector(); };
+        ins.appendChild(bl);
+      }
     }
 
   } else {
@@ -5161,6 +5828,7 @@ function renderInspector(){
     };
     ins.appendChild(bw);
     tombolFlip(ins,d);
+    if(d.type==='piano'){ const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp); }
     if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
     addTransformFields(ins,d,true);
   }
@@ -5465,6 +6133,12 @@ function paramsAwal(kind,type){
   // void yang dibuat sendiri adalah lubang terbuka di lantai, jadi pagarnya
   // langsung dipasang; void dari tangga dibiarkan terbuka karena tangganya
   // sendiri yang mengisi lubang itu
+  if(kind==='area') return { jenis:type, kedalaman:type==='kolam_renang'?1.4:type==='kolam_ikan'?0.6:undefined,
+      pts:type==='kolam_ikan'?[[-1.2,-0.6],[0.2,-0.9],[1.3,-0.3],[1.0,0.7],[-0.4,0.9],[-1.3,0.3]]:[[-1.5,-1],[1.5,-1],[1.5,1],[-1.5,1]] };
+  if(kind==='garis') return { jenis:type, lebar:0.8, tinggi:/^pagar_tanaman/.test(type)?1.0:1.2,
+      pts:/^pagar/.test(type)?[[-1.5,0.5],[0,0.5],[0,-0.5],[1.5,-0.5]]:[[-1.6,0.6],[-0.5,-0.2],[0.6,0.3],[1.6,-0.4]] };
+  if(kind==='void' && type==='poly') return { shape:'poly', w:3.0, d:2.4, railing:true, railH:STD.guardH, openSides:[],
+      pts:[[-0.5,-0.5],[0.5,-0.5],[0.5,0.1],[0.1,0.5],[-0.5,0.5]] };
   if(kind==='void') return type==='L'
       ? { shape:'L', w:3.0, d:3.0, cw:1.5, cd:1.5, railing:true, railH:STD.guardH, openSides:[] }
       : { shape:'rect', w:1.2, d:3.0, railing:true, railH:STD.guardH, openSides:[] };
@@ -5546,6 +6220,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(gizmo.dragging) return;
   if(e.button!==0) return;
 
+  if(TOOL==='voidTrace'){ klikTrace(e); return; }
   if(TOOL==='measure'){
     const p0=groundPoint(e); if(!p0) return;
     const p=titikUkur(p0);
@@ -5588,7 +6263,9 @@ renderer.domElement.addEventListener('pointerup',e=>{
   select(hit?hit.kind:null, hit?hit.id:null);
 });
 
+renderer.domElement.addEventListener('dblclick',e=>{ if(TOOL==='voidTrace'&&VT.pts.length>=(VT.mode.kind==='garis'?2:3)){ e.preventDefault(); selesaiTrace(); } });
 renderer.domElement.addEventListener('pointermove',e=>{
+  if(TOOL==='voidTrace'){ const p=titikTrace(e); gambarTrace(p); return; }
   if((TOOL!=='wall'&&TOOL!=='measure')||!drawState){
     if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; }
     return;
@@ -5701,6 +6378,28 @@ function titikUkur(p){
    TAMPILAN CEPAT — 3D, atas (denah), depan, isometri; kamera meluncur halus
    ===================================================================== */
 const VIEW={anim:null, cur:'persp'};
+/* POV setinggi mata: berdiri di pojok ruangan (ruang di bawah titik pandang
+   sekarang, atau ruang tertutup terbesar), memandang diagonal ke seberang */
+function pandanganMata(lv){
+  const P=petaRuang(lv); if(!P) return null;
+  const el0=levelElevation(PROJECT.active);
+  let id=ruangDi(P,orbit.target.x,orbit.target.z);
+  if(!id||P.bocor[id]||P.luas[id]<4){ id=0; let b=0; for(let i=1;i<P.luas.length;i++) if(!P.bocor[i]&&P.luas[i]>b){ b=P.luas[i]; id=i; } }
+  if(!id) return null;
+  // sel ruang yang cukup jauh dari dinding (≥ 0,35 m), lalu titik terjauh dari pusatnya
+  const sel=[], r=Math.ceil(0.35/P.C);
+  let cx=0, cz=0, n=0;
+  for(let j=0;j<P.nz;j++) for(let i=0;i<P.nx;i++) if(P.lab[j*P.nx+i]===id){ cx+=i; cz+=j; n++; }
+  if(!n) return null; cx/=n; cz/=n;
+  for(let j=r;j<P.nz-r;j++) for(let i=r;i<P.nx-r;i++){
+    if(P.lab[j*P.nx+i]!==id) continue;
+    let ok=true; for(let dj=-r;dj<=r&&ok;dj+=r) for(let di=-r;di<=r;di+=r) if(P.lab[(j+dj)*P.nx+i+di]!==id){ ok=false; break; }
+    if(ok) sel.push([i,j]); }
+  if(!sel.length) return null;
+  let best=sel[0], bd=-1; for(const [i,j] of sel){ const d=(i-cx)**2+(j-cz)**2; if(d>bd){ bd=d; best=[i,j]; } }
+  const wx=i=>P.x0+(i+0.5)*P.C, wz=j=>P.z0+(j+0.5)*P.C;
+  return {pos:new THREE.Vector3(wx(best[0]), el0+1.6, wz(best[1])), tgt:new THREE.Vector3(wx(cx), el0+1.25, wz(cz))};
+}
 function setView(k){
   const lv=L(); let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
   for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
@@ -5709,7 +6408,9 @@ function setView(k){
   const cx=(x0+x1)/2, cz=(z0+z1)/2, ukuran=Math.max(x1-x0,z1-z0,4), el0=levelElevation(PROJECT.active);
   const asp=Math.max(0.5,camera.aspect);
   let fov=45, pos, tgt=new THREE.Vector3(cx,el0+1.0,cz);
-  if(k==='atas'){ fov=28; const d=(ukuran*1.2)/(2*Math.tan(fov/2*D2R))/Math.min(1,asp)+2; pos=new THREE.Vector3(cx,el0+d,cz+0.001); tgt.y=el0; }
+  const mata = k==='mata' ? pandanganMata(lv) : null;
+  if(mata){ fov=60; pos=mata.pos; tgt=mata.tgt; }
+  else if(k==='atas'){ fov=28; const d=(ukuran*1.2)/(2*Math.tan(fov/2*D2R))/Math.min(1,asp)+2; pos=new THREE.Vector3(cx,el0+d,cz+0.001); tgt.y=el0; }
   else {
     // bola pembungkus bangunan dibingkai utuh, arah pandang miring standar
     const r=0.5*Math.hypot(x1-x0,z1-z0)+1.2, d=r/Math.sin(fov/2*D2R)/Math.min(1,asp)*0.92;
@@ -5742,7 +6443,150 @@ $('#helpBtn').onclick=()=>toggleHelp();
 $('#helpPanel').onclick=()=>toggleHelp(false);
 
 let DRAW_RAIL=false;
+/* ---------- VOID TRACING: keliling void digambar titik demi titik ----------
+   Titik menempel ke grid, ke muka dinding (sudut dalam = perpotongan dua muka),
+   dan lurus ke sumbu bila hampir sejajar. Gambar denah lantai ini dibentangkan
+   transparan di lantai supaya simbol void di gambar bisa langsung ditelusuri. */
+const VT={pts:[], ganti:null, grp:new THREE.Group(), alas:null, mode:{kind:'void'}};
+VT.grp.renderOrder=25;
+const VT_NAMA=m=>m.kind==='void'?'void':m.kind==='area'?(JENIS_AREA[m.type]||'area').toLowerCase():(JENIS_GARIS[m.type]||'garis').toLowerCase();
+function mulaiTraceVoid(gantiId){ mulaiTrace({kind:'void'},gantiId); }
+function mulaiTrace(mode,gantiId){
+  if(FPS.on) return;
+  VT.mode=mode||{kind:'void'};
+  VT.pts=[]; VT.ganti=gantiId||null;
+  if(!VT.grp.parent) helperRoot.add(VT.grp);
+  setTool('voidTrace'); select(null);
+  // alas denah
+  const lv=L(), pl=planOf(lv), img=PLAN_IMG.get(lv.id), res=PLAN_RES.get(lv.id);
+  if(pl&&img&&img.complete&&img.naturalWidth){
+    const pxm=(res&&res.pxm)||pl.w/(pl.realWidth||12);
+    const tex=new THREE.Texture(img); tex.needsUpdate=true; if(THREE.sRGBEncoding) tex.encoding=THREE.sRGBEncoding;
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(pl.w/pxm,pl.h/pxm),
+      new THREE.MeshBasicMaterial({map:tex, transparent:true, opacity:0.55, depthWrite:false, toneMapped:false}));
+    m.rotation.x=-Math.PI/2; m.position.set(pl.dx||0, levelElevation(PROJECT.active)+0.012, pl.dz||0);
+    m.renderOrder=24; m.userData.noExport=true; m.raycast=()=>{};
+    VT.alas=m; helperRoot.add(m);
+  }
+  setView('atas');
+  $('#traceBar').hidden=false; gambarTrace(null);
+  setHint(VT.mode.kind==='garis'
+    ? `Ketuk titik-titik jalur ${VT_NAMA(VT.mode)}${VT.alas?' (telusuri gambar denah di lantai)':''}. Selesai dengan ketuk-ganda, <b>Enter</b>, atau tombol <b>Selesai</b>. <b>⌫</b> hapus titik · <b>Esc</b> batal.`
+    : `Ketuk titik-titik sudut ${VT_NAMA(VT.mode)}${VT.alas?' (telusuri gambar denah di lantai)':''}. Tutup dengan mengetuk <b>titik pertama</b>, ketuk-ganda, atau <b>Enter</b>. <b>⌫</b> hapus titik · <b>Esc</b> batal.`);
+}
+function akhiriTrace(){
+  VT.pts=[]; VT.ganti=null;
+  while(VT.grp.children.length){ const c=VT.grp.children.pop(); c.geometry&&c.geometry.dispose(); }
+  if(VT.alas){ helperRoot.remove(VT.alas); VT.alas.geometry.dispose(); VT.alas.material.map.dispose(); VT.alas.material.dispose(); VT.alas=null; }
+  $('#traceBar').hidden=true;
+}
+function titikTrace(e){
+  ndc(e); raycaster.setFromCamera(pointer,camera);
+  const hit=new THREE.Vector3(), el0=levelElevation(PROJECT.active);
+  if(!raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),-el0),hit)) return null;
+  let x=hit.x, z=hit.z, nempel=false;
+  // jarak tangkap ±12 px layar, dalam meter
+  const tangkap=(()=>{ const a=new THREE.Vector3(x,el0,z).project(camera), b=new THREE.Vector3(x+1,el0,z).project(camera);
+    const r=renderer.domElement.getBoundingClientRect(); const pxPerM=Math.hypot((b.x-a.x)*r.width/2,(b.y-a.y)*r.height/2)||100;
+    return clamp(12/pxPerM,0.04,0.35); })();
+  // tutup: dekat titik pertama
+  if(VT.mode.kind!=='garis' && VT.pts.length>=3 && Math.hypot(x-VT.pts[0].x,z-VT.pts[0].z)<tangkap*1.6) return {x:VT.pts[0].x, z:VT.pts[0].z, tutup:true};
+  if(SNAP){ x=Math.round(x*20)/20; z=Math.round(z*20)/20; }
+  // muka dinding terdekat (dua muka tiap dinding); dua muka sekaligus → sudutnya
+  const muka=[];
+  for(const w of L().walls){ const Lw=wallLen(w); if(Lw<0.1) continue;
+    const ux=(w.x2-w.x1)/Lw, uz=(w.z2-w.z1)/Lw, nx=-uz, nz=ux, t=(w.thickness||0.15)/2;
+    const sp=(hit.x-w.x1)*ux+(hit.z-w.z1)*uz; if(sp<-t-0.1||sp>Lw+t+0.1) continue;
+    const dn=(hit.x-w.x1)*nx+(hit.z-w.z1)*nz;
+    for(const sd of [-1,1]){ const dd=Math.abs(dn-sd*t); if(dd<tangkap) muka.push({dd, px:w.x1+sd*t*nx, pz:w.z1+sd*t*nz, ux, uz, nx, nz}); } }
+  muka.sort((a,b)=>a.dd-b.dd);
+  if(muka.length){
+    const m=muka[0], d0=(x-m.px)*m.nx+(z-m.pz)*m.nz; x-=d0*m.nx; z-=d0*m.nz; nempel=true;
+    const m2=muka.find(o=>Math.abs(o.ux*m.uz-o.uz*m.ux)>0.5);       // muka lain yang bersilangan
+    if(m2){ const den=m.ux*m2.uz-m.uz*m2.ux, tt=((m2.px-m.px)*m2.uz-(m2.pz-m.pz)*m2.ux)/den, cx=m.px+m.ux*tt, cz=m.pz+m.uz*tt;
+      if(Math.hypot(cx-hit.x,cz-hit.z)<tangkap*1.5){ x=cx; z=cz; } }
+  }
+  // lurus ke sumbu dari titik sebelumnya
+  const a=VT.pts[VT.pts.length-1];
+  if(a&&!nempel){ const dx=x-a.x, dz=z-a.z, r=Math.hypot(dx,dz), ang=Math.atan2(dz,dx), q=Math.round(ang/(Math.PI/2))*(Math.PI/2);
+    if(r>0.05&&Math.abs(ang-q)<8*D2R){ if(Math.abs(Math.cos(q))>0.5) z=a.z; else x=a.x; } }
+  return {x,z};
+}
+function gambarTrace(kursor){
+  while(VT.grp.children.length){ const c=VT.grp.children.pop(); c.geometry&&c.geometry.dispose(); }
+  const y=levelElevation(PROJECT.active)+0.03, P=VT.pts.slice();
+  const mat=VT.mat||(VT.mat=new THREE.LineBasicMaterial({color:0xffc15e, depthTest:false, transparent:true}));
+  const matT=VT.matT||(VT.matT=new THREE.MeshBasicMaterial({color:0xffc15e, depthTest:false, transparent:true, opacity:.9}));
+  const matF=VT.matF||(VT.matF=new THREE.MeshBasicMaterial({color:0x4ec9b0, depthTest:false, transparent:true, opacity:.22, side:THREE.DoubleSide}));
+  const ujung=kursor&&!kursor.tutup?P.concat([kursor]):P;
+  if(ujung.length>=2) VT.grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ujung.map(p=>new THREE.Vector3(p.x,y,p.z))),mat));
+  if(ujung.length>=3 && VT.mode.kind!=='garis'){
+    const sh=new THREE.Shape(); sh.moveTo(ujung[0].x,-ujung[0].z); for(const p of ujung.slice(1)) sh.lineTo(p.x,-p.z);
+    const f=new THREE.Mesh(new THREE.ShapeGeometry(sh),matF); f.rotation.x=-Math.PI/2; f.position.y=y-0.005; VT.grp.add(f);
+    const tutupG=new THREE.BufferGeometry().setFromPoints([ujung[ujung.length-1],ujung[0]].map(p=>new THREE.Vector3(p.x,y,p.z)));
+    VT.grp.add(new THREE.Line(tutupG,mat));
+  }
+  ujung.forEach((p,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(i===0?0.14:0.09,0.02,i===0?0.14:0.09),matT); m.position.set(p.x,y,p.z); VT.grp.add(m); });
+  VT.grp.children.forEach(c=>{ c.renderOrder=26; c.userData.noExport=true; });
+  const n=P.length; $('#traceInfo').textContent=`${n} titik`+(kursor&&n?` · sisi ${fmt(Math.hypot(kursor.x-P[n-1].x,kursor.z-P[n-1].z))} m`:'')+(kursor&&kursor.tutup?' · ketuk untuk menutup':'');
+  $('#traceDone').disabled=n<(VT.mode.kind==='garis'?2:3);
+}
+function klikTrace(e){
+  const p=titikTrace(e); if(!p) return;
+  if(p.tutup){ selesaiTrace(); return; }
+  const a=VT.pts[VT.pts.length-1];
+  if(a&&Math.hypot(p.x-a.x,p.z-a.z)<0.05) return;
+  VT.pts.push({x:p.x,z:p.z}); gambarTrace(null);
+}
+function selesaiTrace(){
+  if(VT.mode.kind==='garis') return selesaiTraceGaris();
+  let P=VT.pts.map(p=>[p.x,p.z]);
+  // titik segaris dibuang
+  P=P.filter((p,i)=>{ const a=P[(i+P.length-1)%P.length], b=P[(i+1)%P.length]; return Math.abs((p[0]-a[0])*(b[1]-a[1])-(p[1]-a[1])*(b[0]-a[0]))>1e-4; });
+  if(P.length<3) return toast('Perlu minimal 3 titik sudut');
+  let luas=0; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; luas+=a[0]*b[1]-b[0]*a[1]; }
+  if(Math.abs(luas)/2<0.15) return toast('Void terlalu kecil (< 0,15 m²)');
+  for(let i=0;i<P.length;i++) for(let j=i+2;j<P.length;j++){
+    if(i===0&&j===P.length-1) continue;
+    if(segCrossX(P[i],P[(i+1)%P.length],P[j],P[(j+1)%P.length])!=null) return toast('Keliling void saling menyilang — hapus titik terakhir lalu ulangi');
+  }
+  if(luas<0) P.reverse();                         // arah putar sama dengan void persegi
+  if(VT.mode.kind==='area') return simpanTraceObjek('area',VT.mode.type,P,`luas ${fmt(Math.abs(luas)/2,2)} m²`);
+  const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]);
+  const x0=Math.min(...xs), x1=Math.max(...xs), z0=Math.min(...zs), z1=Math.max(...zs), w=x1-x0, d=z1-z0, cx=(x0+x1)/2, cz=(z0+z1)/2;
+  const pts=P.map(([x,z])=>[+((x-cx)/w).toFixed(5), +((z-cz)/d).toFixed(5)]);
+  const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
+  if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:1,sy:1,sz:1}); Object.assign(o.params,{shape:'poly',pts,w,d,openSides:[]}); HIST.label='Gambar ulang void'; }
+  else { o={id:uid('ob'), kind:'void', type:'poly', x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal('void','poly'),{pts,w,d})};
+    lv.objects.push(o); HIST.label='Gambar void (tracing)'; }
+  const n=P.length;
+  setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  toast(`Void ${n} sudut, luas ${fmt(Math.abs(luas)/2,2)} m² — pelat ${lv.name} dilubangi`);
+}
+function selesaiTraceGaris(){
+  let P=VT.pts.map(p=>[p.x,p.z]);
+  if(P.length<2) return toast('Perlu minimal 2 titik');
+  let pj=0; for(let i=0;i<P.length-1;i++) pj+=Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1]);
+  if(pj<0.3) return toast('Jalur terlalu pendek');
+  simpanTraceObjek('garis',VT.mode.type,P,`panjang ${fmt(pj,2)} m`);
+}
+/* area & garis: titik disimpan dalam meter relatif pusat kotaknya */
+function simpanTraceObjek(kind,type,P,ket){
+  const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]), cx=(Math.min(...xs)+Math.max(...xs))/2, cz=(Math.min(...zs)+Math.max(...zs))/2;
+  const pts=P.map(([x,z])=>[+(x-cx).toFixed(4),+(z-cz).toFixed(4)]);
+  const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
+  if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:1,sy:1,sz:1}); o.params.pts=pts; HIST.label='Gambar ulang '+VT_NAMA(VT.mode); }
+  else { o={id:uid('ob'), kind, type, x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal(kind,type),{pts})};
+    lv.objects.push(o); HIST.label='Gambar '+VT_NAMA(VT.mode); }
+  const nama=VT_NAMA(VT.mode);
+  setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  toast(`${nama[0].toUpperCase()+nama.slice(1)} — ${ket}`);
+}
+$('#traceDone').onclick=()=>selesaiTrace();
+$('#traceUndo').onclick=()=>{ VT.pts.pop(); gambarTrace(null); };
+$('#traceCancel').onclick=()=>{ setTool('select'); toast('Tracing void dibatalkan'); };
 function setTool(t){
+  if(TOOL==='voidTrace' && t!=='voidTrace') akhiriTrace();
   TOOL=t;
   if(t!=='wall') DRAW_RAIL=false;
   $$('#toolbar button[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t && !(t==='wall'&&DRAW_RAIL)));
@@ -5752,6 +6596,7 @@ function setTool(t){
   if(t==='wall'){ gizmo.detach(); setHint(DRAW_RAIL ? `Klik titik <b>awal</b> railing (${RAILING[RAIL_LAST].l}) di tepi balkon — jenisnya bisa diganti di inspector.`
                                                   : 'Klik titik <b>awal</b> dinding di viewport.'); }
   else if(t==='measure'){}
+  else if(t==='voidTrace'){ gizmo.detach(); }
   else if(t==='select') setHint('Klik objek untuk memilih. <b>W</b> geser · <b>E</b> putar · <b>R</b> skala.');
   else setHint(`Mode <b>${t==='translate'?'geser':t==='rotate'?'putar':'skala'}</b> — tarik gizmo pada objek terpilih.`);
   refreshSelectionVisual();
@@ -5764,6 +6609,11 @@ addEventListener('keydown',e=>{
   // saat berjalan, W A S D dan kawan-kawan milik mode jalan — jangan sampai
   // ikut mengganti alat edit atau memindah kamera
   if(FPS.on){ if(k==='g') toggleWallGhost(); else if(k==='t') toggleAtap(); return; }
+  if(TOOL==='voidTrace'){
+    if(e.key==='Enter'){ e.preventDefault(); selesaiTrace(); return; }
+    if(e.key==='Escape'){ setTool('select'); toast('Tracing void dibatalkan'); return; }
+    if(e.key==='Backspace'||e.key==='Delete'){ e.preventDefault(); VT.pts.pop(); gambarTrace(null); return; }
+  }
   if(k==='h' && !e.ctrlKey && !e.metaKey){ toggleSidebar(); return; }
   if(k==='g' && !e.ctrlKey && !e.metaKey){ toggleWallGhost(); return; }
   if(k==='t' && !e.ctrlKey && !e.metaKey){ toggleAtap(); return; }
@@ -5775,7 +6625,7 @@ addEventListener('keydown',e=>{
   else if(k==='k'){ DRAW_RAIL=true; setTool('wall'); }
   else if(k==='m') setTool('measure');
   else if(k==='n') toggleDim();
-  else if(['1','2','3','4'].includes(k) && !e.ctrlKey && !e.metaKey) setView(['persp','atas','depan','iso'][+k-1]);
+  else if(['1','2','3','4','5'].includes(k) && !e.ctrlKey && !e.metaKey) setView(['persp','atas','depan','iso','mata'][+k-1]);
   else if(e.key==='?'){ toggleHelp(); }
   else if(k==='f') focusSelection();
   else if(e.key==='Escape'){
@@ -7387,6 +8237,30 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
       if(n>=0.9*tot && di[a]>0.3*tot && di[b]>0.3*tot && lain.every(v=>q.f.cov[v]<0.5) && (!terbaik||n>terbaik.n)) terbaik={a,b,n};
     }
     if(!terbaik) continue;
+    // KITCHEN SET L: dua kaki berisi tungku / bak cuci → dua deret dapur lurus,
+    // masing-masing menempel dindingnya sendiri (ukuran & letak persis gambar)
+    // kedalaman tiap kaki: dari sisi luar ke tepi dalam, diukur di ujung kaki yang jauh dari sudut
+    const kedalaman=sd=>{ const c=q.c, lain=sd===terbaik.a?terbaik.b:terbaik.a;
+      const ujung = lain===1||lain===2 ? 0.05 : 0.95;                   // posisi di sepanjang kaki, menjauhi kaki lain
+      if(sd===0||sd===2){ const x=Math.round(c.x0+(lain===1?0.05:lain===3?0.95:ujung)*c.bw);
+        if(sd===0){ for(let y=c.y1;y>=c.y0;y--) if(ink[y*W+x]) return (y-c.y0)/P; } else { for(let y=c.y0;y<=c.y1;y++) if(ink[y*W+x]) return (c.y1-y)/P; } }
+      else { const y=Math.round(c.y0+(lain===2?0.05:lain===0?0.95:ujung)*c.bh);
+        if(sd===3){ for(let x=c.x1;x>=c.x0;x--) if(ink[y*W+x]) return (x-c.x0)/P; } else { for(let x=c.x0;x<=c.x1;x++) if(ink[y*W+x]) return (c.x1-x)/P; } }
+      return 9; };
+    const dalamMaks=Math.max(kedalaman(terbaik.a),kedalaman(terbaik.b));
+    if(dalamMaks<=0.78 && (dalamMaks<=0.7 || tungku(q) || baskom(q)>=1)){
+      pakai.add(q); q.dapur=true;
+      const c=q.c, dp=Math.round(0.62*P), a=terbaik.a, b=terbaik.b;
+      const pita=sd=>sd===0?[c.x0,c.y0,c.x1,c.y0+dp]:sd===2?[c.x0,c.y1-dp,c.x1,c.y1]:sd===3?[c.x0,c.y0,c.x0+dp,c.y1]:[c.x1-dp,c.y0,c.x1,c.y1];
+      const ra=pita(a), rb=pita(b);
+      if(a===0) rb[1]=c.y0+dp; else if(a===2) rb[3]=c.y1-dp; else if(a===3) rb[0]=c.x0+dp; else rb[2]=c.x1-dp;
+      for(const [sd,r] of [[a,ra],[b,rb]]){
+        const len=(sd%2===0?r[2]-r[0]:r[3]-r[1])/P; if(len<0.4) continue;
+        const m=toM((r[0]+r[2])/2/k,(r[1]+r[3])/2/k), [bx,bz]=SISI_ARAH[sd], f=FURN.kitchen;
+        out.push({kind:'kitchen', x:m.x, z:m.z, rotY:Math.atan2(-bx,-bz), yakin:0.75, sx:clamp(len/f.f[0],0.35,2.6), sz:clamp(0.62/f.f[1],0.72,1.4)});
+      }
+      continue;
+    }
     const punggung = KIRI_DARI[terbaik.a]===terbaik.b ? terbaik.a : terbaik.b;
     pasang(q,'sofa_l',punggung); q.duduk=true;
   }
@@ -7567,7 +8441,11 @@ function detectFurniture(hi,mask,w,h,pxm,bbox,walls,toM,stairs){
     if(pakai.has(q)) continue;
     // meja bersudut bulat (racetrack): sisi pendeknya melengkung, cukup sisi panjangnya lurus
     const [pa,pb]=sisiPanjang(q), [pc,pd]=sisiPendek(q);
-    const kotakLonggar = q.f.kotak || (q.f.cov[pa]>=0.6&&q.f.cov[pb]>=0.6&&q.f.cov[pc]>=0.3&&q.f.cov[pd]>=0.3);
+    // sisi yang merapat ke dinding ikut terhapus bersama pita dinding: dianggap tergaris;
+    // tepi depan yang tertutup kursi cukup separuhnya
+    const cv=q.f.cov.map((v,i)=>jarakDinding(q,i)<0.12?1:v), keDinding=[pa,pb].some(i=>jarakDinding(q,i)<0.12);
+    const kotakLonggar = q.f.kotak || (cv[pa]>=0.6&&cv[pb]>=0.6&&cv[pc]>=0.3&&cv[pd]>=0.3)
+      || (keDinding && Math.min(cv[pa],cv[pb])>=0.4 && cv[pc]>=0.6 && cv[pd]>=0.6);
     if(!(q.L>=0.75&&q.L<=2.8&&q.S>=0.42&&q.S<=1.35&&kotakLonggar)) continue;
     const r=Math.max(q.L,q.S)/2+0.75;
     const kk=kursi.filter(c=>!pakai.has(c)&&jarak(c,q)<r);
@@ -9146,12 +10024,19 @@ function renderCatalogs(){
     b.onclick=()=>addObject('column',t);
     ck.appendChild(b);
   }
+  const cSitus=$('#cat-situs'); cSitus.innerHTML='';
+  for(const [kind,type] of [['area','rumput'],['area','kerikil'],['area','tanah'],['area','paving'],['area','dek'],['area','kolam_renang'],['area','kolam_ikan'],
+                            ['garis','setapak_batu'],['garis','setapak_kerikil'],['garis','setapak_paving'],['garis','pagar_picket'],['garis','pagar_kayu'],['garis','pagar_besi'],['garis','pagar_tanaman']]){
+    const b=el('div','cat-item'); b.innerHTML=ikonObjek(kind,type)+(kind==='area'?JENIS_AREA[type]:JENIS_GARIS[type]);
+    b.title=(kind==='area'?'Gambar keliling ':'Gambar jalur ')+(kind==='area'?JENIS_AREA[type]:JENIS_GARIS[type]).toLowerCase()+' titik demi titik';
+    b.onclick=()=>mulaiTrace({kind,type},null); cSitus.appendChild(b);
+  }
   const cv=$('#cat-void'); cv.innerHTML='';
-  for(const [t,ic,lb] of [['rect','▭','Void persegi'],['L','◣','Void bentuk L']]){
+  for(const [t,ic,lb] of [['rect','▭','Void persegi'],['L','◣','Void bentuk L'],['poly','✎','Void bebas (tracing)']]){
     const bv=el('div','cat-item');
     bv.innerHTML=ikonObjek('void',t)+lb;
-    bv.title='Lubang pada pelat lantai aktif';
-    bv.onclick=()=>addObject('void',t);
+    bv.title= t==='poly' ? 'Gambar keliling void titik demi titik di lantai (bisa menelusuri gambar denah)' : 'Lubang pada pelat lantai aktif';
+    bv.onclick= t==='poly' ? ()=>mulaiTraceVoid(null) : ()=>addObject('void',t);
     cv.appendChild(bv);
   }
 
@@ -9395,6 +10280,7 @@ $('#loadInput').addEventListener('change',e=>{
       PROJECT.finish=Object.assign({in:'cat',out:'plester',floor:'keramik',
                                     inColor:'#efece5',outColor:'#d9d3c7'}, j.finish||{});
       PROJECT.atap=Object.assign({tritisan:0.6, tebal:0.12}, j.atap||{});
+      PROJECT.site=Object.assign({tanah:'none', margin:6}, j.site||{}); renderSitusUI();
       renderFinishUI(); renderAtapUI();
       SEL=null; $('#projName').value=PROJECT.name;
       renderLevels(); renderCatalogs(); rebuildScene();
@@ -9696,6 +10582,7 @@ function fpsResolveWalls(px,pz,feetY){
         px=cx+nx*rad; pz=cz+nz*rad; moved=true;
       }
       for(const o of lv.objects){
+        if(o.kind==='model' && o.params.collider!==false){ const r=dorongCollider(o,lv,px,pz,feetY); if(r){ px=r[0]; pz=r[1]; moved=true; } continue; }
         if(o.kind!=='column') continue;
         const rad=Math.max(o.params.w||0.3,o.params.d||0.3)/2+FPS.r, d=Math.hypot(px-o.x,pz-o.z);
         if(d>=rad) continue;
@@ -9706,6 +10593,92 @@ function fpsResolveWalls(px,pz,feetY){
     if(!moved) break;
   }
   return [px,pz];
+}
+/* ---------- COLLIDER OTOMATIS untuk model yang diunggah ----------
+   Geometri model di-raster sekali ke peta sel 8 cm: tiap sel mencatat tinggi
+   terendah & tertinggi segitiga di atasnya. Saat berjalan, sel yang punya
+   geometri setinggi badan (di atas langkah, di bawah kepala) menghalangi;
+   permukaan rendah bisa dipijak; ambang/lengkung tinggi bisa dilewati. */
+const COLLIDER=new Map();
+function colliderModel(id){
+  if(COLLIDER.has(id)) return COLLIDER.get(id);
+  const tpl=ASSET_OBJ.get(id); if(!tpl){ return null; }
+  tpl.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(tpl); if(bb.isEmpty()){ COLLIDER.set(id,null); return null; }
+  let C=0.08; while(((bb.max.x-bb.min.x)/C+4)*((bb.max.z-bb.min.z)/C+4)>300000) C*=1.5;
+  const x0=bb.min.x-2*C, z0=bb.min.z-2*C, nx=Math.ceil((bb.max.x-x0)/C)+3, nz=Math.ceil((bb.max.z-z0)/C)+3;
+  const lo=new Float32Array(nx*nz).fill(Infinity), hi=new Float32Array(nx*nz).fill(-Infinity);
+  const tandai=(i,j,y0,y1)=>{ if(i<0||j<0||i>=nx||j>=nz) return; const k=j*nx+i; if(y0<lo[k]) lo[k]=y0; if(y1>hi[k]) hi[k]=y1; };
+  const A=new THREE.Vector3(), B=new THREE.Vector3(), Cc=new THREE.Vector3();
+  let nTri=0;
+  const segitiga=(a,b,c)=>{
+    nTri++;
+    const ax=(a.x-x0)/C, az=(a.z-z0)/C, bx=(b.x-x0)/C, bz=(b.z-z0)/C, cx=(c.x-x0)/C, cz=(c.z-z0)/C;
+    const ylo=Math.min(a.y,b.y,c.y), yhi=Math.max(a.y,b.y,c.y), luas=(bx-ax)*(cz-az)-(cx-ax)*(bz-az);
+    if(Math.abs(luas)<0.05){                           // hampir tegak: telusuri tepinya
+      for(const [p,q] of [[[ax,az],[bx,bz]],[[bx,bz],[cx,cz]],[[cx,cz],[ax,az]]]){
+        const n=Math.ceil(Math.hypot(q[0]-p[0],q[1]-p[1])*2)+1;
+        for(let t=0;t<=n;t++) tandai(Math.floor(p[0]+(q[0]-p[0])*t/n),Math.floor(p[1]+(q[1]-p[1])*t/n),ylo,yhi); }
+      return; }
+    const i0=Math.floor(Math.min(ax,bx,cx)), i1=Math.floor(Math.max(ax,bx,cx)), j0=Math.floor(Math.min(az,bz,cz)), j1=Math.floor(Math.max(az,bz,cz));
+    if(i1-i0<=1&&j1-j0<=1){ for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) tandai(i,j,ylo,yhi); return; }
+    const e=[Math.hypot(cx-bx,cz-bz),Math.hypot(ax-cx,az-cz),Math.hypot(bx-ax,bz-az)].map(l=>0.72*l/Math.abs(luas));
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
+      const px=i+0.5, pz=j+0.5;
+      const w0=((bx-px)*(cz-pz)-(cx-px)*(bz-pz))/luas, w1=((cx-px)*(az-pz)-(ax-px)*(cz-pz))/luas, w2=1-w0-w1;
+      if(w0<-e[0]||w1<-e[1]||w2<-e[2]) continue;
+      const y=clamp(w0*a.y+w1*b.y+w2*c.y,ylo,yhi); tandai(i,j,y,y);
+    }
+  };
+  tpl.traverse(m=>{
+    if(!m.isMesh||!m.geometry||!m.geometry.attributes.position) return;
+    const pos=m.geometry.attributes.position, idx=m.geometry.index, n=idx?idx.count:pos.count;
+    const lompat=Math.max(1,Math.floor(n/3/120000))*3;           // model raksasa dicuplik
+    const ambil=(k,v)=>v.fromBufferAttribute(pos,idx?idx.getX(k):k).applyMatrix4(m.matrixWorld);
+    for(let k=0;k+2<n;k+=lompat){ ambil(k,A); ambil(k+1,B); ambil(k+2,Cc); segitiga(A,B,Cc); }
+  });
+  let isi=0; for(let k=0;k<lo.length;k++) if(hi[k]>=lo[k]) isi++;
+  const col={C,x0,z0,nx,nz,lo,hi,isi,nTri}; COLLIDER.set(id,col); return col;
+}
+const LIHAT_COL=new Set(), COL_VIS=new THREE.Group(); COL_VIS.renderOrder=22;
+function gambarColliderDebug(){
+  while(COL_VIS.children.length){ const c=COL_VIS.children.pop(); c.geometry.dispose(); }
+  if(!COL_VIS.parent) helperRoot.add(COL_VIS);
+  const lv=L(); if(!lv||!LIHAT_COL.size) return;
+  const mat=COL_VIS.mat||(COL_VIS.mat=new THREE.MeshBasicMaterial({color:0xff4d4d, transparent:true, opacity:0.32, depthWrite:false}));
+  for(const o of lv.objects){
+    if(o.kind!=='model'||!LIHAT_COL.has(o.id)||o.params.collider===false) continue;
+    const col=colliderModel(o.type); if(!col) continue;
+    const sel=[]; for(let k=0;k<col.lo.length;k++) if(col.hi[k]>=col.lo[k]) sel.push(k);
+    const im=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat,sel.length), M=new THREE.Matrix4(), q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),o.rotY||0);
+    const el0=levelElevation(PROJECT.active)+(o.y||0), sx=o.sx||1, sy=o.sy||1, sz=o.sz||1;
+    sel.forEach((k,n)=>{ const i=k%col.nx, j=(k-i)/col.nx, u=(col.x0+(i+0.5)*col.C)*sx, v=(col.z0+(j+0.5)*col.C)*sz, h=Math.max(0.02,(col.hi[k]-col.lo[k])*sy);
+      const p=new THREE.Vector3(u,el0+((col.lo[k]+col.hi[k])/2)*sy,v).applyQuaternion(q); p.x+=o.x; p.z+=o.z;
+      M.compose(p,q,new THREE.Vector3(col.C*sx*0.92,h,col.C*sz*0.92)); im.setMatrixAt(n,M); });
+    im.userData.noExport=true; im.raycast=()=>{}; COL_VIS.add(im);
+  }
+}
+/* dorong pemain keluar dari sel model yang menghalangi; null = tidak bertabrakan */
+function dorongCollider(o,lv,px,pz,feetY){
+  const col=colliderModel(o.type); if(!col) return null;
+  const sx=o.sx||1, sy=o.sy||1, sz=o.sz||1, a=o.rotY||0, ca=Math.cos(a), sa=Math.sin(a);
+  const r=FPS.r, jari=Math.hypot(col.nx*col.C*sx,col.nz*col.C*sz)/2+r+Math.hypot(col.x0+col.nx*col.C/2,col.z0+col.nz*col.C/2)*Math.max(sx,sz);
+  if(Math.hypot(px-o.x,pz-o.z)>jari) return null;
+  const dasar=levelElevation(PROJECT.levels.indexOf(lv))+(o.y||0);
+  const bawah=(feetY+LANGKAH_MAX+0.02-dasar)/sy, atas=(feetY+FPS.eye+0.15-dasar)/sy;
+  const keLokal=(x,z)=>{ const dx=x-o.x, dz=z-o.z; return [(dx*ca-dz*sa)/sx, (dx*sa+dz*ca)/sz]; };
+  const keDunia=(u,v)=>{ const x=u*sx, z=v*sz; return [o.x+x*ca+z*sa, o.z-x*sa+z*ca]; };
+  const rl=r/Math.min(sx,sz);
+  const tabrak=(u,v)=>{ const i0=Math.floor((u-rl-col.x0)/col.C), i1=Math.floor((u+rl-col.x0)/col.C), j0=Math.floor((v-rl-col.z0)/col.C), j1=Math.floor((v+rl-col.z0)/col.C);
+    let gx=0, gz=0, n=0;
+    for(let j=Math.max(0,j0);j<=Math.min(col.nz-1,j1);j++) for(let i=Math.max(0,i0);i<=Math.min(col.nx-1,i1);i++){
+      const k=j*col.nx+i; if(!(col.hi[k]>=bawah && col.lo[k]<=atas)) continue;
+      const cx=col.x0+(i+0.5)*col.C, cz=col.z0+(j+0.5)*col.C; if(Math.hypot(cx-u,cz-v)>rl+col.C*0.5) continue;
+      gx+=u-cx; gz+=v-cz; n++; }
+    return n?[gx,gz]:null; };
+  let [u,v]=keLokal(px,pz), t=tabrak(u,v); if(!t) return null;
+  for(let k=0;k<14&&t;k++){ let l=Math.hypot(t[0],t[1]); if(l<1e-6){ t=[u||1,v]; l=Math.hypot(t[0],t[1])||1; } u+=t[0]/l*col.C*0.5; v+=t[1]/l*col.C*0.5; t=tabrak(u,v); }
+  return keDunia(u,v);
 }
 /* Permukaan pijakan dicari dengan menembak sinar ke bawah dari lutut: anak
    tangga, pelat lantai, dan bordes terbaca apa adanya, dan di atas void
@@ -9847,11 +10820,14 @@ function labelAksi(t){
   if(t.jenis==='tv')    return TV_NYALA.has(t.id)?'Matikan TV':'Nyalakan TV';
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
+  if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
   return '';
 }
 function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind==='obj' && n.userData.id===id) out.push(n); }); return out; }
 function pakai(t){
   if(!t) return;
+  if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
+  sfxAksi(t);
   if(t.jenis==='bukaan'){ BUKA.set(t.o.id, bukaan(t.o)>0.5?0:1); }
   else if(t.jenis==='lampu'||t.jenis==='api'){
     if(MATI.has(t.id)) MATI.delete(t.id); else MATI.add(t.id);
@@ -9893,10 +10869,23 @@ function enterFPS(){
                             z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
   FPS.feet=levelElevation(PROJECT.active);
   FPS.vy=0; FPS.yaw=0; FPS.pitch=0; FPS.keys.clear(); FPS.move=null; FPS.look=null;
-  let [px,pz]=fpsResolveWalls((x0+x1)/2,(z0+z1)/2,FPS.feet);
+  VIEW.anim=null;
+  // mulai di titik yang sedang dilihat (bila di dalam denah), menghadap arah pandang editor
+  const t=orbit.target, diDalam=t.x>x0+0.3&&t.x<x1-0.3&&t.z>z0+0.3&&t.z<z1-0.3;
+  let sx=diDalam?t.x:(x0+x1)/2, sz=diDalam?t.z:(z0+z1)/2;
+  { const P=petaRuang(lv);
+    if(P && !diDalam){ let id=0,b=0; for(let i=1;i<P.luas.length;i++) if(!P.bocor[i]&&P.luas[i]>b){ b=P.luas[i]; id=i; }
+      if(id){ let n=0,ax=0,az=0; for(let j=0;j<P.nz;j++) for(let i=0;i<P.nx;i++) if(P.lab[j*P.nx+i]===id){ ax+=i; az+=j; n++; }
+        sx=P.x0+(ax/n+0.5)*P.C; sz=P.z0+(az/n+0.5)*P.C; } } }
+  { const hx=t.x-camera.position.x, hz=t.z-camera.position.z, dist=camera.position.distanceTo(t)||1;
+    let dx=hx, dz=hz;
+    if(Math.hypot(hx,hz)<0.2*dist){ const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion); dx=up.x; dz=up.z; }   // tampak atas: "atas layar" = maju
+    if(Math.hypot(dx,dz)>1e-6) FPS.yaw=Math.atan2(dx,dz); }
+  let [px,pz]=fpsResolveWalls(sx,sz,FPS.feet);
   const g=fpsGround(px,pz,FPS.feet+0.5);
   if(g!=null && Math.abs(g-FPS.feet)<1.5) FPS.feet=g;
   camera.position.set(px,FPS.feet+FPS.eye,pz);
+  FPS.fovEditor=camera.fov; camera.fov=FPS.fov; camera.updateProjectionMatrix();
   FPS.on=true; FPS.paused=false;
   rebuildScene();                            // semua lantai jadi padat
   terapkanLangit();
@@ -9919,6 +10908,7 @@ function exitFPS(){
   if(!FPS.on) return;
   hentikanSemuaMusik();                      // musik hanya bagian dari mode jalan
   FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
+  if(PIANO.buka) tutupPiano();
   rebuildScene();                            // kembali ke tampilan editor
   terapkanLangit();
   grid.visible = FPS.gridWas!==undefined ? FPS.gridWas : $('#showGrid').checked;
@@ -9926,6 +10916,7 @@ function exitFPS(){
   $('#fpsStick').hidden=true;
   if(document.exitPointerLock) document.exitPointerLock();
   orbit.enabled=true;
+  if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
   if(FPS.save){ camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); orbit.update(); }
   $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   $('#levelbar').hidden=false;
@@ -9951,6 +10942,16 @@ $('#fpsFull').onclick=()=>{
 $('#fpsWall').onclick=()=>toggleWallGhost();
 $('#fpsRoof').onclick=()=>toggleAtap();
 $('#walkBtn').onclick=enterFPS;
+function renderSitusUI(){ const st=PROJECT.site||{}; $('#situsTanah').value=st.tanah||'none'; $('#situsMargin').value=st.margin??6; }
+$('#situsTanah').onchange=e=>{ PROJECT.site=Object.assign({margin:6},PROJECT.site,{tanah:e.target.value}); HIST.label='Tanah situs'; rebuildScene();
+  toast(e.target.value==='none'?'Tanah situs dihapus':'Tanah situs: '+e.target.selectedOptions[0].textContent); };
+$('#situsMargin').onchange=e=>{ PROJECT.site=Object.assign({tanah:'none'},PROJECT.site,{margin:clamp(+e.target.value||0,0,60)}); HIST.label='Luas tanah situs'; rebuildScene(); };
+const tulisSfx=()=>{ $('#fpsSfx').textContent=SFX.on?'🔊 SFX':'🔇 SFX'; };
+$('#fpsSfx').onclick=e=>{ SFX.on=!SFX.on; try{ localStorage.setItem('sfx_on',SFX.on?'1':'0'); }catch(_){} tulisSfx(); if(SFX.on) sfx('klik'); e.target.blur(); };
+tulisSfx();
+try{ const v=+localStorage.getItem('fps_fov'); if(v>=40&&v<=90){ FPS.fov=v; $('#fpsFov').value=String(v); } }catch(e){}
+$('#fpsFov').onchange=e=>{ FPS.fov=+e.target.value; try{ localStorage.setItem('fps_fov',String(FPS.fov)); }catch(_){}
+  if(FPS.on){ camera.fov=FPS.fov; camera.updateProjectionMatrix(); } e.target.blur(); };
 $('#fpsExit').onclick=exitFPS;
 /* Pointer lock bisa lepas karena banyak hal — Esc pertama, pindah jendela,
    masuk layar penuh. Kalau itu langsung dianggap keluar, mode jalan terasa
