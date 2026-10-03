@@ -143,6 +143,18 @@ details#adv>*:not(summary){margin-bottom:8px}
 #levelbar button{background:none;border:none;color:var(--muted);padding:6px 10px;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit}
 #levelbar button.active{background:var(--accent);color:#06201b}
 #levelbar button:hover:not(.active){background:#2a2a33;color:var(--txt)}
+#pianoPanel{left:50%;bottom:14px;transform:translateX(-50%);width:min(860px,calc(100% - 24px));padding:8px 10px 10px;z-index:40;touch-action:none;user-select:none;-webkit-user-select:none}
+#pianoPanel[hidden]{display:none}
+#pianoPanel .pp-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:.78rem}
+#pianoPanel .pp-head select{max-width:220px}
+#pianoOkt{font-size:.72rem;color:var(--muted);min-width:92px;text-align:center}
+#pianoKeys{position:relative;height:150px;border-radius:6px;overflow:hidden;background:#111}
+#pianoKeys .pk{position:absolute;top:0;box-sizing:border-box;border-radius:0 0 5px 5px;cursor:pointer}
+#pianoKeys .pk.putih{height:100%;background:linear-gradient(#f4f1ea,#fffdf8);border:1px solid #2a2a2a}
+#pianoKeys .pk.putih span{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:.62rem;color:#888}
+#pianoKeys .pk.hitam{height:60%;background:linear-gradient(#2a2a2e,#0b0b0d);z-index:2;border:1px solid #000}
+#pianoKeys .pk.putih.on{background:linear-gradient(#d8f3ea,#bfe9da)}
+#pianoKeys .pk.hitam.on{background:linear-gradient(#3e8f78,#21584a)}
 #traceBar{bottom:58px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 8px;z-index:30}
 #traceBar[hidden]{display:none}
 #traceBar #traceInfo{font-size:.72rem;color:var(--muted);padding:0 6px;white-space:nowrap}
@@ -535,12 +547,21 @@ details#adv>*:not(summary){margin-bottom:8px}
       <select id="fpsFov" title="Lebar pandang (lensa)">
         <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option>
       </select>
+      <button class="btn ghost sm" id="fpsSfx" title="Efek suara interaksi">🔊 SFX</button>
       <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
       <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
       <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
       <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
+    <div class="float" id="pianoPanel" hidden>
+      <div class="pp-head"><b>🎹 Piano</b>
+        <select id="pianoLagu" title="Lagu"></select>
+        <button class="btn sm" id="pianoMain">▶ Mainkan lagu</button>
+        <button class="btn sm ghost" id="pianoTurun" title="Oktaf turun (Z)">◀</button><span id="pianoOkt"></span><button class="btn sm ghost" id="pianoNaik" title="Oktaf naik (X)">▶</button>
+        <button class="btn sm ghost" id="pianoTutup">✕ Tutup</button></div>
+      <div id="pianoKeys"></div>
+    </div>
     <div id="vignette" hidden></div>
     <div id="fpsAim" hidden><div id="fpsDot"></div><button id="fpsAct" hidden></button></div>
     <div class="float" id="traceBar" hidden>
@@ -1164,7 +1185,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); }   // setelah semua modul selesai dimuat
+  if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   BAYANG_JEDA-=dt;
   if(BAYANG_KOTOR>0 && BAYANG_JEDA<=0){ renderer.shadowMap.needsUpdate=true; BAYANG_KOTOR--; }
@@ -3201,17 +3222,57 @@ function rugTex(gaya){
     else { c.fillStyle='#b9b0a2'; c.fillRect(0,0,S,S); bintik(26000,.35,'#7d7466'); bintik(12000,.3,'#e6dfd3'); }
   });
 }
-function fireTex(){
-  return decoTex('api',256,(c,S,R)=>{
-    c.fillStyle='#120a05'; c.fillRect(0,0,S,S);
-    for(let i=0;i<46;i++){
-      const x=R()*S, h=S*(0.35+R()*0.55), w=S*(0.05+R()*0.08);
-      const g=c.createLinearGradient(0,S,0,S-h);
-      g.addColorStop(0,'rgba(255,240,180,0.95)'); g.addColorStop(0.35,'rgba(255,150,40,0.8)'); g.addColorStop(1,'rgba(160,30,0,0)');
-      c.fillStyle=g; c.beginPath(); c.moveTo(x-w,S); c.quadraticCurveTo(x-w*0.3,S-h*0.6,x,S-h); c.quadraticCurveTo(x+w*0.3,S-h*0.6,x+w,S); c.fill();
-    }
-  });
+/* API HIDUP: simulasi api berbasis sel (ala "doom fire") — baris bawah panas,
+   panas merambat ke atas sambil meluruh acak dan bergeser oleh angin kecil.
+   Satu tekstur dipakai bersama semua perapian; diperbarui ±30 kali per detik. */
+const API={W:56, H:44, sel:null, cv:null, tex:null, t:0, angin:0, pal:null};
+function apiTex(){
+  if(API.tex) return API.tex;
+  API.sel=new Uint8Array(API.W*API.H);
+  for(let x=0;x<API.W;x++) API.sel[(API.H-1)*API.W+x]=36;
+  API.pal=[]; for(let i=0;i<=36;i++){ const t=i/36;
+    API.pal.push([Math.min(255,Math.round(40+t*600)), Math.round(Math.max(0,t-0.25)*1.6*255*0.95), Math.round(Math.max(0,t-0.72)*3.6*255)].map(v=>clamp(v,0,255))); }
+  API.pal[0]=[0,0,0];
+  API.cv=document.createElement('canvas'); API.cv.width=API.W; API.cv.height=API.H;
+  API.img=API.cv.getContext('2d').createImageData(API.W,API.H);
+  API.tex=new THREE.CanvasTexture(API.cv); if(THREE.sRGBEncoding) API.tex.encoding=THREE.sRGBEncoding;
+  for(let i=0;i<60;i++) apiLangkah();
+  return API.tex;
 }
+function apiLangkah(){
+  const {W,H,sel}=API;
+  API.angin=clamp(API.angin+(Math.random()-0.5)*0.4,-1,1);
+  // dasar api berdenyut: tidak semua titik sama panas
+  for(let x=0;x<W;x++){ const tepi=Math.min(x,W-1-x)/(W*0.18); sel[(H-1)*W+x]=Math.round(clamp(tepi,0,1)*(30+Math.random()*6)); }
+  for(let x=0;x<W;x++) for(let y=1;y<H;y++){
+    const src=y*W+x, p=sel[src];
+    if(!p){ sel[src-W]=0; continue; }
+    const r=(Math.random()*3)|0, dx=r-1+(Math.random()<Math.abs(API.angin)*0.3?Math.sign(API.angin):0);
+    const dst=src-W+clamp(dx,-x,W-1-x);
+    sel[dst]=Math.max(0,p-(r&1)-(Math.random()<0.12?1:0));
+  }
+  const d=API.img.data;
+  for(let i=0;i<W*H;i++){ const c=API.pal[sel[i]]; d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
+  API.cv.getContext('2d').putImageData(API.img,0,0);
+  if(API.tex) API.tex.needsUpdate=true;
+}
+function stepApi(dt){
+  if(!API.tex) return;
+  API.t+=dt; if(API.t<1/30) return; API.t=0;
+  apiLangkah();
+  const m=DECOTEX.get('m_api'); if(m) m.emissiveIntensity=1.5*(0.82+0.18*Math.random());
+  if(API.lidah) API.lidah.opacity=0.75+0.25*Math.random();
+}
+/* lidah api 3D di depan dinding tungku: dua bidang bersilang, cahaya aditif
+   (hitam = tak terlihat); ikut padam bersama halo */
+function lidahApi(w,h){
+  if(!API.lidah) API.lidah=new THREE.MeshBasicMaterial({map:apiTex(), transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, toneMapped:false});
+  const g=new THREE.Group();
+  for(const a of [-0.45,0.45]){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),API.lidah); m.rotation.y=a; m.position.y=h/2;
+    m.userData.halo=true; m.userData.noExport=true; m.raycast=()=>{}; m.castShadow=false; m.receiveShadow=false; g.add(m); }
+  return g;
+}
+function fireTex(){ return apiTex(); }
 const dekoMat=(key,opt)=>{ if(!DECOTEX.has('m_'+key)) DECOTEX.set('m_'+key,new THREE.MeshStandardMaterial(opt)); return DECOTEX.get('m_'+key); };
 Object.assign(MAT,{
   brass     : new THREE.MeshStandardMaterial({color:0xc9a25a, roughness:.3,  metalness:.9}),
@@ -3562,6 +3623,7 @@ function fireplaceModern(){ const g=new THREE.Group(), H=ceilH(), w=2.0, d=0.45;
   g.add(boxUV(w,H,d,finMat(FINISH,'beton'),0,H/2,0));
   g.add(box(1.4,0.5,0.02,MAT.firebox,0,0.75,d/2+0.001));
   g.add(box(1.34,0.36,0.01,fireMat(),0,0.72,d/2+0.012));
+  { const f=lidahApi(1.1,0.3); f.scale.z=0.15; f.position.set(0,0.54,d/2+0.018); g.add(f); }
   for(let i=0;i<12;i++) g.add(sph(0.03,MAT.stone,-0.6+i*0.11,0.53,d/2+0.02,0.6,8));
   g.add(box(1.4,0.5,0.01,MAT.glass,0,0.75,d/2+0.03));
   g.add(box(w+0.2,0.08,0.55,MAT.stone,0,0.04,d/2+0.275-0.1));   // hearth menjorok 45 cm
@@ -3572,6 +3634,7 @@ function fireplaceClassic(){ const g=new THREE.Group(), H=ceilH(), d=0.5;
   g.add(box(0.8,0.7,0.02,MAT.firebox,0,0.45,d/2+0.001));
   g.add(box(0.72,0.5,0.01,fireMat(),0,0.38,d/2+0.012));
   for(const [x,z,r] of [[-0.12,0,0.2],[0.12,0,-0.2],[0,0.05,0]]){ const l=cyl(0.045,0.045,0.55,MAT.bark,x,0.16,d/2-0.05+z*0.1,10); l.rotation.z=Math.PI/2; l.rotation.y=r; g.add(l); }
+  { const f=lidahApi(0.5,0.42); f.position.set(0,0.18,d/2-0.05); g.add(f); }
   g.add(box(1.85,0.08,0.3,MAT.woodDark,0,1.19,d/2-0.02));       // rak mantel ±1,2 m
   g.add(box(1.7,0.05,0.5,MAT.stone,0,0.025,d/2+0.2));           // hearth
   g.add(vase(-0.6,1.23,d/2-0.05,0.25,MAT.ceramic)); g.add(cyl(0.025,0.025,0.18,MAT.ceramic,0.6,1.32,d/2-0.05,10)); g.add(sph(0.012,MAT.glow,0.6,1.43,d/2-0.05,1.6,8));
@@ -3582,6 +3645,7 @@ function woodStove(){ const g=new THREE.Group(), H=ceilH();
   for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.04,0.18,0.04,MAT.blackMetal,sx*0.22,0.11,sz*0.18));
   g.add(box(0.55,0.6,0.45,MAT.blackMetal,0,0.5,0));
   g.add(box(0.36,0.3,0.01,fireMat(),0,0.48,0.226)); g.add(box(0.38,0.32,0.01,MAT.glass,0,0.48,0.232));
+  { const f=lidahApi(0.26,0.22); f.position.set(0,0.36,0.12); g.add(f); }
   g.add(cyl(0.075,0.075,H-0.8,MAT.blackMetal,0,0.8+(H-0.8)/2,-0.05,18)); return g; }
 
 /* ---------- LAIN-LAIN ---------- */
@@ -3858,7 +3922,7 @@ const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table
   arc_lamp:'lampu',wall_sconce:'lampu',floor_lamp:'lampu',downlight:'lampu',ceiling_flush:'lampu',ceiling_panel:'lampu',
   kitchen_line:'lampu',kitchen_l2:'lampu',kitchen_u:'lampu',kitchen_par:'lampu',kitchen_isl:'lampu',
   fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
-  music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio'};
+  music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio', piano:'piano'};
 const KUAT_LAMPU={chandelier:1.6,pendant:1.1,pendant_trio:1.4,table_lamp:0.6,night_lamp:0.6,arc_lamp:0.9,wall_sconce:0.55,
   floor_lamp:0.8,kitchen_line:0.8,kitchen_l2:0.8,kitchen_u:0.8,kitchen_par:0.8,kitchen_isl:0.9,fire_modern:1.3,fire_classic:1.3,wood_stove:0.9};
 /* TERANG LAMPU DALAM LUMEN — nilai bawaan = lampu LED rumahan yang umum dijual
@@ -4471,6 +4535,164 @@ for(const ev of ['touchend','pointerup','click','keydown'])
   addEventListener(ev,()=>{ const c=AUDIO.ctx; if(c && c.state!=='running' && AUDIO.main.size){ c.resume().catch(()=>{});
     const s=c.createBufferSource(); s.buffer=c.createBuffer(1,1,22050); s.connect(c.destination); s.start(0); } },{passive:true,capture:true});
 function hentikanSemuaMusik(){ for(const id of [...AUDIO.main.keys()]) hentikanMusik(id); }
+/* ---------- EFEK SUARA INTERAKSI — disintesis, tanpa berkas rekaman ---------- */
+const SFX={on:true};
+try{ SFX.on=localStorage.getItem('sfx_on')!=='0'; }catch(e){}
+function sfx(jenis,titik){
+  if(!SFX.on) return;
+  const ctx=audioSiap(); if(!ctx) return;
+  const t=ctx.currentTime+0.01;
+  let d=AUDIO.master;
+  if(titik){ const p=ctx.createPanner(); p.panningModel='HRTF'; p.distanceModel='inverse'; p.refDistance=1.2; p.rolloffFactor=1;
+    p.positionX ? (p.positionX.value=titik.x, p.positionY.value=titik.y, p.positionZ.value=titik.z) : p.setPosition(titik.x,titik.y,titik.z);
+    p.connect(AUDIO.master); d=p; setTimeout(()=>{ try{ p.disconnect(); }catch(e){} },2500); }
+  const filt=(tipe,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=tipe; b.frequency.value=f; if(q) b.Q.value=q; return b; };
+  if(jenis==='klik'){                                          // sakelar / tombol
+    const hp=filt('highpass',2500); hp.connect(d); derau(ctx,t,0.012,envGain(ctx,hp,t,0.0008,0.5,0.012));
+    osc(ctx,'square',2200,t,t+0.03,envGain(ctx,d,t,0.0005,0.08,0.02));
+    derau(ctx,t+0.045,0.01,envGain(ctx,hp,t+0.045,0.0008,0.22,0.01));
+  } else if(jenis==='pintuBuka'||jenis==='pintuTutup'){
+    const lp=filt('lowpass',900); lp.connect(d);
+    const bpK=filt('bandpass',2400,2); bpK.connect(d); derau(ctx,t,0.05,envGain(ctx,bpK,t,0.001,0.25,0.04));   // klik gagang
+    if(jenis==='pintuBuka'){                                  // derit engsel
+      const bp=filt('bandpass',700,9); bp.connect(d);
+      const o=osc(ctx,'sawtooth',150,t+0.08,t+0.7,envGain(ctx,bp,t+0.08,0.08,0.18,0.55));
+      o.frequency.setValueAtTime(150,t+0.08); o.frequency.linearRampToValueAtTime(115,t+0.6);
+    } else {                                                  // bantingan daun pintu
+      osc(ctx,'sine',85,t+0.03,t+0.35,envGain(ctx,d,t+0.03,0.003,0.9,0.28));
+      derau(ctx,t+0.03,0.12,envGain(ctx,lp,t+0.03,0.002,0.6,0.12));
+    }
+  } else if(jenis==='gorden'){                                // kain bergeser
+    const bp=filt('bandpass',3200,0.7); bp.connect(d);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.35,t+0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+0.75); g.connect(bp);
+    const hpK=filt('highpass',6000); hpK.connect(d); derau(ctx,t,0.8,g); derau(ctx,t,0.15,envGain(ctx,hpK,t,0.001,0.08,0.1));
+  } else if(jenis==='tvNyala'||jenis==='tvMati'){
+    sfx('klik',titik);
+    const o=osc(ctx,'sine',jenis==='tvNyala'?600:1500,t+0.04,t+0.25,envGain(ctx,d,t+0.04,0.005,0.12,0.18));
+    o.frequency.exponentialRampToValueAtTime(jenis==='tvNyala'?1500:500,t+0.2);
+    if(jenis==='tvNyala'){ const hp=filt('highpass',1500); hp.connect(d); derau(ctx,t+0.05,0.35,envGain(ctx,hp,t+0.05,0.02,0.12,0.3)); }
+  } else if(jenis==='apiNyala'){                              // korek + sambaran api
+    const hp=filt('highpass',3000); hp.connect(d); derau(ctx,t,0.04,envGain(ctx,hp,t,0.001,0.5,0.04));
+    const lp=filt('lowpass',600); lp.connect(d);
+    lp.frequency.setValueAtTime(300,t+0.05); lp.frequency.exponentialRampToValueAtTime(2200,t+0.4);
+    derau(ctx,t+0.05,0.9,envGain(ctx,lp,t+0.05,0.12,0.7,0.8));
+    for(let i=0;i<7;i++){ const tt=t+0.25+Math.random()*0.8; derau(ctx,tt,0.008,envGain(ctx,hp,tt,0.0005,0.25+Math.random()*0.3,0.008)); }
+  } else if(jenis==='apiPadam'){                              // desis padam
+    const bp=filt('bandpass',4500,1.2); bp.connect(d); derau(ctx,t,0.7,envGain(ctx,bp,t,0.02,0.3,0.65));
+  }
+}
+function sfxAksi(t){
+  const titik = t.jenis==='bukaan' ? null : (()=>{ const b=new THREE.Box3().setFromObject(t.grp); return b.getCenter(new THREE.Vector3()); })();
+  if(t.jenis==='bukaan') sfx(bukaan(t.o)>0.5?'pintuTutup':'pintuBuka');
+  else if(t.jenis==='lampu') sfx('klik',titik);
+  else if(t.jenis==='api') sfx(MATI.has(t.id)?'apiNyala':'apiPadam',titik);
+  else if(t.jenis==='tv') sfx(TV_NYALA.has(t.id)?'tvMati':'tvNyala',titik);
+  else if(t.jenis==='gorden') sfx('gorden',titik);
+  else if(t.jenis==='audio') sfx('klik',titik);
+}
+
+/* ---------- PIANO — tuts di layar / keyboard, bunyi piano sintesis di posisi pianonya ---------- */
+const PIANO={buka:false, grp:null, okt:60, lagu:null, tunda:[], tekan:new Map()};
+const LAGU_PIANO={
+  // karya domain publik
+  elise:{l:'Für Elise — Beethoven', bpm:132, n:[[76,.5],[75,.5],[76,.5],[75,.5],[76,.5],[71,.5],[74,.5],[72,.5],[69,1.5,[45,52,57]],[60,.5],[64,.5],[69,.5],[71,1.5,[40,52,56]],[64,.5],[68,.5],[71,.5],[72,1.5,[45,52,57]],[64,.5],
+    [76,.5],[75,.5],[76,.5],[75,.5],[76,.5],[71,.5],[74,.5],[72,.5],[69,1.5,[45,52,57]],[60,.5],[64,.5],[69,.5],[71,1.5,[40,52,56]],[64,.5],[72,.5],[71,.5],[69,2,[45,52,57]]]},
+  ode:{l:'Ode to Joy — Beethoven', bpm:112, n:[[64,1,[48,55]],[64,1],[65,1],[67,1],[67,1,[43,55]],[65,1],[64,1],[62,1],[60,1,[48,55]],[60,1],[62,1],[64,1],[64,1.5,[43,55]],[62,.5],[62,2],
+    [64,1,[48,55]],[64,1],[65,1],[67,1],[67,1,[43,55]],[65,1],[64,1],[62,1],[60,1,[48,55]],[60,1],[62,1],[64,1],[62,1.5,[43,55]],[60,.5],[60,2,[48,55]]]},
+  twinkle:{l:'Twinkle Twinkle Little Star', bpm:100, n:[[60,1,[48]],[60,1],[67,1,[52]],[67,1],[69,1,[53]],[69,1],[67,2,[52]],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,1,[43]],[62,1],[60,2,[48]],
+    [67,1,[52]],[67,1],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,2,[43]],[67,1,[52]],[67,1],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,2,[43]],
+    [60,1,[48]],[60,1],[67,1,[52]],[67,1],[69,1,[53]],[69,1],[67,2,[52]],[65,1,[50]],[65,1],[64,1,[48]],[64,1],[62,1,[43]],[62,1],[60,2,[48]]]}
+};
+const KEY_PUTIH=['a','s','d','f','g','h','j','k','l',';',"'"], KEY_HITAM={w:1,e:3,t:6,y:8,u:10,o:13,p:15};
+const PUTIH_SEMI=[0,2,4,5,7,9,11];
+function pianoTitik(){ if(!PIANO.grp) return null; const b=new THREE.Box3().setFromObject(PIANO.grp); const c=b.getCenter(new THREE.Vector3()); c.y=1.0; return c; }
+function pianoBus(){
+  const ctx=audioSiap(); if(!ctx) return null;
+  if(!PIANO.bus){
+    PIANO.pan=ctx.createPanner(); PIANO.pan.panningModel='HRTF'; PIANO.pan.distanceModel='inverse'; PIANO.pan.refDistance=1.5; PIANO.pan.rolloffFactor=0.8;
+    PIANO.bus=ctx.createGain(); PIANO.bus.gain.value=1.4; PIANO.bus.connect(PIANO.pan); PIANO.pan.connect(AUDIO.master);
+    const kirim=ctx.createGain(); kirim.gain.value=0.35; PIANO.bus.connect(kirim); kirim.connect(AUDIO.gema);
+  }
+  const p=pianoTitik()||camera.position;
+  PIANO.pan.positionX ? (PIANO.pan.positionX.value=p.x, PIANO.pan.positionY.value=p.y, PIANO.pan.positionZ.value=p.z) : PIANO.pan.setPosition(p.x,p.y,p.z);
+  return ctx;
+}
+function bunyiPiano(m,t,dur,v){
+  const ctx=pianoBus(); if(!ctx) return;
+  t=t||ctx.currentTime; const d=PIANO.bus;
+  ALAT.piano(ctx,d,t,m,Math.max(dur||1.2,0.6),v||0.32);
+  osc(ctx,'sine',mf(m)*3.01,t,t+0.4,envGain(ctx,d,t,0.002,(v||0.32)*0.12,0.35));   // dentang palu
+}
+function tandaiTuts(m,on){
+  const e=document.querySelector(`#pianoKeys [data-m="${m}"]`); if(e) e.classList.toggle('on',on);
+}
+function mainkanTuts(m){ bunyiPiano(m); tandaiTuts(m,true); setTimeout(()=>tandaiTuts(m,false),180); }
+function gambarTuts(){
+  const box=$('#pianoKeys'); box.innerHTML='';
+  const awal=PIANO.okt, putih=[];
+  for(let m=awal;m<=awal+24;m++) if(PUTIH_SEMI.includes(((m%12)+12)%12)) putih.push(m);
+  const lb=100/putih.length;
+  putih.forEach((m,i)=>{ const k=el('div','pk putih'); k.dataset.m=m; k.style.left=(i*lb)+'%'; k.style.width=lb+'%';
+    if(m%12===0) k.appendChild(el('span',null,'C'+(m/12-1))); box.appendChild(k); });
+  putih.forEach((m,i)=>{ if(i===putih.length-1) return; const n=((m%12)+12)%12; if(n===4||n===11) return;
+    const k=el('div','pk hitam'); k.dataset.m=m+1; k.style.left=((i+1)*lb-lb*0.32)+'%'; k.style.width=(lb*0.64)+'%'; box.appendChild(k); });
+  $('#pianoOkt').textContent='Oktaf C'+(awal/12-1)+'–C'+(awal/12+1);
+}
+function bukaPiano(grp){
+  PIANO.grp=grp||null; PIANO.buka=true;
+  $('#pianoPanel').hidden=false; gambarTuts(); pianoBus();
+  if(FPS.on){ FPS.keys.clear(); FPS.move=null; if(document.exitPointerLock&&document.pointerLockElement) document.exitPointerLock(); }
+  toast('🎹 Ketuk tuts, atau pakai keyboard: A S D F G H J K L (putih) · W E T Y U O P (hitam) · Z / X ganti oktaf');
+}
+function tutupPiano(){
+  PIANO.buka=false; $('#pianoPanel').hidden=true; hentikanLaguPiano();
+  if(FPS.on && !('ontouchstart' in window) && renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+}
+function hentikanLaguPiano(){ for(const t of PIANO.tunda) clearTimeout(t); PIANO.tunda=[]; PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu';
+  if(PIANO.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; PIANO.bus.gain.cancelScheduledValues(t); PIANO.bus.gain.setValueAtTime(PIANO.bus.gain.value,t);
+    PIANO.bus.gain.linearRampToValueAtTime(0.0001,t+0.25); PIANO.bus.gain.linearRampToValueAtTime(1.4,t+0.3); } }
+function mainkanLaguPiano(kunci){
+  hentikanLaguPiano();
+  const L=LAGU_PIANO[kunci], ctx=pianoBus(); if(!L||!ctx) return;
+  PIANO.lagu=kunci; $('#pianoMain').textContent='■ Berhenti';
+  const spb=60/L.bpm, t0=ctx.currentTime+0.15; let b=0;
+  for(const [m,dur,iring] of L.n){
+    const t=t0+b*spb;
+    bunyiPiano(m,t,dur*spb*1.1,0.3);
+    if(iring) for(const x of iring) bunyiPiano(x,t,dur*spb*2,0.16);
+    const ms=(t-ctx.currentTime)*1000;
+    PIANO.tunda.push(setTimeout(()=>tandaiTuts(m,true),ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
+    b+=dur;
+  }
+  PIANO.tunda.push(setTimeout(()=>{ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; PIANO.tunda=[]; },(t0-ctx.currentTime+b*spb)*1000+300));
+}
+{ const box=$('#pianoKeys');
+  box.addEventListener('pointerdown',e=>{ const k=e.target.closest('.pk'); if(!k) return; e.preventDefault(); e.stopPropagation();
+    const m=+k.dataset.m; PIANO.tekan.set(e.pointerId,m); bunyiPiano(m); tandaiTuts(m,true); });
+  box.addEventListener('pointerover',e=>{ if(!PIANO.tekan.has(e.pointerId)) return; const k=e.target.closest('.pk'); if(!k) return;
+    const m=+k.dataset.m; if(PIANO.tekan.get(e.pointerId)===m) return; tandaiTuts(PIANO.tekan.get(e.pointerId),false); PIANO.tekan.set(e.pointerId,m); bunyiPiano(m); tandaiTuts(m,true); });
+  for(const ev of ['pointerup','pointercancel','pointerleave']) box.addEventListener(ev,e=>{ const m=PIANO.tekan.get(e.pointerId); if(m!=null){ tandaiTuts(m,false); PIANO.tekan.delete(e.pointerId); } });
+  $('#pianoPanel').addEventListener('pointerdown',e=>e.stopPropagation());
+  $('#pianoTutup').onclick=tutupPiano;
+  $('#pianoMain').onclick=()=>{ if(PIANO.lagu) hentikanLaguPiano(); else mainkanLaguPiano($('#pianoLagu').value); };
+  $('#pianoTurun').onclick=()=>{ PIANO.okt=Math.max(36,PIANO.okt-12); gambarTuts(); };
+  $('#pianoNaik').onclick=()=>{ PIANO.okt=Math.min(72,PIANO.okt+12); gambarTuts(); };
+  $('#pianoLagu').innerHTML=Object.entries(LAGU_PIANO).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
+}
+/* keyboard komputer → tuts (dipakai baik di mode jalan maupun editor selama panel terbuka) */
+addEventListener('keydown',e=>{
+  if(!PIANO.buka || /input|select|textarea/i.test(e.target.tagName)) return;
+  const k=e.key.toLowerCase();
+  if(k==='escape'){ tutupPiano(); e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if(e.repeat){ e.preventDefault(); e.stopImmediatePropagation(); return; }
+  let m=null;
+  const iw=KEY_PUTIH.indexOf(k); if(iw>=0) m=PIANO.okt+Math.floor(iw/7)*12+PUTIH_SEMI[iw%7];
+  else if(KEY_HITAM[k]!=null) m=PIANO.okt+KEY_HITAM[k];
+  else if(k==='z'){ PIANO.okt=Math.max(36,PIANO.okt-12); gambarTuts(); }
+  else if(k==='x'){ PIANO.okt=Math.min(72,PIANO.okt+12); gambarTuts(); }
+  if(m!=null) mainkanTuts(m);
+  e.preventDefault(); e.stopImmediatePropagation();
+},true);
 function terapkanAudio(g,on){
   g.traverse(m=>{ if(m.isMesh && m.userData.led) m.material = on ? MAT[m.userData.led] : MAT.ledOff; });
 }
@@ -5203,6 +5425,7 @@ function renderInspector(){
     };
     ins.appendChild(bw);
     tombolFlip(ins,d);
+    if(d.type==='piano'){ const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp); }
     if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
     addTransformFields(ins,d,true);
   }
@@ -10069,11 +10292,14 @@ function labelAksi(t){
   if(t.jenis==='tv')    return TV_NYALA.has(t.id)?'Matikan TV':'Nyalakan TV';
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
+  if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
   return '';
 }
 function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind==='obj' && n.userData.id===id) out.push(n); }); return out; }
 function pakai(t){
   if(!t) return;
+  if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
+  sfxAksi(t);
   if(t.jenis==='bukaan'){ BUKA.set(t.o.id, bukaan(t.o)>0.5?0:1); }
   else if(t.jenis==='lampu'||t.jenis==='api'){
     if(MATI.has(t.id)) MATI.delete(t.id); else MATI.add(t.id);
@@ -10154,6 +10380,7 @@ function exitFPS(){
   if(!FPS.on) return;
   hentikanSemuaMusik();                      // musik hanya bagian dari mode jalan
   FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
+  if(PIANO.buka) tutupPiano();
   rebuildScene();                            // kembali ke tampilan editor
   terapkanLangit();
   grid.visible = FPS.gridWas!==undefined ? FPS.gridWas : $('#showGrid').checked;
@@ -10187,6 +10414,9 @@ $('#fpsFull').onclick=()=>{
 $('#fpsWall').onclick=()=>toggleWallGhost();
 $('#fpsRoof').onclick=()=>toggleAtap();
 $('#walkBtn').onclick=enterFPS;
+const tulisSfx=()=>{ $('#fpsSfx').textContent=SFX.on?'🔊 SFX':'🔇 SFX'; };
+$('#fpsSfx').onclick=e=>{ SFX.on=!SFX.on; try{ localStorage.setItem('sfx_on',SFX.on?'1':'0'); }catch(_){} tulisSfx(); if(SFX.on) sfx('klik'); e.target.blur(); };
+tulisSfx();
 try{ const v=+localStorage.getItem('fps_fov'); if(v>=40&&v<=90){ FPS.fov=v; $('#fpsFov').value=String(v); } }catch(e){}
 $('#fpsFov').onchange=e=>{ FPS.fov=+e.target.value; try{ localStorage.setItem('fps_fov',String(FPS.fov)); }catch(_){}
   if(FPS.on){ camera.fov=FPS.fov; camera.updateProjectionMatrix(); } e.target.blur(); };
