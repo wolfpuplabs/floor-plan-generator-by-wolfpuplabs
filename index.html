@@ -779,6 +779,17 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <div class="gl-grid" id="galeriGrid"></div>
       <p class="hint" id="galeriInfo"></p>
     </div></div>
+    <div id="teksturModal" class="gl-modal" hidden><div class="gl-box">
+      <div class="gl-head"><b>🖼 Tekstur foto — foto sendiri atau pustaka Poly Haven (CC0)</b>
+        <button class="btn sm" id="teksturFotoBtn" style="flex:0 0 auto">📷 Pakai foto sendiri…</button>
+        <input type="file" id="teksturFoto" accept="image/*" hidden>
+        <input type="search" id="teksturCari" placeholder="Cari: fabric, leather, oak, marble…" aria-label="Cari tekstur">
+        <select id="teksturRes" aria-label="Resolusi tekstur"><option value="1k">1K — ringan</option><option value="2k">2K — lebih tajam</option></select>
+        <button class="btn sm ghost" id="teksturTutup" style="flex:0 0 auto">✕ Tutup</button></div>
+      <div class="gl-ruang" id="teksturKat" role="group" aria-label="Jenis bahan"></div>
+      <div class="gl-grid" id="teksturGrid"></div>
+      <p class="hint" id="teksturInfo"></p>
+    </div></div>
     <div id="fpsAim" hidden><div id="fpsDot"></div><button id="fpsAct" hidden></button></div>
     <div class="float" id="traceBar" hidden>
       <span id="traceInfo">0 titik</span>
@@ -880,6 +891,7 @@ const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{}
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
   atap:{ tritisan:0.6, tebal:0.12 },
   site:{ tanah:'none', margin:6 },
+  tekstur:{},                     // tekstur foto objek: { [tid]: {nama, sumber:'foto', data, aspek} | {nama, sumber:'ph', ph, res} }
   langit:{ mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true, pilih:'manual' } };   // langit: prosedural atau foto 360°                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
 
 function newLevel(name,height){
@@ -3783,7 +3795,7 @@ function uvMetrik(geo){
     if(ay>=ax&&ay>=az){ uv[2*i]=p.getX(i); uv[2*i+1]=p.getZ(i); }
     else if(ax>=az){ uv[2*i]=p.getZ(i); uv[2*i+1]=p.getY(i); }
     else { uv[2*i]=p.getX(i); uv[2*i+1]=p.getY(i); } }
-  geo.setAttribute('uv',new THREE.BufferAttribute(uv,2)); return geo;
+  geo.setAttribute('uv',new THREE.BufferAttribute(uv,2)); geo.userData.metrik=true; return geo;
 }
 /* Balok bertepi bulat. Titik-titik kisi BoxGeometry dirapatkan di dekat tepi
    (s segmen per lengkung), lalu tiap titik didorong sejauh r dari "inti" balok.
@@ -3891,6 +3903,159 @@ Object.assign(MAT,{
 });
 MAT.porselenDalam=MAT.porselen.clone(); MAT.porselenDalam.side=THREE.BackSide;      // bak & wastafel tertanam: dilihat dari dalam
 MAT.stainlessDalam=MAT.stainless.clone(); MAT.stainlessDalam.side=THREE.BackSide;
+/* ---------- TEKSTUR FOTO + TANPA POLA BERULANG (JEV-059) ----------
+   (1) ACAK ULANG — tekstur yang diulang tiap 0,5–1 m membentuk "ubin" yang langsung
+       tertangkap mata (motif kain atau urat marmer yang sama berderet). Di shader,
+       tiap sampel dibaca dua kali dengan geseran acak yang dipilih oleh noise
+       berskala besar lalu dicampur halus (teknik Quilez "texture repetition"),
+       sehingga pola tidak pernah berulang persis. Peta warna, normal, dan kekasaran
+       memakai geseran yang sama supaya reliefnya tetap cocok dengan warnanya.
+       WebGL2 memakai textureGrad (turunan dari UV asli) supaya tidak ada garis
+       mipmap di batas campuran.
+   (2) TEKSTUR FOTO — objek katalog maupun model unggahan bisa memakai foto sungguhan:
+       foto sendiri (difoto dari sampel bahan, dibuat mulus di tepinya) atau tekstur
+       foto PBR Poly Haven (CC0: warna + normal + kekasaran). Foto sendiri tersimpan
+       di proyek; tekstur Poly Haven hanya dirujuk dan diunduh ulang (dengan cache). */
+const ACAK_GLSL=`
+float auH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float auN(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(auH(i),auH(i+vec2(1.0,0.0)),f.x),mix(auH(i+vec2(0.0,1.0)),auH(i+vec2(1.0,1.0)),f.x),f.y); }
+vec4 acakUlang(sampler2D s, vec2 uv){
+  float l=auN(uv*0.37)*8.0, f=fract(l), ia=floor(l);
+  vec2 oa=sin(vec2(3.0,7.0)*ia), ob=sin(vec2(3.0,7.0)*(ia+1.0));
+#ifdef ACAK_GRAD
+  vec2 dx=dFdx(uv), dy=dFdy(uv);
+  vec4 a=textureGrad(s,uv+oa,dx,dy), b=textureGrad(s,uv+ob,dx,dy);
+#else
+  vec4 a=texture2D(s,uv+oa), b=texture2D(s,uv+ob);
+#endif
+  return mix(a,b,smoothstep(0.2,0.8,f-0.1*dot(a.rgb-b.rgb,vec3(1.0))));
+}`;
+function pasangAcakUlang(m){
+  if(!m || m.userData.acakUlang) return m;
+  m.userData.acakUlang=true;
+  const grad=renderer.capabilities.isWebGL2;
+  m.customProgramCacheKey=()=>'acak'+(grad?'g':'');
+  m.onBeforeCompile=sh=>{
+    pasangGIShader(sh);
+    sh.fragmentShader=sh.fragmentShader
+      .replace('#include <common>','#include <common>\n'+(grad?'#define ACAK_GRAD\n':'')+ACAK_GLSL)
+      .replace('#include <map_fragment>',THREE.ShaderChunk.map_fragment.replace('texture2D( map, vUv )','acakUlang( map, vUv )'))
+      .replace('#include <normal_fragment_maps>',THREE.ShaderChunk.normal_fragment_maps.replace(/texture2D\( normalMap, vUv \)/g,'acakUlang( normalMap, vUv )'))
+      .replace('#include <roughnessmap_fragment>',THREE.ShaderChunk.roughnessmap_fragment.replace('texture2D( roughnessMap, vUv )','acakUlang( roughnessMap, vUv )'));
+  };
+  m.needsUpdate=true;
+  return m;
+}
+// bahan prosedural berpola (kain, kayu, marmer) — kasur berjahit sengaja tidak: kisi jahitannya memang berulang
+for(const k of ['kainSofa','kainAksen','kainKrem','kainRanjang','sprei','selimut','selendang','marmer','kayuVenir','kayuGelap']) pasangAcakUlang(MAT[k]);
+
+const TEKSTUR=new Map();                 // tid → {peta, normal, kasar, aspek, janji}
+const TEKSTUR_BATAS={jumlah:40, dataMB:3, sisi:1024};
+const NAMA_BAHAN=new Map();              // material katalog → nama yang bisa dibaca
+function namaBahan(m,i){
+  if(!NAMA_BAHAN.size) for(const [k,v] of Object.entries(MAT)) if(v&&v.isMaterial) NAMA_BAHAN.set(v,k);
+  return NAMA_BAHAN.get(m) || (m&&m.name) || ('bahan '+(i+1));
+}
+function teksturGambar(img){
+  const t=new THREE.Texture(img); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy()); t.needsUpdate=true; return t;
+}
+function muatGambar(src){
+  return new Promise((ok,gagal)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=()=>gagal(new Error('gambar tidak terbaca')); im.src=src; });
+}
+async function ambilCache(url){
+  // tekstur Poly Haven disimpan di Cache Storage: tautan/proyek yang dibuka ulang tidak mengunduh lagi
+  let c=null; try{ c=await caches.open('tekstur-v1'); const h=await c.match(url); if(h) return await h.blob(); }catch(e){ c=null; }
+  const r=await fetch(url); if(!r.ok) throw new Error('unduhan gagal ('+r.status+')');
+  const b=await r.blob(); if(b.size>TEKSTUR_BATAS.dataMB*1048576*4) throw new Error('berkas tekstur terlalu besar');
+  try{ if(c) await c.put(url,new Response(b)); }catch(e){ /* kuota penuh: tetap dipakai tanpa cache */ }
+  return b;
+}
+const TEKSTUR_PH_PETA=[['Diffuse','peta'],['nor_gl','normal'],['Rough','kasar']];
+async function unduhTeksturPH(id,res){
+  const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id)); if(!r.ok) throw new Error('daftar berkas tekstur gagal ('+r.status+')');
+  const j=await r.json(), hasil={};
+  for(const [kunci,nama] of TEKSTUR_PH_PETA){
+    const f=j[kunci]&&(j[kunci][res]||j[kunci]['1k']); const u=f&&f.jpg&&f.jpg.url;
+    if(!u){ if(nama==='peta') throw new Error('tekstur tanpa peta warna'); continue; }
+    if(!/^https:\/\/dl\.polyhaven\.org\//.test(u)) throw new Error('alamat berkas tekstur tidak dikenal');
+    const url=URL.createObjectURL(await ambilCache(u));
+    try{ hasil[nama]=teksturGambar(await muatGambar(url)); } finally { setTimeout(()=>URL.revokeObjectURL(url),5000); }
+  }
+  hasil.aspek=1; return hasil;
+}
+/* tekstur untuk tid: dari proyek (foto sendiri) atau rujukan Poly Haven; dimuat sekali, objek
+   yang memakainya dibangun ulang begitu siap */
+function siapkanTekstur(tid){
+  const e=PROJECT.tekstur&&PROJECT.tekstur[tid]; if(!e) return null;
+  let t=TEKSTUR.get(tid); if(t) return t.peta?t:null;
+  t={janji:null}; TEKSTUR.set(tid,t);
+  t.janji=(e.sumber==='ph' ? unduhTeksturPH(e.ph,e.res||'1k')
+          : muatGambar(e.data).then(im=>({peta:teksturGambar(im), aspek:im.naturalHeight/Math.max(1,im.naturalWidth)})))
+    .then(h=>{ Object.assign(t,h); rebuildScene(); })
+    .catch(err=>{ console.warn('tekstur',tid,err); t.galat=String(err.message||err); toast('Tekstur "'+e.nama+'" gagal dimuat: '+t.galat); });
+  return null;
+}
+const BAHAN_FOTO=new Map();
+function bahanFoto(dasar,tid,t,skala){
+  const kunci=dasar.uuid+'|'+tid+'|'+skala;
+  if(BAHAN_FOTO.has(kunci)) return BAHAN_FOTO.get(kunci);
+  const m=dasar.clone();
+  const rx=1/skala, ry=1/(skala*(t.aspek||1));
+  const salin=x=>{ if(!x) return null; const c=x.clone(); c.needsUpdate=true; c.repeat.set(rx,ry); return c; };
+  m.map=salin(t.peta); m.color=new THREE.Color(0xffffff);
+  if(t.normal){ m.normalMap=salin(t.normal); m.normalScale=new THREE.Vector2(1,1); }
+  if(t.kasar){ m.roughnessMap=salin(t.kasar); m.roughness=1; }
+  m.userData={}; pasangAcakUlang(m);
+  BAHAN_FOTO.set(kunci,m); return m;
+}
+const GEO_METRIK=new Map();
+function geoMetrik(geo){
+  // geometri katalog lama punya UV 0..1 per muka: foto akan meregang — UV dihitung ulang dalam meter
+  if(geo.userData.metrik) return geo;
+  if(!GEO_METRIK.has(geo.uuid)){ const g=geo.clone(); if(!g.attributes.normal) g.computeVertexNormals(); uvMetrik(g); g.userData.metrik=true; GEO_METRIK.set(geo.uuid,g); }
+  return GEO_METRIK.get(geo.uuid);
+}
+function bahanDiObjek(g){
+  const daftar=[];
+  g.traverse(m=>{ if(!m.isMesh||m.userData.halo) return; for(const b of [].concat(m.material)) if(b&&!daftar.includes(b)&&!b.transparent) daftar.push(b); });
+  return daftar;
+}
+function terapkanTekstur(g,o){
+  const tid=o.params.tekstur, t=siapkanTekstur(tid); if(!t) return;
+  const target=o.params.teksturBahan||'', skala=clamp(+o.params.teksturSkala||0.6,0.05,10);
+  const daftar=bahanDiObjek(g);
+  // tanpa pilihan bagian: bahan dengan permukaan terluas (biasanya kain/kayu utama)
+  let pilih=daftar.find((b,i)=>namaBahan(b,i)===target);
+  if(!pilih){ const luas=new Map(); g.traverse(m=>{ if(!m.isMesh||!m.geometry) return; m.geometry.computeBoundingBox(); const s=m.geometry.boundingBox.getSize(new THREE.Vector3()).multiply(m.scale);
+      const a=2*(s.x*s.y+s.y*s.z+s.x*s.z); for(const b of [].concat(m.material)) if(daftar.includes(b)) luas.set(b,(luas.get(b)||0)+a); });
+    pilih=[...luas.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]; }
+  if(!pilih) return;
+  const baru=bahanFoto(pilih,tid,t,skala);
+  g.traverse(m=>{ if(!m.isMesh) return;
+    if(Array.isArray(m.material)){ if(m.material.includes(pilih)){ m.material=m.material.map(b=>b===pilih?baru:b); m.geometry=geoMetrik(m.geometry); } }
+    else if(m.material===pilih){ m.material=baru; m.geometry=geoMetrik(m.geometry); } });
+}
+/* foto sendiri → tekstur mulus: diperkecil ke ≤ 1024 px, lalu tepinya disilangkan dengan
+   salinan yang digeser setengah — sambungan antarulangan tidak terlihat */
+async function fotoJadiTekstur(berkas){
+  if(!/^image\/(jpeg|png|webp)$/.test(berkas.type)) throw new Error('pilih foto JPG, PNG, atau WebP');
+  if(berkas.size>25*1048576) throw new Error('foto lebih besar dari 25 MB');
+  const url=URL.createObjectURL(berkas); let im;
+  try{ im=await muatGambar(url); } finally { URL.revokeObjectURL(url); }
+  const k=Math.min(1,TEKSTUR_BATAS.sisi/Math.max(im.naturalWidth,im.naturalHeight));
+  const w=Math.max(16,Math.round(im.naturalWidth*k)), h=Math.max(16,Math.round(im.naturalHeight*k));
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
+  const asli=x.getImageData(0,0,w,h), geser=x.createImageData(w,h), A=asli.data, G=geser.data;
+  for(let j=0;j<h;j++) for(let i=0;i<w;i++){ const s=(((j+(h>>1))%h)*w+((i+(w>>1))%w))*4, d=(j*w+i)*4; for(let q=0;q<4;q++) G[d+q]=A[s+q]; }
+  const hasil=x.createImageData(w,h), H=hasil.data;
+  for(let j=0;j<h;j++){ const vy=Math.sin(Math.PI*(j+0.5)/h);
+    for(let i=0;i<w;i++){ const vx=Math.sin(Math.PI*(i+0.5)/w), a=Math.pow(Math.min(vx,vy),0.6), d=(j*w+i)*4;
+      for(let q=0;q<3;q++) H[d+q]=A[d+q]*a+G[d+q]*(1-a); H[d+3]=255; } }
+  x.putImageData(hasil,0,0);
+  return {data:c.toDataURL('image/jpeg',0.86), aspek:h/w};
+}
 /* Logam mengilap dan cermin tidak punya warna sendiri — yang terlihat adalah
    pantulannya. Tanpa lingkungan untuk dipantulkan ia tampak hitam, jadi
    bahan-bahan ini selalu diberi lingkungan studio, walau PBR dimatikan. */
@@ -6071,6 +6236,7 @@ function buildObject(o, lv){
   }
   // flip (cermin kiri–kanan): model dibungkus grup yang dicerminkan, jadi skala
   // grup luar tetap positif dan gizmo/skala tidak ikut terbalik
+  if((o.kind==='furn'||o.kind==='model') && o.params && o.params.tekstur) terapkanTekstur(g,o);
   if(o.flip && (o.kind==='furn'||o.kind==='model')){
     const w=new THREE.Group(); Object.assign(w.userData,g.userData); g.userData={};
     if(w.userData.lampuTitik) w.userData.lampuTitik=w.userData.lampuTitik.clone().setX(-w.userData.lampuTitik.x);
@@ -6610,6 +6776,7 @@ function renderInspector(){
     tombolFlip(ins,d);
     addTransformFields(ins,d,true);
     if(a) inspektorInteraksi(ins,d);
+    if(a) inspektorTekstur(ins,d);
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
       ins.appendChild(el('p','hint',`Ukuran terpasang ${fmt(sz,2)} × ${fmt(szz,2)} m, tinggi ${fmt(sy,2)} m.`));
@@ -6643,6 +6810,7 @@ function renderInspector(){
     };
     ins.appendChild(bw);
     tombolFlip(ins,d);
+    inspektorTekstur(ins,d);
     if(d.type==='piano'){ const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp); }
     if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
     addTransformFields(ins,d,true);
@@ -11453,15 +11621,109 @@ function sanitasiProyek(j){
   }
   const pilih=(o,bawaan,cek)=>{ const r={...bawaan}; if(o&&typeof o==='object') for(const k of Object.keys(bawaan)) if(o[k]!==undefined && cek(k,o[k])) r[k]=o[k]; return r; };
   const warna=v=>typeof v==='string'&&/^#[0-9a-f]{3,8}$/i.test(v);
+  // tekstur foto: foto sendiri hanya data:image (tanpa URL luar), Poly Haven hanya berupa id
+  const tekstur={};
+  for(const [k,t] of Object.entries(j.tekstur&&typeof j.tekstur==='object'?j.tekstur:{}).slice(0,TEKSTUR_BATAS.jumlah)){
+    if(!ID_AMAN.test(k)||!t||typeof t!=='object') continue;
+    if(t.sumber==='ph' && typeof t.ph==='string' && ID_AMAN.test(t.ph)) tekstur[k]={nama:teks(t.nama,120,t.ph)||t.ph, sumber:'ph', ph:t.ph, res:t.res==='2k'?'2k':'1k'};
+    else if(t.sumber==='foto' && typeof t.data==='string' && t.data.length<=TEKSTUR_BATAS.dataMB*1.4*1048576 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t.data))
+      tekstur[k]={nama:teks(t.nama,120,'foto')||'foto', sumber:'foto', data:t.data, aspek:angka(t.aspek,0.05,20,1)};
+  }
   return {
     name:teks(j.name,120,'Denah 3D')||'Denah 3D', pxPerMeter:angka(j.pxPerMeter,1,1e4,30), levels,
-    active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans,
+    active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans, tekstur,
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
     atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12)},
     site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6)},
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
 }
+/* ---------- INSPECTOR & PUSTAKA TEKSTUR FOTO (JEV-059) ---------- */
+const LABEL_BAHAN={kainSofa:'Kain sofa', kainAksen:'Bantal hias', kainKrem:'Kain krem', kainRanjang:'Kain ranjang & headboard', sprei:'Sprei & sarung bantal',
+  selimut:'Selimut', selendang:'Selendang', kasur:'Kasur', kayuVenir:'Kayu', kayuGelap:'Kayu gelap', wood:'Kayu', woodDark:'Kayu gelap', marmer:'Marmer',
+  porselen:'Porselen', stainless:'Stainless', krom:'Krom', fabric:'Kain', fabric2:'Kain kedua', white:'Putih', dark:'Gelap', cabinet:'Kabinet', cabinet2:'Kabinet terang',
+  velvet:'Beludru', velvet2:'Beludru kedua', linen:'Linen', leather:'Kulit', metal:'Logam', ceramic:'Keramik', quartz:'Batu'};
+function bahanAsli(d){
+  // daftar bagian diambil dari objek yang belum diberi tekstur (bahan foto tidak punya nama katalog)
+  const g = d.kind==='model' ? ASSET_OBJ.get(d.type) : (FURN[d.type] ? FURN[d.type].b() : null);
+  return g ? bahanDiObjek(g).map((b,i)=>namaBahan(b,i)) : [];
+}
+function inspektorTekstur(ins,d){
+  d.params=d.params||{};
+  ins.appendChild(el('div','section-title','Tekstur foto'));
+  const bagian=[...new Set(bahanAsli(d))];
+  fRow(ins,'Bagian',selInput([['','Otomatis — bagian terluas'],...bagian.map(k=>[k,LABEL_BAHAN[k]||k])],d.params.teksturBahan||'',v=>{
+    d.params.teksturBahan=v; HIST.label='Bagian tekstur'; rebuildScene(); }));
+  const t=d.params.tekstur&&PROJECT.tekstur[d.params.tekstur];
+  const row=el('div','row');
+  const bp=el('button','btn sm',t?'🖼 Ganti tekstur…':'🖼 Pilih tekstur foto…'); bp.onclick=()=>bukaTekstur(d.id); row.appendChild(bp);
+  if(t){ const bx=el('button','btn sm ghost','✕ Lepas'); bx.style.flex='0 0 auto';
+    bx.onclick=()=>{ delete d.params.tekstur; HIST.label='Lepas tekstur'; rebuildScene(); renderInspector(); }; row.appendChild(bx); }
+  ins.appendChild(row);
+  if(t){
+    ins.appendChild(el('p','hint',(t.sumber==='ph'?'Poly Haven (CC0): ':'Foto sendiri: ')+t.nama));
+    fRow(ins,'Ukuran pola (m)',numInput(+d.params.teksturSkala||0.6,0.05,v=>{ d.params.teksturSkala=clamp(v,0.05,10); rebuildScene(); },0.05,10));
+    const s=TEKSTUR.get(d.params.tekstur); if(s&&s.galat) ins.appendChild(el('div','badge warn','⚠ '+s.galat));
+  } else ins.appendChild(el('p','hint','Foto bahan sungguhan — kain, kulit, kayu, batu. Pola tidak berulang terlihat: tiap bagian digeser acak.'));
+}
+const TKS={target:null, daftar:null, kat:'kain', cari:''};
+const KAT_TEKSTUR=[['kain','🧵 Kain',/\b(fabric|cloth|textile|denim|linen|wool|velvet|carpet|rug|upholstery|knit|woven|jute|burlap)\b/],
+  ['kulit','👜 Kulit',/\b(leather)\b/], ['kayu','🪵 Kayu',/\b(wood|wooden|oak|walnut|pine|plank|planks|veneer|parquet|plywood|bamboo)\b/],
+  ['batu','🪨 Batu & marmer',/\b(marble|granite|stone|terrazzo|travertine|slate|tiles?|concrete|plaster)\b/],
+  ['logam','🔩 Logam',/\b(metal|steel|brass|copper|iron|aluminium|aluminum|rust|rusty|chrome)\b/], ['','Semua',null]];
+function bukaTekstur(id){
+  TKS.target=id; $('#teksturModal').hidden=false; renderKatTekstur();
+  if(TKS.daftar) return renderTekstur();
+  $('#teksturInfo').textContent='Memuat pustaka tekstur…';
+  fetch('https://api.polyhaven.com/assets?t=textures').then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(j=>{
+    TKS.daftar=Object.entries(j).filter(([k])=>ID_AMAN.test(k)).map(([k,a])=>({id:k, nama:teks(a&&a.name,80,k)||k,
+      kata:kataAset(k,a&&a.name||'',Array.isArray(a&&a.categories)?a.categories:[],Array.isArray(a&&a.tags)?a.tags:[]), unduh:+(a&&a.download_count)||0}))
+      .sort((a,b)=>b.unduh-a.unduh);
+    renderTekstur();
+  }).catch(e=>{ $('#teksturInfo').textContent='Pustaka Poly Haven tidak bisa dimuat ('+(e.message||e)+') — foto sendiri tetap bisa dipakai.'; });
+}
+function renderKatTekstur(){
+  const w=$('#teksturKat'); w.textContent='';
+  for(const [k,label] of KAT_TEKSTUR){ const b=el('button',null,label); b.type='button'; b.dataset.kat=k; b.setAttribute('aria-pressed',String(TKS.kat===k));
+    b.onclick=()=>{ TKS.kat=k; renderKatTekstur(); renderTekstur(); }; w.appendChild(b); }
+}
+function renderTekstur(){
+  const g=$('#teksturGrid'), q=TKS.cari.trim().toLowerCase(), pola=(KAT_TEKSTUR.find(x=>x[0]===TKS.kat)||[])[2];
+  const c=(TKS.daftar||[]).filter(a=>(!pola||pola.test(a.kata)) && (!q||a.kata.includes(q)));
+  g.textContent='';
+  for(const a of c.slice(0,120)){
+    const k=el('button','gl-card'); k.dataset.id=a.id; k.title=a.nama;
+    const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=`https://cdn.polyhaven.com/asset_img/thumbs/${a.id}.png?width=256&height=256`;
+    im.onerror=()=>{ im.style.visibility='hidden'; };
+    k.appendChild(im); k.appendChild(el('span',null,a.nama)); k.onclick=()=>pakaiTeksturPH(a); g.appendChild(k);
+  }
+  $('#teksturInfo').textContent=c.length?`${c.length} tekstur foto${c.length>120?' (120 pertama)':''} · ketuk untuk memasang ke objek terpilih`:(TKS.daftar?'Tidak ada tekstur yang cocok.':'');
+}
+function pasangTeksturKe(tid){
+  const o=PROJECT.levels.flatMap(l=>l.objects).find(x=>x.id===TKS.target); if(!o) return;
+  o.params=o.params||{}; o.params.tekstur=tid; if(!o.params.teksturSkala) o.params.teksturSkala=0.6;
+  HIST.label='Tekstur foto'; rebuildScene(); renderInspector();
+  $('#teksturModal').hidden=true; toast('Tekstur dipasang — atur "Ukuran pola" di inspector');
+}
+function pakaiTeksturPH(a){
+  const res=$('#teksturRes').value==='2k'?'2k':'1k', tid=('ph_'+a.id+'_'+res).slice(0,64);
+  PROJECT.tekstur[tid]={nama:a.nama, sumber:'ph', ph:a.id, res};
+  pasangTeksturKe(tid);
+}
+$('#teksturFotoBtn').onclick=()=>$('#teksturFoto').click();
+$('#teksturFoto').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  if(Object.keys(PROJECT.tekstur).length>=TEKSTUR_BATAS.jumlah) return toast('Batas '+TEKSTUR_BATAS.jumlah+' tekstur per proyek tercapai');
+  try{
+    $('#teksturInfo').textContent='Menyiapkan foto (dibuat mulus di tepinya)…';
+    const r=await fotoJadiTekstur(f), tid=uid('tx');
+    PROJECT.tekstur[tid]={nama:f.name.slice(0,120), sumber:'foto', data:r.data, aspek:r.aspek};
+    pasangTeksturKe(tid);
+  }catch(err){ $('#teksturInfo').textContent='Gagal: '+(err.message||err); }
+});
+$('#teksturTutup').onclick=()=>{ $('#teksturModal').hidden=true; };
+$('#teksturModal').addEventListener('click',e=>{ if(e.target.id==='teksturModal') $('#teksturModal').hidden=true; });
+$('#teksturCari').oninput=e=>{ TKS.cari=e.target.value; clearTimeout(TKS.t); TKS.t=setTimeout(renderTekstur,150); };
 $('#loadInput').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return; e.target.value='';
   if(f.size>BATAS_PROYEK.berkasMB*1048576) return toast(`Berkas proyek ${fmt(f.size/1048576,0)} MB melebihi batas ${BATAS_PROYEK.berkasMB} MB`);
@@ -11471,7 +11733,7 @@ $('#loadInput').addEventListener('change',e=>{
 });
 /* teks JSON (berkas) atau objek (rumah contoh) → proyek; atomik: gagal = proyek lama utuh */
 function muatProyekObjek(sumber){
-  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','finish','atap','site','langit'];
+  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','tekstur','finish','atap','site','langit'];
   const cadangan=Object.fromEntries(KUNCI.map(k=>[k,PROJECT[k]]));
   try{
     let j=sumber;
@@ -11535,7 +11797,7 @@ async function buatTautanLihat(){
   }
   // objek dari model yang ditinggal tidak ikut — penerima tidak boleh melihat kotak kosong
   const levels=PROJECT.levels.map(lv=>({...lv, objects:lv.objects.filter(o=>o.kind!=='model'||rujukan[o.type])}));
-  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan};
+  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur:PROJECT.tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan};
   const kode=b64url(await padatkan(JSON.stringify(isi)));
   return {url:location.origin+location.pathname+'#lihat='+kode, panjang:kode.length, ditinggal};
 }
