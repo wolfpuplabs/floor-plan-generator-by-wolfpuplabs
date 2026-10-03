@@ -77,9 +77,11 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | ID | Kebutuhan | JEV |
 |---|---|---|
 | I-01 | Katalog 122 objek dalam 15 kategori (kamar, ruang, dapur, kamar mandi, lampu, dekor, taman, dll.) dengan thumbnail 3D | JEV-004 |
+| I-01a | Kasur, sofa (2/3 dudukan, kursi santai, L), kloset, bathtub, wastafel, meja wastafel, shower, sink, kulkas, kompor & kitchen set **realistis**: tepi membulat, bantal menggembung, selimut menjuntai, kain ber-sheen dengan anyaman, porselen berglasir, keran krom, marmer, venir kayu, stainless disikat (semua prosedural, tanpa unduhan). Tetap di dalam tapak denah (±15 cm), ≤ 40 rb titik per objek | JEV-056 |
 | I-02 | Model sendiri `.glb` (≤ 20 MB) + collider otomatis | JEV-016 |
 | I-03 | Galeri model fotogrametri (Poly Haven, CC0), tekstur 1K/2K | JEV-031 |
 | I-03a | Sumber kedua: 14 model **produk nyata** terkurasi (sofa, kursi, pouf, lampu, tanaman, dekor, kulkas, mobil — Wayfair, DGG; CC0/CC-BY 4.0) dari Khronos glTF Sample Assets. Tiap berkas dikunci ke commit + **SHA-256 diverifikasi**; kursi/sofa langsung bisa diduduki, lampu langsung menyala; atribusi CC-BY disimpan di aset; lampu bawaan model dibuang | JEV-054 |
+| I-03b | **Pintasan ruangan** di galeri model realistis (Kamar tidur · Sofa & kursi · Kamar mandi · Dapur) untuk kedua sumber; dicocokkan per kata (bukan potongan huruf) | JEV-056 |
 | I-04 | Situs: tanah, rumput, kerikil, paving, kolam, setapak, pagar | JEV-012 |
 
 ### 5.4 Presentasi & realisme (P1)

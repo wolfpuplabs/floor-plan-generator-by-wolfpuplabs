@@ -62,27 +62,31 @@ export const tes = {
     assert.equal(ins, 'duduk');
   },
   'duduk di sofa katalog (bidik + E) lalu berdiri dengan berjalan; duduk di model': async (page) => {
+    // Bidikan & animasi duduk diperbarui per frame. WebGL software di CI butuh ±1,5–2,5 s
+    // per frame saat sofa memenuhi layar, jadi batas 10 s hanya ±5 frame — terlalu mepet
+    // (di main pun ±5 s lokal). Batas tunggu per frame dinaikkan; isi pemeriksaannya sama.
+    const TUNGGU = { timeout: 30000 };
     await siapkan(page);
     await page.evaluate(() => { enterFPS(); camera.position.set(0, 1.6, -0.6); FPS.feet = 0; FPS.yaw = Math.PI; FPS.pitch = -0.55; });
-    await page.waitForFunction(() => AIM && AIM.jenis === 'duduk', undefined, { timeout: 10000 });
+    await page.waitForFunction(() => AIM && AIM.jenis === 'duduk', undefined, TUNGGU);
     assert.equal(await page.evaluate(() => labelAksi(AIM)), 'Duduk');
     await page.keyboard.press('e');
-    await page.waitForFunction(() => FPS.duduk && FPS.duduk.t >= 1, undefined, { timeout: 10000 });     // animasi turun selesai
+    await page.waitForFunction(() => FPS.duduk && FPS.duduk.t >= 1, undefined, TUNGGU);     // animasi turun selesai
     const d = await page.evaluate(() => ({ y: camera.position.y, z: camera.position.z, yaw: FPS.yaw, duduk: !!FPS.duduk }));
     assert.ok(d.duduk, 'tidak duduk');
     assert.ok(Math.abs(d.y - (0.42 + 0.72)) < 0.03, 'tinggi mata duduk ' + d.y);
     assert.ok(Math.abs(d.z - (-2.5 + 0.06)) < 0.05, 'posisi dudukan ' + d.z);
     assert.ok(Math.abs(d.yaw) < 0.01, 'harus menghadap depan sofa (+z), yaw ' + d.yaw);
     // dari sofa: tombol aksi menjadi "Berdiri" saat tidak membidik apa pun
-    await page.evaluate(() => { FPS.pitch = 0.6; }); await page.waitForTimeout(300);
-    assert.equal(await page.evaluate(() => labelAksi(AIM)), 'Berdiri');
-    await page.keyboard.down('w'); await page.waitForTimeout(150); await page.keyboard.up('w');
+    await page.evaluate(() => { FPS.pitch = 0.6; });
+    await page.waitForFunction(() => labelAksi(AIM) === 'Berdiri', undefined, TUNGGU);
+    await page.keyboard.down('w'); await page.waitForFunction(() => !FPS.duduk, undefined, TUNGGU); await page.keyboard.up('w');
     const b = await page.evaluate(() => ({ duduk: !!FPS.duduk, y: camera.position.y }));
     assert.equal(b.duduk, false);
     assert.ok(b.y > 1.5, 'kembali berdiri, y ' + b.y);
     // model kategori duduk
     await page.evaluate(() => { const g = findGroup('obj', 'mDuduk'); pakai({ jenis: 'duduk', id: 'mDuduk', grp: g, titik: g.position.clone() }); });
-    await page.waitForFunction(() => FPS.duduk && FPS.duduk.t >= 1, undefined, { timeout: 10000 });
+    await page.waitForFunction(() => FPS.duduk && FPS.duduk.t >= 1, undefined, TUNGGU);
     const m = await page.evaluate(() => ({ y: camera.position.y, x: camera.position.x, duduk: FPS.duduk && FPS.duduk.id }));
     assert.equal(m.duduk, 'mDuduk');
     assert.ok(Math.abs(m.y - (0.45 + 0.72)) < 0.03, 'mata di model ' + m.y);
