@@ -52,7 +52,9 @@ Override hanya oleh pemilik produk, tercatat (`override: {verdict, alasan, oleh,
 
 ## Gerbang otomatis
 
-CI menjalankan `node tools/jev.mjs check` di setiap PR: deskripsi/judul PR **wajib** menyebut ≥ 1 `JEV-###`, dan setiap id yang disebut harus ber-verdict **GO**. Jadi go/no-go terjadi sejak awal, sebelum kode masuk.
+CI menjalankan `node tools/jev.mjs check` di setiap PR. PR **wajib** mengajukan ≥ 1 `JEV-###`, dan setiap item yang diajukan harus ber-verdict **GO**. Jadi go/no-go terjadi sejak awal, sebelum kode masuk.
+
+Yang dihitung sebagai **diajukan**: id di judul PR, semua id pada baris `- Item: …`, dan id yang membuka butir daftar (`- **JEV-049** …`). Id yang disebut di tengah kalimat (mis. "audio katalog tetap NO-GO (JEV-015)") hanya konteks dan tidak digerbang. Bila PR tidak memakai format daftar sama sekali, semua id yang disebut ikut digerbang.
 
 ## Kalibrasi (penting)
 

@@ -1452,6 +1452,167 @@
     "target": "≥ 50%",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-049",
+   "judul": "Duduk di kursi/sofa di mode jalan (katalog + model unggahan)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Mode jalan hanya berdiri; klien tidak bisa merasakan pandangan dari sofa/meja makan — sudut pandang yang paling sering ditanyakan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"kasih interaksi duduk di kursi … opsi interaktif light category atau audio category di object yg di upload\"",
+    "alternatif": [
+     "kamera \"mata\" manual setinggi duduk"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.004
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol aksi sentuh + E; berdiri dengan E/gerak"
+    }
+   },
+   "metrik": {
+    "nama": "% sesi mode jalan yang memakai duduk",
+    "target": "≥ 20%",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-050",
+   "judul": "Model unggahan kategori Lampu: cahaya dibangkitkan + nyala/padam",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Lampu desainer yang diunggah (.glb) tidak memancarkan cahaya — ruangan malam tetap gelap dan render malam tidak bisa dipakai.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"kasih interaksi duduk di kursi … opsi interaktif light category atau audio category di object yg di upload\"",
+    "alternatif": [
+     "taruh lampu katalog tak terlihat di posisi yang sama (manual, rapuh)"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.004
+     },
+     "waktu": {
+      "jangkauan": 0.2,
+      "pakaiPerTahun": 4,
+      "menitHemat": 10
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "memakai kolam cahaya lampu yang ada (jumlah lampu berbayang dibatasi)"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "% model unggahan yang diberi kategori Lampu",
+    "target": "≥ 10%",
+    "tinjau": "2027-01-03"
+   }
+  },
+  {
+   "id": "JEV-051",
+   "judul": "Model unggahan kategori Audio: putar musik / piano",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model speaker/piano yang diunggah tidak bisa dimainkan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"kasih interaksi duduk di kursi … opsi interaktif light category atau audio category di object yg di upload\"",
+    "alternatif": [
+     "pakai objek audio/piano katalog"
+    ]
+   },
+   "E": {
+    "peluang": 0.5,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.08,
+      "upliftMenang": 0.002
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "catatan": "Kategori audio/piano sendiri ber-verdict NO-GO (JEV-015/018). Item ini hanya MEMAKAI ULANG mesin yang sudah ada — biayanya kecil.",
+   "metrik": {
+    "nama": "% model unggahan berkategori Audio/Piano yang dimainkan di mode jalan",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }

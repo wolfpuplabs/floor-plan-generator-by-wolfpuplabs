@@ -81,6 +81,19 @@ function validasi() {
   return galat;
 }
 
+// Item yang DIAJUKAN sebuah PR: id di judul, semua id pada baris "- Item: …", dan id yang
+// membuka butir daftar ("- **JEV-049** …"). Id yang disebut di tengah kalimat hanyalah
+// konteks (mis. "audio katalog tetap NO-GO (JEV-015)") dan tidak ikut digerbang.
+export function idDiajukan(body, judul) {
+  const ids = new Set(judul.match(/JEV-\d{3}/g) || []);
+  for (const baris of body.split(/\r?\n/)) {
+    if (/^\s*[-*]\s*\**\s*item\s*\**\s*:/i.test(baris)) for (const id of baris.match(/JEV-\d{3}/g) || []) ids.add(id);
+    else { const m = baris.match(/^\s*[-*]\s*\**\s*(JEV-\d{3})/); if (m) ids.add(m[1]); }
+  }
+  if (!ids.size) for (const id of body.match(/JEV-\d{3}/g) || []) ids.add(id);   // PR tanpa format daftar
+  return [...ids];
+}
+
 const cmd = process.argv[2] || 'report';
 if (cmd === 'hitung') {
   const it = reg.item.find(x => x.id === process.argv[3]); if (!it) { console.error('id tidak ada'); process.exit(1); }
@@ -111,7 +124,7 @@ if (cmd === 'hitung') {
   // gerbang PR: badan PR wajib menyebut ≥1 JEV-### dan semuanya ber-verdict GO
   const body = process.env.PR_BODY || '';
   if (process.env.JEV_GERBANG === '1' || process.argv.includes('--pr')) {
-    const ids = [...new Set((body + ' ' + (process.env.PR_TITLE || '')).match(/JEV-\d{3}/g) || [])];
+    const ids = idDiajukan(body, process.env.PR_TITLE || '');
     if (!ids.length) galat.push('PR tidak merujuk item JEV (tulis mis. "JEV-045" di deskripsi PR). Tambahkan item ke docs/jev/registry.json bila belum ada.');
     for (const id of ids) {
       const it = reg.item.find(x => x.id === id);

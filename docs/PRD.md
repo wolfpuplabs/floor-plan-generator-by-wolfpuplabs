@@ -92,6 +92,8 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | R-04a | **Pilih sendiri** (bawaan): daftar urut, ◀ ▶, galeri bergambar dengan saringan lanskap/waktu/kata; pratinjau 1K lalu resolusi penuh; mode **Acak** hanya bila dinyalakan; pilihan terakhir diingat | JEV-048 |
 | R-05 | Mode jalan orang-pertama: WASD/joystick sentuh, tangga, tabrakan, lensa | JEV-007 |
 | R-06 | Interaksi: pintu, lampu, gorden, TV | JEV-014 |
+| R-06a | **Duduk** di kursi/sofa/bangku katalog & model unggahan berkategori Duduk: mata turun ±72 cm di atas dudukan, menghadap depan kursi, dudukan sofa terdekat dengan titik bidik; berdiri dengan E/tombol/berjalan | JEV-049 |
+| R-06b | Model unggahan punya **kategori interaksi**: Lampu (cahaya dibangkitkan di titik cahaya yang bisa diatur, bagian kaca/kap/emissive menyala, lumen + saran SNI), Audio (CD/kaset/piringan hitam/kotak musik), Piano, Duduk (tinggi dudukan & arah hadap) | JEV-050, JEV-051 |
 | R-07 | SFX langkah/pintu (P2) · musik CD/kaset/piringan hitam, api perapian, piano (**NO-GO** di JEV, dibekukan: perbaikan bug saja) | JEV-015/017/018/019 |
 
 ### 5.5 Berkas & berbagi (P0/P1)

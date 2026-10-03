@@ -4398,6 +4398,16 @@ const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table
   kitchen_line:'lampu',kitchen_l2:'lampu',kitchen_u:'lampu',kitchen_par:'lampu',kitchen_isl:'lampu',
   fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
   music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio', piano:'piano', lampu_taman:'lampu'};
+/* TEMPAT DUDUK (mode jalan): tinggi dudukan (m), jumlah dudukan berjajar
+   sepanjang x lokal, geser z dudukan. Semua perabot menghadap +z lokal
+   (sandaran di −z), jadi orang yang duduk memandang ke +z. */
+const DUDUK={sofa2:{h:0.42,n:2,z:0.06}, sofa3:{h:0.42,n:3,z:0.06}, armchair:{h:0.42,z:0.06}, sofa_l:{h:0.42,n:3,z:-0.36},
+  chair:{h:0.47}, office_chair:{h:0.5}, bar_stool:{h:0.75}, bench:{h:0.5,n:2}, rattan_chair:{h:0.47,z:0.04},
+  bangku_taman:{h:0.45,n:2}, ayunan:{h:0.5,n:2}, kursi_jemur:{h:0.38}};
+for(const k of Object.keys(DUDUK)) NYALA_JENIS[k]='duduk';
+/* model unggahan memilih sendiri perannya di mode jalan (inspector → Interaksi) */
+const INTERAKSI_MODEL={duduk:'🪑 Duduk — kursi/sofa', lampu:'💡 Lampu — nyala/padam (cahaya dibangkitkan)', audio:'🔊 Audio — putar musik', piano:'🎹 Piano — mainkan'};
+function jenisNyala(o){ if(o.kind==='model'){ const v=o.params&&o.params.interaksi; return INTERAKSI_MODEL[v]?v:null; } return NYALA_JENIS[o.type]; }
 const KUAT_LAMPU={chandelier:1.6,pendant:1.1,pendant_trio:1.4,table_lamp:0.6,night_lamp:0.6,arc_lamp:0.9,wall_sconce:0.55,
   floor_lamp:0.8,kitchen_line:0.8,kitchen_l2:0.8,kitchen_u:0.8,kitchen_par:0.8,kitchen_isl:0.9,fire_modern:1.3,fire_classic:1.3,wood_stove:0.9};
 /* TERANG LAMPU DALAM LUMEN — nilai bawaan = lampu LED rumahan yang umum dijual
@@ -4411,7 +4421,7 @@ const LUMEN_STD={chandelier:4000,pendant:2800,pendant_trio:3500,table_lamp:1400,
 // angka ini dikalibrasi agar hasil hitungan SNI tampak wajar, bukan menyilaukan
 const LM_PER_KUAT=3000;
 function lumenLampu(o){ const v=o.params&&+o.params.lumen; return v>0 ? v : (LUMEN_STD[o.type]||1600); }
-function kuatLampu(o){ return NYALA_JENIS[o.type]==='lampu' ? lumenLampu(o)/LM_PER_KUAT : (KUAT_LAMPU[o.type]||0.8); }
+function kuatLampu(o){ return jenisNyala(o)==='lampu' ? lumenLampu(o)/LM_PER_KUAT : (KUAT_LAMPU[o.type]||0.8); }
 /* Kebutuhan terang menurut SNI 6197:2011 (rumah tinggal, lux) & metode lumen:
    Φ total = E × A / (CU × MF), CU ≈ 0,75 (armatur LED modern, dinding terang), MF = 0,8. */
 const SNI_LUX={tidur:{l:'Kamar tidur',e:150,r:'120–250'}, tamu:{l:'Ruang tamu/keluarga',e:150,r:'120–150'},
@@ -4501,8 +4511,9 @@ const HALO={
   api  : new THREE.SpriteMaterial({color:0xff8a3a, transparent:true, opacity:.55, blending:THREE.AdditiveBlending, depthWrite:false})
 };
 function hiasNyala(g,o){
-  const jenis=NYALA_JENIS[o.type]; if(!jenis) return;
+  const jenis=jenisNyala(o); if(!jenis) return;
   g.userData.nyalaJenis=jenis;
+  if(jenis==='duduk'){ const D=DUDUK[o.type]; g.userData.duduk={h:D.h, n:D.n||1, z:D.z||0, w:(FURN[o.type]&&FURN[o.type].f[0])||0.5}; return; }
   if(jenis==='lampu'||jenis==='api'){
     if(!HALO.lampu.map){ HALO.lampu.map=haloTex('rgba(255,255,255,1)'); HALO.api.map=HALO.lampu.map; }
     const api=fireMat(), bulbs=[];
@@ -4539,9 +4550,48 @@ function terapkanNyala(g,on){
     if(m.userData.halo) m.visible=on;
     else if(m.isMesh && m.userData.nyala){
       const asli=m.userData.nyala;
-      m.material = on ? asli : asli===MAT.shade ? MAT.shadeOff : asli===MAT.glow ? MAT.glowOff : MAT.firebox;
+      m.material = on ? asli : m.userData.nyalaOff ? m.userData.nyalaOff : asli===MAT.shade ? MAT.shadeOff : asli===MAT.glow ? MAT.glowOff : MAT.firebox;
     }
   });
+}
+/* MODEL UNGGAHAN ber-interaksi. Lampu: bagian yang tampak seperti sumber cahaya
+   (material emissive, atau bernama bulb/shade/glass/led/…) diberi versi menyala;
+   titik cahaya di tengah bagian itu — atau setinggi "titik cahaya" pilihan
+   pengguna — lalu ikut kolam lampu berbayang seperti lampu katalog. */
+const NYALA_MODEL_MAT=new Map();
+function matNyalaModel(m){
+  let r=NYALA_MODEL_MAT.get(m.uuid);
+  if(!r){ r=m.clone(); if(r.emissive){ if(r.emissive.getHex()===0 && !r.emissiveMap) r.emissive.setHex(0xffd9a3); r.emissiveIntensity=Math.max(r.emissiveIntensity||0,1.4); }
+    NYALA_MODEL_MAT.set(m.uuid,r); }
+  return r;
+}
+function hiasModel(g,o){
+  const jenis=jenisNyala(o); if(!jenis) return;
+  const p=o.params||{};
+  g.userData.nyalaJenis=jenis;
+  if(jenis==='audio'){ g.userData.audioJenis=['music_box','cd_player','cassette_player','vinyl_player'].includes(p.audioJenis)?p.audioJenis:'music_box'; return; }
+  if(jenis==='duduk'){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||0.45,0.15,1.2), arah:+p.arahDuduk||0}; return; }
+  if(jenis!=='lampu') return;
+  g.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(g); if(bb.isEmpty()) return;
+  const bohlam=[];
+  g.traverse(m=>{ if(!m.isMesh || Array.isArray(m.material)) return;
+    const mt=m.material, nm=((m.name||'')+' '+(mt.name||'')).toLowerCase();
+    const emis=mt.emissive && (mt.emissive.getHex()!==0 || mt.emissiveMap);
+    if(emis || /bulb|bohlam|shade|kap|glass|kaca|emiss|led|neon|lumin|light/.test(nm)) bohlam.push(m); });
+  for(const m of bohlam){ m.userData.nyalaOff=m.material; m.userData.nyala=matNyalaModel(m.material); }
+  let c;
+  if(p.titikCahaya!=null || !bohlam.length){
+    const t=clamp(p.titikCahaya!=null?+p.titikCahaya:0.8,0,1), cc=bb.getCenter(new THREE.Vector3());
+    c=new THREE.Vector3(cc.x, bb.min.y+(bb.max.y-bb.min.y)*t, cc.z);
+  } else { c=new THREE.Vector3(); const b2=new THREE.Box3(); for(const m of bohlam) c.add(b2.setFromObject(m).getCenter(new THREE.Vector3())); c.multiplyScalar(1/bohlam.length); }
+  if(!HALO.lampu.map){ HALO.lampu.map=haloTex('rgba(255,255,255,1)'); HALO.api.map=HALO.lampu.map; }
+  const sp=new THREE.Sprite(HALO.lampu), uk=clamp(Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z)*0.8,0.3,1.0);
+  sp.scale.set(uk,uk,1); sp.position.copy(c); sp.userData={noExport:true, halo:true}; sp.raycast=()=>{}; sp.renderOrder=5; g.add(sp);
+  g.userData.lampuTitik=c;
+  const bx=new THREE.Box3();
+  g.traverse(m=>{ if(m.isMesh && (m.userData.nyala || bx.setFromObject(m).expandByScalar(0.08).containsPoint(c))) m.castShadow=false; });
+  terapkanNyala(g,!MATI.has(o.id));
 }
 function terapkanTV(g,on){
   if(!MAT.screenOn) MAT.screenOn=new THREE.MeshStandardMaterial({color:0x111111, roughness:.2, emissive:0xffffff, emissiveMap:artTex(1), emissiveIntensity:.85});
@@ -5497,6 +5547,7 @@ function buildObject(o, lv){
   else if(o.kind==='model'){
     const tpl=ASSET_OBJ.get(o.type);
     g = tpl ? tpl.clone(true) : missingModelBox();
+    if(tpl) hiasModel(g,o);
   }
   else {
     const def=FURN[o.type];
@@ -5735,6 +5786,31 @@ function commitGizmo(){
    INSPECTOR
    ====================================================================== */
 /* terang lampu: lumen manual, atau dihitung dari luas & jenis ruang (SNI 6197) */
+/* model unggahan: peran di mode jalan — duduk, lampu, audio, atau piano */
+function inspektorInteraksi(ins,d){
+  d.params=d.params||{};
+  ins.appendChild(el('div','section-title','Interaksi (mode jalan)'));
+  const ubah=(lbl,fn)=>{ fn(); HIST.label=lbl; rebuildScene(); renderInspector(); };
+  fRow(ins,'Kategori',selInput([['','Tidak ada'],...Object.entries(INTERAKSI_MODEL)],jenisNyala(d)||'',v=>ubah('Interaksi model',()=>{ if(v) d.params.interaksi=v; else delete d.params.interaksi; })));
+  const j=jenisNyala(d);
+  if(j==='duduk'){
+    fRow(ins,'Tinggi dudukan (m)',numInput(+d.params.tinggiDuduk||0.45,0.01,v=>ubah('Tinggi dudukan',()=>{ d.params.tinggiDuduk=clamp(v,0.15,1.2); }),0.15,1.2));
+    fRow(ins,'Arah hadap',selInput([['0','Depan model (+Z)'],['90','Kanan (+X)'],['180','Belakang (−Z)'],['270','Kiri (−X)']],String(+d.params.arahDuduk||0),v=>ubah('Arah duduk',()=>{ d.params.arahDuduk=+v; })));
+    ins.appendChild(el('p','hint','Di mode jalan, bidik model ini lalu tekan E / ketuk Duduk. Bila pandangan menghadap sandaran, ganti Arah hadap.'));
+  } else if(j==='lampu'){
+    const t=d.params.titikCahaya!=null?+d.params.titikCahaya:0.8;
+    const r=document.createElement('input'); r.type='range'; r.min=0; r.max=1; r.step=0.01; r.value=t;
+    r.onchange=()=>ubah('Titik cahaya',()=>{ d.params.titikCahaya=+r.value; });
+    fRow(ins,'Titik cahaya',r);
+    ins.appendChild(el('p','hint','Tinggi sumber cahaya dari dasar (0) ke puncak (1) model: lampu gantung ±0,2 · lampu meja ±0,75 · lampu lantai ±0,9. Bagian bernama bulb/shade/glass atau ber-emissive ikut menyala.'));
+    inspektorCahaya(ins,d);
+  } else if(j==='audio'){
+    fRow(ins,'Jenis suara',selInput(Object.entries(AUDIO_JENIS).map(([k,v])=>[k,v[0].toUpperCase()+v.slice(1)]),AUDIO_JENIS[d.params.audioJenis]?d.params.audioJenis:'music_box',v=>ubah('Jenis suara',()=>{ d.params.audioJenis=v; })));
+    ins.appendChild(el('p','hint','Di mode jalan: bidik lalu E untuk memutar/menghentikan musik (dibuat langsung, suaranya mengikuti posisi model).'));
+  } else if(j==='piano'){
+    const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp);
+  }
+}
 function inspektorCahaya(ins,d){
   ins.appendChild(el('div','section-title','Cahaya'));
   const lm=lumenLampu(d), manual=!!(d.params&&d.params.lumen);
@@ -6021,6 +6097,7 @@ function renderInspector(){
         + (a.fit!==1 ? ` (sudah diskalakan otomatis ×${fmt(a.fit,3)})` : '')));
     tombolFlip(ins,d);
     addTransformFields(ins,d,true);
+    if(a) inspektorInteraksi(ins,d);
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
       ins.appendChild(el('p','hint',`Ukuran terpasang ${fmt(sz,2)} × ${fmt(szz,2)} m, tinggi ${fmt(sy,2)} m.`));
@@ -11565,6 +11642,17 @@ function fpsStep(dt){
                               Math.cos(FPS.yaw)*Math.cos(FPS.pitch));
   camera.lookAt(camera.position.clone().add(dir));
 
+  if(FPS.duduk){
+    const gerak=['w','s','a','d','arrowup','arrowdown','arrowleft','arrowright'].some(k=>FPS.keys.has(k)) || (FPS.move && Math.hypot(FPS.move.f,FPS.move.s)>0.3);
+    if(gerak) berdiri();
+    else {
+      const D=FPS.duduk; D.t=Math.min(1,D.t+dt/0.35); const k=D.t*D.t*(3-2*D.t);
+      camera.position.lerpVectors(D.dari,D.mata,k);
+      stepBidik(dt);
+      return;
+    }
+  }
+
   // arah jalan di bidang datar
   let f=0,s=0;
   if(FPS.keys.has('w')||FPS.keys.has('arrowup')) f+=1;
@@ -11626,6 +11714,45 @@ function fpsStep(dt){
 /* ---------- bidik & pakai: pintu, jendela, lampu, TV, api, gorden ---------- */
 const aimRay=new THREE.Raycaster();
 let AIM=null, AIM_T=0;
+/* ---------- DUDUK — kamera turun ke mata orang duduk (±72 cm di atas dudukan),
+   menghadap depan kursi; menoleh tetap bebas. Berdiri dengan E / tombol aksi,
+   atau langsung berjalan. Dudukan sofa dipilih yang terdekat dengan titik bidik. */
+const MATA_DUDUK=0.72;
+function titikDuduk(t){
+  const g=t.grp, D=g.userData.duduk||{h:0.45}; g.updateMatrixWorld(true);
+  if(D.model){
+    const bb=new THREE.Box3().setFromObject(g), c=bb.getCenter(new THREE.Vector3()), a=D.arah*D2R;
+    const arah=new THREE.Vector3(Math.sin(a),0,Math.cos(a)).transformDirection(g.matrixWorld); arah.y=0; arah.normalize();
+    return {pos:new THREE.Vector3(c.x,bb.min.y+D.h,c.z).addScaledVector(arah,0.04), arah};
+  }
+  let best=null;
+  for(let i=0;i<D.n;i++){
+    const x=D.n>1 ? ((i+0.5)/D.n-0.5)*D.w*0.8 : 0;
+    const p=g.localToWorld(new THREE.Vector3(x,D.h,D.z));
+    const d=t.titik ? Math.hypot(p.x-t.titik.x,p.z-t.titik.z) : i;
+    if(!best||d<best.d) best={d,pos:p};
+  }
+  const arah=new THREE.Vector3(0,0,1).transformDirection(g.matrixWorld); arah.y=0; arah.normalize();
+  return {pos:best.pos, arah};
+}
+function duduk(t){
+  const s=titikDuduk(t); if(!s) return;
+  if(FPS.duduk) berdiri();
+  FPS.duduk={id:t.id, dari:camera.position.clone(), mata:s.pos.clone().setY(s.pos.y+MATA_DUDUK), t:0,
+             asal:{x:camera.position.x, z:camera.position.z, feet:FPS.feet}};
+  FPS.yaw=Math.atan2(s.arah.x,s.arah.z); FPS.pitch=-0.06;
+  FPS.keys.clear(); if(FPS.move){ FPS.move.f=0; FPS.move.s=0; }
+  if(typeof sfx==='function') sfx('gorden',s.pos);
+  FPS.info='<b>Duduk</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk berdiri');
+  $('#fpsinfo').innerHTML=FPS.info;
+}
+function berdiri(){
+  const D=FPS.duduk; if(!D) return;
+  FPS.duduk=null; FPS.feet=D.asal.feet; FPS.vy=0;
+  camera.position.set(D.asal.x, D.asal.feet+FPS.eye, D.asal.z);
+  FPS.info=''; AIM_T=0;
+}
+
 function cariTarget(ray){
   ray.far=3.2;
   const hits=ray.intersectObject(worldRoot,true);
@@ -11638,7 +11765,7 @@ function cariTarget(ray){
       if(n.userData.op){ const o=OPS.get(n.userData.op); return (o && BUKA_AWAL[o.type]!=null) ? {jenis:'bukaan', o} : null; }
       if(n.userData.kind==='obj'){
         if(!n.userData.nyalaJenis) return null;
-        return {jenis:n.userData.nyalaJenis, id:n.userData.id, grp:n};
+        return {jenis:n.userData.nyalaJenis, id:n.userData.id, grp:n, titik:h.point.clone()};
       }
       if(n.userData.kind==='wall') return null;
       n=n.parent;
@@ -11659,11 +11786,15 @@ function labelAksi(t){
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
+  if(t.jenis==='duduk') return FPS.duduk&&FPS.duduk.id===t.id?'Berdiri':'Duduk';
+  if(t.jenis==='berdiri') return 'Berdiri';
   return '';
 }
 function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind==='obj' && n.userData.id===id) out.push(n); }); return out; }
 function pakai(t){
-  if(!t) return;
+  if(!t){ if(FPS.duduk) berdiri(); return; }
+  if(t.jenis==='berdiri'){ berdiri(); return; }
+  if(t.jenis==='duduk'){ if(FPS.duduk&&FPS.duduk.id===t.id) berdiri(); else duduk(t); AIM_T=0; return; }
   if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
   sfxAksi(t);
   if(t.jenis==='bukaan'){ BUKA.set(t.o.id, bukaan(t.o)>0.5?0:1); }
@@ -11682,6 +11813,7 @@ function stepBidik(dt){
   AIM_T-=dt; if(AIM_T>0) return; AIM_T=0.1;
   aimRay.setFromCamera({x:0,y:0},camera);
   AIM=cariTarget(aimRay);
+  if(!AIM && FPS.duduk) AIM={jenis:'berdiri'};
   const lbl=labelAksi(AIM), b=$('#fpsAct');
   $('#fpsAim').classList.toggle('on',!!AIM);
   if(!AIM){ b.hidden=true; return; }
@@ -11799,6 +11931,7 @@ function enterFPS(){
 function exitFPS(){
   if(!FPS.on) return;
   hentikanSemuaMusik();                      // musik hanya bagian dari mode jalan
+  FPS.duduk=null;
   FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
   if(PIANO.buka) tutupPiano();
   rebuildScene();                            // kembali ke tampilan editor
