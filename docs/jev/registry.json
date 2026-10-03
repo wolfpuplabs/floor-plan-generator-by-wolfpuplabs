@@ -1718,6 +1718,61 @@
     "target": "0",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-054",
+   "judul": "Sumber aset realistis kedua: furnitur produk nyata (Wayfair, DGG) via Khronos glTF Sample Assets",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Poly Haven minim furnitur rumah (sofa, kursi berlapis kain, lampu desainer); pengguna meminta sumber aset realistis tambahan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"tambahin resource realistic assetnya\"",
+    "alternatif": [
+     "Sketchfab (perlu akun/OAuth)",
+     "ambientCG (material, sedikit model)"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.008
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "katalog terkurasi: tiap GLB dikunci ke commit + SHA-256 diverifikasi sebelum dipakai; lampu bawaan model dibuang"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "hanya CC0 / CC-BY 4.0; atribusi CC-BY disimpan di aset & ditampilkan; model NC (IKEA) dan Sponza dikeluarkan"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "≤ 12 MB per model, diuji termuat dengan loader r128"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "% proyek yang memakai ≥ 1 model produk nyata",
+    "target": "≥ 15%",
+    "tinjau": "2027-01-03"
+   }
   }
  ]
 }

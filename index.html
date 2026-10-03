@@ -501,7 +501,7 @@ details#adv>*:not(summary){margin-bottom:8px}
       <div class="section-title">Model Sendiri (.glb)</div>
       <div class="group"><label>Unggah model</label>
         <input type="file" id="glbInput" multiple></div>
-      <button class="btn sm" id="galeriBuka" title="Kursi, meja, sofa, lampu, tanaman, hiasan — dipindai dari benda asli">🌐 Model fotogrametri realistis (Poly Haven)</button>
+      <button class="btn sm" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)">🌐 Model realistis (fotogrametri & produk nyata)</button>
       <div id="model-list" class="group"></div>
       <p class="hint">Terima <b>.glb</b> (glTF biner) dan <b>.gltf</b> yang sudah memuat datanya sendiri. Berkasnya ikut tersimpan di dalam proyek, jadi tetap terbawa saat dibuka di komputer lain — ukuran proyek ikut membesar. Satuan glTF adalah meter; model yang jauh di luar ukuran perabot diskalakan sekali ke 1 m dan bisa disesuaikan di inspector. Batas 20 MB per berkas. Berkas juga bisa dijatuhkan langsung ke viewport.</p>
       <p class="hint">Di iPhone/iPad, pilih berkasnya lewat <b>Browse</b> di aplikasi Files — daftar berkas sengaja tidak disaring, sebab iOS mengunci berkas .glb bila penyaringnya dipasang.</p>
@@ -638,7 +638,8 @@ details#adv>*:not(summary){margin-bottom:8px}
       <p class="hint" id="plInfo"></p>
     </div></div>
     <div id="galeri" class="gl-modal" hidden><div class="gl-box">
-      <div class="gl-head"><b>🌐 Model fotogrametri — dipindai dari benda asli · Poly Haven (CC0)</b>
+      <div class="gl-head"><b>🌐 Model realistis — fotogrametri & produk nyata</b>
+        <select id="galeriSumber" title="Sumber model"><option value="ph">📷 Poly Haven — fotogrametri (CC0)</option><option value="khr">🛋 Produk nyata — Wayfair dkk. (CC0/CC-BY)</option></select>
         <input type="search" id="galeriCari" placeholder="Cari: chair, sofa, plant, lamp…">
         <select id="galeriKat"><option value="semua">Semua</option></select>
         <select id="galeriRes"><option value="1k">Tekstur 1K — ringan</option><option value="2k">Tekstur 2K — lebih detail</option></select>
@@ -6310,6 +6311,10 @@ function bufFromB64(b64){
    di luar nalar perabot (mis. model bersatuan sentimeter) diskalakan sekali
    ke 1 m dan pemakainya diberi tahu. */
 function prepareAssetObject(root){
+  // GUARDRAIL: lampu & kamera bawaan berkas glTF (KHR_lights_punctual) dibuang —
+  // kalau tidak, tiap model menambah cahaya tak terduga (dan beban) ke seluruh adegan
+  const buang=[]; root.traverse(n=>{ if(n.isLight||n.isCamera) buang.push(n); });
+  for(const n of buang) if(n.parent) n.parent.remove(n);
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   const maxD=Math.max(size.x,size.y,size.z);
   let fit=1;
@@ -10454,7 +10459,7 @@ function renderCatalogs(){
     const a=PROJECT.assets[id], row=el('div','row');
     const badd=el('button','btn sm model-btn');
     badd.innerHTML=ikonObjek('model',id)+'<span></span>'; badd.lastChild.textContent=a.name;
-    badd.title=`${(a.dims||[]).map(v=>fmt(v,2)).join(' × ')} m · ${fmt(a.size/1024,0)} KB`
+    badd.title=`${(a.dims||[]).map(v=>fmt(v,2)).join(' × ')} m · ${fmt(a.size/1024,0)} KB`+(a.lisensi?' · '+a.lisensi:'')
              + (ASSET_OBJ.has(id)?'':' · berkas gagal diurai');
     badd.onclick=()=>addObject('model',id);
     const bdel=el('button','btn sm danger','×');
@@ -10617,7 +10622,60 @@ async function importModelFiles(files){
    (tanpa kompres ulang tekstur), lalu masuk pustaka model seperti unggahan
    sendiri — ikut tersimpan di proyek, dapat collider otomatis.
    ====================================================================== */
-const GALERI={daftar:null, kat:'semua', cari:'', sibuk:false};
+const GALERI={daftar:null, kat:'semua', cari:'', sibuk:false, sumber:'ph'};
+/* PRODUK NYATA — model furnitur dari pabrikan (Wayfair, DGG, …) di Khronos glTF
+   Sample Assets. Katalog TERKURASI: tiap berkas dikunci ke satu commit dan
+   diverifikasi SHA-256 setelah diunduh — yang dipasang pasti sama dengan yang
+   sudah diuji termuat dengan three r128. Hanya CC0 / CC-BY 4.0 (atribusi ikut
+   disimpan di aset); model non-komersial sengaja tidak dimasukkan. */
+const KHR_COMMIT='edc7c9e67c639d230715049ee31f9a96a6babbbe';
+const KHR_DASAR='https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@'+KHR_COMMIT+'/Models/';
+const KATALOG_PRODUK=[
+  {id:'GlamVelvetSofa',          nama:'Sofa beludru glam',            kat:'Sofa & kursi', lisensi:'CC-BY 4.0 — Wayfair, LLC',            sha:'67202c74a1a33377771f162dc7fad612a6c9bd51ee15124c488e9851d9ac5266', b:3149844, p:{interaksi:'duduk',tinggiDuduk:0.45}},
+  {id:'SheenWoodLeatherSofa',    nama:'Sofa kayu & kulit',            kat:'Sofa & kursi', lisensi:'CC-BY 4.0 / CC0 — Darmstadt Graphics Group', sha:'5349e042ad41e695e89f1110230c4ee0c75b2bc62ef830c7016be6ecf665bfb6', b:10107912, p:{interaksi:'duduk',tinggiDuduk:0.45}},
+  {id:'SheenChair',              nama:'Kursi berlapis kain',          kat:'Sofa & kursi', lisensi:'CC0 — Wayfair, LLC',                  sha:'f0af2a2b102d28d540236306ae19f8fb36842df76bd38cf76f063f9bd2853399', b:4125648, p:{interaksi:'duduk',tinggiDuduk:0.45}},
+  {id:'ChairDamaskPurplegold',   nama:'Kursi damask ungu-emas',       kat:'Sofa & kursi', lisensi:'CC-BY 4.0 — Wayfair',                 sha:'9862ff753f25ca6738bf5924afbfde01b794fae73db3f94bcd8cdc7cc570d9bb', b:2028924, p:{interaksi:'duduk',tinggiDuduk:0.45}},
+  {id:'SpecularSilkPouf',        nama:'Pouf sutra',                   kat:'Sofa & kursi', lisensi:'CC-BY 4.0 — Wayfair, LLC',            sha:'a028bc6a7ac8981044fba414c1de633ac775b53602ad386f8ece74aec81d1006', b:4632512, p:{interaksi:'duduk',tinggiDuduk:0.2}},
+  {id:'AnisotropyBarnLamp',      nama:'Lampu barn logam',             kat:'Lampu',        lisensi:'CC-BY 4.0 — Wayfair, LLC',            sha:'0e728826c30bd6f3a18a0911db9f5f9ddc2dafa8e20bf9c3312c9625d1e32a24', b:7833440, p:{interaksi:'lampu',titikCahaya:0.35,lumen:800}},
+  {id:'IridescenceLamp',         nama:'Lampu meja kaca iridesen',     kat:'Lampu',        lisensi:'CC-BY 4.0 — Wayfair, LLC',            sha:'17cfdc79ec9e38fadb28db159734c5f9592ca423977b546e5057e350ba29ff13', b:4083912, p:{interaksi:'lampu',titikCahaya:0.7,lumen:450}},
+  {id:'DiffuseTransmissionPlant',nama:'Tanaman pot',                  kat:'Tanaman & dekor', lisensi:'CC-BY 4.0 / CC0 — Darmstadt Graphics Group', sha:'1748be8847e24bdd5cb6c5ac2bfd0afe8f11efc4f85091148550555e47c7ee83', b:5759100},
+  {id:'GlassVaseFlowers',        nama:'Vas kaca dengan bunga',        kat:'Tanaman & dekor', lisensi:'CC0',                              sha:'430c9937664cfc74299205dcc388e4269bb688817f3d3866ef35aab71e93b852', b:1819824},
+  {id:'GlassHurricaneCandleHolder',nama:'Tempat lilin kaca',          kat:'Tanaman & dekor', lisensi:'CC-BY 4.0 — Wayfair, LLC',         sha:'add23791ee6f5f550b94a21232a323720c92c20d280f4f7d19cf954234f0b7b8', b:2705400},
+  {id:'IridescentDishWithOlives',nama:'Piring kaca dengan zaitun',    kat:'Tanaman & dekor', lisensi:'CC-BY 4.0 — Wayfair, LLC',         sha:'1540b4a36b790a907f4824cfe848ba481b3da3cc8070172b7b3ba178f78a7ed1', b:5742828},
+  {id:'DiffuseTransmissionTeacup',nama:'Cangkir teh',                 kat:'Tanaman & dekor', lisensi:'CC0',                              sha:'d4f567186fea262819aac6664cb9d7cef7f4600406038046771a69e10363935b', b:4795028},
+  {id:'CommercialRefrigerator',  nama:'Kulkas display kaca',          kat:'Dapur',        lisensi:'CC-BY 4.0 — Darmstadt Graphics Group',sha:'ef8da8b144e650c277ac953e6d9e50ac1689ff1ee88c2c5bd9551ae8bccb6065', b:10131180},
+  {id:'CarConcept',              nama:'Mobil konsep (untuk garasi)',  kat:'Garasi',       lisensi:'CC-BY 4.0 — Darmstadt Graphics Group',sha:'c272098089d78c5cd9fd9f24ff50ee8acf8d932c55f2d55fc10adb6c8998966b', b:11778688}
+];
+async function sha256Hex(buf){ const h=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+async function unduhTerverifikasi(url,sha,ukuran,onP){
+  const r=await fetch(url,{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  const bag=[]; let n=0;
+  if(r.body&&r.body.getReader){ const rd=r.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length; if(n>ASSET_MAX) throw new Error('berkas lebih besar dari yang dikatalogkan'); if(onP) onP(n,ukuran); } }
+  else { const u=new Uint8Array(await r.arrayBuffer()); bag.push(u); n=u.length; }
+  const u=new Uint8Array(n); let o=0; for(const b of bag){ u.set(b,o); o+=b.length; }
+  if(!window.crypto || !crypto.subtle) throw new Error('peramban tidak bisa memverifikasi berkas (perlu HTTPS)');
+  if(await sha256Hex(u.buffer)!==sha) throw new Error('isi berkas tidak cocok dengan katalog (SHA-256) — dibatalkan demi keamanan');
+  return u.buffer;
+}
+async function pasangModelProduk(a){
+  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  const info=$('#galeriInfo'), kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(a.id)}"]`); if(kartu) kartu.classList.add('muat');
+  try{
+    info.textContent='Mengunduh '+a.nama+'…';
+    const buf=await unduhTerverifikasi(KHR_DASAR+a.id+'/glTF-Binary/'+a.id+'.glb',a.sha,a.b,(n,t)=>{ info.textContent=`Mengunduh ${a.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
+    info.textContent='Menyusun '+a.nama+'…';
+    const r=await daftarkanAset(a.nama,buf);
+    Object.assign(PROJECT.assets[r.id],{sumber:'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/'+KHR_COMMIT+'/Models/'+a.id, lisensi:a.lisensi});
+    renderCatalogs(); HIST.label='Model '+a.nama; addObject('model',r.id);
+    const o=L().objects[L().objects.length-1];
+    if(a.p && o && o.type===r.id){ o.params=Object.assign({},o.params,a.p); rebuildScene(); }
+    info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(buf.byteLength/1048576,1)} MB · ${a.lisensi}`;
+    toast(a.nama+' dipasang'+(a.p&&a.p.interaksi?` (interaksi: ${a.p.interaksi})`:'')+' · '+a.lisensi);
+  }catch(e){
+    console.warn('model produk',e);
+    info.textContent='Gagal: '+(e.message||e)+(/fetch|network/i.test(e.message||'')?' — perlu koneksi internet':'');
+  }finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+}
 function gltfKeGLB(json,ambil){
   const bag=[]; let off=0;
   const tambah=u8=>{ const pad=(4-off%4)%4; if(pad){ bag.push(new Uint8Array(pad)); off+=pad; } const o=off; bag.push(u8); off+=u8.length; return o; };
@@ -10700,6 +10758,7 @@ async function pasangModelPH(a){
   }finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
 }
 function renderGaleri(){
+  if(GALERI.sumber==='khr') return renderGaleriProduk();
   const g=$('#galeriGrid'), d=GALERI.daftar||[], q=GALERI.cari.trim().toLowerCase();
   const c=d.filter(a=>(GALERI.kat==='semua'||a.kat.includes(GALERI.kat)) &&
     (!q || a.nama.toLowerCase().includes(q) || a.id.includes(q) || a.tag.some(t=>t.toLowerCase().includes(q)) || a.kat.some(t=>t.toLowerCase().includes(q))));
@@ -10714,22 +10773,46 @@ function renderGaleri(){
   }
   if(!GALERI.sibuk) $('#galeriInfo').textContent=c.length?`${c.length} model${c.length>160?' (160 pertama ditampilkan — persempit dengan pencarian)':''} · ketuk untuk mengunduh & memasang`:'Tidak ada model yang cocok.';
 }
+function renderGaleriProduk(){
+  const g=$('#galeriGrid'), q=GALERI.cari.trim().toLowerCase();
+  const c=KATALOG_PRODUK.filter(a=>(GALERI.kat==='semua'||a.kat===GALERI.kat) && (!q || (a.nama+' '+a.id+' '+a.kat).toLowerCase().includes(q)));
+  g.innerHTML='';
+  for(const a of c){
+    const k=el('button','gl-card'); k.dataset.id=a.id; k.title=`${a.nama} — ${fmt(a.b/1048576,1)} MB · ${a.lisensi}`;
+    const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=KHR_DASAR+a.id+'/screenshot/screenshot.jpg';
+    im.onerror=()=>{ im.style.visibility='hidden'; };
+    k.appendChild(im); k.appendChild(el('span',null,a.nama));
+    k.onclick=()=>pasangModelProduk(a);
+    g.appendChild(k);
+  }
+  if(!GALERI.sibuk) $('#galeriInfo').textContent=c.length?`${c.length} model produk nyata · ketuk untuk mengunduh, memverifikasi (SHA-256) & memasang · kursi/sofa langsung bisa diduduki, lampu langsung menyala`:'Tidak ada model yang cocok.';
+}
+function isiKategoriGaleri(){
+  if(GALERI.sumber==='khr'){
+    const hit={}; for(const a of KATALOG_PRODUK) hit[a.kat]=(hit[a.kat]||0)+1;
+    isiOpsi($('#galeriKat'),[['semua',`Semua (${KATALOG_PRODUK.length})`],...Object.entries(hit).map(([k,n])=>[k,`${k} (${n})`])]);
+  } else if(GALERI.daftar){
+    const hit={}; for(const a of GALERI.daftar) for(const k of a.kat) hit[k]=(hit[k]||0)+1;
+    isiOpsi($('#galeriKat'),[['semua',`Semua (${GALERI.daftar.length})`],...Object.entries(hit).sort((a,b)=>b[1]-a[1]).slice(0,24).map(([k,n])=>[k,`${k} (${n})`])]);
+  }
+  GALERI.kat='semua'; $('#galeriKat').value='semua';
+  $('#galeriRes').hidden=GALERI.sumber==='khr';
+}
 async function bukaGaleri(){
   $('#galeri').hidden=false;
-  if(GALERI.daftar) return renderGaleri();
+  if(GALERI.sumber==='khr'){ isiKategoriGaleri(); return renderGaleri(); }
+  if(GALERI.daftar){ isiKategoriGaleri(); return renderGaleri(); }
   $('#galeriInfo').textContent='Memuat daftar model…';
   try{
-    const d=await daftarModelPH(), hit={};
-    for(const a of d) for(const k of a.kat) hit[k]=(hit[k]||0)+1;
-    const kat=Object.entries(hit).sort((a,b)=>b[1]-a[1]).slice(0,24);
-    $('#galeriKat').innerHTML=`<option value="semua">Semua (${d.length})</option>`+kat.map(([k,n])=>`<option value="${esc(k)}">${esc(k)} (${n})</option>`).join('');
-    renderGaleri();
+    await daftarModelPH(); if(GALERI.sumber!=='ph') return;
+    isiKategoriGaleri(); renderGaleri();
   }catch(e){ $('#galeriInfo').textContent='Daftar model tidak bisa dimuat ('+(e.message||e)+') — perlu koneksi internet.'; }
 }
 $('#galeriBuka').onclick=bukaGaleri;
 $('#galeriTutup').onclick=()=>{ $('#galeri').hidden=true; };
 $('#galeri').addEventListener('click',e=>{ if(e.target.id==='galeri') $('#galeri').hidden=true; });
 $('#galeriKat').onchange=e=>{ GALERI.kat=e.target.value; renderGaleri(); };
+$('#galeriSumber').onchange=e=>{ GALERI.sumber=e.target.value==='khr'?'khr':'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
 $('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; clearTimeout(GALERI.t); GALERI.t=setTimeout(renderGaleri,150); };
 $('#glbInput').addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';
@@ -10832,7 +10915,8 @@ function sanitasiProyek(j){
     if(!ID_AMAN.test(k)||!a||typeof a.data!=='string') continue;
     if(a.data.length>ASSET_MAX*1.4 || !/^[A-Za-z0-9+/=\s]*$/.test(a.data.slice(0,4096))) continue;
     assets[k]={ name:teks(a.name,120,'model'), size:angka(a.size,0,ASSET_MAX,0), dims:(Array.isArray(a.dims)?a.dims:[1,1,1]).slice(0,3).map(v=>angka(v,0,1e3,1)),
-                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/polyhaven\.com\//.test(a.sumber)?{sumber:a.sumber}:{}) };
+                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/(polyhaven\.com\/|github\.com\/KhronosGroup\/glTF-Sample-Assets\/)/.test(a.sumber)?{sumber:a.sumber}:{}),
+                ...(typeof a.lisensi==='string'?{lisensi:a.lisensi.slice(0,200)}:{}) };
   }
   const plans={};
   for(const [k,pl] of Object.entries(j.plans&&typeof j.plans==='object'?j.plans:{})){

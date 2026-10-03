@@ -121,3 +121,62 @@ tes['langit 360°: pilih sendiri — ◀ ▶ berurutan, galeri, daftar, tidak di
   assert.equal(pr.id, 'gunung_malam'); assert.equal(pr.pilih, 'acak');
 };
 tes['langit 360°: pilih sendiri — ◀ ▶ berurutan, galeri, daftar, tidak diacak'].opsi = { rute: ruteLangit };
+
+// JEV-054: model produk nyata (Khronos glTF Sample Assets) — unduhan dikunci SHA-256
+const glbUji = async (page) => {
+  // GLB kecil dari fixture glTF + satu lampu KHR_lights_punctual (harus dibuang saat impor)
+  const gltf = JSON.parse(fs.readFileSync(path.join(FIX, 'kursi_1k.gltf'), 'utf8'));
+  gltf.extensionsUsed = ['KHR_lights_punctual'];
+  gltf.extensions = { KHR_lights_punctual: { lights: [{ type: 'point', intensity: 5 }] } };
+  gltf.nodes.push({ name: 'lampuBawaan', extensions: { KHR_lights_punctual: { light: 0 } } });
+  gltf.scenes[0].nodes.push(1);
+  const bin = fs.readFileSync(path.join(FIX, 'kursi.bin')).toString('base64');
+  const jpg = fs.readFileSync(path.join(FIX, 'kursi_diff_1k.jpg')).toString('base64');
+  const b64 = await page.evaluate(([gltf, bin, jpg]) => {
+    const isi = { 'kursi.bin': new Uint8Array(bufFromB64(bin)), 'textures/kursi_diff_1k.jpg': new Uint8Array(bufFromB64(jpg)) };
+    return b64FromBuf(gltfKeGLB(gltf, uri => /^data:/.test(uri) ? dataURIkeU8(uri) : isi[uri]));
+  }, [gltf, bin, jpg]);
+  return Buffer.from(b64, 'base64');
+};
+tes['produk nyata: unduhan terverifikasi SHA-256, kredit lisensi, interaksi bawaan, lampu bawaan dibuang'] = async (page) => {
+  const glb = await glbUji(page);
+  let rusak = false;
+  await page.route('https://cdn.jsdelivr.net/gh/**', r => {
+    const u = r.request().url();
+    if (u.endsWith('.jpg')) return r.fulfill({ body: fs.readFileSync(path.join(FIX, 'kursi_diff_1k.jpg')), headers: { ...CORS, 'content-type': 'image/jpeg' } });
+    const isi = Buffer.from(glb); if (rusak) isi[isi.length - 1] ^= 0xff;     // satu bita diubah di perjalanan
+    return r.fulfill({ body: isi, headers: CORS });
+  });
+  const sha = await page.evaluate(async b64 => sha256Hex(bufFromB64(b64)), glb.toString('base64'));
+  await page.evaluate(([sha, n]) => {
+    KATALOG_PRODUK.push({ id: 'KursiUji', nama: 'Kursi uji', kat: 'Sofa & kursi', lisensi: 'CC-BY 4.0 — Uji', sha, b: n, p: { interaksi: 'duduk', tinggiDuduk: 0.45 } });
+    GALERI.sumber = 'khr'; document.getElementById('galeriSumber').value = 'khr'; bukaGaleri();
+  }, [sha, glb.length]);
+  assert.ok(await page.locator('#galeriGrid .gl-card[data-id="KursiUji"]').count() === 1, 'kartu produk tidak tampil');
+  assert.ok(await page.locator('#galeriGrid .gl-card').count() >= 14, 'katalog produk kurang lengkap');
+  await page.locator('#galeriGrid .gl-card[data-id="KursiUji"]').click();
+  await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 20000 });
+  const r = await page.evaluate(() => {
+    const id = Object.keys(PROJECT.assets).find(k => PROJECT.assets[k].name === 'Kursi uji'), a = PROJECT.assets[id];
+    const o = L().objects.find(x => x.type === id); let lampu = 0; ASSET_OBJ.get(id).traverse(n => { if (n.isLight) lampu++; });
+    const B = sanitasiProyek(JSON.parse(JSON.stringify(PROJECT)));
+    return { info: document.getElementById('galeriInfo').textContent, sumber: a.sumber, lisensi: a.lisensi, interaksi: o && o.params.interaksi,
+      jenis: o && findGroup('obj', o.id).userData.nyalaJenis, lampu, sumberTersimpan: B.assets[id] && B.assets[id].sumber, lisensiTersimpan: B.assets[id] && B.assets[id].lisensi };
+  });
+  assert.match(r.info, /dipasang/);
+  assert.match(r.sumber, /^https:\/\/github\.com\/KhronosGroup\/glTF-Sample-Assets\/tree\/[0-9a-f]{40}\/Models\/KursiUji$/);
+  assert.equal(r.lisensi, 'CC-BY 4.0 — Uji');
+  assert.equal(r.interaksi, 'duduk');
+  assert.equal(r.jenis, 'duduk');
+  assert.equal(r.lampu, 0, 'lampu bawaan glTF harus dibuang');
+  assert.equal(r.sumberTersimpan, r.sumber, 'sumber harus lolos sanitasi saat proyek disimpan/dimuat');
+  assert.equal(r.lisensiTersimpan, r.lisensi);
+  // berkas diubah di perjalanan → ditolak, tidak ada aset baru
+  rusak = true;
+  const n0 = await page.evaluate(() => Object.keys(PROJECT.assets).length);
+  await page.evaluate(() => { document.getElementById('galeriInfo').textContent = ''; });
+  await page.locator('#galeriGrid .gl-card[data-id="KursiUji"]').click();
+  await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 20000 });
+  assert.match(await page.textContent('#galeriInfo'), /SHA-256/);
+  assert.equal(await page.evaluate(() => Object.keys(PROJECT.assets).length), n0, 'berkas rusak tidak boleh masuk pustaka');
+};
