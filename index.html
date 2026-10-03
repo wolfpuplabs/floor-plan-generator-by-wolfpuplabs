@@ -327,6 +327,12 @@ details.info[open]>summary{margin-bottom:6px}
   .f-row input,.f-row select{min-height:40px}
 }
 @media (max-width:900px){ #sidebar{width:min(368px,88vw);min-width:0} }
+/* mode lihat-saja: semua alat edit disembunyikan */
+body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspector,body.lihat #mulaiKartu{display:none !important}
+#lihatBar{top:max(12px,env(safe-area-inset-top));left:12px;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-radius:12px;max-width:calc(100% - 140px)}
+#lihatBar b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
+#lihatBar .lihat-tag{font-size:.74rem;color:var(--accent);background:#1f2f2c;border-radius:999px;padding:4px 10px;white-space:nowrap}
+#lihatBar .btn{flex:none}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -626,6 +632,14 @@ details.info[open]>summary{margin-bottom:6px}
       <div class="group"><label>Buka proyek</label><input type="file" id="loadInput" accept="application/json,.json"></div>
       <button class="btn ghost" id="exportObjBtn">Ekspor Model (.obj)</button>
       <button class="btn ghost" id="snapshotBtn">Simpan Gambar (.png)</button>
+      <div class="section-title">Bagikan</div>
+      <button class="btn" id="bagikanBtn">🔗 Buat tautan lihat-saja</button>
+      <p class="hint">Penerima bisa melihat &amp; jalan-jalan di dalam rumah, tetapi tidak bisa mengedit. Proyek ikut di dalam tautannya sendiri — tidak diunggah ke server mana pun.</p>
+      <div id="bagikanHasil" class="group" hidden>
+        <input type="text" id="bagikanUrl" readonly aria-label="Tautan lihat-saja">
+        <div class="row"><button class="btn sm" id="bagikanSalin">📋 Salin tautan</button><button class="btn sm ghost" id="bagikanKirim">📤 Kirim…</button></div>
+        <p class="hint" id="bagikanInfo"></p>
+      </div>
       <div class="section-title">AR / Model Viewer</div>
       <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
       <button class="btn ghost" id="exportGlbBtn">Ekspor Model (.glb)</button>
@@ -715,6 +729,10 @@ details.info[open]>summary{margin-bottom:6px}
       <p class="hint" style="margin-top:10px">Mode Walk: <b>W A S D</b> jalan · <b>Shift</b> lari · <b>E</b> atau klik untuk membuka pintu / menyalakan lampu.</p>
     </div>
     <div class="float" id="levelbar"></div>
+    <div class="float" id="lihatBar" hidden>
+      <span class="lihat-tag">👁 Lihat saja</span><b id="lihatNama"></b>
+      <button class="btn" id="lihatJalan">🚶 Jalan-jalan</button>
+    </div>
     <div class="float" id="inspector" hidden></div>
     <div class="float" id="fpsbar" hidden>
       <span id="fpsinfo"></span>
@@ -876,6 +894,8 @@ function newOpening(type,at,width){
            hinge:'L', swing:1 };          // engsel kiri, ayun ke muka +Z dinding
 }
 const L = ()=>PROJECT.levels[PROJECT.active];
+// mode lihat-saja (tautan bagikan): alat edit dikunci — lihat bukaTautanLihat()
+const LIHAT={on:false, siap:false};
 const levelElevation = idx => PROJECT.levels.slice(0,idx).reduce((s,l)=>s+l.height,0);
 
 const wallLen   = w => Math.hypot(w.x2-w.x1, w.z2-w.z1);
@@ -6104,12 +6124,14 @@ function applyHistory(i){
   updateHistUI();
 }
 function undo(){
+  if(LIHAT.on) return;
   if(HIST.idx<=0) return toast('Tidak ada lagi yang bisa dibatalkan');
   const lbl=HIST.stack[HIST.idx].label;
   applyHistory(HIST.idx-1);
   toast('Dibatalkan: '+lbl);
 }
 function redo(){
+  if(LIHAT.on) return;
   if(HIST.idx>=HIST.stack.length-1) return toast('Tidak ada yang bisa diulang');
   applyHistory(HIST.idx+1);
   toast('Diulang: '+HIST.stack[HIST.idx].label);
@@ -6227,7 +6249,7 @@ function refreshSelectionVisual(){
   renderInspector();
 }
 
-function select(kind,id){ SEL=(kind&&id)?{kind,id}:null; refreshSelectionVisual(); if(DIM.on) rebuildDims(); }
+function select(kind,id){ if(LIHAT.on) kind=id=null; SEL=(kind&&id)?{kind,id}:null; refreshSelectionVisual(); if(DIM.on) rebuildDims(); }
 
 /* --- gizmo → data --- */
 function onGizmoChange(){ if(selBox) selBox.update(); }
@@ -6659,6 +6681,7 @@ function addTransformFields(ins,d,withScale){
    AKSI OBJEK
    ====================================================================== */
 function deleteSelection(){
+  if(LIHAT.on) return;
   const lv=L(); if(!SEL) return;
   HIST.label = SEL.kind==='wall' ? 'Hapus dinding' : 'Hapus objek';
   if(SEL.kind==='wall') lv.walls=lv.walls.filter(w=>w.id!==SEL.id);
@@ -6666,6 +6689,7 @@ function deleteSelection(){
   SEL=null; rebuildScene(); toast('Objek dihapus');
 }
 function duplicateSelection(){
+  if(LIHAT.on) return;
   const lv=L(), d=selData(); if(!d) return;
   HIST.label='Duplikat objek';
   if(SEL.kind==='wall'){
@@ -6957,6 +6981,7 @@ function paramsAwal(kind,type){
   return {};
 }
 function addObject(kind,type){
+  if(LIHAT.on) return;
   const lv=L();
   const t=orbit.target;
   const o={ id:uid('ob'), kind, type, x:Math.round(t.x*20)/20, y:0, z:Math.round(t.z*20)/20,
@@ -7418,6 +7443,7 @@ $('#traceDone').onclick=()=>selesaiTrace();
 $('#traceUndo').onclick=()=>{ VT.pts.pop(); gambarTrace(null); };
 $('#traceCancel').onclick=()=>{ setTool('select'); toast('Tracing void dibatalkan'); };
 function setTool(t){
+  if(LIHAT.on) t='select';
   if(TOOL==='voidTrace' && t!=='voidTrace') akhiriTrace();
   TOOL=t;
   if(t!=='wall') DRAW_RAIL=false;
@@ -10814,12 +10840,13 @@ function renderLevels(){
     b.title=l.name; b.onclick=()=>setActiveLevel(i);
     bar.appendChild(b);
   });
-  const add=el('button',null,'+'); add.title='Tambah lantai';
-  add.onclick=()=>addLevel(false); bar.appendChild(add);
+  if(!LIHAT.on){ const add=el('button',null,'+'); add.title='Tambah lantai'; add.setAttribute('aria-label','Tambah lantai');
+    add.onclick=()=>addLevel(false); bar.appendChild(add); }
   updateStatsBar();
   syncPlanPanel();
 }
 function addLevel(copy){
+  if(LIHAT.on) return;
   lepasTraceLantai();
   const src=L();
   const lv=newLevel('Lantai '+(PROJECT.levels.length+1), src?src.height:3.2);
@@ -11274,6 +11301,7 @@ $('#glbInput').addEventListener('change',async e=>{
 }));
 ['dragleave','drop'].forEach(ev=>viewport.addEventListener(ev,()=>viewport.classList.remove('dropping')));
 viewport.addEventListener('drop',async e=>{
+  if(LIHAT.on){ e.preventDefault(); return; }
   const files=[...(e.dataTransfer?.files||[])];
   if(!files.length) return;
   e.preventDefault();
@@ -11475,6 +11503,104 @@ function muatProyekObjek(sumber){
     toast('Gagal memuat: '+err.message+' — proyek sebelumnya tetap utuh');
   }
 }
+/* ---------- TAUTAN LIHAT-SAJA (JEV-058) ----------
+   Proyek dipadatkan (deflate) ke dalam fragmen URL (#lihat=…). Fragmen tidak pernah
+   dikirim ke server, jadi tanpa backend dan proyek tidak bocor ke pihak mana pun.
+   Model katalog (Poly Haven / produk nyata terverifikasi SHA-256) ikut sebagai
+   rujukan dan diunduh ulang oleh penerima; model unggahan sendiri (MB-an) tidak
+   muat di tautan dan ditinggal. Isi tautan = masukan tak tepercaya: dibuka lewat
+   sanitasiProyek() yang sama (G2), dengan batas ukuran sesudah dibuka (bom zip). */
+const BAGI={batasBuka:20*1048576, batasKode:6*1048576};
+function b64url(u8){ let t=''; for(let i=0;i<u8.length;i+=0x8000) t+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function dariB64url(t){ if(!/^[A-Za-z0-9_-]*$/.test(t)) throw new Error('tautan rusak'); const b=atob(t.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
+async function padatkan(teks){ return new Uint8Array(await new Response(new Blob([teks]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()); }
+async function bukaPadat(u8,batas){
+  const rd=new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(), bag=[]; let n=0;
+  for(;;){ const {done,value}=await rd.read(); if(done) break; n+=value.length;
+    if(n>batas){ rd.cancel(); throw new Error('isi tautan melebihi '+Math.round(batas/1048576)+' MB'); } bag.push(value); }
+  const u=new Uint8Array(n); let o=0; for(const b of bag){ u.set(b,o); o+=b.length; } return new TextDecoder().decode(u);
+}
+function rujukanAset(a){
+  const t=a&&typeof a.sumber==='string'?a.sumber:'';
+  let m=t.match(/^https:\/\/polyhaven\.com\/a\/([A-Za-z0-9_-]{1,64})$/); if(m) return {jenis:'ph',id:m[1]};
+  m=t.match(/^https:\/\/github\.com\/KhronosGroup\/glTF-Sample-Assets\/tree\/[0-9a-f]{40}\/Models\/([A-Za-z0-9_-]{1,64})$/);
+  if(m && KATALOG_PRODUK.some(p=>p.id===m[1])) return {jenis:'khr',id:m[1]};
+  return null;
+}
+async function buatTautanLihat(){
+  const rujukan={}, ditinggal=[];
+  for(const [id,a] of Object.entries(PROJECT.assets||{})){
+    if(rujukanAset(a)) rujukan[id]={name:a.name, sumber:a.sumber, lisensi:a.lisensi, res:/\(foto 2K\)/.test(a.name)?'2k':'1k'};
+    else ditinggal.push(a.name);
+  }
+  // objek dari model yang ditinggal tidak ikut — penerima tidak boleh melihat kotak kosong
+  const levels=PROJECT.levels.map(lv=>({...lv, objects:lv.objects.filter(o=>o.kind!=='model'||rujukan[o.type])}));
+  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan};
+  const kode=b64url(await padatkan(JSON.stringify(isi)));
+  return {url:location.origin+location.pathname+'#lihat='+kode, panjang:kode.length, ditinggal};
+}
+$('#bagikanBtn').onclick=async()=>{
+  if(typeof CompressionStream!=='function') return toast('Peramban ini belum bisa membuat tautan — perbarui ke iOS 16.4 / Chrome 80 ke atas');
+  if(proyekKosong()) return toast('Proyek masih kosong — buat dinding atau muat rumah contoh dulu');
+  const r=await buatTautanLihat();
+  $('#bagikanHasil').hidden=false; $('#bagikanUrl').value=r.url; $('#bagikanUrl').select();
+  const kb=Math.ceil(r.url.length/1024);
+  $('#bagikanInfo').textContent=`Tautan ${kb} KB.`+(kb>60?' Tautan panjang — beberapa aplikasi chat bisa memotongnya; kirim lewat email atau catatan bila perlu.':'')
+    +(r.ditinggal.length?` Model unggahan sendiri tidak ikut (terlalu besar untuk tautan): ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`:'');
+};
+$('#bagikanSalin').onclick=async()=>{
+  const u=$('#bagikanUrl').value; if(!u) return;
+  try{ await navigator.clipboard.writeText(u); toast('Tautan disalin'); }catch(e){ $('#bagikanUrl').select(); document.execCommand('copy'); toast('Tautan disalin'); }
+};
+$('#bagikanKirim').onclick=async()=>{
+  const u=$('#bagikanUrl').value; if(!u) return;
+  if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Jalan-jalan di '+PROJECT.name+' (lihat saja)', url:u}); }catch(e){} }
+  else $('#bagikanSalin').click();
+};
+/* penerima tautan: mode lihat — jalan-jalan & interaksi (pintu, lampu, duduk) boleh,
+   mengubah proyek tidak */
+async function bukaTautanLihat(kode){
+  LIHAT.on=true; document.body.classList.add('lihat'); setSidebar(false); select(null);
+  $('#lihatBar').hidden=false; $('#hint').innerHTML='Mode lihat — seret untuk memutar, cubit untuk zoom, <b>🚶 Jalan-jalan</b> untuk masuk ke dalam rumah.';
+  try{
+    if(typeof DecompressionStream!=='function') throw new Error('peramban ini terlalu lama — perlu iOS 16.4 / Chrome 80 ke atas');
+    if(kode.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
+    const j=JSON.parse(await bukaPadat(dariB64url(kode),BAGI.batasBuka));
+    if(!j||typeof j!=='object') throw new Error('isi tautan tidak sah');
+    const rujukan=j.rujukan&&typeof j.rujukan==='object'?j.rujukan:{};
+    delete j.rujukan; j.assets={}; j.plans={};
+    muatProyekObjek(j);
+    $('#lihatNama').textContent=PROJECT.name;
+    document.title=PROJECT.name+' — lihat saja';
+    setView('persp');
+    const daftar=Object.entries(rujukan).slice(0,BATAS_PROYEK.aset).filter(([id,m])=>ID_AMAN.test(id)&&m&&typeof m==='object'&&rujukanAset(m));
+    let n=0;
+    for(const [id,m] of daftar){
+      const r=rujukanAset(m), nama=String(m.name||r.id).slice(0,120);
+      toast(`Memuat model ${++n}/${daftar.length}: ${nama}`);
+      try{
+        let buf;
+        if(r.jenis==='ph') buf=await unduhModelPH(r.id,nama,m.res==='2k'?'2k':'1k');
+        else { const p=KATALOG_PRODUK.find(x=>x.id===r.id); buf=await unduhTerverifikasi(KHR_DASAR+p.id+'/glTF-Binary/'+p.id+'.glb',p.sha,p.b); }
+        const hasil=await parseAsset(id,buf);
+        PROJECT.assets[id]={name:nama, size:buf.byteLength, dims:hasil.dims, fit:hasil.fit, data:'', sumber:m.sumber, ...(typeof m.lisensi==='string'?{lisensi:m.lisensi.slice(0,200)}:{})};
+        rebuildScene();
+      }catch(e){ console.warn('model rujukan',id,e); }
+    }
+    if(daftar.length) toast(PROJECT.name+' siap — ketuk 🚶 Jalan-jalan');
+  }catch(e){
+    console.warn('tautan lihat',e);
+    toast('Tautan tidak bisa dibuka: '+(e.message||e));
+  }
+  LIHAT.siap=true;
+}
+$('#lihatJalan').onclick=()=>enterFPS();
+// di mode lihat, pintasan alat edit tidak berlaku (tombol jalan W A S D / E tetap milik mode jalan)
+addEventListener('keydown',e=>{
+  if(!LIHAT.on || FPS.on || /input|select|textarea/i.test(e.target.tagName)) return;
+  const k=e.key.toLowerCase();
+  if(e.ctrlKey||e.metaKey||['q','w','e','r','l','k','m','n','f','h','delete','backspace'].includes(k)){ e.stopImmediatePropagation(); e.preventDefault(); }
+},true);
 $('#exportObjBtn').onclick=()=>{
   let out=`# ${PROJECT.name} — Arsitek 3D\n`, off=1, n=0;
   const v=new THREE.Vector3();
@@ -11998,7 +12124,7 @@ function putarLangit(deg){
   kubahFoto.material.uniforms.putar.value=FOTO.putarU();
   clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); },180);
 }
-function simpanPrefLangit(){ try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor,pilih:lp.pilih,id:lp.id!=='unggah'?lp.id:null,nama:lp.nama})); }catch(e){} }
+function simpanPrefLangit(){ if(LIHAT.on) return; try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor,pilih:lp.pilih,id:lp.id!=='unggah'?lp.id:null,nama:lp.nama})); }catch(e){} }
 function renderLangitUI(){
   const lp=langitP(), e=id=>$(id);
   if(!e('#langitMode')) return;
@@ -13083,6 +13209,12 @@ setSuasana('siang');
 if(window.innerWidth<900 && proyekKosong()) setSidebar(false);
 perbaruiMulai();
 window.__siap=true;
+// tautan lihat-saja dibuka SETELAH halaman tampil: membangun rumah (shader, GI) butuh
+// beberapa detik dan tidak boleh menahan tampilan pertama
+if(/^#lihat=/.test(location.hash)){
+  document.body.classList.add('lihat'); $('#loader-txt').textContent='Membuka rumah yang dibagikan…'; $('#loader').classList.add('on');
+  addEventListener('load',()=>setTimeout(()=>bukaTautanLihat(location.hash.slice(7)).finally(()=>$('#loader').classList.remove('on')),0),{once:true});
+}
 // pilihan langit terakhir di perangkat ini: bila foto 360°, langsung dimuat (dari cache bila pernah diunduh)
 try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
   if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false,

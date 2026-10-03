@@ -5,10 +5,11 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 32 GO · 3 DEFER · 5 NO-GO dari 40 item.
+**Ringkasan:** 33 GO · 3 DEFER · 5 NO-GO dari 41 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
+| JEV-058 | Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit | terkirim | 0.65 | 92,1 jt | 1,5 jt | 121.8× | 60.4× | 0.2 bln | 9 | **GO** |
 | JEV-052 | Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) | terkirim | 0.65 | 61,4 jt | 1,7 jt | 73.5× | 36.2× | 0.3 bln | 14 | **GO** |
 | JEV-056 | Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model | terkirim | 0.65 | 65,5 jt | 2 jt | 66.2× | 32.6× | 0.3 bln | 15 | **GO** |
 | JEV-055 | Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model | terkirim | 0.60 | 28,4 jt | 0,9 jt | 62.0× | 30.5× | 0.3 bln | 16 | **GO** |
@@ -54,6 +55,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 
 ## Alasan per item
 
+- **JEV-058 Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit — GO.** ROI 121.8× ≥ 1, payback 0.2 bln.
 - **JEV-052 Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) — GO.** ROI 73.5× ≥ 1, payback 0.3 bln.
 - **JEV-056 Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model — GO.** ROI 66.2× ≥ 1, payback 0.3 bln.
 - **JEV-055 Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model — GO.** ROI 62.0× ≥ 1, payback 0.3 bln.
