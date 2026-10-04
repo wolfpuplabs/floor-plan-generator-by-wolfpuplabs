@@ -48,6 +48,9 @@ export async function bukaApp(browser, url, opsi = {}) {
     if (f && fs.existsSync(f)) return r.fulfill({ body: fs.readFileSync(f), headers: { ...CORS, 'content-type': 'text/javascript' } });
     return r.abort();
   });
+  // tes ditulis dengan teks UI bahasa Indonesia; bahasa bawaan aplikasi Inggris (JEV-061).
+  // opsi.bahasa: 'en' / 'id' (bawaan 'id'), null = tanpa pilihan tersimpan (bawaan aplikasi)
+  if (opsi.bahasa !== null) await page.addInitScript(b => { try { if (!localStorage.getItem('bahasa')) localStorage.setItem('bahasa', b); } catch (e) { /* abaikan */ } }, opsi.bahasa || 'id');
   if (opsi.rute) await opsi.rute(page);
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__siap, undefined, { timeout: 120000 });

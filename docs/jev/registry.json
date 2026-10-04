@@ -2115,6 +2115,68 @@
     "target": "≥ 0,5",
     "tinjau": "2027-01-03"
    }
+  },
+  {
+   "id": "JEV-061",
+   "judul": "Bahasa Inggris sebagai bahasa bawaan, Bahasa Indonesia tetap bisa dipilih",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Seluruh UI hanya berbahasa Indonesia, sehingga pengunjung internasional (termasuk penerima tautan lihat-saja) tidak bisa memakainya.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"buat default bahasanya english\"",
+    "alternatif": [
+     "menulis ulang seluruh string kode ke kunci i18n (±1.500 string, risiko regresi tinggi)",
+     "mengandalkan terjemahan otomatis peramban (tidak bisa dijadikan bawaan, merusak nama & pintasan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "HTML hanya dari kamus statis milik repo; isi dinamis tidak di-unescape; pesan biasa tetap textContent (SEC-14)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "pilihan bahasa hanya di localStorage perangkat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "terjemahan ditulis sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "lang/en.js ±90 KB terpisah dari index.html; observer tanpa mutasi saat diam (diukur 0/5 dtk), waktu muat rumah contoh sama dengan bahasa Indonesia"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "atribut lang halaman mengikuti bahasa; title/aria-label ikut diterjemahkan"
+    }
+   },
+   "metrik": {
+    "nama": "sesi berbahasa Inggris yang membuat/membuka proyek ÷ seluruh sesi",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }
