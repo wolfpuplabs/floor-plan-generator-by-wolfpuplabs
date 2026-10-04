@@ -886,7 +886,7 @@ function terjemahTeks(t){
   const n=t.replace(/\s+/g,' ').trim(); if(!n) return null;
   if(Object.prototype.hasOwnProperty.call(K.teks,n)) return K.teks[n];
   if(!K._pola) K._pola=(K.pola||[]).map(([r,e])=>[new RegExp('^'+r+'$'),e]);
-  for(const [r,e] of K._pola) if(r.test(n)) return n.replace(r,(...g)=>e.replace(/\$(\d+)/g,(_,i)=>{ const v=g[+i]; return v==null?'':terjemahTeks(v)??v; }));
+  for(const [r,e] of K._pola) if(r.test(n)) return n.replace(r,(...g)=>e.replace(/\$(\d+)/g,(_,i)=>{ const v=g[+i]; if(v==null) return ''; const t=terjemahTeks(v); return t==null?v:v.match(/^\s*/)[0]+t+v.match(/\s*$/)[0]; }));
   return null;
 }
 // frasa: elemen teks + tag inline (<b>, <kbd>, …) diterjemahkan utuh — kamus berdasar teksnya,
@@ -896,7 +896,7 @@ function terjemahFrasa(e){
   if(Object.prototype.hasOwnProperty.call(K.frasa,k)) return K.frasa[k];
   if(!K._fpola) K._fpola=(K.frasaPola||[]).map(([r,t])=>[new RegExp('^'+r+'$'),t]);
   const h=e.innerHTML.replace(/\s+/g,' ').trim();
-  for(const [r,t] of K._fpola) if(r.test(h)) return h.replace(r,(...g)=>t.replace(/\$(\d+)/g,(_,i)=>{ const v=g[+i]; return v==null?'':terjemahTeks(v)??v; }));
+  for(const [r,t] of K._fpola) if(r.test(h)) return h.replace(r,(...g)=>t.replace(/\$(\d+)/g,(_,i)=>{ const v=g[+i]; if(v==null) return ''; const t=terjemahTeks(v); return t==null?v:v.match(/^\s*/)[0]+t+v.match(/\s*$/)[0]; }));
   // kalimat rakitan (info kalibrasi, AR): ganti per potongan kalimat
   if(!K._ganti) K._ganti=(K.ganti||[]).map(([r,t])=>[new RegExp(r,'g'),t]);
   let u=h; for(const [r,t] of K._ganti) u=u.replace(r,t);
@@ -6867,6 +6867,13 @@ function renderInspector(){
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
       ins.appendChild(el('p','hint',`Ukuran terpasang ${fmt(sz,2)} × ${fmt(szz,2)} m, tinggi ${fmt(sy,2)} m.`));
+      const lp=laporanModel(d.type);
+      if(lp){
+        ins.appendChild(el('div','section-title','Laporan model'));
+        ins.appendChild(el('p','hint',`Berkas ${fmt(a.size/1048576,1)} MB${a.asli?` (asal ${fmt(a.asli/1048576,1)} MB, tekstur diperkecil)`:''} · ${lp.tri.toLocaleString('id')} segitiga · ${lp.tekstur} tekstur${lp.maks?` ≤ ${lp.maks} px`:''} · memori GPU ±${fmt(lp.gpuMB,0)} MB`));
+        if(lp.gpuMB>150||lp.tri>500000) ins.appendChild(el('div','badge warn','⚠ Model berat untuk iPad — beberapa model seperti ini bisa menghabiskan memori grafis.'));
+        if(lp.maks>512){ const b=el('button','btn sm ghost','Perkecil tekstur ke 512 px'); b.onclick=()=>perkecilTeksturAset(d.type,512); ins.appendChild(b); }
+      }
       ins.appendChild(el('div','section-title','Collider'));
       d.params=d.params||{};
       const cl=el('label','chk'), cc=document.createElement('input'); cc.type='checkbox'; cc.checked=d.params.collider!==false;
@@ -6993,7 +7000,10 @@ function faceNearestWall(obj, walls){
    ====================================================================== */
 const ASSET_OBJ=new Map();            // id -> THREE.Object3D contoh
 const ASSET_MAX=20*1024*1024;
-const ZIP_MAKS=200*1048576;          // isi ZIP sesudah dibuka (model unduhan situs lain)         // 20 MB per berkas
+const ZIP_MAKS=200*1048576;          // isi ZIP sesudah dibuka (model unduhan situs lain)
+const RAMPING_MAKS=100*1048576;      // GLB mentah yang masih boleh dirampingkan; sesudahnya tetap ≤ ASSET_MAX
+const TEKS_MAKS=1024;                // sisi terpanjang tekstur model (lihat RAMPINGKAN MODEL)
+const ASSET_BUF=new Map();           // id -> GLB yang sedang dipakai (untuk pemulihan konteks WebGL)
 
 function b64FromBuf(buf){
   const u=new Uint8Array(buf); let s='';
@@ -7065,7 +7075,7 @@ function parseAsset(id,buf){
         if(!root) return rej(new Error('berkas tidak memuat scene'));
         const r=prepareAssetObject(root);
         if(!r.dims[0]&&!r.dims[1]&&!r.dims[2]) return rej(new Error('modelnya kosong'));
-        ASSET_OBJ.set(id,r.obj);
+        ASSET_OBJ.set(id,r.obj); ASSET_BUF.set(id,buf);
         res(r);
       },err=>rej(new Error(err&&err.message?err.message:'berkas glTF tidak terbaca')));
     }catch(err){ rej(new Error(err.message||'berkas glTF tidak terbaca')); }
@@ -7074,12 +7084,18 @@ function parseAsset(id,buf){
 async function loadProjectAssets(){
   const ids=Object.keys(PROJECT.assets||{});
   ASSET_OBJ.clear();
-  let gagal=0;
+  ASSET_BUF.clear();
+  let gagal=0, ramping=0;
   for(const id of ids){
-    try{ await parseAsset(id,bufFromB64(PROJECT.assets[id].data)); }
-    catch(err){ gagal++; console.warn('aset gagal:',id,err); }
+    try{
+      const a=PROJECT.assets[id]; let buf=bufFromB64(a.data);
+      // proyek lama: model bertekstur 4K diperkecil sekali saat dibuka (lalu tersimpan kecil)
+      const o=await rampingkanGLB(buf);
+      if(o.n){ a.asli=a.asli||a.size; buf=o.buf; a.data=b64FromBuf(buf); a.size=buf.byteLength; ramping++; }
+      await parseAsset(id,buf);
+    }catch(err){ gagal++; console.warn('aset gagal:',id,err); }
   }
-  return {total:ids.length, gagal};
+  return {total:ids.length, gagal, ramping};
 }
 /* Berkas diperiksa dari ISINYA, bukan dari namanya: penyaring berdasarkan
    akhiran nama membuat iOS mengunci seluruh daftar berkas di Files, dan nama
@@ -7100,7 +7116,7 @@ async function importAssetFile(file){
     const r=await berkasKeGLB(file.grup||[file]);
     return daftarkanAset(r.nama,r.buf);
   }
-  if(file.size>ASSET_MAX) throw new Error(`berkas ${fmt(file.size/1048576,1)} MB melebihi batas 20 MB`);
+  if(file.size>RAMPING_MAKS) throw new Error(`berkas ${fmt(file.size/1048576,1)} MB terlalu besar`);
   if(!file.size) throw new Error('berkas kosong');
   const buf=await file.arrayBuffer();
   const kind=sniffGLTF(buf);
@@ -11323,7 +11339,8 @@ async function importModelFiles(files){
       const d=r.dims.map(v=>fmt(v,2)).join(' × ');
       toast(`${PROJECT.assets[r.id].name} dimuat — ${d} m`
         + (r.fit!==1 ? ' (diskalakan otomatis)' : '')
-        + (f.size>5*1048576 ? ' · berkas besar, proyek ikut membesar' : ''));
+        + (r.ramping ? ` · dirampingkan ${fmt(r.asal/1048576,1)} → ${fmt(r.ukuran/1048576,1)} MB` : '')
+        + (r.ukuran>5*1048576 ? ' · berkas besar, proyek ikut membesar' : ''));
     }catch(err){
       $('#loader').classList.remove('on');
       gagal++;
@@ -11390,7 +11407,7 @@ async function pasangModelProduk(a){
     renderCatalogs(); HIST.label='Model '+a.nama; addObject('model',r.id);
     const o=L().objects[L().objects.length-1];
     if(a.p && o && o.type===r.id){ o.params=Object.assign({},o.params,a.p); rebuildScene(); }
-    info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(buf.byteLength/1048576,1)} MB · ${a.lisensi}`;
+    info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · ${a.lisensi}`;
     toast(a.nama+' dipasang'+(a.p&&a.p.interaksi?` (interaksi: ${a.p.interaksi})`:'')+' · '+a.lisensi);
   }catch(e){
     console.warn('model produk',e);
@@ -11453,12 +11470,135 @@ async function unduhModelPH(id,nama,res,onP){
   };
   return gltfKeGLB(json,ambil);
 }
+/* ---------- RAMPINGKAN MODEL (JEV-062) — seperti gltf.report / glTF-Transform, di perangkat ----------
+   Model dari Sketchfab, CGTrader, dsb. sering membawa belasan tekstur 4K. Satu tekstur 4096²
+   memakan ±85 MB memori GPU; iPad yang kehabisan memori grafis mematikan konteks WebGL
+   (layar hitam sesaat, lalu bahan yang bergantung pada pantulan menjadi hitam). Sebelum masuk
+   pustaka, setiap gambar di dalam GLB diperkecil ke sisi TEKS_MAKS dan dikodekan ulang (JPEG
+   bila tidak memakai alfa). Mesh, material, animasi, dan ekstensi disalin apa adanya — hanya
+   chunk BIN yang disusun ulang — jadi tidak ada yang hilang seperti saat diekspor ulang. */
+function bacaGLB(buf){
+  if(!buf||buf.byteLength<20) return null;
+  const dv=new DataView(buf); if(dv.getUint32(0,true)!==0x46546C67) return null;
+  const akhir=Math.min(buf.byteLength,dv.getUint32(8,true)); let o=12, json=null, bin=null;
+  while(o+8<=akhir){ const n=dv.getUint32(o,true), t=dv.getUint32(o+4,true); if(o+8+n>akhir) return null;
+    if(t===0x4E4F534A) json=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,o+8,n)));
+    else if(t===0x004E4942 && !bin) bin=new Uint8Array(buf,o+8,n);
+    o+=8+n; }
+  return json?{json,bin}:null;
+}
+function tulisGLB(json,bin){
+  const j=new TextEncoder().encode(JSON.stringify(json)), jp=(4-j.length%4)%4, bp=bin?(4-bin.length%4)%4:0;
+  const total=20+j.length+jp+(bin?8+bin.length+bp:0), out=new Uint8Array(total), dv=new DataView(out.buffer);
+  dv.setUint32(0,0x46546C67,true); dv.setUint32(4,2,true); dv.setUint32(8,total,true);
+  dv.setUint32(12,j.length+jp,true); dv.setUint32(16,0x4E4F534A,true); out.set(j,20); out.fill(0x20,20+j.length,20+j.length+jp);
+  if(bin){ const o=20+j.length+jp; dv.setUint32(o,bin.length+bp,true); dv.setUint32(o+4,0x004E4942,true); out.set(bin,o+8); }
+  return out.buffer;
+}
+// ukuran gambar dari kepala berkasnya — gambar kecil tidak perlu didekode sama sekali
+function ukuranGambar(d){
+  if(d[0]===0x89&&d[1]===0x50&&d.length>24){ const v=new DataView(d.buffer,d.byteOffset); return [v.getUint32(16),v.getUint32(20)]; }
+  if(d[0]===0xFF&&d[1]===0xD8){ let i=2; while(i+9<d.length){ if(d[i]!==0xFF){ i++; continue; } const m=d[i+1], L=(d[i+2]<<8)|d[i+3];
+    if(m>=0xC0&&m<=0xCF&&m!==0xC4&&m!==0xC8&&m!==0xCC) return [(d[i+7]<<8)|d[i+8],(d[i+5]<<8)|d[i+6]];
+    i+=2+L; } }
+  return null;
+}
+const kanvas=(w,h)=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; };
+async function kodeUlangGambar(data,mime,w,h){
+  const blob=new Blob([data],{type:mime}), opsi={colorSpaceConversion:'none',premultiplyAlpha:'none'};
+  let src=null;
+  // peramban yang mendukung resize di createImageBitmap tidak perlu mendekode 4K penuh ke kanvas
+  try{ src=await createImageBitmap(blob,{...opsi,resizeWidth:w,resizeHeight:h,resizeQuality:'high'}); if(src.width!==w||src.height!==h){ src.close&&src.close(); src=null; } }catch(e){ src=null; }
+  if(!src){
+    let b=await createImageBitmap(blob,opsi), cur=b;
+    // diperkecil bertahap separuh demi separuh: sekali lompat 4K → 1K membuat tekstur berkilau & bergerigi
+    while(cur.width/2>=w && cur.height/2>=h && (cur.width>w||cur.height>h)){
+      const c=kanvas(Math.max(w,Math.round(cur.width/2)),Math.max(h,Math.round(cur.height/2))), x=c.getContext('2d');
+      x.imageSmoothingQuality='high'; x.drawImage(cur,0,0,c.width,c.height); if(cur!==b) cur.width=0; cur=c; }
+    src=cur; if(src!==b) b.close&&b.close(); else b=null;
+  }
+  const c=kanvas(w,h), x=c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(src,0,0,w,h);
+  if(src.close) src.close(); else src.width=0;
+  let alfa=false;
+  if(mime==='image/png'){ const d=x.getImageData(0,0,w,h).data; for(let i=3;i<d.length;i+=4) if(d[i]<250){ alfa=true; break; } }
+  const tipe=alfa?'image/png':'image/jpeg';
+  const hasil=await new Promise(ok=>c.toBlob(ok,tipe,0.9)); c.width=0;
+  return hasil ? {data:new Uint8Array(await hasil.arrayBuffer()), mime:tipe} : null;
+}
+async function rampingkanGLB(buf,maks=TEKS_MAKS){
+  let g=null; try{ g=bacaGLB(buf); }catch(e){ g=null; }
+  if(!g||!g.bin||!Array.isArray(g.json.images)||!g.json.images.length) return {buf,n:0};
+  const {json,bin}=g, BV=json.bufferViews||[];
+  // satu buffer saja; data meshopt merujuk buffer langsung sehingga tidak bisa disusun ulang
+  if((json.buffers||[]).length!==1 || (json.extensionsUsed||[]).some(e=>/meshopt/i.test(e))) return {buf,n:0};
+  const baru=new Map(); let n=0;
+  for(const im of json.images){
+    const bv=BV[im.bufferView]; if(!bv||!/^image\/(png|jpeg)$/.test(im.mimeType||'')||baru.has(im.bufferView)) continue;
+    const o=bv.byteOffset||0, data=bin.subarray(o,o+bv.byteLength), uk=ukuranGambar(data); if(!uk) continue;
+    const s=Math.min(1,maks/Math.max(uk[0],uk[1])), pngBesar=im.mimeType==='image/png'&&data.length>262144;
+    if(s>=1&&!pngBesar) continue;
+    let r=null; try{ r=await kodeUlangGambar(data,im.mimeType,Math.max(1,Math.round(uk[0]*s)),Math.max(1,Math.round(uk[1]*s))); }catch(e){ console.warn('rampingkan gambar',e); }
+    if(!r || (s>=1 && r.data.length>=data.length*0.9)) continue;
+    baru.set(im.bufferView,r.data); n++;
+    for(const im2 of json.images) if(im2.bufferView===im.bufferView) im2.mimeType=r.mime;
+  }
+  if(!n) return {buf,n:0};
+  // chunk BIN disusun ulang: tiap bufferView disalin berurutan (rata 4 byte), gambar diganti
+  const letak=[]; let off=0;
+  BV.forEach((bv,i)=>{ const o=bv.byteOffset||0, d=baru.get(i)||bin.subarray(o,o+bv.byteLength); off=(off+3)&~3; letak.push([off,d]); bv.byteOffset=off; bv.byteLength=d.length; off+=d.length; });
+  const isi=new Uint8Array((off+3)&~3); for(const [o,d] of letak) isi.set(d,o);
+  json.buffers[0].byteLength=isi.length;
+  return {buf:tulisGLB(json,isi), n};
+}
+// laporan model ala gltf.report: segitiga, tekstur, perkiraan memori GPU (dari objek yang sudah dimuat)
+function laporanModel(id){
+  const o=ASSET_OBJ.get(id); if(!o) return null;
+  let tri=0, geo=0; const T=new Set(), G=new Set();
+  o.traverse(m=>{ if(!m.isMesh) return; const g=m.geometry;
+    if(!G.has(g)){ G.add(g); for(const a of Object.values(g.attributes)) geo+=a.array.byteLength; if(g.index) geo+=g.index.array.byteLength; }
+    tri+=(g.index?g.index.count:g.attributes.position.count)/3;
+    for(const b of [].concat(m.material||[])) if(b) for(const v of Object.values(b)) if(v&&v.isTexture&&v.image) T.add(v); });
+  let tek=0, maks=0; for(const t of T){ const w=t.image.width||0, h=t.image.height||0; tek+=w*h*4*4/3; maks=Math.max(maks,w,h); }
+  return {tri:Math.round(tri), tekstur:T.size, maks, gpuMB:(tek+geo)/1048576};
+}
+
+async function perkecilTeksturAset(id,maks){
+  const a=PROJECT.assets[id], buf0=ASSET_BUF.get(id); if(!a||!buf0||LIHAT.on) return;
+  $('#loader').classList.add('on');
+  try{
+    const o=await rampingkanGLB(buf0,maks);
+    if(!o.n) return toast('Tekstur model ini sudah kecil');
+    a.asli=a.asli||a.size; a.size=o.buf.byteLength; if(a.data) a.data=b64FromBuf(o.buf);
+    await parseAsset(id,o.buf); rebuildScene(); renderInspector();
+    toast(`Tekstur diperkecil ke ${maks} px — ${fmt(a.size/1048576,1)} MB`);
+  }catch(e){ toast('Gagal: '+(e.message||e)); }
+  finally{ $('#loader').classList.remove('on'); }
+}
+
+/* ---------- PULIH DARI HILANGNYA KONTEKS WebGL (JEV-062) ----------
+   Bila memori grafis habis, iOS mematikan konteks WebGL; three.js memulihkannya, tetapi isi
+   yang DIGAMBAR di GPU (lingkungan pantulan PMREM, probe ruangan, peta bayangan) ikut hilang,
+   dan gambar tekstur model (ImageBitmap) bisa ikut terlepas. Semuanya dibuat ulang dari data. */
+const GPU={hilang:0};
+renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); GPU.hilang++; toast('Memori grafis penuh — memulihkan tampilan…'); },false);
+renderer.domElement.addEventListener('webglcontextrestored',()=>{ pulihkanGPU(); },false);
+async function pulihkanGPU(){
+  ENV_TEX.clear();
+  PROBE.rt=null; PROBE.cam=null; PROBE.pm=null; PROBE.envRT=null; PROBE.env=null; PROBE.aktif=false; PROBE.kotor=true;
+  if(fotoAktif()) terapkanCahayaFoto(); else { LANGIT_FOTO_ENV=null; terapkanEnv(); }
+  renderer.shadowMap.needsUpdate=true;
+  for(const [id,buf] of [...ASSET_BUF]){ try{ await parseAsset(id,buf); }catch(e){ console.warn('pulihkan model',id,e); } }
+  rebuildScene();
+  toast('Tampilan dipulihkan setelah memori grafis penuh');
+}
 async function daftarkanAset(nama,buf,ukuran){
-  if(buf.byteLength>ASSET_MAX) throw new Error(`berkas ${fmt(buf.byteLength/1048576,1)} MB melebihi batas 20 MB`);
+  if(buf.byteLength>RAMPING_MAKS) throw new Error(`berkas ${fmt(buf.byteLength/1048576,1)} MB terlalu besar`);
+  const asal=Math.max(ukuran||0,buf.byteLength), rp=await rampingkanGLB(buf); buf=rp.buf;
+  if(buf.byteLength>ASSET_MAX) throw new Error(`berkas ${fmt(buf.byteLength/1048576,1)} MB melebihi batas 20 MB`+(rp.n?' walau teksturnya sudah diperkecil':''));
   const id=uid('as');
   const r=await parseAsset(id,buf);
-  PROJECT.assets[id]={ name:nama, size:ukuran||buf.byteLength, dims:r.dims, fit:r.fit, data:b64FromBuf(buf) };
-  return {id, ...r};
+  PROJECT.assets[id]={ name:nama, size:buf.byteLength, ...(asal>buf.byteLength*1.05?{asli:asal}:{}), dims:r.dims, fit:r.fit, data:b64FromBuf(buf) };
+  return {id, ...r, ramping:rp.n, asal, ukuran:buf.byteLength};
 }
 /* ---------- IMPOR LUAS: ZIP, OBJ+MTL, FBX → GLB (JEV-060) ----------
    Situs model gratis (CGTrader, TurboSquid, Free3D, Sketchfab, …) jarang menyediakan
@@ -11613,7 +11753,7 @@ async function unduhSketchfab(m,onP){
   if(!r.ok) throw new Error('Sketchfab menolak unduhan (HTTP '+r.status+')');
   const j=await r.json(), pilih=(j.glb&&j.glb.url)?{...j.glb,glb:true}:(j.gltf&&j.gltf.url)?j.gltf:null;
   if(!pilih||!/^https:\/\//.test(pilih.url)) throw new Error('model ini tidak menyediakan versi glTF');
-  if(+pilih.size>(pilih.glb?ASSET_MAX:ZIP_MAKS)) throw new Error(`ukurannya ${fmt(pilih.size/1048576,1)} MB — terlalu besar`);
+  if(+pilih.size>(pilih.glb?RAMPING_MAKS:ZIP_MAKS)) throw new Error(`ukurannya ${fmt(pilih.size/1048576,1)} MB — terlalu besar`);
   const rr=await fetch(pilih.url); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
   const bag=[]; let n=0, total=+pilih.size||0;
   if(rr.body&&rr.body.getReader){ const rd=rr.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length;
@@ -11632,7 +11772,7 @@ async function pasangModelSketchfab(m){
     const r=await daftarkanAset(m.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:m.lis+(m.pembuat?' — '+m.pembuat:'')+' (Sketchfab)'});
     renderCatalogs(); HIST.label='Model '+m.nama; addObject('model',r.id);
-    info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${m.lis}${m.pembuat?' — '+m.pembuat:''}`;
+    info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${r.ramping?`dirampingkan ${fmt(r.asal/1048576,1)} → ${fmt(r.ukuran/1048576,1)} MB · `:''}${m.lis}${m.pembuat?' — '+m.pembuat:''}`;
   }catch(e){ console.warn('sketchfab',e); info.textContent='Gagal: '+(e.message||e); }
   finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
 }
@@ -11676,7 +11816,7 @@ async function pasangModelPH(a){
     const r=await daftarkanAset(a.nama+' (foto '+res.toUpperCase()+')',buf);
     PROJECT.assets[r.id].sumber='https://polyhaven.com/a/'+a.id;
     renderCatalogs(); HIST.label='Model '+a.nama; addObject('model',r.id);
-    info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(buf.byteLength/1048576,1)} MB · Poly Haven (CC0)`;
+    info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · Poly Haven (CC0)`;
     toast(a.nama+' dipasang di tengah tampilan — geser dengan W');
   }catch(e){
     console.warn('model fotogrametri',e);
@@ -11923,7 +12063,7 @@ function sanitasiProyek(j){
   for(const [k,a] of Object.entries(j.assets&&typeof j.assets==='object'?j.assets:{}).slice(0,BATAS_PROYEK.aset)){
     if(!ID_AMAN.test(k)||!a||typeof a.data!=='string') continue;
     if(a.data.length>ASSET_MAX*1.4 || !/^[A-Za-z0-9+/=\s]*$/.test(a.data.slice(0,4096))) continue;
-    assets[k]={ name:teks(a.name,120,'model'), size:angka(a.size,0,ASSET_MAX,0), dims:(Array.isArray(a.dims)?a.dims:[1,1,1]).slice(0,3).map(v=>angka(v,0,1e3,1)),
+    assets[k]={ name:teks(a.name,120,'model'), size:angka(a.size,0,ASSET_MAX,0), ...(a.asli>0?{asli:angka(a.asli,0,ZIP_MAKS,0)}:{}), dims:(Array.isArray(a.dims)?a.dims:[1,1,1]).slice(0,3).map(v=>angka(v,0,1e3,1)),
                 fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/(polyhaven\.com\/|github\.com\/KhronosGroup\/glTF-Sample-Assets\/|sketchfab\.com\/3d-models\/[a-f0-9]{32}$)/.test(a.sumber)?{sumber:a.sumber}:{}),
                 ...(typeof a.lisensi==='string'?{lisensi:a.lisensi.slice(0,200)}:{}) };
   }
@@ -12065,8 +12205,9 @@ function muatProyekObjek(sumber){
     if(Object.keys(PROJECT.assets).length){
       loadProjectAssets().then(r=>{
         renderCatalogs(); rebuildScene();
-        toast(r.gagal ? `${r.total-r.gagal}/${r.total} model dimuat, ${r.gagal} gagal`
-                      : `${r.total} model dari pustaka dimuat`);
+        toast((r.gagal ? `${r.total-r.gagal}/${r.total} model dimuat, ${r.gagal} gagal`
+                       : `${r.total} model dari pustaka dimuat`)
+              + (r.ramping ? ` · tekstur ${r.ramping} model diperkecil agar muat di memori iPad` : ''));
       });
     }
   }catch(err){
@@ -12157,6 +12298,7 @@ async function bukaTautanLihat(kode){
         let buf;
         if(r.jenis==='ph') buf=await unduhModelPH(r.id,nama,m.res==='2k'?'2k':'1k');
         else { const p=KATALOG_PRODUK.find(x=>x.id===r.id); buf=await unduhTerverifikasi(KHR_DASAR+p.id+'/glTF-Binary/'+p.id+'.glb',p.sha,p.b); }
+        buf=(await rampingkanGLB(buf)).buf;
         const hasil=await parseAsset(id,buf);
         PROJECT.assets[id]={name:nama, size:buf.byteLength, dims:hasil.dims, fit:hasil.fit, data:'', sumber:m.sumber, ...(typeof m.lisensi==='string'?{lisensi:m.lisensi.slice(0,200)}:{})};
         rebuildScene();
