@@ -2425,6 +2425,67 @@
     "target": "≥ 25%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-066",
+   "judul": "Garis tepi lembut untuk lampu padam saat malam (mode jalan)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di malam hari lampu yang padam tidak terlihat sama sekali, sehingga pemakai tidak bisa menemukan dan menyalakannya.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-04 (ruang gelap, lampu tak terlihat) + \"buat lampu kalo gelap ga keliatan, bisa dikasih smooth outline?\"",
+    "alternatif": [
+     "cahaya sekitar dinaikkan di malam hari (merusak suasana malam)",
+     "ikon melayang di atas lampu (tampak seperti game, menutupi pandangan)",
+     "outline pasca-proses (pass tambahan, berat di iPad)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "shader sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "geometri dipakai bersama, satu bahan; hanya tampil di mode jalan malam & untuk lampu padam"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "membantu menemukan sakelar dalam gelap; tetap lembut agar tidak menyilaukan"
+    }
+   },
+   "metrik": {
+    "nama": "lampu yang dinyalakan di mode jalan malam / sesi malam",
+    "target": "naik ≥ 30%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }
