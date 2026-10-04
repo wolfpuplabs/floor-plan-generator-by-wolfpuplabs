@@ -15,7 +15,9 @@
     "free3d.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
     "poly.pizza": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
     "3d.si.edu": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
-    "www.fab.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)"
+    "www.fab.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
+    "fuel.gazebosim.org": "daftar, thumbnail & unduhan ZIP Google Scanned Objects (CC-BY 4.0, API publik tanpa token) (JEV-063)",
+    "app.gazebosim.org": "tautan kredit/halaman model Google Scanned Objects (tidak ada permintaan jaringan) (JEV-063)"
   },
   "anggaran": {
     "indexHtmlKB": 900,
