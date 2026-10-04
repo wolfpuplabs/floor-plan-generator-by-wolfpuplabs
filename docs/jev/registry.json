@@ -2239,6 +2239,68 @@
     "target": "≤ 2%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-063",
+   "judul": "Model hasil scan 3D: tag fotogrametri Sketchfab + sumber Google Scanned Objects",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model paling realistis (hasil scan 3D / fotogrametri) tidak didahulukan di pencarian Sketchfab, dan tidak ada sumber scan benda rumah tangga tanpa token.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-04: \"model sketchfabnya yg tagged photogrametry, 3d scan juga diinclude, resource dari mana aja yg bisa kamu dapet\"",
+    "alternatif": [
+     "Objaverse (mirror Sketchfab di Hugging Face) — tanpa API pencarian, indeks puluhan MB",
+     "Smithsonian 3D Open Access — API butuh kunci api.data.gov",
+     "ambientCG / Poly Haven tekstur — sudah ada pustaka tekstur foto"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 8,
+      "menitHemat": 10
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.008
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "nama model divalidasi & di-encode; ZIP lewat jalur impor yang sudah terjaga (SEC-15)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "API publik tanpa akun; tidak ada data pengguna dikirim selain kata kunci"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "Google Scanned Objects CC-BY 4.0 — atribusi Google Research disimpan per aset; Sketchfab tetap CC0/CC-BY/CC-BY-SA saja"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "4 permintaan pencarian tambahan per kata kunci (debounce 450 ms); model dirampingkan (JEV-062)"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "model hasil scan yang dipasang ÷ seluruh model unduhan",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }

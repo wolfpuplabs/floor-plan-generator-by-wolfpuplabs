@@ -1074,7 +1074,16 @@ window.KAMUS_EN={
   "Laporan model":"Model report",
   "⚠ Model berat untuk iPad — beberapa model seperti ini bisa menghabiskan memori grafis.":"⚠ Heavy model for iPad — a few models like this can use up the graphics memory.",
   "Perkecil tekstur ke 512 px":"Reduce textures to 512 px",
-  "(diskalakan otomatis)":"(auto-scaled)"
+  "(diskalakan otomatis)":"(auto-scaled)",
+  "🎨 Sketchfab — ribuan model + hasil scan (CC0/CC-BY, perlu token)":"🎨 Sketchfab — thousands of models + 3D scans (CC0/CC-BY, token needed)",
+  "🔬 Google Scanned Objects — 1.000+ benda hasil scan 3D (CC-BY)":"🔬 Google Scanned Objects — 1,000+ 3D-scanned items (CC-BY)",
+  "Semua model":"All models",
+  "📷 Hanya scan 3D & fotogrametri":"📷 3D scans & photogrammetry only",
+  "Cari benda hasil scan (bahasa Inggris): mug, shoe, pillow, toy…":"Search scanned items: mug, shoe, pillow, toy…",
+  "· ketuk untuk mengunduh & memasang":"· tap to download & place",
+  "· masukkan token API untuk mengunduh":"· enter an API token to download",
+  "Tidak ada benda yang cocok — coba kata lain (bahasa Inggris): mug, shoe, toy, bowl…":"No matching items — try another word: mug, shoe, toy, bowl…",
+  "Memuat daftar…":"Loading list…"
  },
  // frasa
  "frasa":{
@@ -1107,6 +1116,12 @@ window.KAMUS_EN={
  },
  // pola
  "pola":[
+  ["Gagal: (.+) — buka halaman modelnya, unduh ZIP-nya, lalu unggah lewat tombol di bawah\\.","Failed: $1 — open the model page, download its ZIP, then upload it with the button below."],
+  ["(\\d+) model berlisensi bebas-komersial \\(CC0 / CC-BY / CC-BY-SA\\) · (\\d+) hasil scan 3D / fotogrametri(.*)","$1 commercially-usable models (CC0 / CC-BY / CC-BY-SA) · $2 from 3D scans / photogrammetry$3"],
+  ["(\\d+) benda hasil scan 3D \\(CC-BY 4\\.0, Google Research\\) · ketuk untuk mengunduh & memasang","$1 3D-scanned items (CC-BY 4.0, Google Research) · tap to download & place"],
+  ["Mencari \"(.+)\" di Google Scanned Objects…","Searching \"$1\" in Google Scanned Objects…"],
+  ["daftar Google Scanned Objects gagal \\(HTTP (\\d+)\\)","Google Scanned Objects list failed (HTTP $1)"],
+  ["Buka halaman (.+)","Open the page for $1"],
   ["(\\d+) titik sudut · luas ([\\d.,]+) m²","$1 corner points · area $2 m²"],
   ["(\\d+) titik · panjang ([\\d.,]+) m","$1 points · length $2 m"],
   ["(.+) dimuat — (.+) m(.*)","$1 loaded — $2 m$3"],

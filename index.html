@@ -196,6 +196,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 .gl-token a,.gl-situs a{color:var(--accent);font-size:.8rem}
 .gl-situs{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:0 14px 12px}
 .gl-modal .gl-card .gl-lis{color:var(--muted);font-size:.62rem}
+.gl-modal .gl-card .gl-scan{color:var(--accent);font-size:.62rem;font-weight:700}
 .gl-ruang button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0b1416;font-weight:600}
 .gl-modal .gl-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px 14px;-webkit-overflow-scrolling:touch}
 .gl-modal .gl-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:stretch;color:var(--txt);font-size:.7rem;cursor:pointer;text-align:center}
@@ -781,7 +782,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     </div></div>
     <div id="galeri" class="gl-modal" hidden><div class="gl-box">
       <div class="gl-head"><b>🌐 Model realistis — fotogrametri & produk nyata</b>
-        <select id="galeriSumber" title="Sumber model"><option value="ph">📷 Poly Haven — fotogrametri (CC0)</option><option value="khr">🛋 Produk nyata — Wayfair dkk. (CC0/CC-BY)</option><option value="skf">🎨 Sketchfab — ribuan model (CC0/CC-BY, perlu token)</option></select>
+        <select id="galeriSumber" title="Sumber model"><option value="ph">📷 Poly Haven — fotogrametri (CC0)</option><option value="khr">🛋 Produk nyata — Wayfair dkk. (CC0/CC-BY)</option><option value="skf">🎨 Sketchfab — ribuan model + hasil scan (CC0/CC-BY, perlu token)</option><option value="gso">🔬 Google Scanned Objects — 1.000+ benda hasil scan 3D (CC-BY)</option></select>
         <input type="search" id="galeriCari" placeholder="Cari: chair, sofa, plant, lamp…">
         <select id="galeriKat"><option value="semua">Semua</option></select>
         <select id="galeriRes"><option value="1k">Tekstur 1K — ringan</option><option value="2k">Tekstur 2K — lebih detail</option></select>
@@ -11723,6 +11724,9 @@ async function berkasKeGLB(files){
    (CC0, CC-BY, CC-BY-SA) yang ditampilkan; NC/ND/Editorial disaring. Atribusi
    (judul, pembuat, lisensi, tautan) ikut tersimpan di aset. */
 const SKF={token:'', hasil:[], sibuk:false, q:'', t:0};
+// model hasil scan 3D / fotogrametri (paling realistis): dicari juga per tag, ditandai & didahulukan
+const TAG_SCAN=['photogrammetry','3dscan','3d-scan','scan'];
+const RE_SCAN=/photogramm|3d-?scan|^scan$|scanned|scanning|reality-?capture|metashape|polycam|lidar|kiri-?engine/i;
 try{ SKF.token=localStorage.getItem('sketchfab_token')||''; }catch(e){ /* mode privat */ }
 const SKF_KATA={tidur:'bed', duduk:'sofa', mandi:'bathroom', dapur:'kitchen'};
 function lisensiSketchfab(l){
@@ -11733,18 +11737,36 @@ function lisensiSketchfab(l){
   if(/attribution|\bby\b/i.test(t)) return 'CC-BY 4.0';
   return null;
 }
+function ubahSketchfab(m,dariTag){
+  const uid=String(m&&m.uid||''); if(!/^[a-f0-9]{32}$/.test(uid)) return null;
+  const lis=lisensiSketchfab(m.license); if(!lis) return null;
+  const im=((m.thumbnails&&m.thumbnails.images)||[]).filter(x=>x&&/^https:\/\//.test(x.url)).sort((a,b)=>Math.abs(a.width-256)-Math.abs(b.width-256))[0];
+  const glb=m.archives&&m.archives.glb&&+m.archives.glb.size;
+  const scan=dariTag || (Array.isArray(m.tags)?m.tags:[]).some(t=>RE_SCAN.test(String(t&&(t.slug||t.name)||'')));
+  return {uid, nama:String(m.name||'model').slice(0,80), pembuat:String(m.user&&(m.user.displayName||m.user.username)||'').slice(0,60),
+    lis, thumb:im?im.url:'', ukuran:glb||0, laman:'https://sketchfab.com/3d-models/'+uid, scan, suka:+m.likeCount||0};
+}
 async function cariSketchfab(q){
-  const u='https://api.sketchfab.com/v3/search?type=models&downloadable=true&sort_by=-likeCount&count=24&q='+encodeURIComponent(q);
-  const r=await fetch(u); if(!r.ok) throw new Error('pencarian Sketchfab gagal (HTTP '+r.status+')');
-  const j=await r.json();
-  return (Array.isArray(j.results)?j.results:[]).map(m=>{
-    const uid=String(m&&m.uid||''); if(!/^[a-f0-9]{32}$/.test(uid)) return null;
-    const lis=lisensiSketchfab(m.license); if(!lis) return null;
-    const im=((m.thumbnails&&m.thumbnails.images)||[]).filter(x=>x&&/^https:\/\//.test(x.url)).sort((a,b)=>Math.abs(a.width-256)-Math.abs(b.width-256))[0];
-    const glb=m.archives&&m.archives.glb&&+m.archives.glb.size;
-    return {uid, nama:String(m.name||'model').slice(0,80), pembuat:String(m.user&&(m.user.displayName||m.user.username)||'').slice(0,60),
-      lis, thumb:im?im.url:'', ukuran:glb||0, laman:'https://sketchfab.com/3d-models/'+uid};
-  }).filter(Boolean);
+  const dasar='https://api.sketchfab.com/v3/search?type=models&downloadable=true&sort_by=-likeCount&count=24&q='+encodeURIComponent(q);
+  const hasil=await Promise.allSettled([dasar,...TAG_SCAN.map(t=>dasar+'&tags='+t)].map(u=>fetch(u).then(r=>{
+    if(!r.ok) throw new Error('pencarian Sketchfab gagal (HTTP '+r.status+')'); return r.json(); })));
+  if(hasil.every(h=>h.status==='rejected')) throw hasil[0].reason;
+  const peta=new Map();
+  hasil.forEach((h,i)=>{ if(h.status!=='fulfilled') return;
+    for(const m of (Array.isArray(h.value&&h.value.results)?h.value.results:[])){ const x=ubahSketchfab(m,i>0); if(!x) continue;
+      if(peta.has(x.uid)){ if(x.scan) peta.get(x.uid).scan=true; } else peta.set(x.uid,x); } });
+  return [...peta.values()].sort((a,b)=>(b.scan-a.scan)||(b.suka-a.suka)).slice(0,60);
+}
+// unduhan dengan kemajuan & batas ukuran (dihentikan begitu melewati batas)
+async function unduhAliran(url,maks,onP,total){
+  const rr=await fetch(url); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
+  total=total||+rr.headers.get('content-length')||0;
+  const bag=[]; let n=0;
+  if(rr.body&&rr.body.getReader){ const rd=rr.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length;
+    if(n>maks){ rd.cancel(); throw new Error('berkas terlalu besar'); } if(onP) onP(n,total); } }
+  else { const u=new Uint8Array(await rr.arrayBuffer()); if(u.length>maks) throw new Error('berkas terlalu besar'); bag.push(u); n=u.length; }
+  const buf=new Uint8Array(n); let o=0; for(const b of bag){ buf.set(b,o); o+=b.length; }
+  return buf;
 }
 async function unduhSketchfab(m,onP){
   if(!SKF.token) throw new Error('masukkan token API Sketchfab dulu');
@@ -11754,12 +11776,7 @@ async function unduhSketchfab(m,onP){
   const j=await r.json(), pilih=(j.glb&&j.glb.url)?{...j.glb,glb:true}:(j.gltf&&j.gltf.url)?j.gltf:null;
   if(!pilih||!/^https:\/\//.test(pilih.url)) throw new Error('model ini tidak menyediakan versi glTF');
   if(+pilih.size>(pilih.glb?RAMPING_MAKS:ZIP_MAKS)) throw new Error(`ukurannya ${fmt(pilih.size/1048576,1)} MB — terlalu besar`);
-  const rr=await fetch(pilih.url); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
-  const bag=[]; let n=0, total=+pilih.size||0;
-  if(rr.body&&rr.body.getReader){ const rd=rr.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length;
-    if(n>ZIP_MAKS){ rd.cancel(); throw new Error('berkas terlalu besar'); } if(onP) onP(n,total); } }
-  else { const u=new Uint8Array(await rr.arrayBuffer()); bag.push(u); n=u.length; }
-  const buf=new Uint8Array(n); let o=0; for(const b of bag){ buf.set(b,o); o+=b.length; }
+  const buf=await unduhAliran(pilih.url,ZIP_MAKS,onP,+pilih.size||0);
   if(pilih.glb) return buf.buffer;
   return (await berkasKeGLB([new File([buf],m.uid+'.zip',{type:'application/zip'})])).buf;
 }
@@ -11778,13 +11795,15 @@ async function pasangModelSketchfab(m){
 }
 function renderGaleriSketchfab(){
   const g=$('#galeriGrid'); g.textContent='';
-  for(const m of SKF.hasil){
+  const daftar=GALERI.kat==='scan'?SKF.hasil.filter(m=>m.scan):SKF.hasil, nScan=SKF.hasil.filter(m=>m.scan).length;
+  for(const m of daftar){
     const k=el('button','gl-card'); k.dataset.id=m.uid; k.title=`${m.nama} — ${m.pembuat} · ${m.lis}`+(m.ukuran?` · ${fmt(m.ukuran/1048576,1)} MB`:'');
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; if(m.thumb) im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
     k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-lis',m.lis));
+    if(m.scan) k.appendChild(el('small','gl-scan','📷 Scan'));
     k.onclick=()=>pasangModelSketchfab(m); g.appendChild(k);
   }
-  if(!GALERI.sibuk) $('#galeriInfo').textContent=SKF.hasil.length?`${SKF.hasil.length} model berlisensi bebas-komersial (CC0 / CC-BY / CC-BY-SA)`+(SKF.token?' · ketuk untuk mengunduh & memasang':' · masukkan token API untuk mengunduh'):(SKF.q?'Tidak ada model berlisensi bebas-komersial untuk pencarian ini.':'Ketik kata kunci (bahasa Inggris: sofa, bed, toilet, kitchen…) atau pilih ruangan.');
+  if(!GALERI.sibuk) $('#galeriInfo').textContent=daftar.length?`${daftar.length} model berlisensi bebas-komersial (CC0 / CC-BY / CC-BY-SA)`+(nScan?` · ${nScan} hasil scan 3D / fotogrametri`:'')+(SKF.token?' · ketuk untuk mengunduh & memasang':' · masukkan token API untuk mengunduh'):(SKF.q?'Tidak ada model berlisensi bebas-komersial untuk pencarian ini.':'Ketik kata kunci (bahasa Inggris: sofa, bed, toilet, kitchen…) atau pilih ruangan.');
 }
 async function jalankanCariSketchfab(){
   const q=(GALERI.cari.trim()||SKF_KATA[GALERI.ruang]||'').slice(0,100); SKF.q=q;
@@ -11792,6 +11811,65 @@ async function jalankanCariSketchfab(){
   const nomor=++SKF.t; $('#galeriInfo').textContent='Mencari "'+q+'" di Sketchfab…';
   try{ const h=await cariSketchfab(q); if(nomor!==SKF.t) return; SKF.hasil=h; renderGaleriSketchfab(); }
   catch(e){ if(nomor===SKF.t) $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
+}
+/* ---------- GOOGLE SCANNED OBJECTS (JEV-063) — 1.000+ benda rumah tangga hasil scan 3D ----------
+   Dipindai Google Research (struktur cahaya + fotogrametri), CC-BY 4.0, dihosting di Gazebo Fuel
+   dengan API publik tanpa token. Tiap model = ZIP berisi OBJ + MTL + tekstur → berkasKeGLB seperti
+   ZIP dari situs lain → dirampingkan. Bila peramban menolak unduhan langsung, halaman modelnya
+   dibuka supaya ZIP bisa diunduh lalu diunggah sendiri. */
+const GSO={dasar:'https://fuel.gazebosim.org/1.0/GoogleResearch/models', hasil:[], q:'', t:0};
+const GSO_NAMA=/^[A-Za-z0-9_.()-]{1,140}$/;
+const GSO_KATA={tidur:'pillow', duduk:'cushion', mandi:'bath', dapur:'mug'};
+const lamanGSO=id=>'https://app.gazebosim.org/GoogleResearch/fuel/models/'+encodeURIComponent(id);
+async function cariGSO(q){
+  const r=await fetch(GSO.dasar+'?per_page=40&page=1'+(q?'&q='+encodeURIComponent(q):''));
+  if(!r.ok) throw new Error('daftar Google Scanned Objects gagal (HTTP '+r.status+')');
+  const j=await r.json(), arr=Array.isArray(j)?j:Array.isArray(j&&j.models)?j.models:[];
+  return arr.map(m=>{
+    const id=String(m&&m.name||''); if(!GSO_NAMA.test(id)) return null;
+    let th=typeof m.thumbnail_url==='string'?m.thumbnail_url:'';
+    if(th.startsWith('/')) th='https://fuel.gazebosim.org'+th;
+    if(!/^https:\/\/fuel\.gazebosim\.org\//.test(th)) th=GSO.dasar+'/'+encodeURIComponent(id)+'/tip/files/thumbnails/0.jpg';
+    return {id, nama:id.replace(/_/g,' ').replace(/\s+/g,' ').trim().slice(0,80), thumb:th, laman:lamanGSO(id)};
+  }).filter(Boolean);
+}
+async function glbGSO(id,onP){
+  if(!GSO_NAMA.test(id)) throw new Error('id model tidak sah');
+  const zip=await unduhAliran(GSO.dasar+'/'+encodeURIComponent(id)+'.zip',ZIP_MAKS,onP);
+  return (await berkasKeGLB([new File([zip],id+'.zip',{type:'application/zip'})])).buf;
+}
+async function pasangModelGSO(m){
+  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  const info=$('#galeriInfo'), kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(m.id)}"]`); if(kartu) kartu.classList.add('muat');
+  try{
+    info.textContent='Mengunduh '+m.nama+'…';
+    const buf=await glbGSO(m.id,(n,t)=>{ info.textContent=`Mengunduh ${m.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
+    const r=await daftarkanAset(m.nama,buf);
+    Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:'CC-BY 4.0 — Google Research (Google Scanned Objects)'});
+    renderCatalogs(); HIST.label='Model '+m.nama; addObject('model',r.id);
+    info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · CC-BY 4.0 Google`;
+  }catch(e){
+    console.warn('google scanned objects',e);
+    info.textContent='Gagal: '+(e.message||e)+' — buka halaman modelnya, unduh ZIP-nya, lalu unggah lewat tombol di bawah.';
+    const a=el('a',null,'Buka halaman '+m.nama); a.href=m.laman; a.target='_blank'; a.rel='noopener noreferrer'; $('#galeriSitus').prepend(a);
+  }finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+}
+function renderGaleriGSO(){
+  const g=$('#galeriGrid'); g.textContent='';
+  for(const m of GSO.hasil){
+    const k=el('button','gl-card'); k.dataset.id=m.id; k.title=m.nama+' — Google Scanned Objects · CC-BY 4.0';
+    const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
+    k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-scan','📷 Scan'));
+    k.onclick=()=>pasangModelGSO(m); g.appendChild(k);
+  }
+  if(!GALERI.sibuk) $('#galeriInfo').textContent=GSO.hasil.length?`${GSO.hasil.length} benda hasil scan 3D (CC-BY 4.0, Google Research) · ketuk untuk mengunduh & memasang`
+    :(GSO.q?'Tidak ada benda yang cocok — coba kata lain (bahasa Inggris): mug, shoe, toy, bowl…':'Memuat daftar…');
+}
+async function jalankanCariGSO(){
+  const q=(GALERI.cari.trim()||GSO_KATA[GALERI.ruang]||'').slice(0,100); GSO.q=q;
+  const nomor=++GSO.t; $('#galeriInfo').textContent=q?'Mencari "'+q+'" di Google Scanned Objects…':'Memuat daftar…';
+  try{ const h=await cariGSO(q); if(nomor!==GSO.t) return; GSO.hasil=h; renderGaleriGSO(); }
+  catch(e){ if(nomor===GSO.t) $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
 }
 // situs lain tanpa API unduhan publik: dibuka di tab baru dengan kata kunci yang sama;
 // berkas hasil unduhan (glb / zip glTF / obj / fbx) diunggah lewat tombol di bawahnya
@@ -11837,7 +11915,7 @@ function cocokRuang(teks){ return !GALERI.ruang || RUANG_KATA[GALERI.ruang].test
 function renderRuangGaleri(){
   const w=$('#galeriRuang'); w.textContent='';
   for(const [k,label] of RUANG_GALERI){ const b=el('button',null,label); b.type='button'; b.dataset.ruang=k; b.setAttribute('aria-pressed',String((GALERI.ruang||'')===k));
-    b.onclick=()=>{ GALERI.ruang=k; renderRuangGaleri(); renderGaleri(); if(GALERI.sumber==='skf') jalankanCariSketchfab(); }; w.appendChild(b); }
+    b.onclick=()=>{ GALERI.ruang=k; renderRuangGaleri(); renderGaleri(); if(GALERI.sumber==='skf') jalankanCariSketchfab(); if(GALERI.sumber==='gso') jalankanCariGSO(); }; w.appendChild(b); }
 }
 function infoKosongRuang(){
   const nama=(RUANG_GALERI.find(r=>r[0]===GALERI.ruang)||[])[1];
@@ -11847,6 +11925,7 @@ function renderGaleri(){
   renderSitusLain();
   if(GALERI.sumber==='khr') return renderGaleriProduk();
   if(GALERI.sumber==='skf') return renderGaleriSketchfab();
+  if(GALERI.sumber==='gso') return renderGaleriGSO();
   const g=$('#galeriGrid'), d=GALERI.daftar||[], q=GALERI.cari.trim().toLowerCase();
   const c=d.filter(a=>(GALERI.kat==='semua'||a.kat.includes(GALERI.kat)) && cocokRuang(kataAset(a.nama,a.id,a.tag,a.kat)) &&
     (!q || a.nama.toLowerCase().includes(q) || a.id.includes(q) || a.tag.some(t=>t.toLowerCase().includes(q)) || a.kat.some(t=>t.toLowerCase().includes(q))));
@@ -11879,20 +11958,24 @@ function isiKategoriGaleri(){
   if(GALERI.sumber==='khr'){
     const hit={}; for(const a of KATALOG_PRODUK) hit[a.kat]=(hit[a.kat]||0)+1;
     isiOpsi($('#galeriKat'),[['semua',`Semua (${KATALOG_PRODUK.length})`],...Object.entries(hit).map(([k,n])=>[k,`${k} (${n})`])]);
+  } else if(GALERI.sumber==='skf'){
+    isiOpsi($('#galeriKat'),[['semua','Semua model'],['scan','📷 Hanya scan 3D & fotogrametri']]);
   } else if(GALERI.daftar){
     const hit={}; for(const a of GALERI.daftar) for(const k of a.kat) hit[k]=(hit[k]||0)+1;
     isiOpsi($('#galeriKat'),[['semua',`Semua (${GALERI.daftar.length})`],...Object.entries(hit).sort((a,b)=>b[1]-a[1]).slice(0,24).map(([k,n])=>[k,`${k} (${n})`])]);
   }
   GALERI.kat='semua'; $('#galeriKat').value='semua';
   $('#galeriRes').hidden=GALERI.sumber!=='ph';
-  $('#galeriKat').hidden=GALERI.sumber==='skf';
+  $('#galeriKat').hidden=GALERI.sumber==='gso';
   $('#skfBaris').hidden=GALERI.sumber!=='skf';
-  $('#galeriCari').placeholder=GALERI.sumber==='skf'?'Cari di Sketchfab (bahasa Inggris): sofa, bed, toilet, kitchen…':'Cari: chair, sofa, plant, lamp…';
+  $('#galeriCari').placeholder=GALERI.sumber==='skf'?'Cari di Sketchfab (bahasa Inggris): sofa, bed, toilet, kitchen…'
+    :GALERI.sumber==='gso'?'Cari benda hasil scan (bahasa Inggris): mug, shoe, pillow, toy…':'Cari: chair, sofa, plant, lamp…';
 }
 async function bukaGaleri(){
   $('#galeri').hidden=false; renderRuangGaleri();
   if(GALERI.sumber==='khr'){ isiKategoriGaleri(); return renderGaleri(); }
   if(GALERI.sumber==='skf'){ isiKategoriGaleri(); $('#skfToken').value=SKF.token; renderGaleri(); return jalankanCariSketchfab(); }
+  if(GALERI.sumber==='gso'){ isiKategoriGaleri(); renderGaleri(); return jalankanCariGSO(); }
   if(GALERI.daftar){ isiKategoriGaleri(); return renderGaleri(); }
   $('#galeriInfo').textContent='Memuat daftar model…';
   try{
@@ -11904,9 +11987,10 @@ $('#galeriBuka').onclick=bukaGaleri;
 $('#galeriTutup').onclick=()=>{ $('#galeri').hidden=true; };
 $('#galeri').addEventListener('click',e=>{ if(e.target.id==='galeri') $('#galeri').hidden=true; });
 $('#galeriKat').onchange=e=>{ GALERI.kat=e.target.value; renderGaleri(); };
-$('#galeriSumber').onchange=e=>{ GALERI.sumber=['khr','skf'].includes(e.target.value)?e.target.value:'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
+$('#galeriSumber').onchange=e=>{ GALERI.sumber=['khr','skf','gso'].includes(e.target.value)?e.target.value:'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
 $('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; clearTimeout(GALERI.t);
-  GALERI.t=setTimeout(()=>{ if(GALERI.sumber==='skf'){ renderSitusLain(); jalankanCariSketchfab(); } else renderGaleri(); },GALERI.sumber==='skf'?450:150); };
+  const jauh=GALERI.sumber==='skf'||GALERI.sumber==='gso';
+  GALERI.t=setTimeout(()=>{ if(GALERI.sumber==='skf'){ renderSitusLain(); jalankanCariSketchfab(); } else if(GALERI.sumber==='gso'){ renderSitusLain(); jalankanCariGSO(); } else renderGaleri(); },jauh?450:150); };
 $('#skfSimpan').onclick=()=>{ SKF.token=$('#skfToken').value.trim().slice(0,100);
   try{ if(SKF.token) localStorage.setItem('sketchfab_token',SKF.token); else localStorage.removeItem('sketchfab_token'); }catch(e){ /* mode privat */ }
   toast(SKF.token?'Token Sketchfab disimpan di perangkat ini':'Token Sketchfab dihapus'); renderGaleri(); };
@@ -12064,7 +12148,7 @@ function sanitasiProyek(j){
     if(!ID_AMAN.test(k)||!a||typeof a.data!=='string') continue;
     if(a.data.length>ASSET_MAX*1.4 || !/^[A-Za-z0-9+/=\s]*$/.test(a.data.slice(0,4096))) continue;
     assets[k]={ name:teks(a.name,120,'model'), size:angka(a.size,0,ASSET_MAX,0), ...(a.asli>0?{asli:angka(a.asli,0,ZIP_MAKS,0)}:{}), dims:(Array.isArray(a.dims)?a.dims:[1,1,1]).slice(0,3).map(v=>angka(v,0,1e3,1)),
-                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/(polyhaven\.com\/|github\.com\/KhronosGroup\/glTF-Sample-Assets\/|sketchfab\.com\/3d-models\/[a-f0-9]{32}$)/.test(a.sumber)?{sumber:a.sumber}:{}),
+                fit:angka(a.fit,1e-4,1e4,1), data:a.data, ...(typeof a.sumber==='string'&&/^https:\/\/(polyhaven\.com\/|github\.com\/KhronosGroup\/glTF-Sample-Assets\/|sketchfab\.com\/3d-models\/[a-f0-9]{32}$|app\.gazebosim\.org\/GoogleResearch\/fuel\/models\/[A-Za-z0-9_.()%-]{1,200}$)/.test(a.sumber)?{sumber:a.sumber}:{}),
                 ...(typeof a.lisensi==='string'?{lisensi:a.lisensi.slice(0,200)}:{}) };
   }
   const plans={};
@@ -12241,6 +12325,8 @@ function rujukanAset(a){
   let m=t.match(/^https:\/\/polyhaven\.com\/a\/([A-Za-z0-9_-]{1,64})$/); if(m) return {jenis:'ph',id:m[1]};
   m=t.match(/^https:\/\/github\.com\/KhronosGroup\/glTF-Sample-Assets\/tree\/[0-9a-f]{40}\/Models\/([A-Za-z0-9_-]{1,64})$/);
   if(m && KATALOG_PRODUK.some(p=>p.id===m[1])) return {jenis:'khr',id:m[1]};
+  m=t.match(/^https:\/\/app\.gazebosim\.org\/GoogleResearch\/fuel\/models\/([A-Za-z0-9_.()%-]{1,200})$/);
+  if(m){ let id=''; try{ id=decodeURIComponent(m[1]); }catch(e){ id=''; } if(GSO_NAMA.test(id)) return {jenis:'gso',id}; }
   return null;
 }
 async function buatTautanLihat(){
@@ -12297,6 +12383,7 @@ async function bukaTautanLihat(kode){
       try{
         let buf;
         if(r.jenis==='ph') buf=await unduhModelPH(r.id,nama,m.res==='2k'?'2k':'1k');
+        else if(r.jenis==='gso') buf=await glbGSO(r.id);
         else { const p=KATALOG_PRODUK.find(x=>x.id===r.id); buf=await unduhTerverifikasi(KHR_DASAR+p.id+'/glTF-Binary/'+p.id+'.glb',p.sha,p.b); }
         buf=(await rampingkanGLB(buf)).buf;
         const hasil=await parseAsset(id,buf);
