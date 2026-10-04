@@ -2612,6 +2612,66 @@
     "target": "≥ 90%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-069",
+   "judul": "Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di iPhone bilah jalan menumpuk di atas bilah lihat, bilah lantai tertutup, petunjuk menutupi tombol tampak; penerima tautan melihat langit dari dalam lantai 2 karena status atap tertutup tidak ikut; tautan tetap panjang tanpa sebab yang jelas.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "3 tangkapan layar iPhone pengguna 2026-10-04 + \"di hp ui masih numpuk, roof closed jadi gt, model yang di upload jg ga kebawa, link share masih panjang\"",
+    "alternatif": [
+     "menyembunyikan seluruh UI lihat di HP (penerima tidak tahu cara jalan-jalan)",
+     "atap selalu tertutup di editor (isi lantai teratas tak terlihat dari atas)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tutup atap hanya diterima bila tepat true; kode galat server hanya nama kelas galat, disaring [\\w-] ≤ 40 karakter, lewat textContent"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "atap di mode jalan memakai buildAtap yang sama; tidak ada pass tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tidak ada kontrol yang tertutup kontrol lain di layar 390 px (tes)"
+    }
+   },
+   "metrik": {
+    "nama": "sesi lihat di HP yang masuk mode jalan",
+    "target": "naik ≥ 20%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }

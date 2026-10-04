@@ -5,10 +5,11 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 43 GO · 3 DEFER · 5 NO-GO dari 51 item.
+**Ringkasan:** 44 GO · 3 DEFER · 5 NO-GO dari 52 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
+| JEV-069 | Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan | terkirim | 0.80 | 72 jt | 0,6 jt | 239.0× | 119.0× | 0.1 bln | 5 | **GO** |
 | JEV-064 | Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak | terkirim | 0.80 | 83 jt | 1 jt | 169.3× | 84.1× | 0.1 bln | 6 | **GO** |
 | JEV-062 | Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL | terkirim | 0.80 | 113,1 jt | 1,4 jt | 166.6× | 82.8× | 0.1 bln | 6 | **GO** |
 | JEV-058 | Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit | terkirim | 0.65 | 92,1 jt | 1,5 jt | 121.8× | 60.4× | 0.2 bln | 9 | **GO** |
@@ -65,6 +66,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 
 ## Alasan per item
 
+- **JEV-069 Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan — GO.** ROI 239.0× ≥ 1, payback 0.1 bln.
 - **JEV-064 Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak — GO.** ROI 169.3× ≥ 1, payback 0.1 bln.
 - **JEV-062 Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL — GO.** ROI 166.6× ≥ 1, payback 0.1 bln.
 - **JEV-058 Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit — GO.** ROI 121.8× ≥ 1, payback 0.2 bln.
