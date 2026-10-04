@@ -4,6 +4,9 @@ name: CI
 
 on:
   pull_request:
+    # edited: deskripsi PR yang baru diisi setelah dibuka (mis. dari template kosong) ikut
+    # diperiksa Gerbang JEV — job ulang memakai isi event lama, jadi tidak cukup
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
