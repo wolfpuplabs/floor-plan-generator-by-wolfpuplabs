@@ -2731,6 +2731,64 @@
     "target": "turun ke 0 dalam 1 bulan",
     "tinjau": "2027-01-05"
    }
+  },
+  {
+   "id": "JEV-071",
+   "judul": "Merek \"Plan23D\" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di layar penuh Chrome iPad, tombol X keluar-layar-penuh milik peramban menutupi tombol ciut bilah jalan; pemilik ingin nama aplikasi \"Plan\" dengan ikon denah sebagai logo.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "2 tangkapan layar iPad pengguna 2026-10-05 + \"button scroll ketutup close pas fullscreen, arsitek 3d diganti plan pake icon floor plan sebagai logo\" + \"Plan diganti jadi Plan23D\"",
+    "alternatif": [
+     "memindah tombol ciut ke kanan (tetap rawan tertutup di peramban lain)"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 0.75,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 1
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.003
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikon sendiri"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "logo aria-hidden; nama tetap teks; label tombol layar penuh mengikuti keadaan"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan tombol tertutup di layar penuh",
+    "target": "0",
+    "tinjau": "2027-01-05"
+   }
   }
  ]
 }
