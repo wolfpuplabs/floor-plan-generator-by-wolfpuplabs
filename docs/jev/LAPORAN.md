@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 46 GO · 3 DEFER · 5 NO-GO dari 54 item.
+**Ringkasan:** 47 GO · 3 DEFER · 5 NO-GO dari 55 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -16,6 +16,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-070 | Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata | terkirim | 0.80 | 57,6 jt | 0,8 jt | 138.6× | 68.8× | 0.1 bln | 8 | **GO** |
 | JEV-058 | Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit | terkirim | 0.65 | 92,1 jt | 1,5 jt | 121.8× | 60.4× | 0.2 bln | 9 | **GO** |
 | JEV-065 | Lantai hantu tanpa kaca putih + material lantai per tingkat + layar TV hidup (saluran bawaan, video, GIF) | terkirim | 0.75 | 103,8 jt | 1,8 jt | 114.3× | 56.7× | 0.1 bln | 9 | **GO** |
+| JEV-072 | Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan | terkirim | 0.80 | 20,7 jt | 0,4 jt | 103.2× | 51.1× | 0.2 bln | 10 | **GO** |
 | JEV-068 | Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi) | terkirim | 0.65 | 60,5 jt | 1,2 jt | 99.8× | 49.4× | 0.2 bln | 10 | **GO** |
 | JEV-066 | Garis tepi lembut untuk lampu padam saat malam (mode jalan) | terkirim | 0.80 | 30 jt | 0,6 jt | 99.0× | 49.0× | 0.2 bln | 10 | **GO** |
 | JEV-067 | Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG | terkirim | 0.80 | 78 jt | 1,8 jt | 85.7× | 42.3× | 0.2 bln | 12 | **GO** |
@@ -75,6 +76,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-070 Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata — GO.** ROI 138.6× ≥ 1, payback 0.1 bln.
 - **JEV-058 Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit — GO.** ROI 121.8× ≥ 1, payback 0.2 bln.
 - **JEV-065 Lantai hantu tanpa kaca putih + material lantai per tingkat + layar TV hidup (saluran bawaan, video, GIF) — GO.** ROI 114.3× ≥ 1, payback 0.1 bln.
+- **JEV-072 Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan — GO.** ROI 103.2× ≥ 1, payback 0.2 bln.
 - **JEV-068 Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi) — GO.** ROI 99.8× ≥ 1, payback 0.2 bln.
 - **JEV-066 Garis tepi lembut untuk lampu padam saat malam (mode jalan) — GO.** ROI 99.0× ≥ 1, payback 0.2 bln.
 - **JEV-067 Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG — GO.** ROI 85.7× ≥ 1, payback 0.2 bln.

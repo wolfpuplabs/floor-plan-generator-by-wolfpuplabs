@@ -2789,6 +2789,64 @@
     "target": "0",
     "tinjau": "2027-01-05"
    }
+  },
+  {
+   "id": "JEV-072",
+   "judul": "Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pagar tangga putar hanya tiang-tiang tegak berdiri sendiri tanpa pegangan (tampak aneh, tidak meyakinkan menahan orang), dan di mode jalan badan bisa keluar melewati pagar dari anak tangga rendah.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "tangkapan layar iPhone pengguna 2026-10-05 + \"rail tangga puternya masih aneh, bisa jatoh ga nahan\"",
+    "alternatif": [
+     "panel kaca melengkung (berat, pantulan kaca di HP)",
+     "hanya tambah pegangan tanpa penahan di mode jalan"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.75,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 1
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.005
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "dua tabung per pagar; penahan hanya memeriksa tangga putar/lengkung berpagar"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan pagar tangga",
+    "target": "0",
+    "tinjau": "2027-01-05"
+   }
   }
  ]
 }
