@@ -51,7 +51,8 @@ export const tes = {
     await page.evaluate(() => bukaGaleri());
     await page.selectOption('#galeriSumber', 'skf');
     await page.fill('#galeriCari', 'sofa');
-    await page.waitForFunction(() => document.querySelectorAll('#galeriGrid .gl-card').length >= 4, undefined, { timeout: 30000 });
+    // galeri sudah menampilkan hasil jelajah tanpa kata kunci: tunggu pencarian "sofa" benar-benar selesai
+    await page.waitForFunction(() => SKF.q === 'sofa' && /hasil scan/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 30000 });
     assert.deepEqual([...new Set(diminta)].sort(), ['', '3d-scan', '3dscan', 'photogrammetry', 'scan']);
     const kartu = await page.$$eval('#galeriGrid .gl-card', ks => ks.map(k => [k.dataset.id[0], !!k.querySelector('.gl-scan')]));
     assert.deepEqual(kartu, [['d', true], ['b', true], ['e', true], ['a', false]], 'hasil scan didahulukan (urut suka), NC disaring, tanpa duplikat');

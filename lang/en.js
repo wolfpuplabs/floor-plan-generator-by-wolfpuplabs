@@ -1083,7 +1083,29 @@ window.KAMUS_EN={
   "· ketuk untuk mengunduh & memasang":"· tap to download & place",
   "· masukkan token API untuk mengunduh":"· enter an API token to download",
   "Tidak ada benda yang cocok — coba kata lain (bahasa Inggris): mug, shoe, toy, bowl…":"No matching items — try another word: mug, shoe, toy, bowl…",
-  "Memuat daftar…":"Loading list…"
+  "Memuat daftar…":"Loading list…",
+  "Duduk":"Sit",
+  "Berdiri":"Stand up",
+  "Buka pintu":"Open door",
+  "Tutup pintu":"Close door",
+  "Buka jendela":"Open window",
+  "Tutup jendela":"Close window",
+  "Buka pintu garasi":"Open garage door",
+  "Tutup pintu garasi":"Close garage door",
+  "Padamkan api":"Put out the fire",
+  "Mainkan piano":"Play piano",
+  "kotak musik":"music box",
+  "kaset":"cassette",
+  "🪵 Meja":"🪵 Tables",
+  "🗄 Lemari & rak":"🗄 Cabinets & shelves",
+  "🖼 Dekor":"🖼 Decor",
+  "🪴 Tanaman":"🪴 Plants",
+  "🌳 Luar ruang":"🌳 Outdoor",
+  "📺 Elektronik":"📺 Electronics",
+  "🚗 Kendaraan":"🚗 Vehicles",
+  "💡 Lampu":"💡 Lighting",
+  "Muat lebih banyak":"Load more",
+  "Memuat model populer yang bisa diunduh…":"Loading popular downloadable models…"
  },
  // frasa
  "frasa":{
@@ -1112,7 +1134,9 @@ window.KAMUS_EN={
   "Mode lihat — seret untuk memutar, cubit untuk zoom, 🚶 Jalan-jalan untuk masuk ke dalam rumah.":"View mode — drag to orbit, pinch to zoom, <b>🚶 Walk</b> to step inside the house.",
   "Dijeda · klik layar untuk lanjut · Esc keluar":"Paused · <b>click the screen</b> to continue · <b>Esc</b> exit",
   "Tekan Lihat di ruanganmu — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis.":"Press <b>View in your room</b> — iOS opens it with AR Quick Look; the model is converted to USDZ automatically.",
-  "Perangkat ini mendukung AR — tekan Lihat di ruanganmu.":"This device supports AR — press <b>View in your room</b>."
+  "Perangkat ini mendukung AR — tekan Lihat di ruanganmu.":"This device supports AR — press <b>View in your room</b>.",
+  "Duduk · ketuk Berdiri atau geser stik":"<b>Seated</b> · tap <b>Stand up</b> or move the stick",
+  "Duduk · E atau W A S D untuk berdiri":"<b>Seated</b> · <b>E</b> or <b>W A S D</b> to stand up"
  },
  // pola
  "pola":[
@@ -1122,6 +1146,10 @@ window.KAMUS_EN={
   ["Mencari \"(.+)\" di Google Scanned Objects…","Searching \"$1\" in Google Scanned Objects…"],
   ["daftar Google Scanned Objects gagal \\(HTTP (\\d+)\\)","Google Scanned Objects list failed (HTTP $1)"],
   ["Buka halaman (.+)","Open the page for $1"],
+  ["👆 (.+)","👆 $1"],
+  ["Hentikan (.+)","Stop $1"],
+  ["Putar (CD|kaset|kotak musik|piringan hitam)","Play $1"],
+  ["(\\d+) model · ketuk untuk mengunduh & memasang","$1 models · tap to download & place"],
   ["(\\d+) titik sudut · luas ([\\d.,]+) m²","$1 corner points · area $2 m²"],
   ["(\\d+) titik · panjang ([\\d.,]+) m","$1 points · length $2 m"],
   ["(.+) dimuat — (.+) m(.*)","$1 loaded — $2 m$3"],

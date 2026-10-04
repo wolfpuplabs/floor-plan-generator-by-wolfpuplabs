@@ -52,7 +52,7 @@ export const tes = {
     await page.evaluate(() => bukaGaleri());
     await page.waitForFunction(() => document.querySelectorAll('#galeriGrid .gl-card').length === 5);
     const id = () => page.evaluate(() => [...document.querySelectorAll('#galeriGrid .gl-card')].map(k => k.dataset.id).sort());
-    assert.equal(await page.locator('#galeriRuang button').count(), 5);
+    assert.equal(await page.locator('#galeriRuang button').count(), 13);
     await page.locator('#galeriRuang button[data-ruang="dapur"]').click();
     assert.deepEqual(await id(), ['cooking_pot_01'], '"pot" tidak boleh cocok dengan "potted"');
     await page.locator('#galeriRuang button[data-ruang="mandi"]').click();
