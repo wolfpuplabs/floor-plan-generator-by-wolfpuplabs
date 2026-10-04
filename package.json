@@ -1,0 +1,7 @@
+{
+  "name": "arsitek-3d-situs",
+  "private": true,
+  "description": "Hanya untuk fungsi tautan pendek di Vercel (api/tautan.js). Aplikasinya sendiri tetap satu berkas statis tanpa dependensi.",
+  "engines": { "node": ">=20" },
+  "dependencies": { "@vercel/blob": "2.8.0" }
+}

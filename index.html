@@ -336,8 +336,13 @@ details.info[open]>summary{margin-bottom:6px}
 @media (max-width:900px){ #sidebar{width:min(368px,88vw);min-width:0} }
 /* mode lihat-saja: semua alat edit disembunyikan */
 body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspector,body.lihat #mulaiKartu{display:none !important}
+/* HP tegak: bilah lihat-saja selebar layar, pemilih lantai turun di bawahnya (dulu saling menimpa) */
+@media (max-width:640px){ body.lihat #lihatBar{left:8px;right:8px;max-width:none;flex-wrap:wrap;gap:6px 8px}
+  body.lihat #levelbar{top:calc(max(12px,env(safe-area-inset-top)) + 64px);right:8px}
+  body.lihat #lihatBar b{flex:1 1 100%;order:3} }
 #lihatBar{top:max(12px,env(safe-area-inset-top));left:12px;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-radius:12px;max-width:calc(100% - 140px)}
 #lihatBar b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
+#lihatBar b.galat{white-space:normal;color:#ffb4a8;font-weight:600;font-size:.82rem}
 #lihatBar .lihat-tag{font-size:.74rem;color:var(--accent);background:#1f2f2c;border-radius:999px;padding:4px 10px;white-space:nowrap}
 #lihatBar .btn{flex:none}
 #sidebar header{position:relative}
@@ -347,6 +352,21 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
+/* ikon garis (sprite #i-…) — pengganti emoji (JEV-067) */
+.ik{width:1.15em;height:1.15em;vertical-align:-.2em;display:inline-block;flex:none}
+.tabs button .ti .ik{width:22px;height:22px;vertical-align:middle}
+#toolbar .ic .ik{width:20px;height:20px;vertical-align:middle}
+#toolMenu .ic .ik{width:18px;height:18px;vertical-align:middle}
+.mulai-grid .mi .ik{width:28px;height:28px}
+.ikgrid .ik{width:18px;height:18px;margin-right:4px;vertical-align:-4px}
+.gl-ruang button .ik{width:16px;height:16px;margin-right:2px;vertical-align:-3px}
+/* bilah mode jalan: bisa diciutkan jadi satu tombol (layar HP), pilihan kualitas render */
+#fpsbar .fps-alat{display:contents}
+#fpsbar.ciut .fps-alat,#fpsbar.ciut #fpsinfo{display:none}
+#fpsbar.ciut{padding:6px;gap:6px}
+#fpsCiut{min-width:40px;padding:0 8px}
+#fpsCiut .ik{width:20px;height:20px}
+#fpsbar.ciut #fpsCiut .ik{transform:rotate(180deg)}
 </style>
 <!-- GUARDRAIL G5 — pustaka pihak ketiga dikunci versinya DAN isinya (Subresource
      Integrity): bila CDN disusupi atau berkasnya berubah, peramban menolak
@@ -360,6 +380,8 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
 <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js" integrity="sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW" crossorigin="anonymous"></script>
 </head>
 <body>
+<!-- ikon garis sendiri (24×24, goresan currentColor) — pengganti emoji di antarmuka (JEV-067) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-denah" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h11M14 3v11M9 14v7M14 14h7"/></symbol><symbol id="i-lantai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5z"/><path d="m2 12 10 5 10-5M2 16l10 5 10-5"/></symbol><symbol id="i-sofa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 11a2 2 0 0 1 2 2v2h14v-2a2 2 0 1 1 4 0v5H1v-5a2 2 0 0 1 2-2z"/><path d="M4 18v2M20 18v2"/></symbol><symbol id="i-palet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.6-.9 1.6-1.6 0-.9-.6-1.3-.6-2.1 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.9 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol><symbol id="i-simpan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></symbol><symbol id="i-panel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol><symbol id="i-urung" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="i-ulang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol><symbol id="i-pilih" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 7.5-6 1.5-3 6.5z"/><path d="m13 12 5 6"/></symbol><symbol id="i-geser" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol><symbol id="i-putar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 13a8.5 8.5 0 1 1-2.5-7.5"/><path d="M20 3v5h-5"/></symbol><symbol id="i-skala" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6"/><path d="m20 4-7 7M4 20l7-7"/></symbol><symbol id="i-dinding" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 12h18M9 5v7M15 12v7"/></symbol><symbol id="i-jalan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4.5" r="1.8"/><path d="M9 21l2.5-6 2.5 2v4M13 10l-2 5M8 11l3-3h3l2 3 3 1"/></symbol><symbol id="i-lainnya" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol><symbol id="i-bantuan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4M12 17h.01"/></symbol><symbol id="i-railing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 19h18M5 7v12M10 7v12M14 7v12M19 7v12"/></symbol><symbol id="i-ukur" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></symbol><symbol id="i-dimensi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M3 5v3M21 5v3"/></symbol><symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></symbol><symbol id="i-duplikat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol><symbol id="i-hapus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol><symbol id="i-tembus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5"/><path d="M4 14l6-6 4 4 6-6"/></symbol><symbol id="i-atap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol><symbol id="i-kubus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></symbol><symbol id="i-mata" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-langit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></symbol><symbol id="i-suara" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3.5 3.5 0 0 1 0 6M18.5 6.5a7 7 0 0 1 0 11"/></symbol><symbol id="i-penuh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol><symbol id="i-keluar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></symbol><symbol id="i-tutup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></symbol><symbol id="i-kiri" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></symbol><symbol id="i-kanan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol><symbol id="i-tautan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-kirim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v8h14v-8"/></symbol><symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol><symbol id="i-pensil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></symbol><symbol id="i-dokumen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></symbol><symbol id="i-dunia" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></symbol><symbol id="i-kamera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol><symbol id="i-dadu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r=".8"/><circle cx="15" cy="15" r=".8"/><circle cx="15" cy="9" r=".8"/><circle cx="9" cy="15" r=".8"/></symbol><symbol id="i-piano" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7.5 5v14M12 5v14M16.5 5v14"/><path d="M6 5v7M10.5 5v7M15 5v7M19.5 5v7" stroke-width="2.6"/></symbol><symbol id="i-bidik" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5v14l11-7z"/></symbol><symbol id="i-henti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol><symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4"/></symbol><symbol id="i-kartuSemua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol><symbol id="i-ranjang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19V6M3 14h18v5M21 19v-2"/><path d="M3 14v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol><symbol id="i-bak" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/></symbol><symbol id="i-panci" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 10h2M20 10h2M9.5 7c0-1.2 1-1.3 1-2.5M13.5 7c0-1.2 1-1.3 1-2.5"/></symbol><symbol id="i-lampu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol><symbol id="i-meja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18M5 8l-1 12M19 8l1 12M7 8v4h10V8"/></symbol><symbol id="i-lemari" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M5 12h14M11 7.5h2M11 16.5h2"/></symbol><symbol id="i-vas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v3.2C7.2 8 6 10.6 6 13.5a6 6 0 0 0 12 0c0-2.9-1.2-5.5-4-7.3V3"/></symbol><symbol id="i-tanaman" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 15c0-4 3-6 7-6 0 4-3 6-7 6zM8 21h8"/></symbol><symbol id="i-pohon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5M12 2 6 10h3l-4 7h14l-4-7h3z"/></symbol><symbol id="i-tv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></symbol><symbol id="i-mobil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16v-4l2.2-5h13.6L21 12v4z"/><path d="M3 12h18"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/></symbol><symbol id="i-kualitas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/></symbol><symbol id="i-ciut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></symbol><symbol id="i-buka" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></symbol><symbol id="i-bawah" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-cek" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17l9-10"/></symbol><symbol id="i-senyap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="m16 9 5 6M21 9l-5 6"/></symbol></defs></svg>
 <div id="app">
   <aside id="sidebar">
     <header>
@@ -368,11 +390,11 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <select class="pilih-bahasa" id="bahasa" aria-label="Bahasa / Language"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select>
     </header>
     <nav class="tabs" role="tablist" aria-label="Panel">
-      <button data-tab="plan" class="active" role="tab"><span class="ti" aria-hidden="true">📐</span>Denah</button>
-      <button data-tab="levels" role="tab"><span class="ti" aria-hidden="true">🏢</span>Lantai</button>
-      <button data-tab="objects" role="tab"><span class="ti" aria-hidden="true">🛋</span>Objek</button>
-      <button data-tab="tampilan" role="tab"><span class="ti" aria-hidden="true">🎨</span>Tampilan</button>
-      <button data-tab="file" role="tab"><span class="ti" aria-hidden="true">💾</span>File</button>
+      <button data-tab="plan" class="active" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-denah"/></svg></span>Denah</button>
+      <button data-tab="levels" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-lantai"/></svg></span>Lantai</button>
+      <button data-tab="objects" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-sofa"/></svg></span>Objek</button>
+      <button data-tab="tampilan" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-palet"/></svg></span>Tampilan</button>
+      <button data-tab="file" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-simpan"/></svg></span>File</button>
     </nav>
 
     <!-- ============ TAB DENAH ============ -->
@@ -476,7 +498,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
         </select>
       </div>
       <div class="cta-lekat">
-        <button class="btn" id="generateBtn">✨ Buat dinding 3D</button>
+        <button class="btn" id="generateBtn"><svg class="ik" aria-hidden="true"><use href="#i-kualitas"/></svg> Buat dinding 3D</button>
         <button class="btn ghost sm" id="generateNewBtn">Buat ke lantai baru</button>
       </div>
       <div id="stats">Belum ada denah diproses.</div>
@@ -484,15 +506,15 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <div class="section-title"><span class="no">5</span>Rapikan posisi lantai</div>
       <p class="hint">Geser seluruh dinding, bukaan, dan objek lantai aktif bila belum pas di atas lantai bawahnya.</p>
       <div class="nudge">
-        <button class="btn sm ghost" data-nudge="0,-1" title="Geser ke belakang (−Z)">▲</button>
-        <button class="btn sm ghost" data-nudge="-1,0" title="Geser ke kiri (−X)">◀</button>
+        <button class="btn sm ghost" data-nudge="0,-1" title="Geser ke belakang (−Z)" aria-label="Geser ke belakang"><svg class="ik" aria-hidden="true"><use href="#i-ciut"/></svg></button>
+        <button class="btn sm ghost" data-nudge="-1,0" title="Geser ke kiri (−X)" aria-label="Geser ke kiri"><svg class="ik" aria-hidden="true"><use href="#i-kiri"/></svg></button>
         <select id="nudgeStep" title="Langkah geser">
           <option value="0.05">5 cm</option>
           <option value="0.25" selected>25 cm</option>
           <option value="1">1 m</option>
         </select>
-        <button class="btn sm ghost" data-nudge="1,0" title="Geser ke kanan (+X)">▶</button>
-        <button class="btn sm ghost" data-nudge="0,1" title="Geser ke depan (+Z)">▼</button>
+        <button class="btn sm ghost" data-nudge="1,0" title="Geser ke kanan (+X)" aria-label="Geser ke kanan"><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button>
+        <button class="btn sm ghost" data-nudge="0,1" title="Geser ke depan (+Z)" aria-label="Geser ke depan"><svg class="ik" aria-hidden="true"><use href="#i-bawah"/></svg></button>
       </div>
       <button class="btn sm ghost" id="alignNowBtn">Sejajarkan ke lantai bawah</button>
       <span class="val" id="align-info"></span>
@@ -542,9 +564,9 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
         <div class="f-row"><label>Lanskap</label><select id="langitJenis"></select></div>
         <div class="f-row"><label>Panorama</label><select id="langitDaftar"><option value="">— memuat daftar —</option></select></div>
         <div class="row" style="gap:6px">
-          <button class="btn ghost sm" id="langitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya" style="flex:0 0 44px">◀</button>
-          <button class="btn ghost sm" id="langitGaleriBtn" title="Pilih panorama dari galeri bergambar">🖼 Pilih dari galeri</button>
-          <button class="btn ghost sm" id="langitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya" style="flex:0 0 44px">▶</button>
+          <button class="btn ghost sm" id="langitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya" style="flex:0 0 44px"><svg class="ik" aria-hidden="true"><use href="#i-kiri"/></svg></button>
+          <button class="btn ghost sm" id="langitGaleriBtn" title="Pilih panorama dari galeri bergambar"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Pilih dari galeri</button>
+          <button class="btn ghost sm" id="langitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya" style="flex:0 0 44px"><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button>
         </div>
         <label class="chk"><input type="checkbox" id="langitAcakCek"><span>Acak — ganti lanskap/suasana memilih panorama secara acak (mati = pilih sendiri)</span></label>
         <div class="f-row"><label>Resolusi</label><select id="langitRes">
@@ -554,8 +576,8 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
         <div class="f-row"><label>Putar</label><input type="range" id="langitPutar" min="0" max="359" step="1" value="0"></div>
         <label class="chk"><input type="checkbox" id="langitEditor" checked><span>Tampilkan juga di tampilan 3D editor (bukan hanya mode jalan)</span></label>
         <div class="row" style="gap:6px;flex-wrap:wrap">
-          <button class="btn ghost sm" id="langitAcak" title="Muat satu panorama acak dari lanskap ini">🎲 Acak sekali</button>
-          <button class="btn ghost sm" id="langitUnggahBtn">📁 Pakai foto 360° sendiri</button>
+          <button class="btn ghost sm" id="langitAcak" title="Muat satu panorama acak dari lanskap ini"><svg class="ik" aria-hidden="true"><use href="#i-dadu"/></svg> Acak sekali</button>
+          <button class="btn ghost sm" id="langitUnggahBtn"><svg class="ik" aria-hidden="true"><use href="#i-folder"/></svg> Pakai foto 360° sendiri</button>
           <input type="file" id="langitUnggah" accept=".hdr,image/jpeg,image/png,image/webp" hidden>
         </div>
         <p class="hint" id="langitInfo"></p>
@@ -611,7 +633,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <div class="cat-grid" id="cat-furn"></div>
       <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
       <div class="section-title">Model realistis &amp; model sendiri</div>
-      <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)">🌐 Jelajahi model realistis</button>
+      <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi model realistis</button>
       <p class="hint">Fotogrametri Poly Haven, produk nyata, dan <b>Sketchfab</b> — saring per ruangan: kamar tidur, sofa, kamar mandi, dapur. Juga tautan ke CGTrader, TurboSquid, Free3D, Poly Pizza, Smithsonian 3D, Fab.</p>
       <div class="group"><label>Unggah model sendiri (.glb, .gltf, ZIP, .obj + .mtl, .fbx)</label>
         <input type="file" id="glbInput" multiple></div>
@@ -645,11 +667,11 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <button class="btn ghost" id="exportObjBtn">Ekspor Model (.obj)</button>
       <button class="btn ghost" id="snapshotBtn">Simpan Gambar (.png)</button>
       <div class="section-title">Bagikan</div>
-      <button class="btn" id="bagikanBtn">🔗 Buat tautan lihat-saja</button>
+      <button class="btn" id="bagikanBtn"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat tautan lihat-saja</button>
       <p class="hint">Penerima bisa melihat &amp; jalan-jalan di dalam rumah, tetapi tidak bisa mengedit. Proyek ikut di dalam tautannya sendiri — tidak diunggah ke server mana pun.</p>
       <div id="bagikanHasil" class="group" hidden>
         <input type="text" id="bagikanUrl" readonly aria-label="Tautan lihat-saja">
-        <div class="row"><button class="btn sm" id="bagikanSalin">📋 Salin tautan</button><button class="btn sm ghost" id="bagikanKirim">📤 Kirim…</button></div>
+        <div class="row"><button class="btn sm" id="bagikanSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin tautan</button><button class="btn sm ghost" id="bagikanKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
         <p class="hint" id="bagikanInfo"></p>
       </div>
       <div class="section-title">AR / Model Viewer</div>
@@ -674,43 +696,43 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     <!-- Toolbar: alat yang sering dipakai selalu berlabel (layar sentuh tidak punya
          tooltip); alat yang jarang dipakai dikumpulkan di menu ⋯ Lainnya -->
     <div class="float" id="toolbar" role="toolbar" aria-label="Alat">
-      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)" aria-label="Panel samping"><span class="ic">☰</span><span class="lb">Panel</span></button>
+      <button id="sideBtn" title="Sembunyikan / tampilkan panel samping (H)" aria-label="Panel samping"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-panel"/></svg></span><span class="lb">Panel</span></button>
       <div class="sep"></div>
-      <button id="undoBtn" title="Urung (Ctrl+Z)" aria-label="Urung" disabled><span class="ic">↶</span><span class="lb">Urung</span></button>
-      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" aria-label="Ulang" disabled><span class="ic">↷</span><span class="lb">Ulang</span></button>
+      <button id="undoBtn" title="Urung (Ctrl+Z)" aria-label="Urung" disabled><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-urung"/></svg></span><span class="lb">Urung</span></button>
+      <button id="redoBtn" title="Ulang (Ctrl+Shift+Z)" aria-label="Ulang" disabled><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-ulang"/></svg></span><span class="lb">Ulang</span></button>
       <div class="sep"></div>
-      <button data-tool="select" class="active" title="Pilih (Q)"><span class="ic">↖</span><span class="lb">Pilih</span></button>
-      <button data-tool="translate" title="Geser (W)"><span class="ic">✥</span><span class="lb">Geser</span></button>
-      <button data-tool="rotate" title="Putar (E)"><span class="ic">⟳</span><span class="lb">Putar</span></button>
-      <button data-tool="scale" title="Skala (R)"><span class="ic">⤡</span><span class="lb">Skala</span></button>
+      <button data-tool="select" class="active" title="Pilih (Q)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-pilih"/></svg></span><span class="lb">Pilih</span></button>
+      <button data-tool="translate" title="Geser (W)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-geser"/></svg></span><span class="lb">Geser</span></button>
+      <button data-tool="rotate" title="Putar (E)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-putar"/></svg></span><span class="lb">Putar</span></button>
+      <button data-tool="scale" title="Skala (R)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-skala"/></svg></span><span class="lb">Skala</span></button>
       <div class="sep"></div>
-      <button data-tool="wall" title="Gambar dinding (L)"><span class="ic">▭</span><span class="lb">Dinding</span></button>
-      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam rumah (orang pertama)"><span class="ic">🚶</span><span class="lb">Jalan</span></button>
-      <button id="toolMore" title="Alat lainnya" aria-haspopup="true" aria-expanded="false" aria-controls="toolMenu"><span class="ic">⋯</span><span class="lb">Lainnya</span></button>
-      <button id="helpBtn" title="Panduan &amp; pintasan (?)" aria-label="Bantuan"><span class="ic">?</span><span class="lb">Bantuan</span></button>
+      <button data-tool="wall" title="Gambar dinding (L)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-dinding"/></svg></span><span class="lb">Dinding</span></button>
+      <button id="walkBtn" translate="no" title="Jalan-jalan di dalam rumah (orang pertama)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-jalan"/></svg></span><span class="lb">Jalan</span></button>
+      <button id="toolMore" title="Alat lainnya" aria-haspopup="true" aria-expanded="false" aria-controls="toolMenu"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-lainnya"/></svg></span><span class="lb">Lainnya</span></button>
+      <button id="helpBtn" title="Panduan &amp; pintasan (?)" aria-label="Bantuan"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-bantuan"/></svg></span><span class="lb">Bantuan</span></button>
     </div>
     <div class="float" id="toolMenu" role="menu" aria-label="Alat lainnya" hidden>
-      <button id="railBtn" role="menuitem" title="Gambar railing / pagar balkon (K)"><span class="ic">╫</span><span class="lb">Railing / pagar balkon</span><kbd>K</kbd></button>
-      <button data-tool="measure" role="menuitem" title="Ukur jarak (M)"><span class="ic">⟷</span><span class="lb">Ukur jarak</span><kbd>M</kbd></button>
-      <button id="dimBtn" role="menuitem" title="Tampilkan dimensi (N)"><span class="ic">↔</span><span class="lb">Dimensi</span><kbd>N</kbd></button>
-      <button id="snapBtn" role="menuitem" class="active" title="Snap ke grid 5 cm / 15°"><span class="ic">⌗</span><span class="lb">Snap grid 5 cm / 15°</span></button>
+      <button id="railBtn" role="menuitem" title="Gambar railing / pagar balkon (K)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-railing"/></svg></span><span class="lb">Railing / pagar balkon</span><kbd>K</kbd></button>
+      <button data-tool="measure" role="menuitem" title="Ukur jarak (M)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-ukur"/></svg></span><span class="lb">Ukur jarak</span><kbd>M</kbd></button>
+      <button id="dimBtn" role="menuitem" title="Tampilkan dimensi (N)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-dimensi"/></svg></span><span class="lb">Dimensi</span><kbd>N</kbd></button>
+      <button id="snapBtn" role="menuitem" class="active" title="Snap ke grid 5 cm / 15°"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-grid"/></svg></span><span class="lb">Snap grid 5 cm / 15°</span></button>
       <div class="sep"></div>
-      <button id="dupBtn" role="menuitem" title="Duplikat (Ctrl+D)"><span class="ic">⧉</span><span class="lb">Duplikat terpilih</span><kbd>Ctrl D</kbd></button>
-      <button id="delBtn" role="menuitem" title="Hapus (Del)"><span class="ic">✕</span><span class="lb">Hapus terpilih</span><kbd>Del</kbd></button>
+      <button id="dupBtn" role="menuitem" title="Duplikat (Ctrl+D)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg></span><span class="lb">Duplikat terpilih</span><kbd>Ctrl D</kbd></button>
+      <button id="delBtn" role="menuitem" title="Hapus (Del)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-hapus"/></svg></span><span class="lb">Hapus terpilih</span><kbd>Del</kbd></button>
       <div class="sep"></div>
-      <button id="wallModeBtn" role="menuitem" title="Tembok solid atau tembus pandang (G)"><span class="ic">◫</span><span class="lb">Tembok: solid</span><kbd>G</kbd></button>
-      <button id="roofBtn" role="menuitem" title="Plat atap buka / tutup (T)"><span class="ic">⌂</span><span class="lb">Atap</span><kbd>T</kbd></button>
-      <button id="arBtn" role="menuitem" title="Lihat model di AR / 3D viewer"><span class="ic">◈</span><span class="lb">AR / 3D viewer</span></button>
+      <button id="wallModeBtn" role="menuitem" title="Tembok solid atau tembus pandang (G)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-tembus"/></svg></span><span class="lb">Tembok: solid</span><kbd>G</kbd></button>
+      <button id="roofBtn" role="menuitem" title="Plat atap buka / tutup (T)"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-atap"/></svg></span><span class="lb">Atap</span><kbd>T</kbd></button>
+      <button id="arBtn" role="menuitem" title="Lihat model di AR / 3D viewer"><span class="ic"><svg class="ik" aria-hidden="true"><use href="#i-kubus"/></svg></span><span class="lb">AR / 3D viewer</span></button>
     </div>
     <div class="float" id="mulaiKartu" role="dialog" aria-labelledby="mulaiJudul" hidden>
-      <button class="mulai-tutup" id="mulaiTutup" aria-label="Tutup">✕</button>
+      <button class="mulai-tutup" id="mulaiTutup" aria-label="Tutup"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg></button>
       <h2 id="mulaiJudul">Mulai mendesain</h2>
       <p>Pilih salah satu cara — semuanya bisa digabung nanti.</p>
       <div class="mulai-grid">
-        <button id="mulaiUnggah"><span class="mi" aria-hidden="true">📄</span><b>Unggah denah</b><small>Foto atau gambar denah → dinding, pintu, jendela &amp; perabot 3D otomatis</small></button>
-        <button id="mulaiGambar"><span class="mi" aria-hidden="true">✏️</span><b>Gambar dinding</b><small>Ketuk titik-titik di lantai, ketuk dua kali untuk selesai</small></button>
-        <button id="mulaiContoh"><span class="mi" aria-hidden="true">🏠</span><b>Coba rumah contoh</b><small>Rumah 2 kamar lengkap dengan perabot — langsung bisa dijelajahi</small></button>
-        <button id="mulaiBuka"><span class="mi" aria-hidden="true">📂</span><b>Buka proyek</b><small>Berkas .json yang pernah disimpan</small></button>
+        <button id="mulaiUnggah"><span class="mi" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-dokumen"/></svg></span><b>Unggah denah</b><small>Foto atau gambar denah → dinding, pintu, jendela &amp; perabot 3D otomatis</small></button>
+        <button id="mulaiGambar"><span class="mi" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-pensil"/></svg></span><b>Gambar dinding</b><small>Ketuk titik-titik di lantai, ketuk dua kali untuk selesai</small></button>
+        <button id="mulaiContoh"><span class="mi" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-atap"/></svg></span><b>Coba rumah contoh</b><small>Rumah 2 kamar lengkap dengan perabot — langsung bisa dijelajahi</small></button>
+        <button id="mulaiBuka"><span class="mi" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-folder"/></svg></span><b>Buka proyek</b><small>Berkas .json yang pernah disimpan</small></button>
       </div>
     </div>
     <div class="float" id="viewbar">
@@ -742,52 +764,56 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     </div>
     <div class="float" id="levelbar"></div>
     <div class="float" id="lihatBar" hidden>
-      <span class="lihat-tag">👁 Lihat saja</span><b id="lihatNama"></b>
-      <button class="btn" id="lihatJalan">🚶 Jalan-jalan</button>
+      <span class="lihat-tag"><svg class="ik" aria-hidden="true"><use href="#i-mata"/></svg> Lihat saja</span><b id="lihatNama"></b>
+      <button class="btn" id="lihatJalan"><svg class="ik" aria-hidden="true"><use href="#i-jalan"/></svg> Jalan-jalan</button>
       <select class="pilih-bahasa" id="lihatBahasa" aria-label="Bahasa / Language"><option value="en">EN</option><option value="id">ID</option></select>
     </div>
     <div class="float" id="inspector" hidden></div>
     <div class="float" id="fpsbar" hidden>
+      <button class="btn ghost sm" id="fpsCiut" title="Sembunyikan / tampilkan menu" aria-label="Sembunyikan / tampilkan menu" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-ciut"/></svg></button>
       <span id="fpsinfo"></span>
+      <span class="fps-alat">
       <select id="fpsMood" title="Suasana cahaya">
-        <option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option><option value="gelap">🌑 Malam gelap</option>
+        <option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option><option value="gelap">Malam gelap</option>
       </select>
-      <span class="fps-langit"><button class="btn ghost sm" id="fpsLangitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya">◀</button><button class="btn ghost sm" id="fpsLangit" title="Nyalakan langit foto 360°">🏞 Langit</button><button class="btn ghost sm" id="fpsLangitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya">▶</button></span>
+      <span class="fps-langit"><button class="btn ghost sm" id="fpsLangitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya"><svg class="ik" aria-hidden="true"><use href="#i-kiri"/></svg></button><button class="btn ghost sm" id="fpsLangit" title="Nyalakan langit foto 360°"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Langit</button><button class="btn ghost sm" id="fpsLangitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya"><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button></span>
       <select id="fpsFov" title="Lebar pandang (lensa)">
         <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option>
       </select>
-      <button class="btn ghost sm" id="fpsSfx" title="Efek suara interaksi">🔊 SFX</button>
+      <select id="fpsRq" title="Kualitas render"><option value="cepat">Cepat</option><option value="halus" selected>Halus</option><option value="tinggi">Tinggi</option></select>
+      <button class="btn ghost sm" id="fpsSfx" title="Efek suara interaksi"><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> SFX</button>
       <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
       <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
-      <button class="btn ghost sm" id="fpsFull">⛶ Layar penuh</button>
-      <button class="btn sm" id="fpsExit">Keluar (Esc)</button>
+      <button class="btn ghost sm" id="fpsFull"><svg class="ik" aria-hidden="true"><use href="#i-penuh"/></svg> Layar penuh</button>
+      </span>
+      <button class="btn sm" id="fpsExit"><svg class="ik" aria-hidden="true"><use href="#i-keluar"/></svg> Keluar (Esc)</button>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
     <div class="float" id="pianoPanel" hidden>
-      <div class="pp-head"><b>🎹 Piano</b>
+      <div class="pp-head"><b><svg class="ik" aria-hidden="true"><use href="#i-piano"/></svg> Piano</b>
         <select id="pianoLagu" title="Lagu"></select>
-        <button class="btn sm" id="pianoMain">▶ Mainkan lagu</button>
-        <button class="btn sm ghost" id="pianoTurun" title="Oktaf turun (Z)">◀</button><span id="pianoOkt"></span><button class="btn sm ghost" id="pianoNaik" title="Oktaf naik (X)">▶</button>
-        <button class="btn sm ghost" id="pianoTutup">✕ Tutup</button></div>
+        <button class="btn sm" id="pianoMain"><svg class="ik" aria-hidden="true"><use href="#i-main"/></svg> Mainkan lagu</button>
+        <button class="btn sm ghost" id="pianoTurun" title="Oktaf turun (Z)" aria-label="Oktaf turun"><svg class="ik" aria-hidden="true"><use href="#i-kiri"/></svg></button><span id="pianoOkt"></span><button class="btn sm ghost" id="pianoNaik" title="Oktaf naik (X)" aria-label="Oktaf naik"><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button>
+        <button class="btn sm ghost" id="pianoTutup"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg> Tutup</button></div>
       <div id="pianoKeys"></div>
     </div>
     <div id="vignette" hidden></div>
     <div id="pilihLangit" class="gl-modal" hidden><div class="gl-box">
-      <div class="gl-head"><b>🏞 Pilih panorama 360° — foto HDRI asli · Poly Haven (CC0)</b>
+      <div class="gl-head"><b><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Pilih panorama 360° — foto HDRI asli · Poly Haven (CC0)</b>
         <input type="search" id="plCari" placeholder="Cari: mountain, beach, lake, sunset…">
         <select id="plJenis"></select>
-        <select id="plWaktu"><option value="semua">Semua waktu</option><option value="siang">☀ Siang</option><option value="senja">🌇 Senja</option><option value="malam">🌙 Malam</option></select>
-        <button class="btn sm ghost" id="plTutup" style="flex:0 0 auto">✕ Tutup</button></div>
+        <select id="plWaktu"><option value="semua">Semua waktu</option><option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option></select>
+        <button class="btn sm ghost" id="plTutup" style="flex:0 0 auto"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg> Tutup</button></div>
       <div class="gl-grid lebar" id="plGrid"></div>
       <p class="hint" id="plInfo"></p>
     </div></div>
     <div id="galeri" class="gl-modal" hidden><div class="gl-box">
-      <div class="gl-head"><b>🌐 Model realistis — fotogrametri & produk nyata</b>
-        <select id="galeriSumber" title="Sumber model"><option value="ph">📷 Poly Haven — fotogrametri (CC0)</option><option value="khr">🛋 Produk nyata — Wayfair dkk. (CC0/CC-BY)</option><option value="skf">🎨 Sketchfab — ribuan model + hasil scan (CC0/CC-BY, perlu token)</option><option value="gso">🔬 Google Scanned Objects — 1.000+ benda hasil scan 3D (CC-BY)</option></select>
+      <div class="gl-head"><b><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Model realistis — fotogrametri & produk nyata</b>
+        <select id="galeriSumber" title="Sumber model"><option value="ph">Poly Haven — fotogrametri (CC0)</option><option value="khr">Produk nyata — Wayfair dkk. (CC0/CC-BY)</option><option value="skf">Sketchfab — ribuan model + hasil scan (CC0/CC-BY, perlu token)</option><option value="gso">Google Scanned Objects — 1.000+ benda hasil scan 3D (CC-BY)</option></select>
         <input type="search" id="galeriCari" placeholder="Cari: chair, sofa, plant, lamp…">
         <select id="galeriKat"><option value="semua">Semua</option></select>
         <select id="galeriRes"><option value="1k">Tekstur 1K — ringan</option><option value="2k">Tekstur 2K — lebih detail</option></select>
-        <button class="btn sm ghost" id="galeriTutup" style="flex:0 0 auto">✕ Tutup</button></div>
+        <button class="btn sm ghost" id="galeriTutup" style="flex:0 0 auto"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg> Tutup</button></div>
       <div class="gl-ruang" id="galeriRuang" role="group" aria-label="Saring menurut ruangan"></div>
       <div class="gl-token" id="skfBaris" hidden>
         <input type="password" id="skfToken" placeholder="Token API Sketchfab (Settings → Password &amp; API)" autocomplete="off" aria-label="Token API Sketchfab">
@@ -800,13 +826,13 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <div class="gl-situs" id="galeriSitus"></div>
     </div></div>
     <div id="teksturModal" class="gl-modal" hidden><div class="gl-box">
-      <div class="gl-head"><b>🖼 Tekstur foto — foto sendiri atau pustaka Poly Haven (CC0)</b>
-        <button class="btn sm" id="teksturFotoBtn" style="flex:0 0 auto">📷 Pakai foto sendiri…</button>
+      <div class="gl-head"><b><svg class="ik" aria-hidden="true"><use href="#i-kamera"/></svg> Tekstur foto — foto sendiri atau pustaka Poly Haven (CC0)</b>
+        <button class="btn sm" id="teksturFotoBtn" style="flex:0 0 auto"><svg class="ik" aria-hidden="true"><use href="#i-kamera"/></svg> Pakai foto sendiri…</button>
         <input type="file" id="teksturFoto" accept="image/*" hidden>
         <input type="file" id="tvMediaInput" accept="video/mp4,video/webm,video/quicktime,image/gif" hidden>
         <input type="search" id="teksturCari" placeholder="Cari: fabric, leather, oak, marble…" aria-label="Cari tekstur">
         <select id="teksturRes" aria-label="Resolusi tekstur"><option value="1k">1K — ringan</option><option value="2k">2K — lebih tajam</option></select>
-        <button class="btn sm ghost" id="teksturTutup" style="flex:0 0 auto">✕ Tutup</button></div>
+        <button class="btn sm ghost" id="teksturTutup" style="flex:0 0 auto"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg> Tutup</button></div>
       <div class="gl-ruang" id="teksturKat" role="group" aria-label="Jenis bahan"></div>
       <div class="gl-grid" id="teksturGrid"></div>
       <p class="hint" id="teksturInfo"></p>
@@ -814,9 +840,9 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     <div id="fpsAim" hidden><div id="fpsDot"></div><button id="fpsAct" hidden></button></div>
     <div class="float" id="traceBar" hidden>
       <span id="traceInfo">0 titik</span>
-      <button class="btn sm" id="traceDone">✓ Selesai</button>
-      <button class="btn sm ghost" id="traceUndo">↶ Hapus titik</button>
-      <button class="btn sm ghost" id="traceCancel">✕ Batal</button>
+      <button class="btn sm" id="traceDone"><svg class="ik" aria-hidden="true"><use href="#i-cek"/></svg> Selesai</button>
+      <button class="btn sm ghost" id="traceUndo"><svg class="ik" aria-hidden="true"><use href="#i-urung"/></svg> Hapus titik</button>
+      <button class="btn sm ghost" id="traceCancel"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg> Batal</button>
     </div>
     <div class="float" id="hint">Upload denah lalu <b>Generate</b>, atau gambar dinding manual dengan <b>+ Dinding</b>.</div>
     <div id="loader"><div class="spinner"></div><span id="loader-txt">Memproses denah…</span></div>
@@ -872,6 +898,12 @@ const $$=s=>[...document.querySelectorAll(s)];
 // luar WAJIB lewat esc() sebelum masuk innerHTML / atribut (cegah XSS tersimpan)
 const esc=v=>String(v??'').replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
 const el=(tag,cls,txt)=>{const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e;};
+// ikon garis dari sprite #i-… (pengganti emoji): ikonSvg('lampu'); isiIkon(tombol,'main','Mainkan') menulis ikon + teks
+const NS_SVG='http://www.w3.org/2000/svg';
+function ikonSvg(n){ const s=document.createElementNS(NS_SVG,'svg'); s.setAttribute('class','ik'); s.setAttribute('aria-hidden','true');
+  const u=document.createElementNS(NS_SVG,'use'); u.setAttribute('href','#i-'+n); s.appendChild(u); return s; }
+function isiIkon(e,n,teks){ e.textContent=''; e.appendChild(ikonSvg(n)); if(teks) e.appendChild(document.createTextNode(' '+teks)); return e; }
+const tombolIkon=(cls,n,teks)=>isiIkon(el('button',cls),n,teks);
 
 /* ---------- BAHASA: Inggris bawaan, Indonesia pilihan (JEV-061) ----------
    Seluruh UI ditulis dalam bahasa Indonesia di kode (begitu pula komentar & nama).
@@ -2944,7 +2976,7 @@ function buildSlab(lv){
     const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, matPelat(lv),
                 (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
     planarUV(m.geometry, m.position.x, m.position.y, m.position.z);
-    m.castShadow=false; m.userData.slab=true;
+    m.castShadow=true; m.userData.slab=true;   // pelat menghalangi lampu lantai lain (tanpa ini cahaya lantai bawah tembus ke kamar di atasnya)
     return m;
   }
   const x0=minX-pad, x1=maxX+pad, z0=minZ-pad, z1=maxZ+pad;
@@ -2958,7 +2990,7 @@ function buildSlab(lv){
     return true;
   };
   const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),[matLantai(lv),matTepiPelat()]);
-  m.castShadow=false; m.receiveShadow=true; m.userData.slab=true;
+  m.castShadow=true; m.receiveShadow=true; m.userData.slab=true;
   return m;
 }
 
@@ -5363,7 +5395,7 @@ function hiasModel(g,o){
    ±20 kali per detik selama ada TV yang menyala dengan sumber itu. Video selalu bisu
    (aturan autoplay iOS) dan dijeda bila tidak ada TV yang memutarnya. */
 const KANAL_TV={
-  senja:{l:'🌅 Senja di pantai', gambar:(c,w,h,t)=>{
+  senja:{l:'Senja di pantai', gambar:(c,w,h,t)=>{
     const g=c.createLinearGradient(0,0,0,h*0.62); g.addColorStop(0,'#2a2550'); g.addColorStop(0.55,'#e0705a'); g.addColorStop(1,'#ffc77a');
     c.fillStyle=g; c.fillRect(0,0,w,h*0.62);
     const sy=h*0.5+Math.sin(t*0.05)*h*0.04; c.fillStyle='#fff1c8'; c.beginPath(); c.arc(w*0.62,sy,h*0.11,0,Math.PI*2); c.fill();
@@ -5373,7 +5405,7 @@ const KANAL_TV={
     c.fillStyle='rgba(255,240,200,0.5)'; for(let i=0;i<14;i++){ const x=w*0.62+Math.sin(t*2+i*7)*w*0.05*(i%4+1), y=h*0.64+i*h*0.024; c.fillRect(x-8+i,y,16-i*0.5,1.5); }
     c.fillStyle='#14182c'; for(let i=0;i<3;i++){ const x=(t*14+i*140)%(w+80)-40, y=h*0.3-i*12+Math.sin(t*3+i)*3;
       c.beginPath(); c.moveTo(x-7,y); c.quadraticCurveTo(x-3,y-4,x,y); c.quadraticCurveTo(x+3,y-4,x+7,y); c.lineWidth=1.6; c.strokeStyle='#14182c'; c.stroke(); } }},
-  akuarium:{l:'🐠 Akuarium', gambar:(c,w,h,t)=>{
+  akuarium:{l:'Akuarium', gambar:(c,w,h,t)=>{
     const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0f6f8f'); g.addColorStop(1,'#06223a'); c.fillStyle=g; c.fillRect(0,0,w,h);
     for(let i=0;i<5;i++){ c.fillStyle=`rgba(180,240,255,${0.05+0.03*Math.sin(t+i)})`; c.beginPath(); const x=w*(0.1+i*0.22)+Math.sin(t*0.4+i)*20;
       c.moveTo(x,0); c.lineTo(x+40,0); c.lineTo(x+90,h); c.lineTo(x+20,h); c.fill(); }
@@ -5386,7 +5418,7 @@ const KANAL_TV={
       c.beginPath(); c.moveTo(-s*1.4,0); c.lineTo(-s*2.6,-s*(0.8+0.3*Math.sin(t*9+i))); c.lineTo(-s*2.6,s*(0.8+0.3*Math.sin(t*9+i))); c.fill();
       c.fillStyle='#111'; c.beginPath(); c.arc(s*0.9,-s*0.2,1.6,0,Math.PI*2); c.fill(); c.restore(); });
     c.fillStyle='rgba(220,250,255,0.7)'; for(let i=0;i<16;i++){ const x=w*0.85+Math.sin(t*2+i)*6+(i%3)*8, y=h-((t*40+i*23)%h); c.beginPath(); c.arc(x,y,1.5+(i%3),0,Math.PI*2); c.fill(); } }},
-  kota:{l:'🌃 Kota malam berhujan', gambar:(c,w,h,t)=>{
+  kota:{l:'Kota malam berhujan', gambar:(c,w,h,t)=>{
     const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#090b1c'); g.addColorStop(1,'#2a2140'); c.fillStyle=g; c.fillRect(0,0,w,h);
     const kilat=(Math.sin(t*0.7)>0.995)||(t%13<0.08); if(kilat){ c.fillStyle='rgba(200,210,255,0.25)'; c.fillRect(0,0,w,h); }
     for(let i=0;i<14;i++){ const bw=24+(i*37)%30, bh=h*(0.3+((i*53)%40)/100), x=i*w/13-10;
@@ -5395,7 +5427,7 @@ const KANAL_TV={
     c.strokeStyle='rgba(180,200,255,0.35)'; c.lineWidth=1; c.beginPath();
     for(let i=0;i<120;i++){ const x=(i*97.3+t*60)%w, y=(i*53.7+t*420)%h; c.moveTo(x,y); c.lineTo(x-3,y+12); } c.stroke();
     c.fillStyle='rgba(255,90,90,0.8)'; c.fillRect(((t*50)%(w+40))-20,h*0.93,6,3); c.fillStyle='rgba(255,250,210,0.9)'; c.fillRect(w-((t*70)%(w+40))+20,h*0.95,6,3); }},
-  aurora:{l:'🌌 Aurora', gambar:(c,w,h,t)=>{
+  aurora:{l:'Aurora', gambar:(c,w,h,t)=>{
     c.fillStyle='#030814'; c.fillRect(0,0,w,h);
     for(let i=0;i<60;i++){ const n=Math.sin(i*91.7)*43758.5, f=n-Math.floor(n); c.fillStyle=`rgba(255,255,255,${0.3+0.5*Math.abs(Math.sin(t*2+i))})`; c.fillRect(f*w,((i*37)%60)/100*h*0.7,1.5,1.5); }
     c.globalCompositeOperation='lighter';
@@ -6178,7 +6210,7 @@ function bukaPiano(grp){
   const ctx=audioSiap(); if(ctx&&ctx.state!=='running') ctx.resume().catch(()=>{});
   $('#pianoPanel').hidden=false; gambarTuts(); pianoBus();
   if(FPS.on){ FPS.keys.clear(); FPS.move=null; if(document.exitPointerLock&&document.pointerLockElement) document.exitPointerLock(); }
-  toast('🎹 Ketuk tuts, atau pakai keyboard: A S D F G H J K L (putih) · W E T Y U O P (hitam) · Z / X ganti oktaf');
+  toast('Ketuk tuts, atau pakai keyboard: A S D F G H J K L (putih) · W E T Y U O P (hitam) · Z / X ganti oktaf');
 }
 function tutupPiano(){
   PIANO.buka=false; $('#pianoPanel').hidden=true; hentikanLaguPiano();
@@ -6193,13 +6225,13 @@ function hentikanLaguPiano(){
     if(lg.bus&&AUDIO.ctx){ const t=AUDIO.ctx.currentTime; lg.bus.gain.cancelScheduledValues(t); lg.bus.gain.setValueAtTime(lg.bus.gain.value,t); lg.bus.gain.linearRampToValueAtTime(0,t+0.05);
       setTimeout(()=>{ try{ lg.bus.disconnect(); }catch(e){} },120); } }
   document.querySelectorAll('#pianoKeys .pk.on').forEach(k=>k.classList.remove('on'));
-  $('#pianoMain').textContent='▶ Mainkan lagu';
+  isiIkon($('#pianoMain'),'main','Mainkan lagu');
 }
 function mainkanLaguPiano(kunci){
   hentikanLaguPiano();
   const L=LAGU_PIANO[kunci], ctx=pianoBus(); if(!L||!ctx) return;
   const bus=ctx.createGain(); bus.gain.value=1; bus.connect(PIANO.bus);
-  const lg={kunci, bus, timer:0}; PIANO.lagu=lg; $('#pianoMain').textContent='■ Berhenti';
+  const lg={kunci, bus, timer:0}; PIANO.lagu=lg; isiIkon($('#pianoMain'),'henti','Berhenti');
   const spb=60/L.bpm; let i=0, t=ctx.currentTime+0.15;
   const jadwal=()=>{
     if(PIANO.lagu!==lg) return;
@@ -6211,7 +6243,7 @@ function mainkanLaguPiano(kunci){
       PIANO.tunda.push(setTimeout(()=>{ if(PIANO.lagu===lg) tandaiTuts(m,true); },ms), setTimeout(()=>tandaiTuts(m,false),ms+Math.min(dur*spb*1000*0.9,400)));
       t+=dur*spb; i++;
     }
-    if(i>=L.n.length && ctx.currentTime>t+0.2){ clearInterval(lg.timer); if(PIANO.lagu===lg){ PIANO.lagu=null; $('#pianoMain').textContent='▶ Mainkan lagu'; } }
+    if(i>=L.n.length && ctx.currentTime>t+0.2){ clearInterval(lg.timer); if(PIANO.lagu===lg){ PIANO.lagu=null; isiIkon($('#pianoMain'),'main','Mainkan lagu'); } }
   };
   lg.timer=setInterval(jadwal,50); jadwal();
 }
@@ -6769,7 +6801,7 @@ function inspektorInteraksi(ins,d){
     fRow(ins,'Jenis suara',selInput(Object.entries(AUDIO_JENIS).map(([k,v])=>[k,v[0].toUpperCase()+v.slice(1)]),AUDIO_JENIS[d.params.audioJenis]?d.params.audioJenis:'music_box',v=>ubah('Jenis suara',()=>{ d.params.audioJenis=v; })));
     ins.appendChild(el('p','hint','Di mode jalan: bidik lalu E untuk memutar/menghentikan musik (dibuat langsung, suaranya mengikuti posisi model).'));
   } else if(j==='piano'){
-    const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp);
+    const bp=tombolIkon('btn sm','piano','Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp);
   }
 }
 function inspektorCahaya(ins,d){
@@ -6893,12 +6925,12 @@ function renderInspector(){
       if(def.engsel||def.ayun){
         const row=el('div','row');
         if(def.engsel){
-          const bh=el('button','btn sm ghost', (o.type==='folding'||o.type==='window_fold')?'⇄ Balik sisi lipatan':'⇄ Balik engsel');
+          const bh=tombolIkon('btn sm ghost','putar', (o.type==='folding'||o.type==='window_fold')?'Balik sisi lipatan':'Balik engsel');
           bh.onclick=()=>{ o.hinge = o.hinge==='R'?'L':'R'; rebuildScene(); };
           row.appendChild(bh);
         }
         if(def.ayun){
-          const bs=el('button','btn sm ghost','⇅ Balik ayun');
+          const bs=tombolIkon('btn sm ghost','putar','Balik ayun');
           bs.onclick=()=>{ o.swing = o.swing===-1?1:-1; rebuildScene(); };
           row.appendChild(bs);
         }
@@ -6984,7 +7016,7 @@ function renderInspector(){
       if(v==='L'){ d.params.cw=d.params.cw||voidW(d)/2; d.params.cd=d.params.cd||voidD(d)/2; }
       rebuildScene(); renderInspector();
     }));
-    const bt=el('button','btn sm ghost','✎ Gambar ulang keliling (tracing)');
+    const bt=tombolIkon('btn sm ghost','pensil','Gambar ulang keliling (tracing)');
     bt.title='Telusuri ulang tepi void titik demi titik'; bt.onclick=()=>mulaiTraceVoid(d.id);
     ins.appendChild(bt);
     if(d.params.shape==='poly'&&d.params.pts) ins.appendChild(el('p','hint',`${d.params.pts.length} titik sudut — lebar & panjang di bawah menskalakan seluruh bentuk.`));
@@ -7044,7 +7076,7 @@ function renderInspector(){
     if(/^setapak_(kerikil|paving)/.test(j)) fRow(ins,'Lebar (m)',numInput(d.params.lebar||0.8,0.05,v=>{ d.params.lebar=clamp(v,0.3,3); rebuildScene(); },0.3,3));
     if(/^pagar/.test(j)) fRow(ins,'Tinggi (m)',numInput(d.params.tinggi||1.2,0.05,v=>{ d.params.tinggi=clamp(v,0.4,2.5); rebuildScene(); },0.4,2.5));
     if(j==='kolam_renang' && (d.params.kedalaman||1.4)>1.5) ins.appendChild(el('div','badge warn','⚠ Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.'));
-    const bt=el('button','btn sm ghost','✎ Gambar ulang (tracing)'); bt.onclick=()=>mulaiTrace({kind:d.kind,type:j},d.id); ins.appendChild(bt);
+    const bt=tombolIkon('btn sm ghost','pensil','Gambar ulang (tracing)'); bt.onclick=()=>mulaiTrace({kind:d.kind,type:j},d.id); ins.appendChild(bt);
     fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
     fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
     fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
@@ -7078,7 +7110,7 @@ function renderInspector(){
       if(d.params.collider!==false && ASSET_OBJ.has(d.type)){
         const col=colliderModel(d.type);
         if(col) ins.appendChild(el('p','hint',`Dibuat otomatis dari ${col.nTri.toLocaleString('id')} segitiga: ${col.isi.toLocaleString('id')} sel ${fmt(col.C*100,0)} cm. Bagian setinggi badan menghalangi, permukaan ≤ ${fmt(LANGKAH_MAX*100,0)} cm bisa dinaiki.`));
-        const bl=el('button','btn sm ghost',LIHAT_COL.has(d.id)?'🙈 Sembunyikan collider':'👁 Lihat collider');
+        const bl=tombolIkon('btn sm ghost','mata',LIHAT_COL.has(d.id)?'Sembunyikan collider':'Lihat collider');
         bl.onclick=()=>{ if(LIHAT_COL.has(d.id)) LIHAT_COL.delete(d.id); else LIHAT_COL.add(d.id); gambarColliderDebug(); renderInspector(); };
         ins.appendChild(bl);
       }
@@ -7092,7 +7124,7 @@ function renderInspector(){
       d.type=v; rebuildScene(); renderInspector();
     }));
     if(def && def.t){ const k=el('div','badge ok'); k.textContent='Kaidah: '+def.t; ins.appendChild(k); }
-    const bw=el('button','btn sm ghost','⇲ Tempel ke dinding terdekat');
+    const bw=tombolIkon('btn sm ghost','dinding','Tempel ke dinding terdekat');
     bw.onclick=()=>{
       const dd=FURN[d.type];
       if(snapToWall(d,L().walls,dd.back!=null?dd.back:dd.f[1]/2,6)){ HIST.label='Tempel ke dinding'; rebuildScene(); renderInspector(); toast('Punggung objek rapat ke dinding'); }
@@ -7101,7 +7133,7 @@ function renderInspector(){
     ins.appendChild(bw);
     tombolFlip(ins,d);
     inspektorTekstur(ins,d);
-    if(d.type==='piano'){ const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp); }
+    if(d.type==='piano'){ const bp=tombolIkon('btn sm','piano','Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp); }
     if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
     if(NYALA_JENIS[d.type]==='tv') inspektorTV(ins,d);
     addTransformFields(ins,d,true);
@@ -7119,7 +7151,7 @@ function flipObjek(d){
   toast(d.flip?'Objek dicerminkan (kiri ↔ kanan)':'Cermin dibatalkan');
 }
 function tombolFlip(ins,d){
-  const b=el('button','btn sm ghost'+(d.flip?' on':''),'⇋ Flip kiri–kanan'+(d.flip?' (aktif)':''));
+  const b=tombolIkon('btn sm ghost'+(d.flip?' on':''),'dimensi','Flip kiri–kanan'+(d.flip?' (aktif)':''));
   b.title='Cerminkan objek (mis. sofa L, kitchen set L, ranjang dengan nakas satu sisi)';
   b.onclick=()=>flipObjek(d);
   ins.appendChild(b);
@@ -7764,7 +7796,7 @@ function toggleHelp(v){
   const g=$('#ikonLegend');
   if(!h.hidden && !g.childElementCount) for(const bt of $$('#toolbar button,#toolMenu button')){
     const ic=bt.querySelector('.ic'); if(!ic) continue;
-    const d=document.createElement('span'); d.innerHTML='<b></b>'; d.firstChild.textContent=ic.textContent;
+    const d=document.createElement('span'); d.appendChild(ic.cloneNode(true));
     d.append(' '+({undoBtn:'Urung',redoBtn:'Ulang'}[bt.id]||(bt.title||'').replace(/\s*\([^)]*\)\s*$/,''))); g.appendChild(d);
   }
 }
@@ -12015,7 +12047,7 @@ function renderGaleriSketchfab(){
     const k=el('button','gl-card'); k.dataset.id=m.uid; k.title=`${m.nama} — ${m.pembuat} · ${m.lis}`+(m.ukuran?` · ${fmt(m.ukuran/1048576,1)} MB`:'');
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; if(m.thumb) im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
     k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-lis',m.lis));
-    if(m.scan) k.appendChild(el('small','gl-scan','📷 Scan'));
+    if(m.scan) k.appendChild(isiIkon(el('small','gl-scan'),'kamera','Scan'));
     k.onclick=()=>pasangModelSketchfab(m); g.appendChild(k);
   }
   if(SKF.lanjut.length&&SKF.hasil.length) tombolMuatLagi(muatLagiSketchfab);
@@ -12074,7 +12106,7 @@ function renderGaleriGSO(){
   for(const m of GSO.hasil){
     const k=el('button','gl-card'); k.dataset.id=m.id; k.title=m.nama+' — Google Scanned Objects · CC-BY 4.0';
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
-    k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-scan','📷 Scan'));
+    k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(isiIkon(el('small','gl-scan'),'kamera','Scan'));
     k.onclick=()=>pasangModelGSO(m); g.appendChild(k);
   }
   if(!GSO.habis&&GSO.hasil.length) tombolMuatLagi(muatLagiGSO);
@@ -12103,7 +12135,7 @@ function renderSitusLain(){
   const q=(GALERI.cari.trim()||SKF_KATA[GALERI.ruang]||'sofa').slice(0,100);
   w.appendChild(el('span','hint','Cari juga di:'));
   for(const [nama,dasar] of SITUS_LAIN){ const a=el('a',null,nama); a.href=dasar+encodeURIComponent(q); a.target='_blank'; a.rel='noopener noreferrer'; w.appendChild(a); }
-  const b=el('button','btn sm ghost','📂 Unggah yang sudah diunduh'); b.title='.glb, .gltf, ZIP glTF, .obj (+.mtl & tekstur, atau ZIP), .fbx';
+  const b=tombolIkon('btn sm ghost','folder','Unggah yang sudah diunduh'); b.title='.glb, .gltf, ZIP glTF, .obj (+.mtl & tekstur, atau ZIP), .fbx';
   b.onclick=()=>$('#glbInput').click(); w.appendChild(b);
 }
 async function pasangModelPH(a){
@@ -12127,8 +12159,8 @@ async function pasangModelPH(a){
 /* Pintasan per ruangan: pengguna mencari "barang kamar mandi", bukan kategori
    teknis sumbernya. Dicocokkan per KATA (id camelCase/garis bawah dipecah dulu),
    bukan potongan huruf — "pot" tidak boleh cocok dengan "potted", "pan" dengan "panel". */
-const RUANG_GALERI=[['','Semua'],['tidur','🛏 Kamar tidur'],['duduk','🛋 Sofa & kursi'],['mandi','🛁 Kamar mandi'],['dapur','🍳 Dapur'],
-  ['lampu','💡 Lampu'],['meja','🪵 Meja'],['simpan','🗄 Lemari & rak'],['dekor','🖼 Dekor'],['tanaman','🪴 Tanaman'],['luar','🌳 Luar ruang'],['elektronik','📺 Elektronik'],['kendaraan','🚗 Kendaraan']];
+const RUANG_GALERI=[['','Semua','kartuSemua'],['tidur','Kamar tidur','ranjang'],['duduk','Sofa & kursi','sofa'],['mandi','Kamar mandi','bak'],['dapur','Dapur','panci'],
+  ['lampu','Lampu','lampu'],['meja','Meja','meja'],['simpan','Lemari & rak','lemari'],['dekor','Dekor','vas'],['tanaman','Tanaman','tanaman'],['luar','Luar ruang','pohon'],['elektronik','Elektronik','tv'],['kendaraan','Kendaraan','mobil']];
 const RUANG_KATA={
   tidur:/\b(beds?|bedside|pillows?|blankets?|duvets?|mattress(es)?|nightstands?|dressers?|wardrobes?|headboards?|ranjang|kasur|bantal|selimut|nakas|lemari)\b/,
   duduk:/\b(sofas?|couch(es)?|armchairs?|chairs?|ottomans?|poufs?|benches|bench|stools?|seats?|loveseats?|kursi|bangku)\b/,
@@ -12146,12 +12178,12 @@ function kataAset(...bagian){ return bagian.flat().join(' ').replace(/([a-z])([A
 function cocokRuang(teks){ return !GALERI.ruang || RUANG_KATA[GALERI.ruang].test(teks); }
 function renderRuangGaleri(){
   const w=$('#galeriRuang'); w.textContent='';
-  for(const [k,label] of RUANG_GALERI){ const b=el('button',null,label); b.type='button'; b.dataset.ruang=k; b.setAttribute('aria-pressed',String((GALERI.ruang||'')===k));
+  for(const [k,label,ik] of RUANG_GALERI){ const b=isiIkon(el('button'),ik,label); b.type='button'; b.dataset.ruang=k; b.setAttribute('aria-pressed',String((GALERI.ruang||'')===k));
     b.onclick=()=>{ GALERI.ruang=k; GALERI.batas=160; renderRuangGaleri(); renderGaleri(); if(GALERI.sumber==='skf') jalankanCariSketchfab(); if(GALERI.sumber==='gso') jalankanCariGSO(); }; w.appendChild(b); }
 }
 function infoKosongRuang(){
   const nama=(RUANG_GALERI.find(r=>r[0]===GALERI.ruang)||[])[1];
-  return GALERI.ruang ? `Belum ada model ${nama.replace(/^\S+\s/,'').toLowerCase()} di sumber ini — coba sumber lain di menu atas, atau pakai model bawaan di tab Objek.` : 'Tidak ada model yang cocok.';
+  return GALERI.ruang ? `Belum ada model ${nama.toLowerCase()} di sumber ini — coba sumber lain di menu atas, atau pakai model bawaan di tab Objek.` : 'Tidak ada model yang cocok.';
 }
 function renderGaleri(){
   renderSitusLain();
@@ -12436,11 +12468,11 @@ function inspektorTV(ins,d){
   fRow(ins,'Tayangan',selInput(pil,kini,v=>{
     if(v.startsWith('media:')){ d.params.tvMedia=v.slice(6); delete d.params.tvKanal; } else { d.params.tvKanal=v.slice(6); delete d.params.tvMedia; }
     HIST.label='Tayangan TV'; nyalakanTV(d.id,true); rebuildScene(); renderInspector(); }));
-  const on=TV_NYALA.has(d.id), bn=el('button','btn sm',on?'■ Matikan TV':'▶ Nyalakan TV');
+  const on=TV_NYALA.has(d.id), bn=tombolIkon('btn sm',on?'henti':'main',on?'Matikan TV':'Nyalakan TV');
   bn.onclick=()=>{ nyalakanTV(d.id,!TV_NYALA.has(d.id)); renderInspector(); }; ins.appendChild(bn);
-  const bu=el('button','btn sm ghost','🎞 Pakai video / GIF sendiri…');
+  const bu=tombolIkon('btn sm ghost','film','Pakai video / GIF sendiri…');
   bu.onclick=()=>{ const i=$('#tvMediaInput'); i.dataset.obj=d.id; i.click(); }; ins.appendChild(bu);
-  if(kini.startsWith('media:')){ const bh=el('button','btn sm ghost','🗑 Hapus video ini dari proyek');
+  if(kini.startsWith('media:')){ const bh=tombolIkon('btn sm ghost','hapus','Hapus video ini dari proyek');
     bh.onclick=()=>{ const mid=kini.slice(6); delete PROJECT.media[mid]; buangSumberTV(kini);
       for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.params&&o.params.tvMedia===mid) delete o.params.tvMedia;
       rebuildScene(); renderInspector(); toast('Video dihapus dari proyek'); };
@@ -12479,8 +12511,8 @@ function inspektorTekstur(ins,d){
     d.params.teksturBahan=v; HIST.label='Bagian tekstur'; rebuildScene(); }));
   const t=d.params.tekstur&&PROJECT.tekstur[d.params.tekstur];
   const row=el('div','row');
-  const bp=el('button','btn sm',t?'🖼 Ganti tekstur…':'🖼 Pilih tekstur foto…'); bp.onclick=()=>bukaTekstur(d.id); row.appendChild(bp);
-  if(t){ const bx=el('button','btn sm ghost','✕ Lepas'); bx.style.flex='0 0 auto';
+  const bp=tombolIkon('btn sm','kamera',t?'Ganti tekstur…':'Pilih tekstur foto…'); bp.onclick=()=>bukaTekstur(d.id); row.appendChild(bp);
+  if(t){ const bx=tombolIkon('btn sm ghost','tutup','Lepas'); bx.style.flex='0 0 auto';
     bx.onclick=()=>{ delete d.params.tekstur; HIST.label='Lepas tekstur'; rebuildScene(); renderInspector(); }; row.appendChild(bx); }
   ins.appendChild(row);
   if(t){
@@ -12623,9 +12655,29 @@ async function buatTautanLihat(){
   }
   // objek dari model yang ditinggal tidak ikut — penerima tidak boleh melihat kotak kosong
   const levels=PROJECT.levels.map(lv=>({...lv, objects:lv.objects.filter(o=>o.kind!=='model'||rujukan[o.type])}));
-  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur:PROJECT.tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan};
-  const kode=b64url(await padatkan(JSON.stringify(isi)));
-  return {url:location.origin+location.pathname+'#lihat='+kode, panjang:kode.length, ditinggal};
+  // tekstur foto sendiri (data gambar sampai 3 MB) tidak ikut — itulah yang dulu membuat tautan
+  // puluhan KB dan terpotong aplikasi chat; tekstur Poly Haven cukup rujukannya
+  const tekstur={}; let fotoDitinggal=0;
+  for(const [k,t] of Object.entries(PROJECT.tekstur||{})) if(t&&t.sumber==='foto') fotoDitinggal++; else tekstur[k]=t;
+  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan};
+  // angka dibulatkan ke milimeter / 0,001 — jauh lebih ringkas setelah dipadatkan
+  const bulat=(k,v)=>typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1000)/1000:v;
+  const padat=await padatkan(JSON.stringify(isi,bulat));
+  const dasar=location.origin+location.pathname;
+  const pendek=await simpanTautanPendek(padat);
+  if(pendek.id) return {url:dasar+'#l='+pendek.id, pendek:true, panjang:padat.length, ditinggal, fotoDitinggal};
+  const kode=b64url(padat);
+  return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, panjang:kode.length, ditinggal, fotoDitinggal};
+}
+// tautan pendek lewat fungsi Vercel (api/tautan.js); di hosting tanpa fungsi itu (GitHub Pages,
+// Blob belum diaktifkan, luring) kembali ke tautan panjang yang membawa seluruh isi
+async function simpanTautanPendek(padat){
+  try{
+    const r=await fetch('api/tautan',{method:'POST',headers:{'content-type':'application/octet-stream'},body:padat});
+    if(r.status===501) return {alasan:'blob'};
+    if(!r.ok) return {alasan:'server'};
+    const j=await r.json(); return /^[A-HJ-NP-Za-km-z2-9]{10}$/.test(j&&j.id)?{id:j.id}:{alasan:'server'};
+  }catch(e){ return {alasan:'luring'}; }
 }
 $('#bagikanBtn').onclick=async()=>{
   if(typeof CompressionStream!=='function') return toast('Peramban ini belum bisa membuat tautan — perbarui ke iOS 16.4 / Chrome 80 ke atas');
@@ -12633,8 +12685,13 @@ $('#bagikanBtn').onclick=async()=>{
   const r=await buatTautanLihat();
   $('#bagikanHasil').hidden=false; $('#bagikanUrl').value=r.url; $('#bagikanUrl').select();
   const kb=Math.ceil(r.url.length/1024);
-  $('#bagikanInfo').textContent=`Tautan ${kb} KB.`+(kb>60?' Tautan panjang — beberapa aplikasi chat bisa memotongnya; kirim lewat email atau catatan bila perlu.':'')
-    +(r.ditinggal.length?` Model unggahan sendiri tidak ikut (terlalu besar untuk tautan): ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`:'');
+  // satu kalimat per elemen: tiap kalimat diterjemahkan sendiri oleh lapisan bahasa
+  const kal=[r.pendek?'Tautan pendek siap dibagikan.':`Tautan ${kb} KB.`];
+  if(!r.pendek && r.alasan==='blob') kal.push('Tautan pendek belum aktif — aktifkan Vercel Blob di proyek Vercel (Storage → Blob).');
+  if(!r.pendek && kb>30) kal.push('Tautan panjang — beberapa aplikasi chat bisa memotongnya; kirim lewat email atau catatan bila perlu.');
+  if(r.ditinggal.length) kal.push(`Model unggahan sendiri tidak ikut (terlalu besar untuk tautan): ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`);
+  if(r.fotoDitinggal) kal.push(`Tekstur foto sendiri (${r.fotoDitinggal}) tidak ikut — objeknya tampil dengan bahan aslinya.`);
+  const inf=$('#bagikanInfo'); inf.textContent=''; for(const k of kal){ inf.appendChild(el('span',null,k)); inf.appendChild(document.createTextNode(' ')); }
 };
 $('#bagikanSalin').onclick=async()=>{
   const u=$('#bagikanUrl').value; if(!u) return;
@@ -12647,13 +12704,20 @@ $('#bagikanKirim').onclick=async()=>{
 };
 /* penerima tautan: mode lihat — jalan-jalan & interaksi (pintu, lampu, duduk) boleh,
    mengubah proyek tidak */
-async function bukaTautanLihat(kode){
+// galat tautan tampil TETAP di bilah lihat-saja (toast hilang dalam 2½ detik — di HP pemakai
+// hanya melihat grid kosong tanpa tahu sebabnya)
+function gagalTautanLihat(e){
+  LIHAT.on=true; LIHAT.siap=true; document.body.classList.add('lihat'); $('#lihatBar').hidden=false;
+  const m='Tautan tidak bisa dibuka: '+((e&&e.message)||e);
+  const n=$('#lihatNama'); n.textContent=m; n.classList.add('galat'); toast(m);
+}
+async function bukaTautanLihat(kode,bytes){
   LIHAT.on=true; document.body.classList.add('lihat'); setSidebar(false); select(null);
-  $('#lihatBar').hidden=false; $('#hint').innerHTML='Mode lihat — seret untuk memutar, cubit untuk zoom, <b>🚶 Jalan-jalan</b> untuk masuk ke dalam rumah.';
+  $('#lihatBar').hidden=false; $('#hint').innerHTML='Mode lihat — seret untuk memutar, cubit untuk zoom, <b>Jalan-jalan</b> untuk masuk ke dalam rumah.';
   try{
     if(typeof DecompressionStream!=='function') throw new Error('peramban ini terlalu lama — perlu iOS 16.4 / Chrome 80 ke atas');
-    if(kode.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
-    const j=JSON.parse(await bukaPadat(dariB64url(kode),BAGI.batasBuka));
+    if(!bytes && kode.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
+    const j=JSON.parse(await bukaPadat(bytes||dariB64url(kode),BAGI.batasBuka));
     if(!j||typeof j!=='object') throw new Error('isi tautan tidak sah');
     const rujukan=j.rujukan&&typeof j.rujukan==='object'?j.rujukan:{};
     delete j.rujukan; j.assets={}; j.plans={};
@@ -12677,10 +12741,10 @@ async function bukaTautanLihat(kode){
         rebuildScene();
       }catch(e){ console.warn('model rujukan',id,e); }
     }
-    if(daftar.length) toast(PROJECT.name+' siap — ketuk 🚶 Jalan-jalan');
+    if(daftar.length) toast(PROJECT.name+' siap — ketuk Jalan-jalan');
   }catch(e){
     console.warn('tautan lihat',e);
-    toast('Tautan tidak bisa dibuka: '+(e.message||e));
+    gagalTautanLihat(e);
   }
   LIHAT.siap=true;
 }
@@ -12863,16 +12927,16 @@ function setSuasana(k){
    sudah diunduh disimpan di Cache Storage supaya bisa dibuka lagi offline.
    ====================================================================== */
 const LANGIT_JENIS={
-  acak:  {l:'🎲 Acak — semua alam'},
-  gunung:{l:'⛰ Pegunungan', k:['mountain','mountains','alps','alpine','peak','peaks','valley','hills','hill','highland','highlands','volcano']},
-  tebing:{l:'🧗 Tebing & bebatuan', k:['cliff','cliffs','rock','rocks','rocky','canyon','gorge','quarry','boulder','boulders','crag']},
-  hutan: {l:'🌲 Hutan', k:['forest','woods','woodland','jungle','pine','pines','trees']},
-  pantai:{l:'🏖 Pantai & laut', k:['beach','coast','coastal','sea','ocean','shore','seaside','bay','sand']},
-  danau: {l:'🏞 Danau', k:['lake','lakeside','pond','reservoir','lagoon']},
-  sungai:{l:'🌊 Sungai', k:['river','riverside','riverbank','stream','creek','waterfall']},
-  padang:{l:'🌾 Padang rumput', k:['field','fields','meadow','meadows','grass','grassland','prairie','farm','farmland','savanna','pasture','countryside']},
-  gurun: {l:'🏜 Gurun', k:['desert','dune','dunes','arid']},
-  salju: {l:'❄ Salju', k:['snow','snowy','winter','glacier','ice']}
+  acak:  {l:'Acak — semua alam'},
+  gunung:{l:'Pegunungan', k:['mountain','mountains','alps','alpine','peak','peaks','valley','hills','hill','highland','highlands','volcano']},
+  tebing:{l:'Tebing & bebatuan', k:['cliff','cliffs','rock','rocks','rocky','canyon','gorge','quarry','boulder','boulders','crag']},
+  hutan: {l:'Hutan', k:['forest','woods','woodland','jungle','pine','pines','trees']},
+  pantai:{l:'Pantai & laut', k:['beach','coast','coastal','sea','ocean','shore','seaside','bay','sand']},
+  danau: {l:'Danau', k:['lake','lakeside','pond','reservoir','lagoon']},
+  sungai:{l:'Sungai', k:['river','riverside','riverbank','stream','creek','waterfall']},
+  padang:{l:'Padang rumput', k:['field','fields','meadow','meadows','grass','grassland','prairie','farm','farmland','savanna','pasture','countryside']},
+  gurun: {l:'Gurun', k:['desert','dune','dunes','arid']},
+  salju: {l:'Salju', k:['snow','snowy','winter','glacier','ice']}
 };
 // kecerahan rata-rata langit (luminans linear, belahan atas) yang dituju per suasana —
 // setara langit prosedural, supaya cahaya, eksposur, dan lampu yang sudah dikalibrasi tetap cocok
@@ -13248,6 +13312,7 @@ function terapkanPantulan(){
 }
 function setRenderQuality(k){
   RQ_KINI=RQ[k]?k:'halus';
+  for(const id of ['#rq','#fpsRq']){ const e=$(id); if(e) e.value=RQ_KINI; }      // panel Tampilan & bilah mode jalan selalu sama
   const q=RQ[k]||RQ.halus;
   renderer.setPixelRatio(Math.min(devicePixelRatio*q.lipat, q.batas));
   renderer.toneMapping=q.tone; renderer.toneMappingExposure=q.exp*((SUASANA[MOOD]||SUASANA.siang).exp);
@@ -13711,7 +13776,7 @@ function stepBidik(dt){
   // otomatis peramban mengubah teksnya, dan membandingkan isi DOM membuat
   // tombol ditulis ulang tiap 0,1 detik lalu diterjemahkan lagi — berkedip
   const kunci=(SENTUH?'s':'k')+lbl;
-  if(b.dataset.k!==kunci){ b.dataset.k=kunci; b.innerHTML = SENTUH ? '👆 '+lbl : '<kbd translate="no">E</kbd>'+lbl; }
+  if(b.dataset.k!==kunci){ b.dataset.k=kunci; b.innerHTML = SENTUH ? '<svg class="ik" aria-hidden="true"><use href="#i-bidik"/></svg> '+lbl : '<kbd translate="no">E</kbd>'+lbl; }
 }
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
@@ -13724,7 +13789,7 @@ $('#langitJenis').onchange=e=>{ const lp=langitP(); lp.jenis=e.target.value; ren
 $('#langitDaftar').onchange=e=>{ const id=e.target.value; if(id&&id!=='unggah'){ langitP().mode='foto'; muatLangitFoto({id}); } };
 $('#langitPrev').onclick=()=>langkahLangit(-1);
 $('#langitNext').onclick=()=>langkahLangit(1);
-$('#langitAcakCek').onchange=e=>{ langitP().pilih=e.target.checked?'acak':'manual'; renderLangitUI(); toast(e.target.checked?'Acak: 🎲 dan ganti suasana memilih panorama acak':'Pilih sendiri: panorama hanya berganti lewat ◀ ▶ atau galeri'); };
+$('#langitAcakCek').onchange=e=>{ langitP().pilih=e.target.checked?'acak':'manual'; renderLangitUI(); toast(e.target.checked?'Acak: tombol Acak dan ganti suasana memilih panorama acak':'Pilih sendiri: panorama hanya berganti lewat ◀ ▶ atau galeri'); };
 $('#langitGaleriBtn').onclick=()=>bukaPilihLangit();
 /* galeri panorama: thumbnail tiap HDRI, saring lanskap/waktu/kata — ketuk untuk memasang */
 const PL={jenis:null, waktu:'semua', cari:''};
@@ -13743,7 +13808,7 @@ function renderPilihLangit(){
     k.onclick=()=>{ $('#pilihLangit').hidden=true; langitP().mode='foto'; renderLangitUI(); muatLangitFoto({id:a.id, nama:a.nama, waktu:a.waktu}); };
     g.appendChild(k);
   }
-  $('#plInfo').textContent=c.length?`${c.length} panorama${c.length>200?' (200 pertama — persempit pencarian)':''} · ☀ siang · 🌇 senja · 🌙 malam · ketuk untuk memasang`:'Tidak ada panorama yang cocok.';
+  $('#plInfo').textContent=c.length?`${c.length} panorama${c.length>200?' (200 pertama — persempit pencarian)':''} · siang · senja · malam · ketuk untuk memasang`:'Tidak ada panorama yang cocok.';
 }
 async function bukaPilihLangit(){
   $('#pilihLangit').hidden=false; PL.jenis=langitP().jenis; $('#plJenis').value=PL.jenis;
@@ -13861,13 +13926,20 @@ function renderSitusUI(){ const st=PROJECT.site||{}; $('#situsTanah').value=st.t
 $('#situsTanah').onchange=e=>{ PROJECT.site=Object.assign({margin:6},PROJECT.site,{tanah:e.target.value}); HIST.label='Tanah situs'; rebuildScene();
   toast(e.target.value==='none'?'Tanah situs dihapus':'Tanah situs: '+e.target.selectedOptions[0].textContent); };
 $('#situsMargin').onchange=e=>{ PROJECT.site=Object.assign({tanah:'none'},PROJECT.site,{margin:clamp(+e.target.value||0,0,60)}); HIST.label='Luas tanah situs'; rebuildScene(); };
-const tulisSfx=()=>{ $('#fpsSfx').textContent=SFX.on?'🔊 SFX':'🔇 SFX'; };
+const tulisSfx=()=>{ isiIkon($('#fpsSfx'),SFX.on?'suara':'senyap','SFX'); };
 $('#fpsSfx').onclick=e=>{ SFX.on=!SFX.on; try{ localStorage.setItem('sfx_on',SFX.on?'1':'0'); }catch(_){} tulisSfx(); if(SFX.on) sfx('klik'); e.target.blur(); };
 tulisSfx();
 try{ const v=+localStorage.getItem('fps_fov'); if(v>=40&&v<=90){ FPS.fov=v; $('#fpsFov').value=String(v); } }catch(e){}
 $('#fpsFov').onchange=e=>{ FPS.fov=+e.target.value; try{ localStorage.setItem('fps_fov',String(FPS.fov)); }catch(_){}
   if(FPS.on){ camera.fov=FPS.fov; camera.updateProjectionMatrix(); } e.target.blur(); };
 $('#fpsExit').onclick=exitFPS;
+$('#fpsRq').onchange=e=>{ setRenderQuality(e.target.value); toast('Kualitas render: '+e.target.selectedOptions[0].textContent); };
+// menu mode jalan bisa diciutkan jadi satu tombol; bawaan ciut di layar sempit (HP), pilihan diingat
+function ciutkanFps(v){ const b=$('#fpsbar'); b.classList.toggle('ciut',v); $('#fpsCiut').setAttribute('aria-expanded',String(!v));
+  try{ localStorage.setItem('fps_ciut',v?'1':'0'); }catch(e){ /* mode privat */ } }
+$('#fpsCiut').onclick=()=>ciutkanFps(!$('#fpsbar').classList.contains('ciut'));
+{ let v=null; try{ v=localStorage.getItem('fps_ciut'); }catch(e){ /* mode privat */ }
+  $('#fpsbar').classList.toggle('ciut', v==null ? innerWidth<700 : v==='1'); }
 /* Pointer lock bisa lepas karena banyak hal — Esc pertama, pindah jendela,
    masuk layar penuh. Kalau itu langsung dianggap keluar, mode jalan terasa
    rapuh. Jadi dijeda saja: klik layar untuk lanjut, Esc sekali lagi keluar. */
@@ -14319,9 +14391,20 @@ for(const s of $$('.pilih-bahasa')){ s.value=BAHASA.kode; s.onchange=()=>gantiBa
 window.__siap=true;
 // tautan lihat-saja dibuka SETELAH halaman tampil: membangun rumah (shader, GI) butuh
 // beberapa detik dan tidak boleh menahan tampilan pertama
-if(/^#lihat=/.test(location.hash)){
+if(/^#(lihat|l)=/.test(location.hash)){
   document.body.classList.add('lihat'); $('#loader-txt').textContent='Membuka rumah yang dibagikan…'; $('#loader').classList.add('on');
-  addEventListener('load',()=>setTimeout(()=>bukaTautanLihat(location.hash.slice(7)).finally(()=>$('#loader').classList.remove('on')),0),{once:true});
+  const pendek=location.hash.match(/^#l=([A-HJ-NP-Za-km-z2-9]{10})$/);
+  addEventListener('load',()=>setTimeout(async()=>{
+    try{
+      if(pendek){
+        const r=await fetch('api/tautan?id='+pendek[1]).catch(()=>null);
+        if(!r||!r.ok) throw new Error(r&&r.status===404?'tautan tidak ditemukan atau sudah dihapus':'tautan pendek tidak bisa dimuat — periksa koneksi internet');
+        const buf=new Uint8Array(await r.arrayBuffer()); if(buf.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
+        await bukaTautanLihat('',buf);
+      } else await bukaTautanLihat(location.hash.slice(7));
+    }catch(e){ gagalTautanLihat(e); }
+    finally{ $('#loader').classList.remove('on'); }
+  },0),{once:true});
 }
 // pilihan langit terakhir di perangkat ini: bila foto 360°, langsung dimuat (dari cache bila pernah diunduh)
 try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');

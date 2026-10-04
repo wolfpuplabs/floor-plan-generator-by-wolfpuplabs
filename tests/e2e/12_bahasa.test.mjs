@@ -23,7 +23,7 @@ export const tes = {
   'bawaan: tanpa pilihan tersimpan, UI tampil dalam bahasa Inggris': Object.assign(async (page) => {
     assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');
     const tab = await page.$$eval('.tabs button', bs => bs.map(b => b.textContent.replace(/\s+/g, ' ').trim()));
-    assert.deepEqual(tab, ['📐Plan', '🏢Floors', '🛋Objects', '🎨Display', '💾File']);
+    assert.deepEqual(tab, ['Plan', 'Floors', 'Objects', 'Display', 'File']);
     assert.equal(await page.inputValue('#bahasa'), 'en');
     // pesan dinamis: pola + isi tangkapan ikut diterjemahkan; nama buatan pengguna tidak disentuh
     await page.evaluate(() => toast('Gagal: berkas kosong'));
@@ -60,9 +60,9 @@ export const tes = {
     await Promise.all([page.waitForEvent('load'), page.selectOption('#bahasa', 'id')]);
     await page.waitForFunction(() => window.__siap, undefined, { timeout: 120000 });
     assert.equal(await page.evaluate(() => document.documentElement.lang), 'id');
-    assert.equal((await page.textContent('.tabs button[data-tab="plan"]')).trim(), '📐Denah');
+    assert.equal((await page.textContent('.tabs button[data-tab="plan"]')).trim(), 'Denah');
     await Promise.all([page.waitForEvent('load'), page.selectOption('#bahasa', 'en')]);
     await page.waitForFunction(() => window.__siap, undefined, { timeout: 120000 });
-    assert.equal((await page.textContent('.tabs button[data-tab="plan"]')).trim(), '📐Plan');
+    assert.equal((await page.textContent('.tabs button[data-tab="plan"]')).trim(), 'Plan');
   }, { opsi: EN }),
 };

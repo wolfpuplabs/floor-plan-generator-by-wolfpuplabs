@@ -2486,6 +2486,69 @@
     "target": "naik ≥ 30%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-067",
+   "judul": "Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tautan lihat-saja terlalu panjang (foto tekstur ikut tertanam) sehingga terpotong aplikasi chat dan kosong saat dibuka di HP; lampu lantai 1 menerangi kamar lantai 2 menembus pelat; bilah mode jalan menutupi setengah layar iPhone tanpa pengaturan kualitas; emoji tampil berbeda di tiap perangkat.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "4 tangkapan layar pengguna 2026-10-04 (iPhone, Android potret & lanskap, iPad) + \"waktu di share ga bisa di buka di hp, sama UI menu bisa di hide? link share kepanjangan, lighting masih bocor, emoji di UI ganti sama icon yang bagus\"",
+    "alternatif": [
+     "layanan pemendek tautan pihak ketiga (data proyek bocor ke pihak luar)",
+     "foto tekstur tetap ikut dengan kompresi lebih keras (masih terlalu panjang untuk chat)",
+     "pustaka ikon dari CDN (host tambahan, ukuran)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "API tautan sama-asal: maks. 1,5 MB masuk, inflate dibatasi 20 MB, skema {v:1,levels} disahkan, ID 10 karakter diperiksa regex; penerima tetap menyaring lewat sanitasiProyek (AUDIT SEC-17)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "foto tekstur pribadi tidak ikut tautan; isi tautan pendek disimpan di Vercel Blob milik pemilik situs, ID acak tidak bisa ditebak"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikon SVG digambar sendiri; @vercel/blob Apache-2.0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pelat ikut memberi bayangan (tanpa pass tambahan); sprite ikon ±10 KB"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "ikon aria-hidden dengan teks/title di tombol; bilah jalan bisa diciutkan agar layar kecil lega"
+    }
+   },
+   "metrik": {
+    "nama": "tautan lihat yang berhasil dibuka di HP / tautan dibagikan",
+    "target": "≥ 90%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }
