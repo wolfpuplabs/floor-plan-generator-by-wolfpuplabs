@@ -1577,7 +1577,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  stepTV(dt);
+  stepTV(dt); stepGaris(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -5284,7 +5284,31 @@ function hiasNyala(g,o){
   if(jenis==='gorden') terapkanGorden(g,GORDEN_BUKA.has(o.id));
   if(jenis==='audio') g.userData.audioJenis=o.type;
 }
+/* ---------- GARIS LAMPU DALAM GELAP (JEV-066) ----------
+   Di malam hari lampu yang padam nyaris tak terlihat, padahal pemakai perlu menemukannya untuk
+   dinyalakan. Lampu padam diberi garis tepi lembut: salinan mesh yang sama dengan shader rim
+   (paling terang di tepi siluet, pudar ke tengah), dijumlahkan ke warna di belakangnya. Hanya
+   tampil di mode jalan saat suasana malam/gelap, muncul & hilang perlahan; lampu yang sedang
+   dibidik garisnya lebih terang. Tidak menghalangi bidikan, bayangan, maupun ekspor. */
+var GARIS={kuat:{value:0}, bidik:null, tampil:false};
+const GARIS_VS='varying vec3 vN; varying vec3 vV; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }';
+const GARIS_FS='uniform float kuat; uniform float lipat; uniform vec3 warna; varying vec3 vN; varying vec3 vV; void main(){ float r=1.0-abs(dot(normalize(vN),normalize(vV))); float a=smoothstep(0.35,1.0,r)*kuat*lipat; gl_FragColor=vec4(warna*a,a); }';
+function bahanGaris(lipat){ return new THREE.ShaderMaterial({uniforms:{kuat:GARIS.kuat, lipat:{value:lipat}, warna:{value:new THREE.Color(0xffd7a0)}},
+  vertexShader:GARIS_VS, fragmentShader:GARIS_FS, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}); }
+const MAT_GARIS=bahanGaris(0.8), MAT_GARIS_BIDIK=bahanGaris(1.6);
+function garisLampu(g){
+  if(g.userData.garisDaftar) return g.userData.garisDaftar;
+  const daftar=[], asal=[];
+  g.traverse(m=>{ if(m.isMesh && !m.userData.garis && !m.userData.halo && m.geometry && m.geometry.attributes.normal) asal.push(m); });
+  for(const m of asal){ const o=new THREE.Mesh(m.geometry,MAT_GARIS); o.userData={garis:true, noExport:true}; o.raycast=()=>{};
+    o.castShadow=false; o.receiveShadow=false; o.renderOrder=6; o.visible=false; m.add(o); daftar.push(o); }
+  g.userData.garisDaftar=daftar; return daftar;
+}
 function terapkanNyala(g,on){
+  if(g.userData.nyalaJenis==='lampu' || (g.userData.nyalaJenis===undefined && !on)){
+    const daftar=on && !g.userData.garisDaftar ? [] : garisLampu(g);
+    for(const o of daftar){ o.userData.padam=!on; o.visible=!on && GARIS.tampil; }
+  }
   g.traverse(m=>{
     if(m.userData.halo) m.visible=on;
     else if(m.isMesh && m.userData.nyala){
@@ -6628,7 +6652,7 @@ function rebuildScene0(){
     lg.traverse(m=>{ if(m.isMesh && m.userData.wallPanel) for(const x of [].concat(m.material)) x.shadowSide=THREE.FrontSide; });
     // penanda void hanya alat bantu editor; saat berjalan ia tampil seperti
     // kaca hijau yang melayang di atas tangga, jadi disembunyikan
-    if(FPS.on) lg.traverse(m=>{ if(m.userData.noExport && !m.userData.halo) m.visible=false; });
+    if(FPS.on) lg.traverse(m=>{ if(m.userData.noExport && !m.userData.halo && !m.userData.garis) m.visible=false; });
     worldRoot.add(lg);
     levelGroups[idx]=lg;
   });
@@ -13562,6 +13586,23 @@ function fpsStep(dt){
 /* ---------- bidik & pakai: pintu, jendela, lampu, TV, api, gorden ---------- */
 const aimRay=new THREE.Raycaster();
 let AIM=null, AIM_T=0;
+// garis lampu dalam gelap (lihat GARIS LAMPU): di sini karena memakai AIM & MOOD
+function stepGaris(dt){
+  if(!GARIS) return;                                   // var: putaran gambar pertama berjalan sebelum baris ini
+  const mau=FPS.on && (MOOD==='malam'||MOOD==='gelap') ? 1 : 0;
+  if(!mau && !GARIS.tampil && !GARIS.bidik && GARIS.kuat.value<0.001) return;   // AIM/MOOD belum ada di bingkai pertama
+  GARIS.kuat.value+= (mau-GARIS.kuat.value)*Math.min(1,dt*3);
+  const tampil=GARIS.kuat.value>0.01;
+  if(tampil!==GARIS.tampil){ GARIS.tampil=tampil;
+    worldRoot.traverse(n=>{ if(n.userData.garis && n.isMesh) n.visible=tampil && !!n.userData.padam; }); }
+  // lampu yang dibidik: garisnya lebih terang
+  const g=AIM && AIM.jenis==='lampu' ? AIM.grp : null;
+  if(g!==GARIS.bidik){
+    if(GARIS.bidik && GARIS.bidik.userData.garisDaftar) for(const o of GARIS.bidik.userData.garisDaftar) o.material=MAT_GARIS;
+    if(g && g.userData.garisDaftar) for(const o of g.userData.garisDaftar) o.material=MAT_GARIS_BIDIK;
+    GARIS.bidik=g;
+  }
+}
 /* ---------- DUDUK — kamera turun ke mata orang duduk (±72 cm di atas dudukan),
    menghadap depan kursi; menoleh tetap bebas. Berdiri dengan E / tombol aksi,
    atau langsung berjalan. Dudukan sofa dipilih yang terdekat dengan titik bidik. */
