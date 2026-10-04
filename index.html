@@ -1200,20 +1200,31 @@ function pasangGIShader(sh){
     .replace('#include <lights_fragment_end>',`if(giSkala>0.0 || luarN>0.0){
       vec3 nW=inverseTransformDirection(geometry.normal,viewMatrix);
       vec3 q=vGIPos+vec3(nW.x,0.0,nW.z)*0.25;
-      float ruang=0.0;
-      for(int i=0;i<${GI_MAKS};i++){
-        if(q.y>giLantai[i].x && q.y<giLantai[i].y){
-          vec2 lu=vec2((q.x-giInfo[i].x)*giInfo[i].z,(q.z-giInfo[i].y)*giInfo[i].w);
-          if(lu.x>0.0 && lu.y>0.0 && lu.x<giBatas[i].x && lu.y<giBatas[i].y){
-            float id=floor(texture2D(giPeta,vec2(lu.x,lu.y+giBatas[i].z)).r*255.0+0.5), r=float(i)*2.0;
-            ruang=id;
-            if(giSkala>0.0){
-              vec3 atas=texture2D(giWarna,vec2((id+0.5)/256.0,(r+0.5)/${2*GI_MAKS}.0)).rgb, bawah=texture2D(giWarna,vec2((id+0.5)/256.0,(r+1.5)/${2*GI_MAKS}.0)).rgb;
-              irradiance+=mix(bawah,atas,0.5*nW.y+0.5)*giSkala*PI;
+      float ruang=0.0, qy=q.y;
+      // void (id 255): titik berada di ruang dobel tinggi — baca peta lantai di bawahnya
+      for(int lewat=0;lewat<3;lewat++){
+        float turun=-1e4;
+        for(int i=0;i<${GI_MAKS};i++){
+          if(qy>giLantai[i].x && qy<giLantai[i].y){
+            vec2 lu=vec2((q.x-giInfo[i].x)*giInfo[i].z,(q.z-giInfo[i].y)*giInfo[i].w);
+            if(lu.x>0.0 && lu.y>0.0 && lu.x<giBatas[i].x && lu.y<giBatas[i].y){
+              float id=floor(texture2D(giPeta,vec2(lu.x,lu.y+giBatas[i].z)).r*255.0+0.5), r=float(i)*2.0;
+              if(id>254.5){ turun=giLantai[i].x; break; }
+              ruang=id;
+              if(giSkala>0.0){
+                vec3 atas=texture2D(giWarna,vec2((id+0.5)/256.0,(r+0.5)/${2*GI_MAKS}.0)).rgb, bawah=texture2D(giWarna,vec2((id+0.5)/256.0,(r+1.5)/${2*GI_MAKS}.0)).rgb;
+                irradiance+=mix(bawah,atas,0.5*nW.y+0.5)*giSkala*PI;
+              }
+              break;
             }
-            break;
           }
         }
+        if(turun<-1e3) break;
+        // puncak pita lantai di bawahnya (pita bertumpuk ±5 cm di tiap pergantian lantai)
+        float puncak=-1e4;
+        for(int j=0;j<${GI_MAKS};j++) if(giLantai[j].y<turun+0.3 && giLantai[j].y>puncak) puncak=giLantai[j].y;
+        if(puncak<-1e3) break;
+        qy=puncak-0.2;
       }
       // lampu luar: titik di dalam ruangan (ruang>0) tidak menerima — tidak bocor
       if(ruang<0.5){
@@ -2909,9 +2920,39 @@ function tapakAtap(lv,tritisan){
     for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){ const px=x0+(i+0.5)*c, pz=z0+(k+0.5)*c;
       if(px>x0+pad-0.1&&px<x1-pad+0.1&&pz>z0+pad-0.1&&pz<z1-pad+0.1) T[i*nz+k]=1; }
   } else for(let j=0;j<G.length;j++) T[j]=G[j]!==2?1:0;
-  // tritisan: pelebaran persegi (sudut atap tetap siku), dipisah baris & kolom
+  // tritisan: tiap dinding luar menjorok sejauh tritisan tegak lurus mukanya, ujungnya disambung
+  // miter dengan dinding luar di sebelahnya — sudut siku tetap siku, dinding lengkung/miring
+  // mendapat tritisan yang sama lebar (pelebaran persegi dulu melebar ±40 % di arah diagonal)
   const n=Math.round(tritisan/c);
-  if(n>0){
+  if(n>0 && dalam>=20){
+    const luar=(x,z)=>{ const i=Math.floor((x-x0)/c), k=Math.floor((z-z0)/c); return i<0||k<0||i>=nx||k>=nz||!T[i*nz+k]; };
+    const muka=[];
+    for(const w of ws){ const dx=w.x2-w.x1, dz=w.z2-w.z1, L=Math.hypot(dx,dz); if(L<1e-3) continue;
+      const ux=dx/L, uz=dz/L, t=(w.thickness||0.15)/2, mx=(w.x1+w.x2)/2, mz=(w.z1+w.z2)/2, d=t+0.08;
+      const kiri=luar(mx-uz*d, mz+ux*d), kanan=luar(mx+uz*d, mz-ux*d);
+      if(kiri===kanan) continue;                       // dinding dalam / berdiri bebas
+      muka.push({w, ux, uz, nx:kiri?-uz:uz, nz:kiri?ux:-ux, L, t}); }
+    const ujung=(e,px,pz)=>{ let ext=null;
+      for(const f of muka){ if(f===e) continue;
+        for(const [qx,qz,ox,oz] of [[f.w.x1,f.w.z1,f.w.x2,f.w.z2],[f.w.x2,f.w.z2,f.w.x1,f.w.z1]]){
+          if(Math.hypot(qx-px,qz-pz)>0.05) continue;
+          const sudut=Math.acos(clamp(e.nx*f.nx+e.nz*f.nz,-1,1)), cembung=(ox-px)*e.nx+(oz-pz)*e.nz<0;
+          ext=Math.max(ext??0, cembung ? (e.t+tritisan)*Math.min(2,Math.tan(sudut/2)) : 0); } }
+      return ext ?? (e.t+tritisan); };                  // ujung bebas: siku
+    const A=T.slice();
+    for(const e of muka){
+      const e1=ujung(e,e.w.x1,e.w.z1), e2=ujung(e,e.w.x2,e.w.z2), lebar=e.t+tritisan;
+      const sx=e.w.x1-e.ux*e1, sz=e.w.z1-e.uz*e1, pj=e.L+e1+e2;
+      const xs=[sx, sx+e.ux*pj, sx+e.nx*lebar, sx+e.ux*pj+e.nx*lebar], zs=[sz, sz+e.uz*pj, sz+e.nz*lebar, sz+e.uz*pj+e.nz*lebar];
+      const i0=Math.max(0,Math.floor((Math.min(...xs)-x0)/c)), i1=Math.min(nx-1,Math.ceil((Math.max(...xs)-x0)/c));
+      const k0=Math.max(0,Math.floor((Math.min(...zs)-z0)/c)), k1=Math.min(nz-1,Math.ceil((Math.max(...zs)-z0)/c));
+      for(let i=i0;i<=i1;i++) for(let k=k0;k<=k1;k++){ const px=x0+(i+0.5)*c-sx, pz=z0+(k+0.5)*c-sz;
+        const u=px*e.ux+pz*e.uz, v=px*e.nx+pz*e.nz;
+        if(u>=0&&u<=pj&&v>=-e.t&&v<=lebar) A[i*nz+k]=1; }
+    }
+    T.set(A);
+  } else if(n>0){
+    // denah tidak tertutup: pelebaran persegi, dipisah baris & kolom
     const A=new Uint8Array(nx*nz);
     for(let i=0;i<nx;i++){ let akhir=-1e9; for(let k=0;k<nz;k++){ if(T[i*nz+k]) akhir=k; if(k-akhir<=n) A[i*nz+k]=1; }
       akhir=1e9; for(let k=nz-1;k>=0;k--){ if(T[i*nz+k]) akhir=k; if(akhir-k<=n) A[i*nz+k]=1; } }
@@ -2927,31 +2968,87 @@ function buildAtap(lv,idx){
   const {T,nx,nz,x0,z0,c}=tp;
   // atap dipasang di SETIAP lantai, hanya pada bagian yang tidak tertutup lantai di atasnya:
   // lantai bawah yang lebih luas dari lantai atas (teras, ruang tinggi) tetap beratap
+  // Pelat lantai atas (kotak pembungkus semua dindingnya, termasuk balkon berpagar) juga
+  // menutupi: atap lantai bawah tidak boleh menumpuk dengan lantai balkon di tinggi yang sama
   if(idx!=null) for(let j=idx+1;j<PROJECT.levels.length;j++){
-    const up=tapakAtap(PROJECT.levels[j],0); if(!up) continue;
+    const lvA=PROJECT.levels[j], up=tapakAtap(lvA,0);
+    let pel=null;
+    if(lvA.slab && lvA.walls.length){ pel=[1e9,-1e9,1e9,-1e9];
+      for(const w of lvA.walls){ pel[0]=Math.min(pel[0],w.x1,w.x2); pel[1]=Math.max(pel[1],w.x1,w.x2); pel[2]=Math.min(pel[2],w.z1,w.z2); pel[3]=Math.max(pel[3],w.z1,w.z2); }
+      pel[0]-=0.25; pel[1]+=0.25; pel[2]-=0.25; pel[3]+=0.25; }
+    if(!up && !pel) continue;
     for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){ const n=i*nz+k; if(!T[n]) continue;
-      const ui=Math.floor((x0+(i+0.5)*c-up.x0)/up.c), uk=Math.floor((z0+(k+0.5)*c-up.z0)/up.c);
+      const px=x0+(i+0.5)*c, pz=z0+(k+0.5)*c;
+      if(pel && px>pel[0]&&px<pel[1]&&pz>pel[2]&&pz<pel[3]){ T[n]=0; continue; }
+      if(!up) continue;
+      const ui=Math.floor((px-up.x0)/up.c), uk=Math.floor((pz-up.z0)/up.c);
       if(ui>=0&&uk>=0&&ui<up.nx&&uk<up.nz&&up.T[ui*up.nz+uk]) T[n]=0; }
   }
-  // kolom-kolom sel dengan selang z yang sama digabung jadi satu pita
-  const selang=i=>{ const out=[]; let a=-1;
-    for(let k=0;k<=nz;k++){ const isi=k<nz&&T[i*nz+k]; if(isi&&a<0) a=k; if(!isi&&a>=0){ out.push([z0+a*c,z0+k*c]); a=-1; } }
-    return out; };
-  const strips=[]; let prev=null, kunciPrev='';
-  for(let i=0;i<nx;i++){
-    const iv=selang(i), kunci=iv.map(v=>v.join(',')).join(';');
-    if(prev && kunci===kunciPrev){ prev.xb=x0+(i+1)*c; continue; }
-    if(iv.length){ prev={xa:x0+i*c, xb:x0+(i+1)*c, iv}; strips.push(prev); } else prev=null;
-    kunciPrev=kunci;
-  }
-  if(!strips.length) return null;
-  for(const st of strips) st.free=st.iv.map(([a,b])=>[a,b,a,b]);
-  const di=(x,z)=>{ const i=Math.floor((x-x0)/c), k=Math.floor((z-z0)/c); return i>=0&&k>=0&&i<nx&&k<nz&&T[i*nz+k]===1; };
-  const m=new THREE.Mesh(slabGeometry(strips,P.tebal,di),[finMat(FINISH,'beton'),finMat(FINISH,'cat')]);
+  const geo=geoAtapHalus(T,nx,nz,x0,z0,c,P.tebal);
+  if(!geo) return null;
+  const m=new THREE.Mesh(geo,[finMat(FINISH,'beton'),finMat(FINISH,'cat')]);
   let h=lv.height; for(const w of lv.walls) if(!w.rail) h=Math.max(h,wallH(w,lv));
   m.position.y=h+P.tebal;                           // sisi bawah tepat di puncak dinding tertinggi
   m.castShadow=true; m.receiveShadow=true; m.userData.atap=true;
   return m;
+}
+/* Tepi atap halus: kisi 5 cm diubah menjadi garis kontur (marching squares), tangga-tangga
+   kecil dirapikan (Douglas–Peucker), lalu diekstrusi. Dulu atap disusun dari pita kisi
+   sehingga tepi lengkung / miring tampak bergerigi. */
+function konturKisi(T,nx,nz){
+  const v=(i,k)=>i>=0&&k>=0&&i<nx&&k<nz&&T[i*nz+k]?1:0;
+  const kunci=(u,w)=>(u+3)*(2*nz+6)+(w+3);
+  const tetangga=new Map(), titik=new Map();
+  const sambung=(a,b)=>{ for(const [p,q] of [[a,b],[b,a]]){ const l=tetangga.get(p); if(l) l.push(q); else tetangga.set(p,[q]); } };
+  const sisi=(i,k,e)=>{ const u=e===0?2*i+1:e===1?2*i+2:e===2?2*i+1:2*i, w=e===0?2*k:e===1?2*k+1:e===2?2*k+2:2*k+1;
+    const kk=kunci(u,w); titik.set(kk,[u,w]); return kk; };
+  const TABEL=[[],[[3,0]],[[0,1]],[[3,1]],[[1,2]],[[3,0],[1,2]],[[0,2]],[[3,2]],[[2,3]],[[0,2]],[[0,1],[2,3]],[[1,2]],[[1,3]],[[0,1]],[[3,0]],[]];
+  for(let i=-1;i<nx;i++) for(let k=-1;k<nz;k++){
+    const kasus=v(i,k)|v(i+1,k)<<1|v(i+1,k+1)<<2|v(i,k+1)<<3;
+    for(const [e1,e2] of TABEL[kasus]) sambung(sisi(i,k,e1),sisi(i,k,e2));
+  }
+  const dipakai=new Set(), loops=[];
+  for(const mulai of tetangga.keys()){
+    if(dipakai.has(mulai)) continue;
+    const loop=[]; let kini=mulai, dulu=-1;
+    for(let n=0;n<1e6;n++){
+      dipakai.add(kini); loop.push(titik.get(kini));
+      const l=tetangga.get(kini), lanjut=l[0]!==dulu?l[0]:l[1];
+      if(lanjut===undefined || lanjut===mulai) break;
+      if(dipakai.has(lanjut)) break;
+      dulu=kini; kini=lanjut;
+    }
+    if(loop.length>=3) loops.push(loop);
+  }
+  return loops;
+}
+function rapikanLoop(pts,tol){
+  // Douglas–Peucker untuk loop tertutup: dibelah di dua titik terjauh
+  const dp=(a,lo,hi,out)=>{ const [ax,az]=a[lo], [bx,bz]=a[hi], dx=bx-ax, dz=bz-az, L=Math.hypot(dx,dz)||1e-9;
+    let mx=-1, mi=-1; for(let i=lo+1;i<hi;i++){ const d=Math.abs((a[i][0]-ax)*dz-(a[i][1]-az)*dx)/L; if(d>mx){ mx=d; mi=i; } }
+    if(mx>tol){ dp(a,lo,mi,out); out.push(a[mi]); dp(a,mi,hi,out); } };
+  if(pts.length<8) return pts;
+  let jauh=0, jd=-1; for(let i=1;i<pts.length;i++){ const d=Math.hypot(pts[i][0]-pts[0][0],pts[i][1]-pts[0][1]); if(d>jd){ jd=d; jauh=i; } }
+  const a=pts.slice(0,jauh+1), b=pts.slice(jauh).concat([pts[0]]), out=[pts[0]];
+  dp(a,0,a.length-1,out); out.push(pts[jauh]); dp(b,0,b.length-1,out);
+  return out.length>=3?out:pts;
+}
+function geoAtapHalus(T,nx,nz,x0,z0,c,tebal){
+  const loops=konturKisi(T,nx,nz).map(l=>rapikanLoop(l.map(([u,w])=>[x0+(u/2+0.5)*c, z0+(w/2+0.5)*c]),c*0.6));
+  if(!loops.length) return null;
+  // loop di dalam loop lain sebanyak ganjil = lubang (mis. atap lantai bawah di sekitar lantai atas)
+  const dalam=(p,l)=>pointInPoly(p[0],p[1],l);
+  const tingkat=loops.map((l,i)=>loops.reduce((s,m,j)=>s+(j!==i&&dalam(l[0],m)?1:0),0));
+  const bentuk=[];
+  loops.forEach((l,i)=>{ if(tingkat[i]%2) return;
+    const sh=new THREE.Shape(l.map(([x,z])=>new THREE.Vector2(x,z)));
+    loops.forEach((h,j)=>{ if(tingkat[j]===tingkat[i]+1 && dalam(h[0],l)) sh.holes.push(new THREE.Path(h.map(([x,z])=>new THREE.Vector2(x,z)))); });
+    bentuk.push(sh); });
+  if(!bentuk.length) return null;
+  const g=new THREE.ExtrudeGeometry(bentuk,{depth:tebal, bevelEnabled:false, curveSegments:1});
+  g.rotateX(Math.PI/2);                              // bentuk di bidang XZ, ketebalan ke bawah (y −tebal…0)
+  g.computeVertexNormals();
+  return g;
 }
 function renderAtapUI(){
   const P=PROJECT.atap||{};
@@ -6343,6 +6440,7 @@ function stepAudio(dt){
 
 /* titik cahaya tiap lampu yang terpasang — dikumpulkan tiap scene dibangun */
 let LAMPU_PASANG=[];
+function diVoid(lv,x,z){ return !!lv && lv.objects.some(o=>o.kind==='void' && pointInPoly(x,z,voidPolygon(o))); }
 function kumpulkanLampu(){
   LAMPU_PASANG=[]; PETA_RUANG=new WeakMap();
   worldRoot.updateMatrixWorld(true);
@@ -6355,7 +6453,11 @@ function kumpulkanLampu(){
                          pos:c.localToWorld(c.userData.lampuTitik.clone()), grp:c, ruang:0});
       // ruang ditentukan dari BOHLAM-nya, bukan pangkal objek: lampu dinding luar yang
       // pangkalnya menempel dinding dulu bisa "tertarik" ke ruangan di balik dinding
-      const Lb=LAMPU_PASANG[LAMPU_PASANG.length-1]; Lb.ruang=ruangDi(petaRuang(lv),Lb.pos.x,Lb.pos.z);
+      const Lb=LAMPU_PASANG[LAMPU_PASANG.length-1]; Lb.ruang=Lb.ruangAsli=ruangDi(petaRuang(lv),Lb.pos.x,Lb.pos.z); Lb.lvGI=idx;
+      // lampu yang menggantung di void menerangi ruang dobel tinggi di bawahnya: pantulannya
+      // dihitung untuk ruang lantai bawah (dulu dinding atas & bawah void menyala berbeda)
+      let k=idx; while(k>0 && diVoid(PROJECT.levels[k],Lb.pos.x,Lb.pos.z)) k--;
+      if(k!==idx){ Lb.lvGI=k; Lb.ruang=ruangDi(petaRuang(PROJECT.levels[k]),Lb.pos.x,Lb.pos.z); }
     }
   });
   LAMPU_T=0;
@@ -6426,6 +6528,10 @@ function stepGI(s){
         for(const q of muka){ const x=q%P.nx;
           for(const qq of [x>0?q-1:-1, x<P.nx-1?q+1:-1, q-P.nx, q+P.nx]) if(qq>=0&&qq<dd.length&&!dd[qq]&&P.lab[qq]<0){ dd[qq]=dd[q]; b2.push(qq); } }
         muka=b2; }
+      // sel di dalam void = ruang dobel tinggi: diberi tanda 255, shader membaca lantai di bawahnya
+      const vs=lvs[k]>0 ? PROJECT.levels[lvs[k]].objects.filter(o=>o.kind==='void').map(voidPolygon) : [];
+      if(vs.length) for(let j=0;j<P.nz;j++) for(let i=0;i<P.nx;i++){ const px=P.x0+(i+0.5)*P.C, pz=P.z0+(j+0.5)*P.C;
+        if(vs.some(pl=>pointInPoly(px,pz,pl))) dd[j*P.nx+i]=255; }
       for(let r=0;r<P.nz;r++) d.set(dd.subarray(r*P.nx,(r+1)*P.nx),(off+r)*W);
       if(!P.giLuas){ P.giLuas=new Float32Array(256); for(let r=1;r<P.luas.length;r++) P.giLuas[1+((r-1)%254)]+=P.luas[r]; }
       const lv=PROJECT.levels[lvs[k]], el=levelElevation(lvs[k]);
@@ -6442,7 +6548,7 @@ function stepGI(s){
   const luar=[];
   for(const L of LAMPU_PASANG){
     if(MATI.has(L.id)) continue;
-    const k=lvs.indexOf(L.idx), P=peta[k]; if(k<0 || !P) continue;
+    const k=lvs.indexOf(L.lvGI??L.idx), P=peta[k]; if(k<0 || !P) continue;
     const slot=KOLAM.find(l=>l.userData.L && l.userData.L.id===L.id), f=slot?(slot.userData.f||0):0;
     if(!(L.ruang>0) || P.bocor[L.ruang]){                 // lampu luar (teras, dinding luar, taman)
       const w=L.kuat*s.lamp*(1-f*f);
@@ -6481,8 +6587,9 @@ function stepGI(s){
 function skorLampu(L,ref){
   let d=Math.sqrt(L.pos.distanceToSquared(ref));
   if(FPS.on){
-    if(L.idx!==RUANG_KAMERA.idx) d+=15;
-    else if(!RUANG_KAMERA.id || L.ruang!==RUANG_KAMERA.id) d+=8;
+    const lvSama=L.idx===RUANG_KAMERA.idx, lvGI=L.lvGI===RUANG_KAMERA.idx;
+    if(!lvSama && !lvGI) d+=15;
+    else if(!RUANG_KAMERA.id || !((lvSama && L.ruangAsli===RUANG_KAMERA.id) || (lvGI && L.ruang===RUANG_KAMERA.id))) d+=8;
   }
   if(KOLAM.some(l=>l.userData.L && l.userData.L.id===L.id && l.userData.tuju>0)) d-=1.5;   // histeresis: yang sedang menyala tidak mudah terganti
   return d;
