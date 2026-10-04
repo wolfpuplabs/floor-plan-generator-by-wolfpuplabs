@@ -2672,6 +2672,65 @@
     "target": "naik ≥ 20%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-070",
+   "judul": "Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di ruang dobel tinggi dinding lantai 1 dan lantai 2 menyala berbeda dengan garis batas tajam; atap lantai 1 menumpuk di atas lantai balkon lantai 2 (bergerigi, berkedip); tepi atap lengkung bergerigi dan tritisan melebar di arah diagonal.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "3 tangkapan layar iPad & iPhone pengguna 2026-10-05 + \"lighting lt 1&2 ga ngeblend sama atap lt1 overlap\"",
+    "alternatif": [
+     "GI satu volume 3D untuk seluruh rumah (berat di iPad)",
+     "memaksa void selalu bertepi dinding (membatasi desain)",
+     "atap tanpa tritisan di bagian lengkung"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "shader: paling banyak 3 lintasan pita lantai hanya untuk titik di void; atap dari kontur — segitiga atap turun ±80 % (760 → 176 pada tes)"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "laporan cahaya/atap aneh di rumah bertingkat",
+    "target": "turun ke 0 dalam 1 bulan",
+    "tinjau": "2027-01-05"
+   }
   }
  ]
 }
