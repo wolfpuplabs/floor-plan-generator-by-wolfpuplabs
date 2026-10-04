@@ -8,7 +8,7 @@
      keluar. Unduhan data (HDRI/model) dibatasi ke HTTPS. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>Arsitek 3D — Editor Denah, Dinding, Lantai & Furnitur</title>
+<title>Plan23D — Editor Denah, Dinding, Lantai & Furnitur</title>
 <style>
 :root{
   --bg:#101014; --panel:#17171b; --panel2:#1e1e24; --line:#2c2c34;
@@ -265,6 +265,9 @@ body{font-size:14px}
 #sidebar{width:368px;min-width:368px}
 #sidebar header{padding:16px 18px 12px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
+/* merek: ikon denah sebagai logo + nama "Plan23D" */
+#sidebar h1.merek{display:flex;align-items:center;gap:8px;font-size:1.25rem;font-weight:800;letter-spacing:.1px}
+#sidebar h1.merek .logo{width:30px;height:30px;padding:5px;border-radius:9px;background:var(--accent);color:#06201b;stroke-width:2.1;flex:none}
 #sidebar header p{font-size:.78rem}
 .tabs{padding:6px;gap:4px;background:var(--panel);border-bottom:1px solid var(--line)}
 .tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;border-radius:9px;border-bottom:none;text-transform:none;letter-spacing:0;font-size:.74rem;font-weight:600}
@@ -371,6 +374,9 @@ body.lihat.jalan #lihatBar{display:none}
 #fpsCiut{min-width:40px;padding:0 8px}
 #fpsCiut .ik{width:20px;height:20px}
 #fpsbar.ciut #fpsCiut .ik{transform:rotate(180deg)}
+/* layar penuh: Chrome iPad/Android menaruh tombol X keluar-layar-penuh di pojok kiri atas —
+   bilah jalan diturunkan agar tombol ciut tidak tertutup */
+body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
 </style>
 <!-- GUARDRAIL G5 — pustaka pihak ketiga dikunci versinya DAN isinya (Subresource
      Integrity): bila CDN disusupi atau berkasnya berubah, peramban menolak
@@ -389,7 +395,7 @@ body.lihat.jalan #lihatBar{display:none}
 <div id="app">
   <aside id="sidebar">
     <header>
-      <h1>Arsitek 3D</h1>
+      <h1 class="merek"><svg class="ik logo" aria-hidden="true"><use href="#i-denah"/></svg>Plan23D</h1>
       <p>Denah 2D jadi rumah 3D — siap ditata &amp; dijelajahi</p>
       <select class="pilih-bahasa" id="bahasa" aria-label="Bahasa / Language"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select>
     </header>
@@ -12987,7 +12993,7 @@ addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||['q','w','e','r','l','k','m','n','f','h','delete','backspace'].includes(k)){ e.stopImmediatePropagation(); e.preventDefault(); }
 },true);
 $('#exportObjBtn').onclick=()=>{
-  let out=`# ${PROJECT.name} — Arsitek 3D\n`, off=1, n=0;
+  let out=`# ${PROJECT.name} — Plan23D\n`, off=1, n=0;
   const v=new THREE.Vector3();
   for(const lg of levelGroups){
     if(!lg||!lg.visible) continue;
@@ -14148,6 +14154,10 @@ function keluarLayarPenuh(){
   const f=document.exitFullscreen||document.webkitExitFullscreen;
   if(f) try{ const r=f.call(document); if(r&&r.catch) r.catch(()=>{}); }catch(e){}
 }
+function tandaiLayarPenuh(){ const on=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  document.body.classList.toggle('layar-penuh',on);
+  const b=$('#fpsFull'); if(b) isiIkon(b,'penuh',on?'Keluar layar penuh':'Layar penuh'); }
+document.addEventListener('fullscreenchange',tandaiLayarPenuh); document.addEventListener('webkitfullscreenchange',tandaiLayarPenuh);
 $('#fpsFull').onclick=()=>{
   if(document.fullscreenElement||document.webkitFullscreenElement) keluarLayarPenuh();
   else masukLayarPenuh();

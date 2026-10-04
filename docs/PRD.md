@@ -1,4 +1,4 @@
-# PRD — Arsitek 3D (Floor Plan Generator by Wolfpup Labs)
+# PRD — Plan23D (Floor Plan Generator by Wolfpup Labs; dulu "Arsitek 3D")
 
 | | |
 |---|---|
@@ -81,6 +81,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | E-15 | **Berkas sendiri ikut tautan lihat**: model unggahan (yang dipasang), foto tekstur & video/GIF TV (yang dipakai) diunggah sebagai lampiran beralamat isi saat membuat tautan pendek (maks. 80 MB per tautan, potongan sama tidak diunggah ulang); penerima melihat rumah dulu lalu berkas menyusul. Tanpa Blob: berkas ditinggal dengan arahan mengaktifkan Blob | Penerima memasang model, foto & GIF; potongan ditukar ditolak; berkas > 3 MB disusun ulang utuh (tes) | JEV-068 |
 | E-16 | **Tautan lihat rapi di HP**: saat jalan-jalan hanya bilah jalan yang tampil; bilah lantai di bawah bilah lihat (diukur), petunjuk di atas tombol tampak & hilang sendiri; status atap tertutup ikut proyek & tautan, mode jalan selalu beratap; tautan pendek yang gagal menyebut sebabnya (Blob belum aktif + Redeploy / kode galat server / luring) | Di layar 390 px tidak ada kontrol yang menumpuk; penerima mendapat atap tertutup (tes) | JEV-069 |
 | E-17 | **Rumah bertingkat rapi**: ruang dobel tinggi (void) bercahaya menyatu antara lantai 1 & 2; lampu gantung di void menerangi ruang di bawahnya; atap lantai bawah berhenti di tepi pelat lantai atas (balkon tidak tertutup atap); tepi atap mengikuti dinding lengkung/miring dengan tritisan rata, sudut siku tetap siku | Dinding bawah void ≥ 78 % terang dinding atasnya; tidak ada atap lantai 1 di bawah balkon; tepi atap teluk lengkung menyimpang < 8 cm (tes) | JEV-070 |
+| E-18 | **Merek & layar penuh**: nama aplikasi "Plan23D" dengan ikon denah sebagai logo (kepala panel & judul halaman); di layar penuh bilah jalan turun di bawah tombol X peramban dan tombol berlabel *Keluar layar penuh* | Tombol ciut ≥ 56 px dari atas saat layar penuh (tes) | JEV-071 |
 
 ### 5.3 Isi ruang & lingkungan (P1)
 
