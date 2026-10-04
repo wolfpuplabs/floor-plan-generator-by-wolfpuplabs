@@ -338,6 +338,10 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
 #lihatBar b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
 #lihatBar .lihat-tag{font-size:.74rem;color:var(--accent);background:#1f2f2c;border-radius:999px;padding:4px 10px;white-space:nowrap}
 #lihatBar .btn{flex:none}
+#sidebar header{position:relative}
+#sidebar header h1,#sidebar header p{padding-right:118px}
+#sidebar .pilih-bahasa{position:absolute;top:14px;right:14px;width:108px;min-height:40px;padding:4px 6px;font-size:.74rem}
+#lihatBar .pilih-bahasa{width:auto;flex:none;min-height:40px;padding:4px 6px}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#33333d;border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -359,6 +363,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     <header>
       <h1>Arsitek 3D</h1>
       <p>Denah 2D jadi rumah 3D — siap ditata &amp; dijelajahi</p>
+      <select class="pilih-bahasa" id="bahasa" aria-label="Bahasa / Language"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select>
     </header>
     <nav class="tabs" role="tablist" aria-label="Panel">
       <button data-tab="plan" class="active" role="tab"><span class="ti" aria-hidden="true">📐</span>Denah</button>
@@ -737,6 +742,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
     <div class="float" id="lihatBar" hidden>
       <span class="lihat-tag">👁 Lihat saja</span><b id="lihatNama"></b>
       <button class="btn" id="lihatJalan">🚶 Jalan-jalan</button>
+      <select class="pilih-bahasa" id="lihatBahasa" aria-label="Bahasa / Language"><option value="en">EN</option><option value="id">ID</option></select>
     </div>
     <div class="float" id="inspector" hidden></div>
     <div class="float" id="fpsbar" hidden>
@@ -844,6 +850,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
   <div id="arInfo"></div>
 </div>
 
+<script src="lang/en.js"></script>
 <script>
 /* ==========================================================================
    ARSITEK 3D — editor denah 3D berbasis data vektor
@@ -862,6 +869,74 @@ const $$=s=>[...document.querySelectorAll(s)];
 // luar WAJIB lewat esc() sebelum masuk innerHTML / atribut (cegah XSS tersimpan)
 const esc=v=>String(v??'').replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
 const el=(tag,cls,txt)=>{const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e;};
+
+/* ---------- BAHASA: Inggris bawaan, Indonesia pilihan (JEV-061) ----------
+   Seluruh UI ditulis dalam bahasa Indonesia di kode (begitu pula komentar & nama).
+   Bahasa Inggris dipasang sebagai lapisan terjemahan di atas DOM: kamus kalimat utuh
+   (lang/en.js), frasa yang memuat <b>/<kbd> diterjemahkan per elemen supaya susunan
+   kalimatnya benar, pola regex untuk kalimat berisi angka/nama, dan MutationObserver
+   untuk teks yang muncul belakangan (toast, inspector, galeri). Logika aplikasi tidak
+   membaca teks UI kembali, jadi terjemahan tidak bisa mengubah perilaku. Kamus berasal
+   dari berkas statis milik sendiri (bukan masukan pengguna), sehingga aman dipasang
+   sebagai HTML. Ganti bahasa = simpan pilihan lalu muat ulang. */
+const BAHASA={kode:'en'};
+try{ const v=localStorage.getItem('bahasa'); if(v==='id'||v==='en') BAHASA.kode=v; }catch(e){ /* mode privat: bawaan */ }
+function terjemahTeks(t){
+  const K=window.KAMUS_EN; if(BAHASA.kode!=='en'||!K||typeof t!=='string') return null;
+  const n=t.replace(/\s+/g,' ').trim(); if(!n) return null;
+  if(Object.prototype.hasOwnProperty.call(K.teks,n)) return K.teks[n];
+  if(!K._pola) K._pola=(K.pola||[]).map(([r,e])=>[new RegExp('^'+r+'$'),e]);
+  for(const [r,e] of K._pola) if(r.test(n)) return n.replace(r,(...g)=>e.replace(/\$(\d+)/g,(_,i)=>{ const v=g[+i]; return v==null?'':terjemahTeks(v)??v; }));
+  return null;
+}
+// frasa: elemen teks + tag inline (<b>, <kbd>, …) diterjemahkan utuh — kamus berdasar teksnya,
+// atau pola atas innerHTML-nya (isi dinamis sudah di-escape aplikasi, dan hanya disusun ulang)
+function terjemahFrasa(e){
+  const K=window.KAMUS_EN, k=e.textContent.replace(/\s+/g,' ').trim();
+  if(Object.prototype.hasOwnProperty.call(K.frasa,k)) return K.frasa[k];
+  if(!K._fpola) K._fpola=(K.frasaPola||[]).map(([r,t])=>[new RegExp('^'+r+'$'),t]);
+  const h=e.innerHTML.replace(/\s+/g,' ').trim();
+  for(const [r,t] of K._fpola) if(r.test(h)) return h.replace(r,(...g)=>t.replace(/\$(\d+)/g,(_,i)=>{ const v=g[+i]; return v==null?'':terjemahTeks(v)??v; }));
+  // kalimat rakitan (info kalibrasi, AR): ganti per potongan kalimat
+  if(!K._ganti) K._ganti=(K.ganti||[]).map(([r,t])=>[new RegExp(r,'g'),t]);
+  let u=h; for(const [r,t] of K._ganti) u=u.replace(r,t);
+  return u!==h?u:null;
+}
+function pasangBahasa(){
+  document.documentElement.lang=BAHASA.kode;
+  const K=window.KAMUS_EN; if(BAHASA.kode!=='en'||!K) return;
+  const INLINE=new Set(['B','STRONG','I','EM','KBD','BR','SMALL','CODE','A','SUB','SUP']);
+  const ATR=['title','placeholder','aria-label','alt'];
+  const lewati=e=>/^(SCRIPT|STYLE|TEXTAREA|CANVAS|svg)$/i.test(e.tagName)||e.id==='bagikanUrl'||e.id==='projName';
+  const atribut=e=>{ for(const a of ATR){ const v=e.getAttribute(a); if(v){ const t=terjemahTeks(v); if(t!=null&&t!==v) e.setAttribute(a,t); } } };
+  const teksNode=n=>{ const p=n.parentElement; if(!p||lewati(p)) return; const v=n.nodeValue, t=terjemahTeks(v);
+    if(t!=null&&t!==v.replace(/\s+/g,' ').trim()) n.nodeValue=v.match(/^\s*/)[0]+t+v.match(/\s*$/)[0]; };
+  const frasaan=r=>r.children.length && [...r.children].every(c=>INLINE.has(c.tagName)&&!c.children.length);
+  const proses=r=>{
+    if(r.nodeType===3) return teksNode(r);
+    if(r.nodeType!==1||lewati(r)) return;
+    atribut(r);
+    if(frasaan(r)){
+      const f=terjemahFrasa(r); if(f!=null){ if(f!==r.innerHTML) r.innerHTML=f; return; }
+    }
+    for(const c of [...r.childNodes]) proses(c);
+  };
+  proses(document.body);
+  document.title=terjemahTeks(document.title)??document.title;
+  new MutationObserver(ms=>{ for(const m of ms){
+    if(m.type==='characterData') teksNode(m.target);
+    else if(m.type==='attributes'){ if(m.target.nodeType===1) atribut(m.target); }
+    else if(m.addedNodes.length){ const t=m.target;
+      if(t.nodeType===1&&(frasaan(t)||[...m.addedNodes].some(n=>n.nodeType===3)&&t.childNodes.length>1)) proses(t); else for(const n of m.addedNodes) proses(n); }
+  } }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:ATR});
+  // dialog bawaan peramban
+  const konfirmasi=window.confirm.bind(window); window.confirm=m=>konfirmasi(terjemahTeks(String(m))??m);
+}
+function gantiBahasa(k){
+  try{ localStorage.setItem('bahasa',k); }catch(e){ /* mode privat: hanya sesi ini */ }
+  location.reload();
+}
+pasangBahasa();
 
 let toastTimer=null;
 // GUARDRAIL G6 — galat tak tertangkap dicatat di memori (tanpa telemetri; data
@@ -5011,7 +5086,7 @@ const STAIRS={
   landing :{l:'Bordes',   i:'🪜'},
   l_shape :{l:'Bentuk L', i:'🔃'},
   u_shape :{l:'Bentuk U', i:'🔄'},
-  spiral  :{l:'Putar',    i:'🌀'},
+  spiral  :{l:'Putar (spiral)',i:'🌀'},
   curved  :{l:'Lengkung', i:'🌙'}
 };
 
@@ -13708,6 +13783,7 @@ setSuasana('siang');
 // kartu Mulai — pengguna baru melihat layarnya dulu; panel dibuka lewat ☰ Panel
 if(window.innerWidth<900 && proyekKosong()) setSidebar(false);
 perbaruiMulai();
+for(const s of $$('.pilih-bahasa')){ s.value=BAHASA.kode; s.onchange=()=>gantiBahasa(s.value); }
 window.__siap=true;
 // tautan lihat-saja dibuka SETELAH halaman tampil: membangun rumah (shader, GI) butuh
 // beberapa detik dan tidak boleh menahan tampilan pertama
