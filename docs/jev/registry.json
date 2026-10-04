@@ -2177,6 +2177,68 @@
     "target": "≥ 30%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-062",
+   "judul": "Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model dari Sketchfab/CGTrader membawa banyak tekstur 4K; di iPad memori grafis habis, konteks WebGL mati, dan setelah pulih bahan mobil/logam menjadi hitam.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "rekaman layar pengguna 2026-10-04 (mobil Sketchfab menjadi hitam setelah layar hitam sesaat) + permintaan \"dicompress dulu pake gltf report\"",
+    "alternatif": [
+     "gltf.report / glTF-Transform di luar aplikasi (langkah manual tiap model)",
+     "pustaka glTF-Transform di halaman (ESM tanpa SRI, +±300 KB)",
+     "kompresi KTX2/Basis (perlu transcoder WASM ±500 KB)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 10,
+      "menitHemat": 15
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.012
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "pengurai GLB sendiri membatasi chunk ke panjang berkas; gambar didekode peramban; batas 100 MB sebelum & 20 MB sesudah dirampingkan; G3 (URL luar) tetap"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "diproses di perangkat, tidak ada unggahan"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri; atribusi model tidak berubah"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tekstur 4K (±85 MB GPU) → 1K (±5 MB); kubus uji 4096×2048: memori GPU < 8 MB"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "sesi iPad dengan konteks WebGL hilang ÷ sesi iPad yang memuat model unduhan",
+    "target": "≤ 2%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }

@@ -1067,7 +1067,14 @@ window.KAMUS_EN={
   "Pustaka GLTFExporter belum termuat — periksa koneksi internet.":"GLTFExporter library not loaded — check your internet connection.",
   "Belum ada model untuk ditampilkan. Generate atau gambar dinding dulu.":"No model to show yet. Generate or draw walls first.",
   "Pustaka model-viewer gagal dimuat (butuh koneksi ke CDN). Model tetap bisa diunduh sebagai .glb lalu dibuka di aplikasi AR mana pun.":"The model-viewer library failed to load (needs a CDN connection). The model can still be downloaded as .glb and opened in any AR app.",
-  "Denah 3D":"3D Plan"
+  "Denah 3D":"3D Plan",
+  "Memori grafis penuh — memulihkan tampilan…":"Graphics memory full — restoring the view…",
+  "Tampilan dipulihkan setelah memori grafis penuh":"View restored after graphics memory ran out",
+  "Tekstur model ini sudah kecil":"This model's textures are already small",
+  "Laporan model":"Model report",
+  "⚠ Model berat untuk iPad — beberapa model seperti ini bisa menghabiskan memori grafis.":"⚠ Heavy model for iPad — a few models like this can use up the graphics memory.",
+  "Perkecil tekstur ke 512 px":"Reduce textures to 512 px",
+  "(diskalakan otomatis)":"(auto-scaled)"
  },
  // frasa
  "frasa":{
@@ -1250,7 +1257,15 @@ window.KAMUS_EN={
   ["ukurannya ([\\d.]+) MB — melebihi batas 20 MB, pilih tekstur 1K","it is $1 MB — over the 20 MB limit, choose 1K textures"],
   ["impor model gagal: (.+)","model import failed: $1"],
   ["(.+) · (\\d+) dinding lengkung","$1 · $2 curved walls"],
-  ["(\\d+) panorama(.*) · ☀ siang · 🌇 senja · 🌙 malam · ketuk untuk memasang","$1 panoramas$2 · ☀ day · 🌇 dusk · 🌙 night · tap to apply"]
+  ["(\\d+) panorama(.*) · ☀ siang · 🌇 senja · 🌙 malam · ketuk untuk memasang","$1 panoramas$2 · ☀ day · 🌇 dusk · 🌙 night · tap to apply"],
+  ["(.+) · dirampingkan ([\\d.]+) → ([\\d.]+) MB(.*)","$1 · compressed $2 → $3 MB$4"],
+  ["· dirampingkan ([\\d.]+) → ([\\d.]+) MB(.*)","· compressed $1 → $2 MB$3"],
+  ["(.+) m · dirampingkan ([\\d.]+) → ([\\d.]+) MB · (.+)","$1 m · compressed $2 → $3 MB · $4"],
+  ["(.+) · tekstur (\\d+) model diperkecil agar muat di memori iPad","$1 · textures of $2 model(s) reduced to fit iPad memory"],
+  ["Tekstur diperkecil ke (\\d+) px — ([\\d.]+) MB","Textures reduced to $1 px — $2 MB"],
+  ["Berkas ([\\d.]+) MB( \\(asal [\\d.]+ MB, tekstur diperkecil\\))? · ([\\d.,]+) segitiga · (\\d+) tekstur( ≤ \\d+ px)? · memori GPU ±(\\d+) MB","File $1 MB$2 · $3 triangles · $4 textures$5 · GPU memory ±$6 MB"],
+  ["\\(asal ([\\d.]+) MB, tekstur diperkecil\\)","(originally $1 MB, textures reduced)"],
+  ["berkas ([\\d.]+) MB melebihi batas 20 MB walau teksturnya sudah diperkecil","file $1 MB exceeds the 20 MB limit even with reduced textures"]
  ],
  // frasaPola
  "frasaPola":[
