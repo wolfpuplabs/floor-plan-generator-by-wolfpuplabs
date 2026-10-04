@@ -2549,6 +2549,69 @@
     "target": "≥ 90%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-068",
+   "judul": "Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model yang diunggah sendiri (dan foto tekstur/video TV) tidak ikut tautan lihat-saja, sehingga penerima melihat rumah tanpa perabot pilihan pemilik.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "\"model yg diupload ga bisa kebawa?\" (pengguna, 2026-10-04)",
+    "alternatif": [
+     "model tertanam di isi tautan (MB-an — mustahil di URL)",
+     "unggah langsung dari peramban ke host Blob dengan token klien (host tambahan di CSP/G-HOST, alur token)",
+     "penerima diminta mengunggah berkas sendiri (tidak masuk akal)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 10
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "potongan ≤ 3 MB beralamat isi: server & penerima memeriksa SHA-256, tidak bisa ditimpa/ditukar; penerima menyaring lewat sanitasiProyek (G2), model lewat G3 & dirampingkan; total ≤ 80 MB per tautan (AUDIT SEC-18)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya berkas yang dipakai di proyek yang diunggah, hanya saat pemilik membuat tautan; disimpan di Blob milik pemilik situs; alamat = sidik isi (tak bisa ditebak tanpa berkasnya)"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "model Sketchfab berlisensi CC (non-NC) boleh didistribusikan ulang dengan atribusi — lisensi ikut ke penerima"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "rumah tampil dulu, lampiran menyusul; potongan yang sama tidak diunggah ulang; cache immutable"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kemajuan unggah/muat ditulis sebagai teks"
+    }
+   },
+   "metrik": {
+    "nama": "tautan lihat berisi model sendiri yang terbuka lengkap / tautan berisi model sendiri",
+    "target": "≥ 90%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }

@@ -15,6 +15,8 @@ const kotak = (x0, z0, x1, z1) => [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, 
 async function ruteApi(page, simpan, status = 200) {
   await page.route('**/api/tautan**', async r => {
     const q = r.request();
+    // lampiran (potongan berkas, JEV-068) diuji di 19_lampiran — di sini seolah belum didukung
+    if (new URL(q.url()).searchParams.get('bagian')) return r.fulfill({ status: 501, headers: CORS, json: { galat: 'blob-belum-diatur' } });
     if (q.method() === 'POST') {
       if (status !== 200) return r.fulfill({ status, headers: CORS, json: { galat: 'blob-belum-diatur' } });
       const buf = q.postDataBuffer(); const id = 'Ab3dEf7hJk'; simpan.set(id, buf); simpan.last = buf;

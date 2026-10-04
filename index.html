@@ -12625,8 +12625,8 @@ function muatProyekObjek(sumber){
    Proyek dipadatkan (deflate) ke dalam fragmen URL (#lihat=…). Fragmen tidak pernah
    dikirim ke server, jadi tanpa backend dan proyek tidak bocor ke pihak mana pun.
    Model katalog (Poly Haven / produk nyata terverifikasi SHA-256) ikut sebagai
-   rujukan dan diunduh ulang oleh penerima; model unggahan sendiri (MB-an) tidak
-   muat di tautan dan ditinggal. Isi tautan = masukan tak tepercaya: dibuka lewat
+   rujukan dan diunduh ulang oleh penerima; model unggahan sendiri, foto tekstur & video TV
+   ikut sebagai lampiran (JEV-068) bila tautan pendek aktif. Isi tautan = masukan tak tepercaya: dibuka lewat
    sanitasiProyek() yang sama (G2), dengan batas ukuran sesudah dibuka (bom zip). */
 const BAGI={batasBuka:20*1048576, batasKode:6*1048576};
 function b64url(u8){ let t=''; for(let i=0;i<u8.length;i+=0x8000) t+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
@@ -12647,27 +12647,87 @@ function rujukanAset(a){
   if(m){ let id=''; try{ id=decodeURIComponent(m[1]); }catch(e){ id=''; } if(GSO_NAMA.test(id)) return {jenis:'gso',id}; }
   return null;
 }
-async function buatTautanLihat(){
-  const rujukan={}, ditinggal=[];
+/* Lampiran (JEV-068): model unggahan sendiri, foto tekstur & video TV terlalu besar untuk isi
+   tautan. Berkasnya dipotong ≤ 3 MB dan disimpan BERALAMAT ISI di api/tautan (nama potongan =
+   SHA-256-nya, diperiksa server & penerima) — berkas yang sama tidak diunggah dua kali dan
+   tidak bisa ditukar. Penerima mengunduh, memeriksa sidik, lalu menyaringnya lewat jalur yang
+   sama dengan berkas proyek (sanitasiProyek G2, model lewat G3 & dirampingkan). */
+const LAMPIRAN={bagian:3*1048576, maks:80*1048576}, SHA_HEX=/^[0-9a-f]{64}$/;
+async function sidikSHA(u8){ return [...new Uint8Array(await crypto.subtle.digest('SHA-256',u8))].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+async function unggahLampiran(u8){
+  const daftar=[];
+  for(let o=0;o<u8.length;o+=LAMPIRAN.bagian){
+    const p=u8.slice(o,Math.min(u8.length,o+LAMPIRAN.bagian)), h=await sidikSHA(p);
+    const c=await fetch('api/tautan?cek=1&bagian='+h).then(r=>r.ok?r.json():null).catch(()=>null);
+    if(!(c&&c.ada)){
+      const r=await fetch('api/tautan?bagian='+h,{method:'POST',headers:{'content-type':'application/octet-stream'},body:p});
+      if(!r.ok){ const e=new Error('unggah lampiran gagal ('+r.status+')'); e.status=r.status; throw e; }
+    }
+    daftar.push(h);
+  }
+  return daftar;
+}
+async function ambilLampiran(daftar,sisa){
+  if(!Array.isArray(daftar)||!daftar.length||daftar.length>Math.ceil(LAMPIRAN.maks/LAMPIRAN.bagian)||!daftar.every(h=>typeof h==='string'&&SHA_HEX.test(h))) throw new Error('lampiran tidak sah');
+  const bag=[]; let n=0;
+  for(const h of daftar){
+    const r=await fetch('api/tautan?bagian='+h); if(!r.ok) throw new Error('lampiran tidak ditemukan ('+r.status+')');
+    const u=new Uint8Array(await r.arrayBuffer());
+    if(u.length>LAMPIRAN.bagian || await sidikSHA(u)!==h) throw new Error('lampiran rusak');
+    n+=u.length; if(n>sisa) throw new Error('lampiran melebihi '+Math.round(LAMPIRAN.maks/1048576)+' MB');
+    bag.push(u);
+  }
+  const out=new Uint8Array(n); let o=0; for(const b of bag){ out.set(b,o); o+=b.length; } return out;
+}
+async function buatTautanLihat(kemajuan=()=>{}){
+  const rujukan={}, ditinggal=[], lampiran={aset:{}, tekstur:{}, media:{}};
+  let alasanLampiran='', total=0, nLampiran=0;
+  // berhenti pada kegagalan pertama (Blob belum aktif / luring) — sisanya tidak dicoba
+  const lampirkan=async(nama,u8)=>{
+    if(alasanLampiran||!u8.length) return null;
+    if(total+u8.length>LAMPIRAN.maks){ alasanLampiran='batas'; return null; }
+    try{ kemajuan(nama); const b=await unggahLampiran(u8); total+=u8.length; nLampiran++; return b; }
+    catch(e){ console.warn('lampiran',nama,e); alasanLampiran=e.status===501?'blob':e.status?'server':'luring'; return null; }
+  };
+  const pakai=new Set(); for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.kind==='model') pakai.add(o.type);
   for(const [id,a] of Object.entries(PROJECT.assets||{})){
-    if(rujukanAset(a)) rujukan[id]={name:a.name, sumber:a.sumber, lisensi:a.lisensi, res:/\(foto 2K\)/.test(a.name)?'2k':'1k'};
+    if(rujukanAset(a)){ rujukan[id]={name:a.name, sumber:a.sumber, lisensi:a.lisensi, res:/\(foto 2K\)/.test(a.name)?'2k':'1k'}; continue; }
+    if(!pakai.has(id)) continue;                         // model pustaka yang tidak dipasang tidak perlu ikut
+    const buf=ASSET_BUF.get(id)||(a.data?bufFromB64(a.data):null);
+    const b=buf&&await lampirkan(a.name,new Uint8Array(buf));
+    if(b) lampiran.aset[id]={name:a.name, size:buf.byteLength, bagian:b, ...(a.sumber?{sumber:a.sumber}:{}), ...(a.lisensi?{lisensi:a.lisensi}:{})};
     else ditinggal.push(a.name);
   }
   // objek dari model yang ditinggal tidak ikut — penerima tidak boleh melihat kotak kosong
-  const levels=PROJECT.levels.map(lv=>({...lv, objects:lv.objects.filter(o=>o.kind!=='model'||rujukan[o.type])}));
-  // tekstur foto sendiri (data gambar sampai 3 MB) tidak ikut — itulah yang dulu membuat tautan
-  // puluhan KB dan terpotong aplikasi chat; tekstur Poly Haven cukup rujukannya
+  const levels=PROJECT.levels.map(lv=>({...lv, objects:lv.objects.filter(o=>o.kind!=='model'||rujukan[o.type]||lampiran.aset[o.type])}));
+  // foto tekstur (sampai 3 MB) tidak pernah tertanam di isi tautan — itulah yang dulu membuat
+  // tautan puluhan KB dan terpotong aplikasi chat; ikut sebagai lampiran bila bisa
   const tekstur={}; let fotoDitinggal=0;
-  for(const [k,t] of Object.entries(PROJECT.tekstur||{})) if(t&&t.sumber==='foto') fotoDitinggal++; else tekstur[k]=t;
-  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan};
+  for(const [k,t] of Object.entries(PROJECT.tekstur||{})){
+    if(!t||t.sumber!=='foto'){ tekstur[k]=t; continue; }
+    const m=/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(t.data||'');
+    const b=m&&await lampirkan(t.nama,new Uint8Array(bufFromB64(m[2])));
+    if(b) lampiran.tekstur[k]={nama:t.nama, aspek:t.aspek, mime:m[1], bagian:b}; else fotoDitinggal++;
+  }
+  // video/GIF layar TV: hanya yang dipakai TV
+  let mediaDitinggal=0;
+  const dipakaiTV=new Set(); for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.params&&o.params.tvMedia) dipakaiTV.add(o.params.tvMedia);
+  for(const [k,md] of Object.entries(PROJECT.media||{})){
+    if(!dipakaiTV.has(k)) continue;
+    const b=await lampirkan(md.nama,new Uint8Array(bufFromB64(md.data)));
+    if(b) lampiran.media[k]={nama:md.nama, mime:md.mime, bagian:b}; else mediaDitinggal++;
+  }
+  const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan,
+    ...(nLampiran?{lampiran}:{})};
   // angka dibulatkan ke milimeter / 0,001 — jauh lebih ringkas setelah dipadatkan
   const bulat=(k,v)=>typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1000)/1000:v;
   const padat=await padatkan(JSON.stringify(isi,bulat));
   const dasar=location.origin+location.pathname;
   const pendek=await simpanTautanPendek(padat);
-  if(pendek.id) return {url:dasar+'#l='+pendek.id, pendek:true, panjang:padat.length, ditinggal, fotoDitinggal};
+  const lap={ditinggal, fotoDitinggal, mediaDitinggal, alasanLampiran, nLampiran, mbLampiran:total/1048576};
+  if(pendek.id) return {url:dasar+'#l='+pendek.id, pendek:true, panjang:padat.length, ...lap};
   const kode=b64url(padat);
-  return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, panjang:kode.length, ditinggal, fotoDitinggal};
+  return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, panjang:kode.length, ...lap};
 }
 // tautan pendek lewat fungsi Vercel (api/tautan.js); di hosting tanpa fungsi itu (GitHub Pages,
 // Blob belum diaktifkan, luring) kembali ke tautan panjang yang membawa seluruh isi
@@ -12682,16 +12742,26 @@ async function simpanTautanPendek(padat){
 $('#bagikanBtn').onclick=async()=>{
   if(typeof CompressionStream!=='function') return toast('Peramban ini belum bisa membuat tautan — perbarui ke iOS 16.4 / Chrome 80 ke atas');
   if(proyekKosong()) return toast('Proyek masih kosong — buat dinding atau muat rumah contoh dulu');
-  const r=await buatTautanLihat();
+  const btn=$('#bagikanBtn'), inf=$('#bagikanInfo'); btn.disabled=true;
+  let r;
+  try{ r=await buatTautanLihat(nama=>{ inf.textContent=''; inf.appendChild(el('span',null,'Mengunggah untuk tautan: '+nama)); }); }
+  finally{ btn.disabled=false; }
   $('#bagikanHasil').hidden=false; $('#bagikanUrl').value=r.url; $('#bagikanUrl').select();
   const kb=Math.ceil(r.url.length/1024);
   // satu kalimat per elemen: tiap kalimat diterjemahkan sendiri oleh lapisan bahasa
   const kal=[r.pendek?'Tautan pendek siap dibagikan.':`Tautan ${kb} KB.`];
   if(!r.pendek && r.alasan==='blob') kal.push('Tautan pendek belum aktif — aktifkan Vercel Blob di proyek Vercel (Storage → Blob).');
   if(!r.pendek && kb>30) kal.push('Tautan panjang — beberapa aplikasi chat bisa memotongnya; kirim lewat email atau catatan bila perlu.');
-  if(r.ditinggal.length) kal.push(`Model unggahan sendiri tidak ikut (terlalu besar untuk tautan): ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`);
+  if(r.nLampiran) kal.push(`Berkas sendiri ikut: ${r.nLampiran} (${fmt(Math.max(0.1,r.mbLampiran),1)} MB) — diunduh penerima saat membuka.`);
+  if(r.ditinggal.length) kal.push(`Model unggahan sendiri tidak ikut: ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`);
   if(r.fotoDitinggal) kal.push(`Tekstur foto sendiri (${r.fotoDitinggal}) tidak ikut — objeknya tampil dengan bahan aslinya.`);
-  const inf=$('#bagikanInfo'); inf.textContent=''; for(const k of kal){ inf.appendChild(el('span',null,k)); inf.appendChild(document.createTextNode(' ')); }
+  if(r.mediaDitinggal) kal.push(`Video TV sendiri (${r.mediaDitinggal}) tidak ikut.`);
+  if(r.ditinggal.length||r.fotoDitinggal||r.mediaDitinggal){
+    if(r.alasanLampiran==='blob') kal.push('Agar model, foto & video sendiri ikut, aktifkan Vercel Blob (Storage → Blob).');
+    else if(r.alasanLampiran==='batas') kal.push('Batas berkas sendiri per tautan 80 MB.');
+    else if(r.alasanLampiran) kal.push('Unggahan berkas sendiri gagal — periksa koneksi lalu coba lagi.');
+  }
+  inf.textContent=''; for(const k of kal){ inf.appendChild(el('span',null,k)); inf.appendChild(document.createTextNode(' ')); }
 };
 $('#bagikanSalin').onclick=async()=>{
   const u=$('#bagikanUrl').value; if(!u) return;
@@ -12719,8 +12789,8 @@ async function bukaTautanLihat(kode,bytes){
     if(!bytes && kode.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
     const j=JSON.parse(await bukaPadat(bytes||dariB64url(kode),BAGI.batasBuka));
     if(!j||typeof j!=='object') throw new Error('isi tautan tidak sah');
-    const rujukan=j.rujukan&&typeof j.rujukan==='object'?j.rujukan:{};
-    delete j.rujukan; j.assets={}; j.plans={};
+    const rujukan=j.rujukan&&typeof j.rujukan==='object'?j.rujukan:{}, lampiran=j.lampiran;
+    delete j.rujukan; delete j.lampiran; j.assets={}; j.plans={};
     muatProyekObjek(j);
     $('#lihatNama').textContent=PROJECT.name;
     document.title=PROJECT.name+' — lihat saja';
@@ -12741,12 +12811,46 @@ async function bukaTautanLihat(kode,bytes){
         rebuildScene();
       }catch(e){ console.warn('model rujukan',id,e); }
     }
-    if(daftar.length) toast(PROJECT.name+' siap — ketuk Jalan-jalan');
+    const nL=await pasangLampiran(lampiran);
+    if(daftar.length||nL) toast(PROJECT.name+' siap — ketuk Jalan-jalan');
   }catch(e){
     console.warn('tautan lihat',e);
     gagalTautanLihat(e);
   }
   LIHAT.siap=true;
+}
+// lampiran tautan: diunduh per potongan (sidik diperiksa), lalu disaring seperti berkas proyek
+async function pasangLampiran(L){
+  if(!L||typeof L!=='object') return 0;
+  const isi=o=>o&&typeof o==='object'?Object.entries(o).filter(([k,v])=>ID_AMAN.test(k)&&v&&typeof v==='object'):[];
+  let sisa=LAMPIRAN.maks, n=0, i=0;
+  const semua=isi(L.aset).length+isi(L.tekstur).length+isi(L.media).length;
+  const ambil=async(nama,d)=>{ toast(`Memuat berkas ${++i}/${semua}: ${String(nama||'').slice(0,60)}`); const u=await ambilLampiran(d,sisa); sisa-=u.length; return u; };
+  const tekstur={}, media={}, assets={};
+  for(const [k,t] of isi(L.tekstur).slice(0,TEKSTUR_BATAS.jumlah)){
+    try{ if(!/^image\/(jpeg|png|webp)$/.test(t.mime)) continue;
+      tekstur[k]={nama:t.nama, sumber:'foto', aspek:t.aspek, data:'data:'+t.mime+';base64,'+b64FromBuf((await ambil(t.nama,t.bagian)).buffer)}; }
+    catch(e){ console.warn('lampiran tekstur',k,e); }
+  }
+  for(const [k,m] of isi(L.media).slice(0,MEDIA_BATAS.jumlah)){
+    try{ if(!MEDIA_MIME.test(m.mime||'')) continue; media[k]={nama:m.nama, mime:m.mime, data:b64FromBuf((await ambil(m.nama,m.bagian)).buffer)}; }
+    catch(e){ console.warn('lampiran media',k,e); }
+  }
+  for(const [k,a] of isi(L.aset).slice(0,BATAS_PROYEK.aset)){
+    try{ const u=await ambil(a.name,a.bagian); assets[k]={name:a.name, size:u.length, dims:[1,1,1], fit:1, data:b64FromBuf(u.buffer), sumber:a.sumber, lisensi:a.lisensi}; }
+    catch(e){ console.warn('lampiran model',k,e); }
+  }
+  const B=sanitasiProyek({levels:[{}], tekstur, media, assets});
+  Object.assign(PROJECT.tekstur||(PROJECT.tekstur={}),B.tekstur); Object.assign(PROJECT.media||(PROJECT.media={}),B.media);
+  n+=Object.keys(B.tekstur).length+Object.keys(B.media).length;
+  for(const [id,a] of Object.entries(B.assets)){
+    try{
+      const buf=(await rampingkanGLB(bufFromB64(a.data))).buf, hasil=await parseAsset(id,buf);
+      PROJECT.assets[id]={...a, size:buf.byteLength, dims:hasil.dims, fit:hasil.fit, data:''}; n++;
+    }catch(e){ console.warn('lampiran model',id,e); }
+  }
+  if(n) rebuildScene();
+  return n;
 }
 $('#lihatJalan').onclick=()=>enterFPS();
 // di mode lihat, pintasan alat edit tidak berlaku (tombol jalan W A S D / E tetap milik mode jalan)
