@@ -51,6 +51,7 @@ Aplikasi berjalan sepenuhnya di peramban, tanpa server dan tanpa akun. Jadi risi
 | BUG-07 | Info (tes) | `undotest` melaporkan "pintasan bekerja? false". Diverifikasi manual: Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y **berfungsi**; perbandingan di tes keliru karena debounce riwayat 150 ms tertunda oleh pembuatan thumbnail pertama | 📝 Bukan bug produk; tes perlu diperbaiki saat dipindah ke `tests/e2e` |
 | BUG-08 | Sedang (riwayat) | Dua bug piano (tidak bisa berhenti, bisu di iPad), sudah diperbaiki di PR #42 | ✅ Catatan: fitur ber-verdict **NO-GO** di JEV menyumbang bug |
 | BUG-09 | Tinggi (iPad) | Model unduhan situs luar (mis. mobil Sketchfab, belasan tekstur 4K) menghabiskan memori grafis iPad → iOS mematikan konteks WebGL (layar hitam sesaat), lalu lingkungan pantulan PMREM yang hilang membuat cat mobil/logam/sofa menjadi hitam | ✅ Diperbaiki (JEV-062) — tekstur model dirampingkan ke 1024 px saat masuk pustaka & saat proyek lama dibuka; konteks yang pulih membuat ulang lingkungan, probe, bayangan & model. Tes 13_ramping mereproduksi (terang 29.8 → 0.0 tanpa perbaikan) |
+| BUG-10 | Sedang | Plat atap "tertutup" hanya dibuat di lantai teratas: bagian lantai bawah yang tidak tertutup lantai atas (ruang tinggi berjendela lengkung, teras) tetap tembus langit saat dilihat dari dalam (laporan pengguna, iPad) | ✅ Diperbaiki (JEV-064) — atap dibuat di setiap lantai pada bagian yang tidak tertutup lantai di atasnya; tes raycast 15_atap_galeri (sebelumnya `null`) |
 
 ## Utang teknis
 

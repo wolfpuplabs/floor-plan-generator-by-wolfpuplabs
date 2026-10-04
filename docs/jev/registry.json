@@ -2301,6 +2301,67 @@
     "target": "≥ 30%",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-064",
+   "judul": "Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Dengan atap tertutup, ruang di lantai bawah yang tidak tertutup lantai atas tetap tembus langit; galeri model hanya punya pintasan kamar tidur/sofa/kamar mandi/dapur dan dibatasi satu halaman hasil.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-04 (langit terlihat dari ruang berjendela lengkung saat Roof: Closed) + \"model realistisnya ga cuma bed, kitchen, sanitary aja, semua yg free download\"",
+    "alternatif": [
+     "atap per lantai manual oleh pengguna (objek pelat)",
+     "kategori resmi Sketchfab (categories=…) — tidak berlaku untuk sumber lain"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 10,
+      "menitHemat": 8
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "URL halaman berikutnya Sketchfab hanya diikuti bila tetap di api.sketchfab.com/v3/search"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "saringan lisensi tetap sama di setiap halaman"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "atap per lantai memakai grid tapak yang sama (≤ 4 juta sel per lantai); halaman galeri dimuat atas permintaan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Muat lebih banyak ≥ 44 px"
+    }
+   },
+   "metrik": {
+    "nama": "laporan atap tembus langit / bulan",
+    "target": "0",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }

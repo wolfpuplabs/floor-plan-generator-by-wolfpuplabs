@@ -30,6 +30,14 @@ export const tes = {
     await page.waitForFunction(() => document.getElementById('toast').textContent === 'Failed: empty file');
     await page.evaluate(() => toast('Proyek dimuat: Rumah <b>Saya</b>'));
     await page.waitForFunction(() => document.getElementById('toast').textContent === 'Project loaded: Rumah <b>Saya</b>');
+    // mode jalan: bar info & tombol aksi (diisi lewat innerHTML saat duduk/membidik)
+    const jalan = await page.evaluate(async () => {
+      document.getElementById('fpsinfo').innerHTML = '<b>Duduk</b> · ketuk <b>Berdiri</b> atau geser stik';
+      document.getElementById('fpsAct').innerHTML = '👆 Buka pintu garasi';
+      await new Promise(r => setTimeout(r, 0));
+      return [document.getElementById('fpsinfo').textContent, document.getElementById('fpsAct').textContent];
+    });
+    assert.deepEqual(jalan, ['Seated · tap Stand up or move the stick', '👆 Open garage door']);
   }, { opsi: { bahasa: null } }),
   'inggris: semua tab, kartu Mulai, toolbar & inspector tanpa sisa teks Indonesia': Object.assign(async (page) => {
     const sisa = new Set();

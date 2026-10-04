@@ -196,6 +196,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 .gl-token a,.gl-situs a{color:var(--accent);font-size:.8rem}
 .gl-situs{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:0 14px 12px}
 .gl-modal .gl-card .gl-lis{color:var(--muted);font-size:.62rem}
+.gl-modal .gl-lagi{grid-column:1/-1;min-height:44px}
 .gl-modal .gl-card .gl-scan{color:var(--accent);font-size:.62rem;font-weight:700}
 .gl-ruang button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0b1416;font-weight:600}
 .gl-modal .gl-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px 14px;-webkit-overflow-scrolling:touch}
@@ -2874,10 +2875,18 @@ function tapakAtap(lv,tritisan){
   }
   return {T,nx,nz,x0,z0,c};
 }
-function buildAtap(lv){
+function buildAtap(lv,idx){
   const P=PROJECT.atap||{tritisan:0.6,tebal:0.12};
   const tp=tapakAtap(lv,P.tritisan); if(!tp) return null;
   const {T,nx,nz,x0,z0,c}=tp;
+  // atap dipasang di SETIAP lantai, hanya pada bagian yang tidak tertutup lantai di atasnya:
+  // lantai bawah yang lebih luas dari lantai atas (teras, ruang tinggi) tetap beratap
+  if(idx!=null) for(let j=idx+1;j<PROJECT.levels.length;j++){
+    const up=tapakAtap(PROJECT.levels[j],0); if(!up) continue;
+    for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){ const n=i*nz+k; if(!T[n]) continue;
+      const ui=Math.floor((x0+(i+0.5)*c-up.x0)/up.c), uk=Math.floor((z0+(k+0.5)*c-up.z0)/up.c);
+      if(ui>=0&&uk>=0&&ui<up.nx&&uk<up.nz&&up.T[ui*up.nz+uk]) T[n]=0; }
+  }
   // kolom-kolom sel dengan selang z yang sama digabung jadi satu pita
   const selang=i=>{ const out=[]; let a=-1;
     for(let k=0;k<=nz;k++){ const isi=k<nz&&T[i*nz+k]; if(isi&&a<0) a=k; if(!isi&&a>=0){ out.push([z0+a*c,z0+k*c]); a=-1; } }
@@ -6441,7 +6450,7 @@ function rebuildScene0(){
     lg.add(buildJunctions(lv));
     if(lv.slab && showSlabOpt){ const s=buildSlab(lv); if(s) lg.add(s); }
     for(const o of lv.objects) lg.add(buildObject(o,lv));
-    if(ATAP_TUTUP && idx===PROJECT.levels.length-1){ const a=buildAtap(lv); if(a) lg.add(a); }
+    if(ATAP_TUTUP){ const a=buildAtap(lv,idx); if(a) lg.add(a); }
 
     if(idx!==PROJECT.active && modeLain==='ghost'){
       lg.traverse(m=>{ if(m.isMesh){ m.material=ghost(m.material); m.castShadow=false; m.receiveShadow=false; } });
@@ -11723,12 +11732,12 @@ async function berkasKeGLB(files){
    masuk berkas proyek atau tautan. Hanya lisensi yang boleh untuk pekerjaan komersial
    (CC0, CC-BY, CC-BY-SA) yang ditampilkan; NC/ND/Editorial disaring. Atribusi
    (judul, pembuat, lisensi, tautan) ikut tersimpan di aset. */
-const SKF={token:'', hasil:[], sibuk:false, q:'', t:0};
+const SKF={token:'', hasil:[], sibuk:false, q:'', t:0, lanjut:[]};
 // model hasil scan 3D / fotogrametri (paling realistis): dicari juga per tag, ditandai & didahulukan
 const TAG_SCAN=['photogrammetry','3dscan','3d-scan','scan'];
 const RE_SCAN=/photogramm|3d-?scan|^scan$|scanned|scanning|reality-?capture|metashape|polycam|lidar|kiri-?engine/i;
 try{ SKF.token=localStorage.getItem('sketchfab_token')||''; }catch(e){ /* mode privat */ }
-const SKF_KATA={tidur:'bed', duduk:'sofa', mandi:'bathroom', dapur:'kitchen'};
+const SKF_KATA={tidur:'bed', duduk:'sofa', mandi:'bathroom', dapur:'kitchen', lampu:'lamp', meja:'table', simpan:'cabinet', dekor:'decor', tanaman:'plant', luar:'garden', elektronik:'electronics', kendaraan:'car'};
 function lisensiSketchfab(l){
   const t=String(l&&(l.label||l.slug||l.fullName)||'');
   if(/cc0|public domain/i.test(t)) return 'CC0';
@@ -11746,17 +11755,33 @@ function ubahSketchfab(m,dariTag){
   return {uid, nama:String(m.name||'model').slice(0,80), pembuat:String(m.user&&(m.user.displayName||m.user.username)||'').slice(0,60),
     lis, thumb:im?im.url:'', ukuran:glb||0, laman:'https://sketchfab.com/3d-models/'+uid, scan, suka:+m.likeCount||0};
 }
-async function cariSketchfab(q){
-  const dasar='https://api.sketchfab.com/v3/search?type=models&downloadable=true&sort_by=-likeCount&count=24&q='+encodeURIComponent(q);
-  const hasil=await Promise.allSettled([dasar,...TAG_SCAN.map(t=>dasar+'&tags='+t)].map(u=>fetch(u).then(r=>{
-    if(!r.ok) throw new Error('pencarian Sketchfab gagal (HTTP '+r.status+')'); return r.json(); })));
+const SKF_API=/^https:\/\/api\.sketchfab\.com\/v3\/search\?/;
+// beberapa pencarian sekaligus (biasa + per tag scan) → digabung tanpa duplikat; "next" tiap
+// pencarian disimpan untuk tombol Muat lebih banyak
+async function ambilSketchfab(urls){
+  const hasil=await Promise.allSettled(urls.map(([u,tag])=>fetch(u).then(r=>{
+    if(!r.ok) throw new Error('pencarian Sketchfab gagal (HTTP '+r.status+')'); return r.json(); }).then(j=>({j,tag}))));
   if(hasil.every(h=>h.status==='rejected')) throw hasil[0].reason;
-  const peta=new Map();
-  hasil.forEach((h,i)=>{ if(h.status!=='fulfilled') return;
-    for(const m of (Array.isArray(h.value&&h.value.results)?h.value.results:[])){ const x=ubahSketchfab(m,i>0); if(!x) continue;
-      if(peta.has(x.uid)){ if(x.scan) peta.get(x.uid).scan=true; } else peta.set(x.uid,x); } });
-  return [...peta.values()].sort((a,b)=>(b.scan-a.scan)||(b.suka-a.suka)).slice(0,60);
+  const peta=new Map(), lanjut=[];
+  for(const h of hasil){ if(h.status!=='fulfilled') continue; const {j,tag}=h.value;
+    if(j&&typeof j.next==='string'&&SKF_API.test(j.next)) lanjut.push([j.next,tag]);
+    for(const m of (Array.isArray(j&&j.results)?j.results:[])){ const x=ubahSketchfab(m,tag); if(!x) continue;
+      if(peta.has(x.uid)){ if(x.scan) peta.get(x.uid).scan=true; } else peta.set(x.uid,x); } }
+  return {daftar:[...peta.values()].sort((a,b)=>(b.scan-a.scan)||(b.suka-a.suka)), lanjut};
 }
+async function cariSketchfab(q){
+  const dasar='https://api.sketchfab.com/v3/search?type=models&downloadable=true&sort_by=-likeCount&count=24'+(q?'&q='+encodeURIComponent(q):'');
+  const r=await ambilSketchfab([[dasar,false],...TAG_SCAN.map(t=>[dasar+'&tags='+t,true])]);
+  SKF.lanjut=r.lanjut; return r.daftar;
+}
+async function muatLagiSketchfab(){
+  if(!SKF.lanjut.length||SKF.sibuk) return; SKF.sibuk=true; const nomor=SKF.t;
+  try{ const r=await ambilSketchfab(SKF.lanjut); if(nomor!==SKF.t) return;
+    const ada=new Set(SKF.hasil.map(m=>m.uid)); SKF.hasil=SKF.hasil.concat(r.daftar.filter(m=>!ada.has(m.uid))); SKF.lanjut=r.lanjut; }
+  catch(e){ $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
+  finally{ SKF.sibuk=false; } if(nomor===SKF.t) renderGaleriSketchfab();
+}
+function tombolMuatLagi(fn){ const b=el('button','btn sm ghost gl-lagi','Muat lebih banyak'); b.type='button'; b.onclick=fn; $('#galeriGrid').appendChild(b); }
 // unduhan dengan kemajuan & batas ukuran (dihentikan begitu melewati batas)
 async function unduhAliran(url,maks,onP,total){
   const rr=await fetch(url); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
@@ -11803,12 +11828,12 @@ function renderGaleriSketchfab(){
     if(m.scan) k.appendChild(el('small','gl-scan','📷 Scan'));
     k.onclick=()=>pasangModelSketchfab(m); g.appendChild(k);
   }
-  if(!GALERI.sibuk) $('#galeriInfo').textContent=daftar.length?`${daftar.length} model berlisensi bebas-komersial (CC0 / CC-BY / CC-BY-SA)`+(nScan?` · ${nScan} hasil scan 3D / fotogrametri`:'')+(SKF.token?' · ketuk untuk mengunduh & memasang':' · masukkan token API untuk mengunduh'):(SKF.q?'Tidak ada model berlisensi bebas-komersial untuk pencarian ini.':'Ketik kata kunci (bahasa Inggris: sofa, bed, toilet, kitchen…) atau pilih ruangan.');
+  if(SKF.lanjut.length&&SKF.hasil.length) tombolMuatLagi(muatLagiSketchfab);
+  if(!GALERI.sibuk) $('#galeriInfo').textContent=daftar.length?`${daftar.length} model berlisensi bebas-komersial (CC0 / CC-BY / CC-BY-SA)`+(nScan?` · ${nScan} hasil scan 3D / fotogrametri`:'')+(SKF.token?' · ketuk untuk mengunduh & memasang':' · masukkan token API untuk mengunduh'):'Tidak ada model berlisensi bebas-komersial untuk pencarian ini.';
 }
 async function jalankanCariSketchfab(){
   const q=(GALERI.cari.trim()||SKF_KATA[GALERI.ruang]||'').slice(0,100); SKF.q=q;
-  if(!q){ SKF.hasil=[]; return renderGaleriSketchfab(); }
-  const nomor=++SKF.t; $('#galeriInfo').textContent='Mencari "'+q+'" di Sketchfab…';
+  const nomor=++SKF.t; SKF.lanjut=[]; $('#galeriInfo').textContent=q?'Mencari "'+q+'" di Sketchfab…':'Memuat model populer yang bisa diunduh…';
   try{ const h=await cariSketchfab(q); if(nomor!==SKF.t) return; SKF.hasil=h; renderGaleriSketchfab(); }
   catch(e){ if(nomor===SKF.t) $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
 }
@@ -11817,12 +11842,12 @@ async function jalankanCariSketchfab(){
    dengan API publik tanpa token. Tiap model = ZIP berisi OBJ + MTL + tekstur → berkasKeGLB seperti
    ZIP dari situs lain → dirampingkan. Bila peramban menolak unduhan langsung, halaman modelnya
    dibuka supaya ZIP bisa diunduh lalu diunggah sendiri. */
-const GSO={dasar:'https://fuel.gazebosim.org/1.0/GoogleResearch/models', hasil:[], q:'', t:0};
+const GSO={dasar:'https://fuel.gazebosim.org/1.0/GoogleResearch/models', hasil:[], q:'', t:0, hal:1, habis:false, sibuk:false};
 const GSO_NAMA=/^[A-Za-z0-9_.()-]{1,140}$/;
-const GSO_KATA={tidur:'pillow', duduk:'cushion', mandi:'bath', dapur:'mug'};
+const GSO_KATA={tidur:'pillow', duduk:'cushion', mandi:'bath', dapur:'mug', lampu:'lamp', meja:'tray', simpan:'basket', dekor:'vase', tanaman:'plant', luar:'garden', elektronik:'speaker', kendaraan:'car'};
 const lamanGSO=id=>'https://app.gazebosim.org/GoogleResearch/fuel/models/'+encodeURIComponent(id);
-async function cariGSO(q){
-  const r=await fetch(GSO.dasar+'?per_page=40&page=1'+(q?'&q='+encodeURIComponent(q):''));
+async function cariGSO(q,hal=1){
+  const r=await fetch(GSO.dasar+'?per_page=40&page='+hal+(q?'&q='+encodeURIComponent(q):''));
   if(!r.ok) throw new Error('daftar Google Scanned Objects gagal (HTTP '+r.status+')');
   const j=await r.json(), arr=Array.isArray(j)?j:Array.isArray(j&&j.models)?j.models:[];
   return arr.map(m=>{
@@ -11862,14 +11887,22 @@ function renderGaleriGSO(){
     k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-scan','📷 Scan'));
     k.onclick=()=>pasangModelGSO(m); g.appendChild(k);
   }
+  if(!GSO.habis&&GSO.hasil.length) tombolMuatLagi(muatLagiGSO);
   if(!GALERI.sibuk) $('#galeriInfo').textContent=GSO.hasil.length?`${GSO.hasil.length} benda hasil scan 3D (CC-BY 4.0, Google Research) · ketuk untuk mengunduh & memasang`
     :(GSO.q?'Tidak ada benda yang cocok — coba kata lain (bahasa Inggris): mug, shoe, toy, bowl…':'Memuat daftar…');
 }
 async function jalankanCariGSO(){
   const q=(GALERI.cari.trim()||GSO_KATA[GALERI.ruang]||'').slice(0,100); GSO.q=q;
   const nomor=++GSO.t; $('#galeriInfo').textContent=q?'Mencari "'+q+'" di Google Scanned Objects…':'Memuat daftar…';
-  try{ const h=await cariGSO(q); if(nomor!==GSO.t) return; GSO.hasil=h; renderGaleriGSO(); }
+  try{ const h=await cariGSO(q); if(nomor!==GSO.t) return; GSO.hasil=h; GSO.hal=1; GSO.habis=h.length<40; renderGaleriGSO(); }
   catch(e){ if(nomor===GSO.t) $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
+}
+async function muatLagiGSO(){
+  if(GSO.habis||GSO.sibuk) return; GSO.sibuk=true; const nomor=GSO.t;
+  try{ const h=await cariGSO(GSO.q,GSO.hal+1); if(nomor!==GSO.t) return;
+    const ada=new Set(GSO.hasil.map(m=>m.id)); GSO.hasil=GSO.hasil.concat(h.filter(m=>!ada.has(m.id))); GSO.hal++; GSO.habis=h.length<40; }
+  catch(e){ $('#galeriInfo').textContent=(e.message||e)+' — perlu koneksi internet'; }
+  finally{ GSO.sibuk=false; } if(nomor===GSO.t) renderGaleriGSO();
 }
 // situs lain tanpa API unduhan publik: dibuka di tab baru dengan kata kunci yang sama;
 // berkas hasil unduhan (glb / zip glTF / obj / fbx) diunggah lewat tombol di bawahnya
@@ -11904,18 +11937,27 @@ async function pasangModelPH(a){
 /* Pintasan per ruangan: pengguna mencari "barang kamar mandi", bukan kategori
    teknis sumbernya. Dicocokkan per KATA (id camelCase/garis bawah dipecah dulu),
    bukan potongan huruf — "pot" tidak boleh cocok dengan "potted", "pan" dengan "panel". */
-const RUANG_GALERI=[['','Semua'],['tidur','🛏 Kamar tidur'],['duduk','🛋 Sofa & kursi'],['mandi','🛁 Kamar mandi'],['dapur','🍳 Dapur']];
+const RUANG_GALERI=[['','Semua'],['tidur','🛏 Kamar tidur'],['duduk','🛋 Sofa & kursi'],['mandi','🛁 Kamar mandi'],['dapur','🍳 Dapur'],
+  ['lampu','💡 Lampu'],['meja','🪵 Meja'],['simpan','🗄 Lemari & rak'],['dekor','🖼 Dekor'],['tanaman','🪴 Tanaman'],['luar','🌳 Luar ruang'],['elektronik','📺 Elektronik'],['kendaraan','🚗 Kendaraan']];
 const RUANG_KATA={
   tidur:/\b(beds?|bedside|pillows?|blankets?|duvets?|mattress(es)?|nightstands?|dressers?|wardrobes?|headboards?|ranjang|kasur|bantal|selimut|nakas|lemari)\b/,
   duduk:/\b(sofas?|couch(es)?|armchairs?|chairs?|ottomans?|poufs?|benches|bench|stools?|seats?|loveseats?|kursi|bangku)\b/,
   mandi:/\b(bath(tub)?s?|bathroom|toilets?|sinks?|basins?|showers?|towels?|soap|faucets?|taps?|toothbrush(es)?|mandi|wastafel|kloset|handuk|sabun|keran)\b/,
+  lampu:/\b(lamps?|lights?|lighting|chandeliers?|lanterns?|sconces?|candles?|candlesticks?|lampu|lilin)\b/,
+  meja:/\b(tables?|desks?|counters?|consoles?|nightstands?|workbench|meja)\b/,
+  simpan:/\b(shel(f|ves)|shelving|cabinets?|cupboards?|drawers?|dressers?|wardrobes?|bookcases?|chests?|crates?|boxes|baskets?|racks?|rak|lemari|laci)\b/,
+  dekor:/\b(decor|decorations?|decorative|vases?|frames?|paintings?|pictures?|statues?|sculptures?|clocks?|mirrors?|rugs?|carpets?|cushions?|books?|ornaments?|figurines?|dekor|vas|lukisan|jam|cermin|karpet)\b/,
+  tanaman:/\b(plants?|potted|trees?|flowers?|ferns?|cact(us|i)|succulents?|bush(es)?|shrubs?|grass|moss|tanaman|pohon|bunga)\b/,
+  luar:/\b(outdoor|garden|exterior|fences?|rocks?|stones?|boulders?|logs?|stumps?|barrels?|wheelbarrows?|grills?|benches|taman|pagar|batu)\b/,
+  elektronik:/\b(tv|television|radio|speakers?|computers?|laptops?|monitors?|phones?|cameras?|electronics?|gramophone|typewriter)\b/,
+  kendaraan:/\b(cars?|vehicles?|motorcycles?|bicycles?|bikes?|scooters?|trucks?|mobil|motor|sepeda)\b/,
   dapur:/\b(kitchen|kitchenware|fridges?|refrigerators?|stoves?|ovens?|pans?|pots?|kettles?|cups?|teacups?|mugs?|plates?|bowls?|dish(es)?|knife|knives|spoons?|forks?|jars?|bottles?|toasters?|microwaves?|coffee|teapots?|utensils?|cutting|chopping|food|fruits?|dapur|kulkas|kompor|cangkir|piring|mangkuk|panci)\b/};
 function kataAset(...bagian){ return bagian.flat().join(' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[_-]+/g,' ').toLowerCase(); }
 function cocokRuang(teks){ return !GALERI.ruang || RUANG_KATA[GALERI.ruang].test(teks); }
 function renderRuangGaleri(){
   const w=$('#galeriRuang'); w.textContent='';
   for(const [k,label] of RUANG_GALERI){ const b=el('button',null,label); b.type='button'; b.dataset.ruang=k; b.setAttribute('aria-pressed',String((GALERI.ruang||'')===k));
-    b.onclick=()=>{ GALERI.ruang=k; renderRuangGaleri(); renderGaleri(); if(GALERI.sumber==='skf') jalankanCariSketchfab(); if(GALERI.sumber==='gso') jalankanCariGSO(); }; w.appendChild(b); }
+    b.onclick=()=>{ GALERI.ruang=k; GALERI.batas=160; renderRuangGaleri(); renderGaleri(); if(GALERI.sumber==='skf') jalankanCariSketchfab(); if(GALERI.sumber==='gso') jalankanCariGSO(); }; w.appendChild(b); }
 }
 function infoKosongRuang(){
   const nama=(RUANG_GALERI.find(r=>r[0]===GALERI.ruang)||[])[1];
@@ -11930,7 +11972,8 @@ function renderGaleri(){
   const c=d.filter(a=>(GALERI.kat==='semua'||a.kat.includes(GALERI.kat)) && cocokRuang(kataAset(a.nama,a.id,a.tag,a.kat)) &&
     (!q || a.nama.toLowerCase().includes(q) || a.id.includes(q) || a.tag.some(t=>t.toLowerCase().includes(q)) || a.kat.some(t=>t.toLowerCase().includes(q))));
   g.innerHTML='';
-  for(const a of c.slice(0,160)){
+  const batas=GALERI.batas||160;
+  for(const a of c.slice(0,batas)){
     const k=el('button','gl-card'); k.dataset.id=a.id; k.title=a.nama+' — '+a.kat.join(', ');
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=`https://cdn.polyhaven.com/asset_img/thumbs/${a.id}.png?width=256&height=256`;
     im.onerror=()=>{ im.style.visibility='hidden'; };
@@ -11938,7 +11981,8 @@ function renderGaleri(){
     k.onclick=()=>pasangModelPH(a);
     g.appendChild(k);
   }
-  if(!GALERI.sibuk) $('#galeriInfo').textContent=c.length?`${c.length} model${c.length>160?' (160 pertama ditampilkan — persempit dengan pencarian)':''} · ketuk untuk mengunduh & memasang`:infoKosongRuang();
+  if(c.length>batas) tombolMuatLagi(()=>{ GALERI.batas=batas+160; renderGaleri(); });
+  if(!GALERI.sibuk) $('#galeriInfo').textContent=c.length?`${c.length} model · ketuk untuk mengunduh & memasang`:infoKosongRuang();
 }
 function renderGaleriProduk(){
   const g=$('#galeriGrid'), q=GALERI.cari.trim().toLowerCase();
@@ -11986,9 +12030,9 @@ async function bukaGaleri(){
 $('#galeriBuka').onclick=bukaGaleri;
 $('#galeriTutup').onclick=()=>{ $('#galeri').hidden=true; };
 $('#galeri').addEventListener('click',e=>{ if(e.target.id==='galeri') $('#galeri').hidden=true; });
-$('#galeriKat').onchange=e=>{ GALERI.kat=e.target.value; renderGaleri(); };
+$('#galeriKat').onchange=e=>{ GALERI.kat=e.target.value; GALERI.batas=160; renderGaleri(); };
 $('#galeriSumber').onchange=e=>{ GALERI.sumber=['khr','skf','gso'].includes(e.target.value)?e.target.value:'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
-$('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; clearTimeout(GALERI.t);
+$('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; GALERI.batas=160; clearTimeout(GALERI.t);
   const jauh=GALERI.sumber==='skf'||GALERI.sumber==='gso';
   GALERI.t=setTimeout(()=>{ if(GALERI.sumber==='skf'){ renderSitusLain(); jalankanCariSketchfab(); } else if(GALERI.sumber==='gso'){ renderSitusLain(); jalankanCariGSO(); } else renderGaleri(); },jauh?450:150); };
 $('#skfSimpan').onclick=()=>{ SKF.token=$('#skfToken').value.trim().slice(0,100);
