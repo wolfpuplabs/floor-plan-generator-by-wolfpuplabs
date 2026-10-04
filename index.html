@@ -803,6 +803,7 @@ body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspect
       <div class="gl-head"><b>🖼 Tekstur foto — foto sendiri atau pustaka Poly Haven (CC0)</b>
         <button class="btn sm" id="teksturFotoBtn" style="flex:0 0 auto">📷 Pakai foto sendiri…</button>
         <input type="file" id="teksturFoto" accept="image/*" hidden>
+        <input type="file" id="tvMediaInput" accept="video/mp4,video/webm,video/quicktime,image/gif" hidden>
         <input type="search" id="teksturCari" placeholder="Cari: fabric, leather, oak, marble…" aria-label="Cari tekstur">
         <select id="teksturRes" aria-label="Resolusi tekstur"><option value="1k">1K — ringan</option><option value="2k">2K — lebih tajam</option></select>
         <button class="btn sm ghost" id="teksturTutup" style="flex:0 0 auto">✕ Tutup</button></div>
@@ -980,6 +981,7 @@ const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{}
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
   atap:{ tritisan:0.6, tebal:0.12 },
   site:{ tanah:'none', margin:6 },
+  media:{},                       // video / GIF untuk layar TV: { [mid]: {nama, mime, data(base64)} } (JEV-065)
   tekstur:{},                     // tekstur foto objek: { [tid]: {nama, sumber:'foto', data, aspek} | {nama, sumber:'ph', ph, res} }
   langit:{ mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true, pilih:'manual' } };   // langit: prosedural atau foto 360°                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
 
@@ -1575,6 +1577,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
+  stepTV(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -1938,11 +1941,12 @@ function finMat(tabel,kunci,warnaCustom){
 }
 const matDalam = ()=>finMat(FINISH,PROJECT.finish.in ,PROJECT.finish.inColor);
 const matLuar  = ()=>finMat(FINISH,PROJECT.finish.out,PROJECT.finish.outColor);
-const matLantai= ()=>finMat(LANTAI,PROJECT.finish.floor);
+// lantai tiap tingkat boleh berbeda (mis. bawah keramik, atas parket); kosong = ikut finishing proyek
+const matLantai= lv=>finMat(LANTAI,lv&&lv.lantai&&LANTAI[lv.lantai]?lv.lantai:PROJECT.finish.floor);
 // tepi dan sisi bawah pelat adalah beton yang diplester, bukan lantai —
 // parket atau keramik yang terlihat di tepi pelat keliru secara konstruksi
 const matTepiPelat=()=>finMat(FINISH,'plester');
-const matPelat  = ()=>[matTepiPelat(),matTepiPelat(),matLantai(),matTepiPelat(),matTepiPelat(),matTepiPelat()];
+const matPelat  = lv=>[matTepiPelat(),matTepiPelat(),matLantai(lv),matTepiPelat(),matTepiPelat(),matTepiPelat()];
 
 const MAT={
   wall      : new THREE.MeshStandardMaterial({color:0xefece5, roughness:.92, metalness:0}),
@@ -2012,6 +2016,7 @@ function ghostWall(mat){
   if(!ghostWallCache.has(mat.uuid)){
     const m=mat.clone();
     m.transparent=true; m.opacity=.3; m.depthWrite=false;
+    m.blending=THREE.NormalBlending; m.premultipliedAlpha=false;
     ghostWallCache.set(mat.uuid,m);
   }
   return ghostWallCache.get(mat.uuid);
@@ -2022,6 +2027,11 @@ function ghost(mat){
     const m=mat.clone();
     m.transparent=true; m.opacity=.14; m.depthWrite=false;
     if(m.transmission!==undefined) m.transmission=0;
+    // kaca memakai blending premultiplied (One/OneMinusSrcAlpha) yang mengandalkan shader-nya sendiri;
+    // shader itu tidak ikut tersalin, jadi tanpa ini kaca lantai lain menyala putih pekat
+    m.blending=THREE.NormalBlending; m.premultipliedAlpha=false;
+    if(m.emissive && mat.userData && mat.userData.kaca) m.emissive.setHex(0);
+    if(mat.userData && mat.userData.kaca){ m.opacity=.08; m.color.setHex(0xbfd4dc); }
     ghostCache.set(mat.uuid,m);
   }
   return ghostCache.get(mat.uuid);
@@ -2931,7 +2941,7 @@ function buildSlab(lv){
   const pad=0.25, T=STD.slabT;
   const voids=lv.objects.filter(o=>o.kind==='void');
   if(!voids.length){
-    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, matPelat(),
+    const m=box((maxX-minX)+pad*2, T, (maxZ-minZ)+pad*2, matPelat(lv),
                 (minX+maxX)/2, -T/2, (minZ+maxZ)/2);
     planarUV(m.geometry, m.position.x, m.position.y, m.position.z);
     m.castShadow=false; m.userData.slab=true;
@@ -2947,7 +2957,7 @@ function buildSlab(lv){
     for(const p of polys) if(pointInPoly(x,z,p)) return false;
     return true;
   };
-  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),[matLantai(),matTepiPelat()]);
+  const m=new THREE.Mesh(slabGeometry(strips,T,inSlab),[matLantai(lv),matTepiPelat()]);
   m.castShadow=false; m.receiveShadow=true; m.userData.slab=true;
   return m;
 }
@@ -5270,7 +5280,7 @@ function hiasNyala(g,o){
     }
     terapkanNyala(g,!MATI.has(o.id));
   }
-  if(jenis==='tv') terapkanTV(g,TV_NYALA.has(o.id));
+  if(jenis==='tv') terapkanTV(g,TV_NYALA.has(o.id),o);
   if(jenis==='gorden') terapkanGorden(g,GORDEN_BUKA.has(o.id));
   if(jenis==='audio') g.userData.audioJenis=o.type;
 }
@@ -5322,9 +5332,161 @@ function hiasModel(g,o){
   g.traverse(m=>{ if(m.isMesh && (m.userData.nyala || bx.setFromObject(m).expandByScalar(0.08).containsPoint(c))) m.castShadow=false; });
   terapkanNyala(g,!MATI.has(o.id));
 }
-function terapkanTV(g,on){
+/* ---------- LAYAR TV HIDUP (JEV-065) ----------
+   TV yang dinyalakan memutar tayangan bergerak: empat saluran bawaan yang digambar saat itu
+   juga di kanvas (tanpa berkas, tanpa lisensi), atau video / GIF milik pengguna per TV.
+   Tiap sumber punya satu tekstur & bahan yang dipakai bersama; kanvas hanya diperbarui
+   ±20 kali per detik selama ada TV yang menyala dengan sumber itu. Video selalu bisu
+   (aturan autoplay iOS) dan dijeda bila tidak ada TV yang memutarnya. */
+const KANAL_TV={
+  senja:{l:'🌅 Senja di pantai', gambar:(c,w,h,t)=>{
+    const g=c.createLinearGradient(0,0,0,h*0.62); g.addColorStop(0,'#2a2550'); g.addColorStop(0.55,'#e0705a'); g.addColorStop(1,'#ffc77a');
+    c.fillStyle=g; c.fillRect(0,0,w,h*0.62);
+    const sy=h*0.5+Math.sin(t*0.05)*h*0.04; c.fillStyle='#fff1c8'; c.beginPath(); c.arc(w*0.62,sy,h*0.11,0,Math.PI*2); c.fill();
+    const l=c.createLinearGradient(0,h*0.6,0,h); l.addColorStop(0,'#c45d4f'); l.addColorStop(1,'#1d2340'); c.fillStyle=l; c.fillRect(0,h*0.6,w,h*0.4);
+    for(let i=0;i<26;i++){ const y=h*0.62+i*i*0.28, a=0.55-i*0.018; c.strokeStyle=`rgba(255,214,160,${Math.max(0,a)})`; c.lineWidth=1+i*0.08; c.beginPath();
+      for(let x=0;x<=w;x+=6){ const yy=y+Math.sin(x*0.035+t*(1.2+i*0.05)+i)*(1+i*0.25); x?c.lineTo(x,yy):c.moveTo(x,yy); } c.stroke(); }
+    c.fillStyle='rgba(255,240,200,0.5)'; for(let i=0;i<14;i++){ const x=w*0.62+Math.sin(t*2+i*7)*w*0.05*(i%4+1), y=h*0.64+i*h*0.024; c.fillRect(x-8+i,y,16-i*0.5,1.5); }
+    c.fillStyle='#14182c'; for(let i=0;i<3;i++){ const x=(t*14+i*140)%(w+80)-40, y=h*0.3-i*12+Math.sin(t*3+i)*3;
+      c.beginPath(); c.moveTo(x-7,y); c.quadraticCurveTo(x-3,y-4,x,y); c.quadraticCurveTo(x+3,y-4,x+7,y); c.lineWidth=1.6; c.strokeStyle='#14182c'; c.stroke(); } }},
+  akuarium:{l:'🐠 Akuarium', gambar:(c,w,h,t)=>{
+    const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0f6f8f'); g.addColorStop(1,'#06223a'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    for(let i=0;i<5;i++){ c.fillStyle=`rgba(180,240,255,${0.05+0.03*Math.sin(t+i)})`; c.beginPath(); const x=w*(0.1+i*0.22)+Math.sin(t*0.4+i)*20;
+      c.moveTo(x,0); c.lineTo(x+40,0); c.lineTo(x+90,h); c.lineTo(x+20,h); c.fill(); }
+    c.fillStyle='#c8b48a'; c.beginPath(); c.moveTo(0,h); for(let x=0;x<=w;x+=20) c.lineTo(x,h*0.88+Math.sin(x*0.05)*5); c.lineTo(w,h); c.fill();
+    for(let i=0;i<9;i++){ const x=20+i*w/9; c.strokeStyle=i%2?'#2f8a4a':'#3fa35a'; c.lineWidth=5; c.beginPath(); c.moveTo(x,h);
+      for(let k=1;k<=8;k++) c.lineTo(x+Math.sin(t*1.5+k*0.6+i)*6*k/8,h-k*h*0.06*(0.7+(i%3)*0.2)); c.stroke(); }
+    const ikan=[['#ff8a3a',0.3,1],['#ffd23a',0.5,-1],['#3ad1ff',0.42,1],['#ff5aa0',0.66,-1],['#ffffff',0.22,-1],['#ff8a3a',0.75,1]];
+    ikan.forEach(([warna,yy,arah],i)=>{ const sp=18+i*5, x=arah>0?(t*sp+i*90)%(w+60)-30:w+30-((t*sp+i*90)%(w+60)), y=h*yy+Math.sin(t*2+i)*6, s=7+i%3*3;
+      c.save(); c.translate(x,y); c.scale(arah,1); c.fillStyle=warna; c.beginPath(); c.ellipse(0,0,s*1.6,s,0,0,Math.PI*2); c.fill();
+      c.beginPath(); c.moveTo(-s*1.4,0); c.lineTo(-s*2.6,-s*(0.8+0.3*Math.sin(t*9+i))); c.lineTo(-s*2.6,s*(0.8+0.3*Math.sin(t*9+i))); c.fill();
+      c.fillStyle='#111'; c.beginPath(); c.arc(s*0.9,-s*0.2,1.6,0,Math.PI*2); c.fill(); c.restore(); });
+    c.fillStyle='rgba(220,250,255,0.7)'; for(let i=0;i<16;i++){ const x=w*0.85+Math.sin(t*2+i)*6+(i%3)*8, y=h-((t*40+i*23)%h); c.beginPath(); c.arc(x,y,1.5+(i%3),0,Math.PI*2); c.fill(); } }},
+  kota:{l:'🌃 Kota malam berhujan', gambar:(c,w,h,t)=>{
+    const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#090b1c'); g.addColorStop(1,'#2a2140'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    const kilat=(Math.sin(t*0.7)>0.995)||(t%13<0.08); if(kilat){ c.fillStyle='rgba(200,210,255,0.25)'; c.fillRect(0,0,w,h); }
+    for(let i=0;i<14;i++){ const bw=24+(i*37)%30, bh=h*(0.3+((i*53)%40)/100), x=i*w/13-10;
+      c.fillStyle=`hsl(${230+i*3},25%,${10+i%3*3}%)`; c.fillRect(x,h-bh,bw,bh);
+      for(let yy=h-bh+6;yy<h-8;yy+=9) for(let xx=x+4;xx<x+bw-4;xx+=7){ const n=Math.sin(xx*12.9+yy*78.2+i)*43758.5; if((n-Math.floor(n))>0.55+0.1*Math.sin(t*0.3+xx)){ c.fillStyle='#ffd88a'; c.fillRect(xx,yy,3,4); } } }
+    c.strokeStyle='rgba(180,200,255,0.35)'; c.lineWidth=1; c.beginPath();
+    for(let i=0;i<120;i++){ const x=(i*97.3+t*60)%w, y=(i*53.7+t*420)%h; c.moveTo(x,y); c.lineTo(x-3,y+12); } c.stroke();
+    c.fillStyle='rgba(255,90,90,0.8)'; c.fillRect(((t*50)%(w+40))-20,h*0.93,6,3); c.fillStyle='rgba(255,250,210,0.9)'; c.fillRect(w-((t*70)%(w+40))+20,h*0.95,6,3); }},
+  aurora:{l:'🌌 Aurora', gambar:(c,w,h,t)=>{
+    c.fillStyle='#030814'; c.fillRect(0,0,w,h);
+    for(let i=0;i<60;i++){ const n=Math.sin(i*91.7)*43758.5, f=n-Math.floor(n); c.fillStyle=`rgba(255,255,255,${0.3+0.5*Math.abs(Math.sin(t*2+i))})`; c.fillRect(f*w,((i*37)%60)/100*h*0.7,1.5,1.5); }
+    c.globalCompositeOperation='lighter';
+    for(let b=0;b<3;b++){ for(let x=0;x<w;x+=3){ const y=h*(0.3+b*0.08)+Math.sin(x*0.012+t*0.6+b)*h*0.08+Math.sin(x*0.03-t*0.9)*h*0.03;
+      const tinggi=h*(0.18+0.1*Math.sin(x*0.02+t+b)); const g=c.createLinearGradient(0,y-tinggi,0,y);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.7,b===1?'rgba(170,80,255,0.3)':'rgba(60,255,160,0.36)'); g.addColorStop(1,'rgba(0,0,0,0)');
+      c.fillStyle=g; c.fillRect(x,y-tinggi,3,tinggi); } }
+    c.globalCompositeOperation='source-over';
+    c.fillStyle='#050a12'; c.beginPath(); c.moveTo(0,h); for(let x=0;x<=w;x+=10) c.lineTo(x,h*0.78-Math.abs(Math.sin(x*0.013))*h*0.18-Math.sin(x*0.05)*6); c.lineTo(w,h); c.fill();
+    c.fillStyle='#0b1a24'; c.fillRect(0,h*0.92,w,h*0.08); }}
+};
+const MEDIA_BATAS={jumlah:12, mb:15}, MEDIA_MIME=/^(video\/(mp4|webm|quicktime)|image\/gif)$/;
+var TV={sumber:new Map(), kunci:new Map(), t:0, jeda:0};   // sumber: kunci → {tex, mat, gambar|video|gif}; kunci: id objek → kunci sumber
+function kunciTV(o){ const p=(o&&o.params)||{};
+  if(p.tvMedia && PROJECT.media && PROJECT.media[p.tvMedia]) return 'media:'+p.tvMedia;
+  return 'kanal:'+(KANAL_TV[p.tvKanal]?p.tvKanal:'senja'); }
+function bahanLayar(tex){ return new THREE.MeshStandardMaterial({color:0x050505, roughness:.15, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:.95}); }
+function sumberTV(k){
+  if(TV.sumber.has(k)) return TV.sumber.get(k);
+  let S;
+  if(k.startsWith('kanal:')){
+    const cv=document.createElement('canvas'); cv.width=320; cv.height=180;
+    const tex=new THREE.CanvasTexture(cv); tex.encoding=THREE.sRGBEncoding;
+    S={tex, cv, gambar:KANAL_TV[k.slice(6)].gambar}; S.gambar(cv.getContext('2d'),320,180,0);
+  } else {
+    const m=PROJECT.media[k.slice(6)], blob=new Blob([bufFromB64(m.data)],{type:m.mime}), url=URL.createObjectURL(blob);
+    if(m.mime==='image/gif'){
+      const cv=document.createElement('canvas'); cv.width=2; cv.height=2;
+      const tex=new THREE.CanvasTexture(cv); tex.encoding=THREE.sRGBEncoding; S={tex, cv, gif:null, url};
+      try{ S.gif=uraiGIF(new Uint8Array(bufFromB64(m.data))); cv.width=S.gif.w; cv.height=S.gif.h; S.f=0; S.sisa=0; cv.getContext('2d').putImageData(S.gif.frames[0].img,0,0); }
+      catch(e){ console.warn('GIF',e); }
+      URL.revokeObjectURL(url);
+    } else {
+      const v=document.createElement('video'); v.src=url; v.muted=true; v.loop=true; v.playsInline=true; v.setAttribute('playsinline',''); v.crossOrigin='anonymous';
+      const tex=new THREE.VideoTexture(v); tex.encoding=THREE.sRGBEncoding; S={tex, video:v, url};
+    }
+  }
+  S.mat=bahanLayar(S.tex); TV.sumber.set(k,S); return S;
+}
+function terapkanTV(g,on,o){
   if(!MAT.screenOn) MAT.screenOn=new THREE.MeshStandardMaterial({color:0x111111, roughness:.2, emissive:0xffffff, emissiveMap:artTex(1), emissiveIntensity:.85});
-  g.traverse(m=>{ if(m.isMesh && (m.material===MAT.screen||m.material===MAT.screenOn)) m.material = on?MAT.screenOn:MAT.screen; });
+  const id=(o&&o.id)||g.userData.id; if(!o && id) o=cariObjek(id);   // saat dibangun ulang, grup bagian dalam belum membawa id
+  let mat=MAT.screen;
+  if(on){ const k=kunciTV(o); if(id) TV.kunci.set(id,k); try{ mat=sumberTV(k).mat; }catch(e){ console.warn('TV',e); mat=MAT.screenOn; } }
+  else if(id) TV.kunci.delete(id);
+  g.traverse(m=>{ if(m.isMesh && (m.material===MAT.screen||m.material===MAT.screenOn||m.userData.layarTV)){ m.material=mat; m.userData.layarTV=true; } });
+}
+function cariObjek(id){ for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.id===id) return o; return null; }
+function stepTV(dt){
+  if(!TV||!TV.kunci.size) return;               // TV dideklarasikan var: putaran gambar pertama berjalan lebih dulu
+  TV.t+=dt; TV.jeda-=dt;
+  const aktif=new Set([...TV.kunci].filter(([id])=>TV_NYALA.has(id)).map(([,k])=>k));
+  for(const [k,S] of TV.sumber){
+    const on=aktif.has(k);
+    if(S.video){ if(on&&S.video.paused) S.video.play().catch(()=>{}); else if(!on&&!S.video.paused) S.video.pause(); continue; }
+    if(!on) continue;
+    if(S.gif){ S.sisa-=dt*1000; if(S.sisa<=0){ S.f=(S.f+1)%S.gif.frames.length; S.sisa+=S.gif.frames[S.f].delay; if(S.sisa<-1000) S.sisa=0;
+      S.cv.getContext('2d').putImageData(S.gif.frames[S.f].img,0,0); S.tex.needsUpdate=true; } continue; }
+    if(S.gambar && TV.jeda<=0){ S.gambar(S.cv.getContext('2d'),320,180,TV.t); S.tex.needsUpdate=true; }
+  }
+  if(TV.jeda<=0) TV.jeda=0.05;
+}
+function buangSumberTV(k){ const S=TV.sumber.get(k); if(!S) return;
+  if(S.video){ S.video.pause(); S.video.removeAttribute('src'); S.video.load(); }
+  if(S.url) URL.revokeObjectURL(S.url); S.tex.dispose(); S.mat.dispose(); TV.sumber.delete(k); }
+/* Pengurai GIF sendiri (GIF87a/89a, LZW, transparansi, disposal 0–3): ImageDecoder belum ada di
+   semua peramban iPad. Bingkai disusun penuh di depan; dibatasi ukuran & jumlah bingkainya. */
+function uraiGIF(d){
+  const teks=String.fromCharCode(...d.subarray(0,6)); if(!/^GIF8[79]a$/.test(teks)) throw new Error('bukan berkas GIF');
+  const w=d[6]|d[7]<<8, h=d[8]|d[9]<<8; if(!w||!h||w*h>1048576) throw new Error('GIF terlalu besar (maks. 1 megapiksel)');
+  let p=13, gct=null; const f0=d[10];
+  const palet=(n)=>{ const c=[]; for(let i=0;i<n;i++){ c.push([d[p],d[p+1],d[p+2]]); p+=3; } return c; };
+  if(f0&0x80) gct=palet(1<<((f0&7)+1));
+  const layar=new Uint8ClampedArray(w*h*4), frames=[]; let gce={delay:100,trans:-1,disp:0};
+  while(p<d.length && frames.length<300){
+    const b=d[p++];
+    if(b===0x3B) break;
+    if(b===0x21){ const lbl=d[p++];
+      if(lbl===0xF9){ const n=d[p]; const pk=d[p+1]; gce={disp:(pk>>2)&7, delay:Math.max(20,(d[p+2]|d[p+3]<<8)*10), trans:(pk&1)?d[p+4]:-1}; p+=n+1; }
+      while(d[p]){ p+=d[p]+1; } p++; continue; }
+    if(b!==0x2C) throw new Error('GIF rusak');
+    const fx=d[p]|d[p+1]<<8, fy=d[p+2]|d[p+3]<<8, fw=d[p+4]|d[p+5]<<8, fh=d[p+6]|d[p+7]<<8, pk=d[p+8]; p+=9;
+    const lct=(pk&0x80)?palet(1<<((pk&7)+1)):gct, interlace=!!(pk&0x40), minKode=d[p++];
+    const dataL=[]; while(d[p]){ const n=d[p++]; for(let i=0;i<n;i++) dataL.push(d[p+i]); p+=n; } p++;
+    const idx=lzwGIF(dataL,minKode,fw*fh);
+    const cadangan=gce.disp===3?layar.slice():null;
+    const urut=[]; if(interlace){ for(const [mulai,lompat] of [[0,8],[4,8],[2,4],[1,2]]) for(let y=mulai;y<fh;y+=lompat) urut.push(y); } else for(let y=0;y<fh;y++) urut.push(y);
+    for(let r=0;r<fh;r++){ const y=urut[r]+fy; if(y>=h) continue;
+      for(let x=0;x<fw;x++){ const ci=idx[r*fw+x]; if(ci===gce.trans||ci===undefined||!lct||!lct[ci]) continue; const X=x+fx; if(X>=w) continue;
+        const o=(y*w+X)*4; layar[o]=lct[ci][0]; layar[o+1]=lct[ci][1]; layar[o+2]=lct[ci][2]; layar[o+3]=255; } }
+    frames.push({img:new ImageData(layar.slice(),w,h), delay:gce.delay});
+    if(gce.disp===2){ for(let y=fy;y<Math.min(h,fy+fh);y++) layar.fill(0,(y*w+fx)*4,(y*w+Math.min(w,fx+fw))*4); }
+    else if(gce.disp===3&&cadangan) layar.set(cadangan);
+    gce={delay:100,trans:-1,disp:0};
+  }
+  if(!frames.length) throw new Error('GIF tanpa gambar');
+  return {w,h,frames};
+}
+function lzwGIF(data,minKode,n){
+  const out=new Uint8Array(n), clear=1<<minKode, eoi=clear+1;
+  let ukuran=minKode+1, maks=(1<<ukuran), kamus=[], next=eoi+1, prev=null, o=0, bit=0;
+  const awal=()=>{ kamus=[]; for(let i=0;i<clear;i++) kamus[i]=[i]; ukuran=minKode+1; maks=1<<ukuran; next=eoi+1; prev=null; };
+  awal();
+  const total=data.length*8;
+  while(bit+ukuran<=total && o<n){
+    let k=0; for(let i=0;i<ukuran;i++){ const b=bit+i; if(data[b>>3]&(1<<(b&7))) k|=1<<i; } bit+=ukuran;
+    if(k===clear){ awal(); continue; } if(k===eoi) break;
+    let ent;
+    if(k<next && kamus[k]) ent=kamus[k];
+    else if(prev){ ent=prev.concat(prev[0]); } else break;
+    for(const v of ent){ if(o<n) out[o++]=v; }
+    if(prev && next<4096){ kamus[next++]=prev.concat(ent[0]); if(next===maks && ukuran<12){ ukuran++; maks=1<<ukuran; } }
+    prev=ent;
+  }
+  return out;
 }
 function terapkanGorden(g,buka){
   g.traverse(m=>{ if(m.isMesh && m.userData.kain){ const w=m.userData.kain;
@@ -6917,6 +7079,7 @@ function renderInspector(){
     inspektorTekstur(ins,d);
     if(d.type==='piano'){ const bp=el('button','btn sm','🎹 Mainkan piano'); bp.onclick=()=>bukaPiano(findGroup('obj',d.id)); ins.appendChild(bp); }
     if(NYALA_JENIS[d.type]==='lampu') inspektorCahaya(ins,d);
+    if(NYALA_JENIS[d.type]==='tv') inspektorTV(ins,d);
     addTransformFields(ins,d,true);
   }
 
@@ -11112,6 +11275,9 @@ function renderLevels(){
   const sl=el('label','chk'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=lv.slab;
   cb.onchange=()=>{ lv.slab=cb.checked; rebuildScene(); };
   sl.appendChild(cb); sl.appendChild(el('span',null,'Pelat lantai')); p.appendChild(sl);
+  const ikut=(LANTAI[PROJECT.finish.floor]||{}).l||PROJECT.finish.floor;
+  fRow(p,'Material lantai',selInput([['','Sama dengan proyek ('+ikut+')'],...Object.entries(LANTAI).map(([k,v])=>[k,v.l])],lv.lantai||'',v=>{
+    if(v) lv.lantai=v; else delete lv.lantai; HIST.label='Material lantai'; rebuildScene(); }));
   const del=el('button','btn sm danger','Hapus Lantai Ini');
   del.onclick=()=>{
     if(PROJECT.levels.length<2) return toast('Minimal harus ada satu lantai.');
@@ -12184,7 +12350,8 @@ function sanitasiProyek(j){
       rotY:angka(o.rotY,-1e3,1e3,0), sx:angka(o.sx??1,0.01,100,1), sy:angka(o.sy??1,0.01,100,1), sz:angka(o.sz??1,0.01,100,1),
       params:nilaiAman(o.params&&typeof o.params==='object'?o.params:{})||{}}));
     return { id:idAman(l.id,'lv'), name:teks(l.name,60,'Lantai')||'Lantai', height:angka(l.height,2,8,3.2),
-             slab:l.slab!==false, visible:l.visible!==false, walls, objects };
+             slab:l.slab!==false, visible:l.visible!==false, walls, objects,
+             ...(typeof l.lantai==='string'&&Object.prototype.hasOwnProperty.call(LANTAI,l.lantai)?{lantai:l.lantai}:{}) };
   });
   const ids=new Set(levels.map(l=>l.id));
   const assets={};
@@ -12210,15 +12377,66 @@ function sanitasiProyek(j){
     else if(t.sumber==='foto' && typeof t.data==='string' && t.data.length<=TEKSTUR_BATAS.dataMB*1.4*1048576 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t.data))
       tekstur[k]={nama:teks(t.nama,120,'foto')||'foto', sumber:'foto', data:t.data, aspek:angka(t.aspek,0.05,20,1)};
   }
+  // media layar TV: hanya video MP4/MOV/WebM atau GIF, base64 tertanam, dibatasi jumlah & ukurannya
+  const media={};
+  for(const [k,m] of Object.entries(j.media&&typeof j.media==='object'?j.media:{}).slice(0,MEDIA_BATAS.jumlah)){
+    if(!ID_AMAN.test(k)||!m||typeof m!=='object'||typeof m.data!=='string'||!MEDIA_MIME.test(m.mime||'')) continue;
+    if(m.data.length>MEDIA_BATAS.mb*1.4*1048576||!/^[A-Za-z0-9+/=]*$/.test(m.data.slice(0,4096))) continue;
+    media[k]={nama:teks(m.nama,120,'video')||'video', mime:m.mime, data:m.data};
+  }
   return {
     name:teks(j.name,120,'Denah 3D')||'Denah 3D', pxPerMeter:angka(j.pxPerMeter,1,1e4,30), levels,
-    active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans, tekstur,
+    active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans, tekstur, media,
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
     atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12)},
     site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6)},
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
 }
+/* ---------- INSPECTOR LAYAR TV (JEV-065) ---------- */
+function jenisMedia(u){
+  if(u[0]===0x47&&u[1]===0x49&&u[2]===0x46&&u[3]===0x38) return 'image/gif';
+  if(u[0]===0x1A&&u[1]===0x45&&u[2]===0xDF&&u[3]===0xA3) return 'video/webm';
+  if(u[4]===0x66&&u[5]===0x74&&u[6]===0x79&&u[7]===0x70) return String.fromCharCode(u[8],u[9],u[10],u[11])==='qt  '?'video/quicktime':'video/mp4';
+  return null;
+}
+function nyalakanTV(id,on){
+  if(on) TV_NYALA.add(id); else TV_NYALA.delete(id);
+  for(const g of grupObjek(id)) terapkanTV(g,on);
+}
+function inspektorTV(ins,d){
+  ins.appendChild(el('div','section-title','Layar TV'));
+  d.params=d.params||{};
+  const pil=[...Object.entries(KANAL_TV).map(([k,v])=>['kanal:'+k,v.l]), ...Object.entries(PROJECT.media||{}).map(([k,m])=>['media:'+k,'🎞 '+m.nama])];
+  const kini=kunciTV(d);
+  fRow(ins,'Tayangan',selInput(pil,kini,v=>{
+    if(v.startsWith('media:')){ d.params.tvMedia=v.slice(6); delete d.params.tvKanal; } else { d.params.tvKanal=v.slice(6); delete d.params.tvMedia; }
+    HIST.label='Tayangan TV'; nyalakanTV(d.id,true); rebuildScene(); renderInspector(); }));
+  const on=TV_NYALA.has(d.id), bn=el('button','btn sm',on?'■ Matikan TV':'▶ Nyalakan TV');
+  bn.onclick=()=>{ nyalakanTV(d.id,!TV_NYALA.has(d.id)); renderInspector(); }; ins.appendChild(bn);
+  const bu=el('button','btn sm ghost','🎞 Pakai video / GIF sendiri…');
+  bu.onclick=()=>{ const i=$('#tvMediaInput'); i.dataset.obj=d.id; i.click(); }; ins.appendChild(bu);
+  if(kini.startsWith('media:')){ const bh=el('button','btn sm ghost','🗑 Hapus video ini dari proyek');
+    bh.onclick=()=>{ const mid=kini.slice(6); delete PROJECT.media[mid]; buangSumberTV(kini);
+      for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.params&&o.params.tvMedia===mid) delete o.params.tvMedia;
+      rebuildScene(); renderInspector(); toast('Video dihapus dari proyek'); };
+    ins.appendChild(bh); }
+  ins.appendChild(el('p','hint',`Video MP4/MOV/WebM atau GIF, maks. ${MEDIA_BATAS.mb} MB — diputar tanpa suara & berulang. Berkasnya ikut tersimpan di proyek (tidak ikut tautan lihat-saja; di sana tampil saluran bawaan). Di mode jalan, ketuk TV untuk menyalakan.`));
+}
+$('#tvMediaInput').onchange=async e=>{
+  const f=e.target.files&&e.target.files[0], id=e.target.dataset.obj; e.target.value=''; if(!f) return;
+  try{
+    if(f.size>MEDIA_BATAS.mb*1048576) throw new Error(`berkas ${fmt(f.size/1048576,1)} MB melebihi batas ${MEDIA_BATAS.mb} MB`);
+    const buf=await f.arrayBuffer(), mime=jenisMedia(new Uint8Array(buf,0,Math.min(16,buf.byteLength)));
+    if(!mime) throw new Error('perlu video MP4 / MOV / WebM atau GIF');
+    if(mime==='image/gif') uraiGIF(new Uint8Array(buf));                 // GIF rusak ditolak sekarang, bukan saat diputar
+    PROJECT.media=PROJECT.media||{};
+    if(Object.keys(PROJECT.media).length>=MEDIA_BATAS.jumlah) throw new Error(`maksimal ${MEDIA_BATAS.jumlah} video per proyek`);
+    const mid=uid('md'); PROJECT.media[mid]={nama:f.name.replace(/\.[^.]+$/,'').slice(0,120)||'video', mime, data:b64FromBuf(buf)};
+    const o=cariObjek(id); if(o){ o.params=o.params||{}; o.params.tvMedia=mid; delete o.params.tvKanal; TV_NYALA.add(o.id); }
+    HIST.label='Tayangan TV'; rebuildScene(); renderInspector(); toast('Tayangan TV: '+PROJECT.media[mid].nama);
+  }catch(err){ toast('Gagal: '+(err.message||err)); }
+};
 /* ---------- INSPECTOR & PUSTAKA TEKSTUR FOTO (JEV-059) ---------- */
 const LABEL_BAHAN={kainSofa:'Kain sofa', kainAksen:'Bantal hias', kainKrem:'Kain krem', kainRanjang:'Kain ranjang & headboard', sprei:'Sprei & sarung bantal',
   selimut:'Selimut', selendang:'Selendang', kasur:'Kasur', kayuVenir:'Kayu', kayuGelap:'Kayu gelap', wood:'Kayu', woodDark:'Kayu gelap', marmer:'Marmer',
@@ -12314,7 +12532,7 @@ $('#loadInput').addEventListener('change',e=>{
 });
 /* teks JSON (berkas) atau objek (rumah contoh) → proyek; atomik: gagal = proyek lama utuh */
 function muatProyekObjek(sumber){
-  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','tekstur','finish','atap','site','langit'];
+  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','tekstur','media','finish','atap','site','langit'];
   const cadangan=Object.fromEntries(KUNCI.map(k=>[k,PROJECT[k]]));
   try{
     let j=sumber;

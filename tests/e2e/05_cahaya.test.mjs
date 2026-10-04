@@ -77,13 +77,15 @@ tes['lampu luar tidak bocor ke dalam ruangan tertutup'] = async (page) => {
       const x = g.getContext('2d'); x.drawImage(c, 0, 0, 48, 36); const d = x.getImageData(0, 0, 48, 36).data; let s = 0;
       for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; return s / (d.length / 4); };
     const luar = LAMPU_PASANG.filter(L => !String(L.id).startsWith('dl'));
+    // eksposur otomatis masih bergeser beberapa detik sesudah lampu berubah: ukur saat terangnya sudah tenang
+    const tenang = async () => { let a = terang(); for (let i = 0; i < 24; i++) { await tidur(500); const b = terang(); if (Math.abs(b - a) < 0.25) return b; a = b; } return a; };
     const stabil = async (n) => { for (let i = 0; i < 300 && !(KOLAM.every(l => !l.userData.L || l.userData.f >= 1) && GI_U.luarN.value === n); i++) await tidur(100); await tidur(1500); };
     await stabil(6);
     const h = { luarN: GI_U.luarN.value, slot: KOLAM.map(l => l.userData.L && String(l.userData.L.id).slice(0, 2)).join(), ruang: RUANG_KAMERA.id };
-    h.nyala = terang();
+    h.nyala = await tenang();
     for (const L of luar) MATI.add(L.id);
     await stabil(0);
-    h.padam = terang();
+    h.padam = await tenang();
     for (const L of luar) MATI.delete(L.id);
     window.skorLampu = asli; exitFPS();
     return h;

@@ -2362,6 +2362,69 @@
     "target": "0",
     "tinjau": "2027-01-04"
    }
+  },
+  {
+   "id": "JEV-065",
+   "judul": "Lantai hantu tanpa kaca putih + material lantai per tingkat + layar TV hidup (saluran bawaan, video, GIF)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Saat proyek dibuka, kaca lantai lain yang tembus pandang tampil sebagai balok putih; finishing lantai hanya satu untuk seluruh bangunan; TV yang dinyalakan hanya menampilkan gambar diam.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-04 + \"material floor perlantai bisa dipisahin? (misal bawah keramik atas parket) tv juga kalo di nyakain bisa ada animasi atau gif film\"",
+    "alternatif": [
+     "lantai lain disembunyikan (mode Hide) — menghilangkan konteks bangunan",
+     "video bawaan dari internet (lisensi & unduhan besar)",
+     "ImageDecoder untuk GIF — belum ada di semua peramban iPad"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 10,
+      "menitHemat": 8
+     },
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.012
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "jenis media dari isi, MIME disaring, batas ukuran & bingkai, GIF diurai sendiri (SEC-16)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "video hanya di berkas proyek pengguna; tidak ikut tautan lihat-saja"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "saluran bawaan digambar sendiri; video/GIF milik pengguna"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "kanvas 320×180 diperbarui ±20×/detik hanya saat TV menyala; video dijeda bila tak ada TV memutarnya"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol nyala/mati TV di inspector selain ketuk di mode jalan"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan material lantai berbeda per tingkat atau TV bertayangan ÷ proyek bertingkat",
+    "target": "≥ 25%",
+    "tinjau": "2027-01-04"
+   }
   }
  ]
 }
