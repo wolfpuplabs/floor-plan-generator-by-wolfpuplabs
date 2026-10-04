@@ -337,8 +337,12 @@ details.info[open]>summary{margin-bottom:6px}
 /* mode lihat-saja: semua alat edit disembunyikan */
 body.lihat #sidebar,body.lihat #toolbar,body.lihat #toolMenu,body.lihat #inspector,body.lihat #mulaiKartu{display:none !important}
 /* HP tegak: bilah lihat-saja selebar layar, pemilih lantai turun di bawahnya (dulu saling menimpa) */
+/* mode lihat: saat jalan-jalan bilah lihat disembunyikan (bilah jalan punya Keluar sendiri) */
+body.lihat.jalan #lihatBar{display:none}
 @media (max-width:640px){ body.lihat #lihatBar{left:8px;right:8px;max-width:none;flex-wrap:wrap;gap:6px 8px}
-  body.lihat #levelbar{top:calc(max(12px,env(safe-area-inset-top)) + 64px);right:8px}
+  /* --lihat-bawah: tepi bawah bilah lihat yang sebenarnya (diukur; tingginya ikut terjemahan & lebar) */
+  body.lihat #levelbar{top:calc(var(--lihat-bawah,110px) + 8px);right:8px}
+  body.lihat #hint{left:8px;right:auto;max-width:calc(100% - 16px);bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px)}
   body.lihat #lihatBar b{flex:1 1 100%;order:3} }
 #lihatBar{top:max(12px,env(safe-area-inset-top));left:12px;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-radius:12px;max-width:calc(100% - 140px)}
 #lihatBar b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
@@ -2959,6 +2963,8 @@ function renderAtapUI(){
 }
 function toggleAtap(v){
   ATAP_TUTUP = v===undefined ? !ATAP_TUTUP : !!v;
+  // tersimpan di proyek: ikut berkas & tautan lihat (dulu penerima selalu mendapat atap terbuka)
+  PROJECT.atap=Object.assign({tritisan:0.6,tebal:0.12},PROJECT.atap,{tutup:ATAP_TUTUP});
   renderAtapUI(); rebuildScene();
   toast(ATAP_TUTUP?'Plat atap ditutup — ruangan terlindung dari matahari dan langit':'Plat atap dibuka — isi lantai teratas terlihat dari atas');
 }
@@ -6668,7 +6674,8 @@ function rebuildScene0(){
     lg.add(buildJunctions(lv));
     if(lv.slab && showSlabOpt){ const s=buildSlab(lv); if(s) lg.add(s); }
     for(const o of lv.objects) lg.add(buildObject(o,lv));
-    if(ATAP_TUTUP){ const a=buildAtap(lv,idx); if(a) lg.add(a); }
+    // jalan-jalan selalu beratap: dari dalam lantai teratas langit tidak boleh terlihat
+    if(ATAP_TUTUP||FPS.on){ const a=buildAtap(lv,idx); if(a) lg.add(a); }
 
     if(idx!==PROJECT.active && modeLain==='ghost'){
       lg.traverse(m=>{ if(m.isMesh){ m.material=ghost(m.material); m.castShadow=false; m.receiveShadow=false; } });
@@ -12444,7 +12451,7 @@ function sanitasiProyek(j){
     name:teks(j.name,120,'Denah 3D')||'Denah 3D', pxPerMeter:angka(j.pxPerMeter,1,1e4,30), levels,
     active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans, tekstur, media,
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
-    atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12)},
+    atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12), ...(j.atap&&j.atap.tutup===true?{tutup:true}:{})},
     site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6)},
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
@@ -12595,6 +12602,7 @@ function muatProyekObjek(sumber){
     if(typeof sumber==='string'){ try{ j=JSON.parse(sumber); }catch(_){ throw new Error('bukan JSON yang sah'); } }
     const B=sanitasiProyek(j);
     for(const k of KUNCI) PROJECT[k]=B[k];
+    ATAP_TUTUP=!!PROJECT.atap.tutup;
     PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
     renderSitusUI();
     renderFinishUI(); renderAtapUI();
@@ -12727,7 +12735,7 @@ async function buatTautanLihat(kemajuan=()=>{}){
   const lap={ditinggal, fotoDitinggal, mediaDitinggal, alasanLampiran, nLampiran, mbLampiran:total/1048576};
   if(pendek.id) return {url:dasar+'#l='+pendek.id, pendek:true, panjang:padat.length, ...lap};
   const kode=b64url(padat);
-  return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, panjang:kode.length, ...lap};
+  return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, kodeGalat:pendek.kode, panjang:kode.length, ...lap};
 }
 // tautan pendek lewat fungsi Vercel (api/tautan.js); di hosting tanpa fungsi itu (GitHub Pages,
 // Blob belum diaktifkan, luring) kembali ke tautan panjang yang membawa seluruh isi
@@ -12735,7 +12743,8 @@ async function simpanTautanPendek(padat){
   try{
     const r=await fetch('api/tautan',{method:'POST',headers:{'content-type':'application/octet-stream'},body:padat});
     if(r.status===501) return {alasan:'blob'};
-    if(!r.ok) return {alasan:'server'};
+    if(!r.ok){ let k=''; try{ const j=await r.json(); k=String(j.kode||j.galat||'').replace(/[^\w-]/g,'').slice(0,40); }catch(e){}
+      return {alasan:'server', kode:r.status+(k?' '+k:'')}; }
     const j=await r.json(); return /^[A-HJ-NP-Za-km-z2-9]{10}$/.test(j&&j.id)?{id:j.id}:{alasan:'server'};
   }catch(e){ return {alasan:'luring'}; }
 }
@@ -12750,7 +12759,9 @@ $('#bagikanBtn').onclick=async()=>{
   const kb=Math.ceil(r.url.length/1024);
   // satu kalimat per elemen: tiap kalimat diterjemahkan sendiri oleh lapisan bahasa
   const kal=[r.pendek?'Tautan pendek siap dibagikan.':`Tautan ${kb} KB.`];
-  if(!r.pendek && r.alasan==='blob') kal.push('Tautan pendek belum aktif — aktifkan Vercel Blob di proyek Vercel (Storage → Blob).');
+  if(!r.pendek && r.alasan==='blob') kal.push('Tautan pendek belum aktif — aktifkan Vercel Blob di proyek Vercel (Storage → Blob), lalu Redeploy.');
+  if(!r.pendek && r.alasan==='server') kal.push(`Tautan pendek gagal dibuat (server: ${r.kodeGalat||'galat'}).`);
+  if(!r.pendek && r.alasan==='luring') kal.push('Tautan pendek tidak bisa dihubungi (luring atau hosting tanpa fungsi server, mis. GitHub Pages).');
   if(!r.pendek && kb>30) kal.push('Tautan panjang — beberapa aplikasi chat bisa memotongnya; kirim lewat email atau catatan bila perlu.');
   if(r.nLampiran) kal.push(`Berkas sendiri ikut: ${r.nLampiran} (${fmt(Math.max(0.1,r.mbLampiran),1)} MB) — diunduh penerima saat membuka.`);
   if(r.ditinggal.length) kal.push(`Model unggahan sendiri tidak ikut: ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`);
@@ -12781,9 +12792,18 @@ function gagalTautanLihat(e){
   const m='Tautan tidak bisa dibuka: '+((e&&e.message)||e);
   const n=$('#lihatNama'); n.textContent=m; n.classList.add('galat'); toast(m);
 }
+// tepi bawah bilah lihat → posisi bilah lantai di HP (tidak menumpuk berapa pun tinggi bilahnya)
+function aturTataLihat(){
+  const b=$('#lihatBar'); if(!b||b.hidden) return;
+  document.documentElement.style.setProperty('--lihat-bawah',Math.ceil(b.getBoundingClientRect().bottom)+'px');
+}
+if(typeof ResizeObserver==='function') new ResizeObserver(()=>aturTataLihat()).observe($('#lihatBar'));
+addEventListener('resize',()=>aturTataLihat());
 async function bukaTautanLihat(kode,bytes){
   LIHAT.on=true; document.body.classList.add('lihat'); setSidebar(false); select(null);
-  $('#lihatBar').hidden=false; $('#hint').innerHTML='Mode lihat — seret untuk memutar, cubit untuk zoom, <b>Jalan-jalan</b> untuk masuk ke dalam rumah.';
+  $('#lihatBar').hidden=false; aturTataLihat(); $('#hint').innerHTML='Mode lihat — seret untuk memutar, cubit untuk zoom, <b>Jalan-jalan</b> untuk masuk ke dalam rumah.';
+  // petunjuk menutupi sebagian layar HP: hilang sendiri setelah dibaca
+  setTimeout(()=>{ if(LIHAT.on && innerWidth<700) $('#hint').hidden=true; },9000);
   try{
     if(typeof DecompressionStream!=='function') throw new Error('peramban ini terlalu lama — perlu iOS 16.4 / Chrome 80 ke atas');
     if(!bytes && kode.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
@@ -13977,6 +13997,7 @@ function enterFPS(){
   setSidebar(false);                         // jalan-jalan memakai seluruh layar
   select(null); setTool('select');
   orbit.enabled=false;
+  document.body.classList.add('jalan');
   $('#fpsbar').hidden=false; $('#hint').hidden=true; $('#toolbar').hidden=true; $('#viewbar').hidden=true; $('#helpPanel').hidden=true; $('#toolMenu').hidden=true; $('#mulaiKartu').hidden=true;
   $('#fpsFull').hidden=!BISA_LAYAR_PENUH;    // iPhone & sebagian iPad tidak mengizinkannya
   FPS.info='';
@@ -14001,6 +14022,7 @@ function exitFPS(){
   orbit.enabled=true;
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
   if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
+  document.body.classList.remove('jalan'); aturTataLihat();
   $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   setTimeout(perbaruiMulai,0);          // FPS.on baru dimatikan di akhir fungsi ini
   $('#levelbar').hidden=false;

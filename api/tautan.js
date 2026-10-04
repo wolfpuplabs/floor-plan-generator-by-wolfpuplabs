@@ -86,7 +86,11 @@ function buatHandler(ambilBlob, siap = () => !!process.env.BLOB_READ_WRITE_TOKEN
         return info ? kirimBlob(res, info) : kirim(res, 404, { galat: 'tidak-ada' });
       }
       res.setHeader('allow', 'GET, POST'); return kirim(res, 405, { galat: 'metode' });
-    } catch (e) { return kirim(res, e.kode || 500, { galat: e.kode ? 'ukuran' : 'server' }); }
+    } catch (e) {
+      // nama kelas galat (mis. BlobStoreNotFoundError) membantu pemilik situs mendiagnosis tanpa membocorkan isi
+      if (!e.kode) console.error('api/tautan', e);
+      return kirim(res, e.kode || 500, e.kode ? { galat: 'ukuran' } : { galat: 'server', kode: String((e && e.constructor && e.constructor.name) || 'Error').slice(0, 40) });
+    }
   };
 }
 module.exports = buatHandler(() => require('@vercel/blob'));
