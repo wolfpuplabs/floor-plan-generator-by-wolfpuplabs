@@ -2847,6 +2847,65 @@
     "target": "0",
     "tinjau": "2027-01-05"
    }
+  },
+  {
+   "id": "JEV-073",
+   "judul": "Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di HP panel samping menutupi tombol Panel sehingga tidak bisa disembunyikan; toolbar menumpuk 3 baris; petunjuk menimpa tombol tampak; di HP miring isi panel hanya tersisa ±70 px.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "rekaman layar iPhone pengguna 2026-10-06 + \"di hp UI masih berantakan, panel ga bisa di hide, di landscape juga\"",
+    "alternatif": [
+     "panel sebagai lembar bawah (bottom sheet) — perubahan besar",
+     "menyembunyikan panel sama sekali di HP"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "CSS saja + dua pendengar klik"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol tutup 42 px berlabel; target sentuh toolbar 44 px"
+    }
+   },
+   "metrik": {
+    "nama": "sesi HP yang membuka & menutup panel",
+    "target": "≥ 80% sesi HP",
+    "tinjau": "2027-01-06"
+   }
   }
  ]
 }
