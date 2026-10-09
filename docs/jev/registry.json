@@ -3027,6 +3027,68 @@
     "target": "≥ 20%",
     "tinjau": "2027-01-09"
    }
+  },
+  {
+   "id": "JEV-076",
+   "judul": "Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Objek hanya punya satu aksi bawaan; pemilik tidak bisa menautkan objek (mis. lukisan) ke toko daring, memutar musik sendiri, atau membuat objek menghadap pengunjung.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-09 (\"tambah interaksi details yg trigger floating ui panel thumbnail & info asset yang ada button open link … bisa multiples interaction di satu object (misal sit + details), terus interaksi look at cam, sama bisa upload music buat interaksi audio\")",
+    "alternatif": [
+     "hotspot terpisah di lantai (tidak melekat pada objek)",
+     "tautan langsung tanpa panel (pengunjung tidak tahu tujuannya)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tautan hanya http(s) (URL diurai), dibuka di tab baru dengan noopener,noreferrer, nama host ditampilkan; teks lewat textContent; jenis media dari tanda tangan isi (audio/gambar), maks. 15 MB × 20"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tautan dibuka hanya saat pengunjung mengetuk tombol"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "musik/gambar milik pengguna sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "hadap kamera hanya untuk objek bertanda, grup dicache per scene; musik lewat elemen audio + panner"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "panel berlabel dialog, tombol tutup; aksi kedua juga lewat tombol angka 2/3"
+    }
+   },
+   "metrik": {
+    "nama": "ketukan Buka tautan per sesi lihat",
+    "target": "≥ 0,3",
+    "tinjau": "2027-01-09"
+   }
   }
  ]
 }
