@@ -172,7 +172,7 @@ export const tes = {
       assert.equal(await H.evaluate(() => MOOD), 'malam', 'tamu tidak bisa mengganti suasana host');
     } finally { await L.tutup(); }
   },
-  'api/ice: TURN hanya dari env, alamat disaring; tanpa env 501': async () => {
+  'api/ice: TURN hanya dari env, alamat disaring; tanpa env daftar kosong (200)': async () => {
     const api = require('../../api/ice.js');
     assert.equal(api.iceDariEnv({}), null);
     assert.deepEqual(api.iceDariEnv({ TURN_URLS: 'turn:turn.contoh.id:3478, javascript:alert(1), turns:turn.contoh.id:5349?transport=tcp,https://x.example', TURN_USERNAME: 'u', TURN_CREDENTIAL: 'k' }),
@@ -180,11 +180,12 @@ export const tes = {
     const jalankan = (method) => new Promise(ok => { const res = { h: {}, setHeader(k, v) { this.h[k] = v; }, end(b) { ok({ status: this.statusCode, b: JSON.parse(b), h: this.h }); } }; api({ method }, res); });
     const lama = process.env.TURN_URLS; delete process.env.TURN_URLS;
     try {
-      assert.equal((await jalankan('GET')).status, 501);
+      const kosong = await jalankan('GET');             // tanpa TURN: bukan galat, daftar kosong (konsol bersih)
+      assert.equal(kosong.status, 200); assert.deepEqual(kosong.b, { iceServers: [], turn: false });
       assert.equal((await jalankan('POST')).status, 405);
       process.env.TURN_URLS = 'turn:turn.contoh.id:3478';
       const r = await jalankan('GET'); assert.equal(r.status, 200); assert.equal(r.h['cache-control'], 'no-store');
-      assert.deepEqual(r.b, { iceServers: [{ urls: 'turn:turn.contoh.id:3478' }] });
+      assert.deepEqual(r.b, { iceServers: [{ urls: 'turn:turn.contoh.id:3478' }], turn: true });
     } finally { if (lama === undefined) delete process.env.TURN_URLS; else process.env.TURN_URLS = lama; }
   },
 };

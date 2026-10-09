@@ -4,7 +4,9 @@
      TURN_URLS        daftar dipisah koma, mis. "turn:turn.contoh.id:3478,turns:turn.contoh.id:5349"
      TURN_USERNAME    nama pengguna TURN
      TURN_CREDENTIAL  sandi TURN
-   - GET /api/ice  →  { iceServers: [{ urls, username, credential }] }   (501 bila env kosong)
+   - GET /api/ice  →  { iceServers: [{ urls, username, credential }] }
+     Env kosong → 200 { iceServers: [] } (bukan galat: peramban cukup memakai STUN, dan konsol
+     pengunjung tidak penuh tulisan merah "501").
    Kredensial TURN memang harus sampai ke peramban agar bisa dipakai; pakai kredensial
    terbatas (kuota/berumur pendek dari penyedia TURN), bukan sandi akun. */
 const URL_TURN = /^turns?:[A-Za-z0-9.-]+(:\d{1,5})?(\?transport=(udp|tcp))?$/;
@@ -21,7 +23,7 @@ module.exports = (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8');
   if (req.method !== 'GET') { res.statusCode = 405; res.setHeader('allow', 'GET'); return res.end('{"galat":"metode"}'); }
   const s = iceDariEnv(process.env);
-  res.statusCode = s ? 200 : 501;
-  res.end(JSON.stringify(s ? { iceServers: s } : { galat: 'turn-belum-diatur' }));
+  res.statusCode = 200;
+  res.end(JSON.stringify({ iceServers: s || [], turn: !!s }));
 };
 module.exports.iceDariEnv = iceDariEnv;
