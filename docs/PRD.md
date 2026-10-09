@@ -87,6 +87,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | E-21 | **Perbaikan cepat**: salin tautan dengan cadangan & pesan jujur; atap mengikuti pilihan pemilik juga saat jalan-jalan; ketukan ganda di piano/kanvas tidak memperbesar halaman; sumbu geser/skala mengikuti rotasi objek; langit 360° unggahan ikut tautan pendek; tombol AR di bilah lihat | Clipboard ditolak/menggantung tetap tersalin; gizmo lokal; langit unggahan terpasang di penerima (tes) | JEV-074 |
 | E-22 | **Terrain builder**: tanah situs berelief dibentuk dengan kuas naikkan / turunkan / ratakan / haluskan (ukuran & kekuatan kuas, datarkan semua); tanah di sekitar rumah selalu di bawah lantai, lantai dasar selalu ada di tapak; di mode jalan kaki mengikuti bukit & lembah; relief ikut berkas & tautan | Dalam rumah = lantai walau pelat mati; sapuan menaikkan tanah & tercatat di riwayat; jalan mendaki bukit & turun ke lembah (tes) | JEV-075 |
 | E-23 | **Interaksi tambahan per objek** (inspector › Interaksi): *Detail* — panel melayang berisi gambar (sendiri atau gambar objek), judul, keterangan, tombol *Buka tautan* (mis. lukisan → toko daring), dibuka dari mode jalan atau dengan mengetuk objek di mode lihat; *Musik sendiri* (MP3/M4A/OGG/WAV, diputar dari posisi objek, ulang); *Hadap kamera* (objek menoleh ke pengunjung). Satu objek bisa punya beberapa aksi (mis. Duduk + Lihat detail): tombol tambahan & tombol angka 2/3. Media ikut tautan pendek | Tautan non-http ditolak, dibuka dengan noopener; musik unggahan diputar & berhenti; berkas palsu ditolak; objek menoleh ke kamera (tes) | JEV-076 |
+| E-24 | **Lobi main bareng** (File › Main bareng): host memilih *Lihat saja* atau *Bangun bareng* dan maks. orang (2–10), lalu membagikan undangan (tautan lihat + kode ruang). Tamu menulis nama, tampil sebagai karakter berwarna berlabel nama, jalan-jalan bersama, mengobrol (panel obrolan melayang), dan pada *Bangun bareng* ikut mengubah rumah (perubahan tersiar ke semua). Host menutup ruang kapan saja. Koneksi WebRTC peer-to-peer (host = pusat), server sinyal PeerJS publik, TURN opsional lewat env | Tamu masuk dengan nama; avatar mengikuti posisi; obrolan dua arah tanpa HTML; edit dua arah pada bangun bareng; perubahan tamu ditolak pada lihat saja; orang ke-(maks+1) ditolak "ruang penuh" (tes) | JEV-077 |
 
 ### 5.3 Isi ruang & lingkungan (P1)
 
@@ -152,7 +153,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 
 ## 8. Di luar lingkup (eksplisit)
 
-Kolaborasi waktu nyata & penyimpanan cloud (JEV-047, DEFER: kajian privasi/UU PDP belum dilakukan) · BIM/IFC · gambar kerja struktur & MEP · render *path-traced* · impor Gaussian splat (JEV-043, NO-GO: kinerja iPad belum terbukti, ROI negatif).
+Penyimpanan cloud & akun (JEV-047, DEFER: kajian privasi/UU PDP belum dilakukan; kolaborasi waktu nyata kini lewat JEV-077 tanpa penyimpanan server) · BIM/IFC · gambar kerja struktur & MEP · render *path-traced* · impor Gaussian splat (JEV-043, NO-GO: kinerja iPad belum terbukti, ROI negatif).
 
 ## 9. Roadmap berbasis ROI
 
