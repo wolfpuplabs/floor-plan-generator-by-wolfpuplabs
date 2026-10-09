@@ -6464,8 +6464,25 @@ function pianoBus(){
 function bunyiPiano(m,t,dur,v,tujuan){
   const ctx=pianoBus(); if(!ctx) return;
   t=t||ctx.currentTime; const d=tujuan||PIANO.bus;
+  // main bareng: not sendiri ikut terdengar peserta lain (not dari mereka tidak dipantulkan balik)
+  if(!(tujuan&&tujuan.luar) && window.LOBI && window.LOBI.aktif)
+    window.LOBI.nada(PIANO.grp&&PIANO.grp.userData.id||null, m, Math.max(0,t-ctx.currentTime), dur||1.2, v||0.32);
   ALAT.piano(ctx,d,t,m,Math.max(dur||1.2,0.6),v||0.32);
   osc(ctx,'sine',mf(m)*3.01,t,t+0.4,envGain(ctx,d,t,0.002,(v||0.32)*0.12,0.35));   // dentang palu
+}
+// not dari peserta lain: dibunyikan dari posisi piano yang dimainkannya
+function bunyiPianoLuar(id,m,dt,dur,v){
+  const ctx=audioSiap(); if(!ctx) return;
+  if(!PIANO.luar) PIANO.luar=new Map();
+  let b=PIANO.luar.get(id||'');
+  if(!b){ const pan=ctx.createPanner(); pan.panningModel='HRTF'; pan.distanceModel='inverse'; pan.refDistance=1.5; pan.rolloffFactor=0.8;
+    const bus=ctx.createGain(); bus.gain.value=1.4; bus.luar=true; bus.connect(pan); pan.connect(AUDIO.master);
+    const kirim=ctx.createGain(); kirim.gain.value=0.35; bus.connect(kirim); kirim.connect(AUDIO.gema);
+    b={bus,pan}; PIANO.luar.set(id||'',b); }
+  const g=id&&grupObjek(id)[0], p=g?titikGrup(g):camera.position;
+  b.pan.positionX ? (b.pan.positionX.value=p.x, b.pan.positionY.value=Math.max(p.y,1), b.pan.positionZ.value=p.z) : b.pan.setPosition(p.x,Math.max(p.y,1),p.z);
+  bunyiPiano(m,ctx.currentTime+0.03+dt,dur,v,b.bus);
+  if(PIANO.buka && PIANO.grp && PIANO.grp.userData.id===id){ tandaiTuts(m,true); setTimeout(()=>tandaiTuts(m,false),180); }
 }
 function tandaiTuts(m,on){
   const e=document.querySelector(`#pianoKeys [data-m="${m}"]`); if(e) e.classList.toggle('on',on);
@@ -14411,7 +14428,7 @@ function pakai(t){
   if(t.jenis==='duduk'){ if(FPS.duduk&&FPS.duduk.id===t.id) berdiri(); else duduk(t); AIM_T=0; return; }
   if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
   if(t.jenis==='detail'){ bukaDetail(t.id); AIM_T=0; return; }
-  if(t.jenis==='musik' || (t.jenis==='audio' && aksiObjek(cariObjek(t.id))?.musik)){ togelMusik(t.id); AIM_T=0; return; }
+  if(t.jenis==='musik' || (t.jenis==='audio' && aksiObjek(cariObjek(t.id))?.musik)){ togelMusik(t.id); laporAksi('musik',t.id,MUSIK.main.has(t.id)); AIM_T=0; return; }
   sfxAksi(t);
   if(t.jenis==='bukaan'){ BUKA.set(t.o.id, bukaan(t.o)>0.5?0:1); }
   else if(t.jenis==='lampu'||t.jenis==='api'){
@@ -14424,7 +14441,86 @@ function pakai(t){
   else if(t.jenis==='audio'){ if(AUDIO.main.has(t.id)) hentikanMusik(t.id); else mulaiMusik(t.id); }
   bayangKotor();                     // gorden dibuka/ditutup dsb.: peta bayangan digambar ulang
   AIM_T=0;
+  const id=t.jenis==='bukaan'?t.o.id:t.id;
+  laporAksi(t.jenis,id,keadaanSatu(t.jenis,id));
 }
+/* MAIN BARENG (JEV-078): aksi & suasana dibagi ke peserta lain lewat modul lobi. Yang dikirim
+   KEADAAN AKHIR (nyala/mati, buka/tutup), bukan sakelar — pesan ganda/terlambat tidak membalik. */
+const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik'];
+function laporAksi(j,id,on){ if(window.LOBI && window.LOBI.aktif) window.LOBI.aksi(j,id,!!on); }
+function cariBukaanId(id){
+  for(let i=0;i<PROJECT.levels.length;i++) for(const w of PROJECT.levels[i].walls) for(const o of w.openings||[]) if(o.id===id) return {o,w,lv:i};
+  return null;
+}
+function keadaanSatu(j,id){
+  if(j==='bukaan'){ const b=cariBukaanId(id); return !!b && bukaan(b.o)>0.5; }
+  if(j==='lampu'||j==='api') return !MATI.has(id);
+  if(j==='tv') return TV_NYALA.has(id);
+  if(j==='gorden') return GORDEN_BUKA.has(id);
+  if(j==='audio') return AUDIO.main.has(id);
+  if(j==='musik') return MUSIK.main.has(id);
+  return false;
+}
+function titikGrup(g){ return new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3()); }
+// aksi peserta lain: diterapkan bila berbeda dari keadaan di sini, dengan bunyi dari posisi objeknya
+function terapkanAksiLuar(j,id,on){
+  if(!JENIS_AKSI_BAGI.includes(j) || typeof id!=='string' || !ID_AMAN.test(id)) return false;
+  on=!!on; if(keadaanSatu(j,id)===on) return false;
+  if(j==='bukaan'){
+    const b=cariBukaanId(id); if(!b) return false;
+    const w=b.w, L=Math.hypot(w.x2-w.x1,w.z2-w.z1)||1, u=clamp(b.o.at/L,0,1);
+    sfx(on?'pintuBuka':'pintuTutup', new THREE.Vector3(w.x1+(w.x2-w.x1)*u, levelElevation(b.lv)+1, w.z1+(w.z2-w.z1)*u));
+    BUKA.set(id,on?1:0); return true;
+  }
+  const g=grupObjek(id); if(!g.length) return false;
+  const titik=titikGrup(g[0]);
+  if(j==='lampu'||j==='api'){ if(on) MATI.delete(id); else MATI.add(id); for(const x of g) terapkanNyala(x,on); LAMPU_T=0;
+    sfx(j==='api'?(on?'apiNyala':'apiPadam'):'klik',titik); }
+  else if(j==='tv'){ if(on) TV_NYALA.add(id); else TV_NYALA.delete(id); for(const x of g) terapkanTV(x,on); sfx(on?'tvNyala':'tvMati',titik); }
+  else if(j==='gorden'){ if(on) GORDEN_BUKA.add(id); else GORDEN_BUKA.delete(id); for(const x of g) terapkanGorden(x,on); sfx('gorden',titik); }
+  else if(j==='audio'){ sfx('klik',titik); if(on) mulaiMusik(id); else hentikanMusik(id); }
+  else if(j==='musik'){ if(on) mulaiMusikUnggah(id); else hentikanMusikUnggah(id); }
+  bayangKotor();
+  return true;
+}
+// keadaan seluruh rumah untuk peserta yang baru masuk
+function keadaanAksi(){
+  const buka=[];
+  for(const lv of PROJECT.levels) for(const w of lv.walls) for(const o of w.openings||[]) if(BUKA.has(o.id)) buka.push([o.id,BUKA.get(o.id)>0.5?1:0]);
+  return {buka, mati:[...MATI], tv:[...TV_NYALA], gorden:[...GORDEN_BUKA], audio:[...AUDIO.main.keys()], musik:[...MUSIK.main.keys()]};
+}
+function pasangKeadaanAksi(k){
+  if(!k||typeof k!=='object') return;
+  const daftar=x=>new Set((Array.isArray(x)?x:[]).slice(0,2000).filter(v=>typeof v==='string'&&ID_AMAN.test(v)));
+  for(const x of (Array.isArray(k.buka)?k.buka:[]).slice(0,2000)) if(Array.isArray(x)&&typeof x[0]==='string'&&cariBukaanId(x[0])) BUKA.set(x[0],x[1]?1:0);
+  const mati=daftar(k.mati), ubah=new Set([...MATI,...mati]);
+  MATI.clear(); for(const id of mati) MATI.add(id);
+  for(const id of ubah) for(const g of grupObjek(id)) terapkanNyala(g,!MATI.has(id));
+  LAMPU_T=0;
+  for(const [kunci,S,f] of [['tv',TV_NYALA,terapkanTV],['gorden',GORDEN_BUKA,terapkanGorden]]){
+    const baru=daftar(k[kunci]), semua=new Set([...S,...baru]); S.clear(); for(const id of baru) S.add(id);
+    for(const id of semua) for(const g of grupObjek(id)) f(g,S.has(id));
+  }
+  const audio=daftar(k.audio); for(const id of [...AUDIO.main.keys()]) if(!audio.has(id)) hentikanMusik(id); for(const id of audio) if(!AUDIO.main.has(id)) mulaiMusik(id);
+  const musik=daftar(k.musik); for(const id of [...MUSIK.main.keys()]) if(!musik.has(id)) hentikanMusikUnggah(id); for(const id of musik) if(!MUSIK.main.has(id)) mulaiMusikUnggah(id);
+  bayangKotor();
+}
+// suasana & langit host — tamu mengikuti
+function adeganKini(){ const lp=langitP(); return {mood:MOOD, langit:{mode:lp.mode, jenis:lp.jenis, id:lp.id, nama:lp.nama, putar:+lp.putar||0}}; }
+function pasangAdegan(a){
+  if(!a||typeof a!=='object') return;
+  const lp=langitP(), g=a.langit&&typeof a.langit==='object'?a.langit:{};
+  lp.pilih='manual';                       // tamu tidak mengacak panorama sendiri saat suasana berganti
+  if(SUASANA[a.mood] && a.mood!==MOOD) setSuasana(a.mood);
+  if(LANGIT_JENIS[g.jenis]) lp.jenis=g.jenis;
+  if(g.mode==='prosedural'){ if(lp.mode==='foto') matikanLangitFoto(); }
+  else if(g.mode==='foto' && typeof g.id==='string' && ID_AMAN.test(g.id) && g.id!=='unggah' && g.id!==(FOTO.target||FOTO.id)){
+    lp.mode='foto'; muatLangitFoto({id:g.id, nama:typeof g.nama==='string'?g.nama.slice(0,120):''}); }
+  const pt=+g.putar; if(Number.isFinite(pt) && Math.abs(pt-(+lp.putar||0))>0.01) putarLangit(pt);
+  renderLangitUI();
+}
+// satu-satunya pintu yang dipakai modul/lobi.js untuk aksi, suasana & piano
+window.JEMBATAN_LOBI={terapkanAksiLuar, keadaanAksi, pasangKeadaanAksi, adeganKini, pasangAdegan, bunyiPianoLuar};
 function stepBidik(dt){
   AIM_T-=dt; if(AIM_T>0) return; AIM_T=0.1;
   aimRay.setFromCamera({x:0,y:0},camera);

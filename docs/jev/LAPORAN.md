@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 52 GO · 3 DEFER · 5 NO-GO dari 60 item.
+**Ringkasan:** 53 GO · 3 DEFER · 5 NO-GO dari 61 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -16,6 +16,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-062 | Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL | terkirim | 0.80 | 113,1 jt | 1,4 jt | 166.6× | 82.8× | 0.1 bln | 6 | **GO** |
 | JEV-076 | Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek | terkirim | 0.65 | 109,7 jt | 1,4 jt | 161.5× | 80.3× | 0.1 bln | 7 | **GO** |
 | JEV-071 | Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh | terkirim | 0.65 | 16,8 jt | 0,2 jt | 153.7× | 76.3× | 0.1 bln | 7 | **GO** |
+| JEV-078 | Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua | terkirim | 0.65 | 86,9 jt | 1,2 jt | 143.9× | 71.4× | 0.1 bln | 7 | **GO** |
 | JEV-070 | Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata | terkirim | 0.80 | 57,6 jt | 0,8 jt | 138.6× | 68.8× | 0.1 bln | 8 | **GO** |
 | JEV-058 | Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit | terkirim | 0.65 | 92,1 jt | 1,5 jt | 121.8× | 60.4× | 0.2 bln | 9 | **GO** |
 | JEV-077 | Lobi main bareng: host membuat ruang dari tautan lihat, tamu masuk dengan nama sebagai avatar, jalan-jalan & mengobrol bersama, pilihan lihat saja / bangun bareng, maks. orang per ruang | terkirim | 0.65 | 173,9 jt | 3 jt | 114.9× | 57.0× | 0.1 bln | 9 | **GO** |
@@ -81,6 +82,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-062 Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL — GO.** ROI 166.6× ≥ 1, payback 0.1 bln.
 - **JEV-076 Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek — GO.** ROI 161.5× ≥ 1, payback 0.1 bln.
 - **JEV-071 Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh — GO.** ROI 153.7× ≥ 1, payback 0.1 bln.
+- **JEV-078 Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua — GO.** ROI 143.9× ≥ 1, payback 0.1 bln.
 - **JEV-070 Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata — GO.** ROI 138.6× ≥ 1, payback 0.1 bln.
 - **JEV-058 Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit — GO.** ROI 121.8× ≥ 1, payback 0.2 bln.
 - **JEV-077 Lobi main bareng: host membuat ruang dari tautan lihat, tamu masuk dengan nama sebagai avatar, jalan-jalan & mengobrol bersama, pilihan lihat saja / bangun bareng, maks. orang per ruang — GO.** ROI 114.9× ≥ 1, payback 0.1 bln.

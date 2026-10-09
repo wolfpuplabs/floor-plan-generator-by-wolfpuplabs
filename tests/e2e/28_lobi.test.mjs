@@ -127,6 +127,49 @@ export const tes = {
       assert.equal(await B.evaluate(() => !!document.querySelector('#lobiMasuk')), false);
     } finally { await L.tutup(); }
   },
+  'lobi: suasana host diikuti tamu; lampu, pintu, TV & piano terasa oleh semua (JEV-078)': async () => {
+    const L = await lingkungan();
+    try {
+      const H = await L.buka(L.url);
+      const ids = await H.evaluate(() => {
+        PROJECT.levels[0].walls = [[0, 0, 8, 0], [8, 0, 8, 6], [8, 6, 0, 6], [0, 6, 0, 0]].map(([a, b, c, d]) => ({ id: uid('w'), x1: a, z1: b, x2: c, z2: d, thickness: 0.15, openings: [] }));
+        const pintu = { id: uid('o'), type: 'door', at: 4, width: 0.9, sill: 0, head: 2.1 }; PROJECT.levels[0].walls[0].openings.push(pintu);
+        PROJECT.levels[0].objects = [];
+        const taruh = (t, x, z) => { addObject('furn', t); const o = L().objects[L().objects.length - 1]; o.x = x; o.z = z; return o.id; };
+        const r = { pintu: pintu.id, lampu: taruh('wall_sconce', 2, 5.8), tv: taruh('tv_set', 6, 5.6), piano: taruh('piano', 2, 1) };
+        rebuildScene(); pushHistory(); return r;
+      });
+      // sebelum tamu masuk: host mematikan lampu & memilih senja
+      await H.evaluate(id => { setSuasana('senja'); pakai({ jenis: 'lampu', id, grp: findGroup('obj', id) }); }, ids.lampu);
+      const undangan = await bukaRuang(H, 'Budi', 'lihat', 3);
+      const G = await L.buka(undangan); await masuk(G, 'Sari');
+      await G.waitForFunction(() => window.LOBI && LOBI.aktif, undefined, { timeout: 75000 });
+      // tamu masuk ke dunia yang sama: suasana & lampu mati ikut
+      assert.deepEqual(await G.evaluate(id => [MOOD, MATI.has(id)], ids.lampu), ['senja', true]);
+
+      // tamu (mode lihat saja) menyalakan TV & membuka pintu → host ikut
+      await G.evaluate(([tv, pintu]) => {
+        pakai({ jenis: 'tv', id: tv, grp: findGroup('obj', tv) });
+        const b = cariBukaanId(pintu); pakai({ jenis: 'bukaan', o: b.o });
+      }, [ids.tv, ids.pintu]);
+      const pintuG = await G.evaluate(id => keadaanSatu('bukaan', id), ids.pintu);
+      await H.waitForFunction(([tv, pintu, p]) => TV_NYALA.has(tv) && keadaanSatu('bukaan', pintu) === p, [ids.tv, ids.pintu, pintuG], { timeout: 25000 });
+      // host menyalakan lampu lagi → tamu ikut
+      await H.evaluate(id => pakai({ jenis: 'lampu', id, grp: findGroup('obj', id) }), ids.lampu);
+      await G.waitForFunction(id => !MATI.has(id), ids.lampu, { timeout: 25000 });
+      // host mengganti suasana → tamu ikut
+      await H.evaluate(() => setSuasana('malam'));
+      await G.waitForFunction(() => MOOD === 'malam', undefined, { timeout: 25000 });
+      // tamu memainkan piano → host mendengar not itu dari piano yang sama
+      await G.evaluate(id => { PIANO.grp = findGroup('obj', id); bunyiPiano(64); bunyiPiano(67); }, ids.piano);
+      await H.waitForFunction(id => PIANO.luar && PIANO.luar.has(id), ids.piano, { timeout: 25000 });
+      assert.equal(await G.evaluate(() => !PIANO.luar), true, 'not sendiri tidak dipantulkan balik ke pemain');
+      // pesan aksi/not palsu dari tamu: jenis/id/nada tak sah diabaikan, host tidak galat
+      await G.evaluate(() => { LOBI.host.send({ t: 'aksi', j: 'hapus', id: 'x' }); LOBI.host.send({ t: 'aksi', j: 'lampu', id: '../../x' }); LOBI.host.send({ t: 'nada', m: 1e9 }); LOBI.host.send({ t: 'adegan', a: { mood: 'siang' } }); });
+      await H.waitForTimeout(2000);
+      assert.equal(await H.evaluate(() => MOOD), 'malam', 'tamu tidak bisa mengganti suasana host');
+    } finally { await L.tutup(); }
+  },
   'api/ice: TURN hanya dari env, alamat disaring; tanpa env 501': async () => {
     const api = require('../../api/ice.js');
     assert.equal(api.iceDariEnv({}), null);
