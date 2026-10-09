@@ -100,8 +100,9 @@ export const tes = {
     assert.deepEqual(m, [['film', 'image/gif']]);
     const warna = new Set();
     // WebGL perangkat lunak di CI: satu bingkai gambar bisa 1–2 detik — beri waktu cukup
-    for (let i = 0; i < 120 && warna.size < 2; i++) { const s = await layar(page, id); if (s.px) warna.add(s.px.join(',')); await page.waitForTimeout(250); }
-    assert.deepEqual([...warna].sort(), ['0,0,255', '255,0,0'], 'kedua bingkai GIF tampil bergantian');
+    // bingkai pertama bisa belum tergambar (layar gelap) di mesin lambat: tunggu sampai merah DAN biru terlihat
+    for (let i = 0; i < 120 && !(warna.has('255,0,0') && warna.has('0,0,255')); i++) { const s = await layar(page, id); if (s.px) warna.add(s.px.join(',')); await page.waitForTimeout(250); }
+    assert.deepEqual([...warna].filter(w => w === '255,0,0' || w === '0,0,255').sort(), ['0,0,255', '255,0,0'], 'kedua bingkai GIF tampil bergantian: ' + [...warna].join(' | '));
     const B = await page.evaluate(() => { const j = sanitasiProyek(JSON.parse(JSON.stringify(PROJECT)));
       const jahat = sanitasiProyek({ ...JSON.parse(JSON.stringify(PROJECT)), media: { x1: { nama: 'a', mime: 'text/html', data: 'PGI+' } } });
       return [Object.keys(j.media).length, Object.keys(jahat.media).length]; });

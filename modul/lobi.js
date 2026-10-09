@@ -18,8 +18,10 @@
   const WARNA = ['#4ec9b0', '#f0a35e', '#6aa6ff', '#e86d8f', '#b38cf2', '#f2d15c', '#5ed37a', '#ff8a5c', '#5cc8f2', '#d9d9d9'];
   const STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
   const L = { aktif: false, peran: null, peer: null, ruang: null, mode: 'lihat', maks: MAKS, saya: null, nama: '', peserta: new Map(),
-    kon: new Map(), host: null, terakhir: '', tunda: 0, antri: null, avatar: new Map(), grup: null, obrBuka: true, belumBaca: 0, laju: new Map(), posLama: '', jeda: 0 };
+    kon: new Map(), host: null, terakhir: '', tunda: 0, antri: null, avatar: new Map(), grup: null, obrBuka: true, belumBaca: 0, laju: new Map(), posLama: '', jeda: 0,
+    adegan: '', kuota: new Map() };
   window.LOBI = L;
+  const { terapkanAksiLuar, keadaanAksi, pasangKeadaanAksi, adeganKini, pasangAdegan, bunyiPianoLuar } = window.JEMBATAN_LOBI;
 
   /* ---------- alat bantu ---------- */
   const teksAman = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -27,6 +29,19 @@
   const idAcak = n => { const h = 'abcdefghijklmnopqrstuvwxyz0123456789', b = crypto.getRandomValues(new Uint8Array(n)); let s = ''; for (const x of b) s += h[x % 36]; return s; };
   const warnaBebas = () => { const pakai = new Set([...L.peserta.values()].map(p => p.warna)); return WARNA.find(w => !pakai.has(w)) || WARNA[L.peserta.size % WARNA.length]; };
   const daftar = () => [...L.peserta.values()].map(p => ({ id: p.id, nama: p.nama, warna: p.warna, host: !!p.host }));
+  // aksi & not piano: kuota per peserta per detik (tombol ditekan berulang tidak membanjiri ruang)
+  function kuotaOk(id, jenis, maks) {
+    const t = performance.now(), k = id + jenis, q = L.kuota.get(k) || { t, n: 0 };
+    if (t - q.t > 1000) { q.t = t; q.n = 0; }
+    q.n++; L.kuota.set(k, q); return q.n <= maks;
+  }
+  const idAman = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(v);
+  // not piano: angka disaring sebelum menyentuh Web Audio
+  function nadaAman(d) {
+    const m = Math.round(+d.m);
+    if (!Number.isFinite(m) || m < 21 || m > 108) return null;
+    return { id: idAman(d.id) ? d.id : null, m, dt: angkaAman(d.dt, 0, 1), d: angkaAman(d.d, 0.1, 8) || 1.2, v: angkaAman(d.v, 0.02, 0.6) || 0.32 };
+  }
   function lajuOk(id) {                                     // obrolan: maks. ±3 pesan/detik per peserta
     const t = performance.now(), a = L.laju.get(id) || 0;
     if (t - a < 300) return false; L.laju.set(id, t); return true;
@@ -215,7 +230,7 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
       if (L.peserta.size >= L.maks) { k.send({ t: 'penuh', maks: L.maks }); setTimeout(() => k.close(), 600); return; }
       const p = { id, nama: teksAman(d.nama, 24) || 'Tamu', warna: warnaBebas() };
       L.kon.set(id, k); L.peserta.set(id, p);
-      k.send({ t: 'selamat', id, mode: L.mode, maks: L.maks, peserta: daftar(), s: JSON.stringify(subsetProyek()) });
+      k.send({ t: 'selamat', id, mode: L.mode, maks: L.maks, peserta: daftar(), s: JSON.stringify(subsetProyek()), a: adeganKini(), k: keadaanAksi() });
       siarkan({ t: 'masuk', p }, id); sistem(p.nama + ' masuk ruang'); renderPeserta();
       return;
     }
@@ -224,6 +239,17 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
     if (d.t === 'chat') {
       if (!lajuOk(id)) return; const teks = teksAman(d.teks, 300); if (!teks) return;
       const m = { t: 'chat', id, nama: p.nama, warna: p.warna, teks }; tampilPesan(m); siarkan(m);
+      return;
+    }
+    // interaksi (lampu, pintu, TV, gorden, musik) boleh di kedua mode — bukan mengubah rumah
+    if (d.t === 'aksi') {
+      if (!kuotaOk(id, 'a', 12) || !idAman(d.id)) return;
+      if (terapkanAksiLuar(d.j, d.id, !!d.on)) siarkan({ t: 'aksi', j: d.j, id: d.id, on: !!d.on }, id);
+      return;
+    }
+    if (d.t === 'nada') {
+      const n = kuotaOk(id, 'n', 40) && nadaAman(d); if (!n) return;
+      bunyiPianoLuar(n.id, n.m, n.dt, n.d, n.v); siarkan({ t: 'nada', ...n }, id);
       return;
     }
     if (d.t === 'proyek') {
@@ -316,6 +342,8 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
     }
     L.saya = L.peserta.get(sambut.id) || { id: String(sambut.id), nama, warna: WARNA[1] };
     if (typeof sambut.s === 'string') terapkanProyek(sambut.s, null);
+    // suasana, langit & keadaan interaksi host (lampu, pintu, TV, musik) — tamu masuk ke dunia yang sama
+    try { pasangAdegan(sambut.a); pasangKeadaanAksi(sambut.k); } catch (e) { console.warn('lobi', e); }
     if (L.mode === 'edit') bukaEdit();
     panelObrolan(); renderPeserta();
     sistem(L.mode === 'edit' ? 'Kamu masuk — boleh ikut membangun rumah ini' : 'Kamu masuk — ketuk Jalan-jalan untuk berkeliling bersama');
@@ -331,6 +359,9 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
     }
     if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
     if (d.t === 'proyek') { terapkanProyek(d.s, teksAman(d.dari, 24)); return; }
+    if (d.t === 'aksi') { if (idAman(d.id)) terapkanAksiLuar(d.j, d.id, !!d.on); return; }
+    if (d.t === 'nada') { const n = nadaAman(d); if (n) bunyiPianoLuar(n.id, n.m, n.dt, n.d, n.v); return; }
+    if (d.t === 'adegan') { pasangAdegan(d.a); return; }
     if (d.t === 'tutup') { sistem('Ruang ditutup oleh host'); toast('Ruang ditutup oleh host'); tutup(); }
   }
   // tamu "bangun bareng": keluar dari mode lihat-saja, alat edit tampil
@@ -346,6 +377,14 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
     else if (L.host && L.host.open) { L.host.send({ t: 'chat', teks }); }
   }
   L.kirimChat = kirimChat;
+  // dipanggil index.html: interaksi & not piano milik sendiri
+  function kirim(m) {
+    if (!L.aktif) return;
+    if (L.peran === 'host') siarkan(m);
+    else if (L.host && L.host.open) L.host.send(m);
+  }
+  L.aksi = (j, id, on) => { if (idAman(id)) kirim({ t: 'aksi', j, id, on: !!on }); };
+  L.nada = (id, m, dt, d, v) => { const n = nadaAman({ id, m, dt, d, v }); if (n) kirim({ t: 'nada', ...n }); };
   let detak = null, tLalu = 0;
   function mulaiDetak() {
     if (detak) return;
@@ -353,6 +392,9 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
       if (!L.aktif) return;
       const pos = posSaya(), kunci = JSON.stringify(pos);
       if (L.peran === 'host') {
+        // suasana / langit diganti host → semua tamu ikut
+        const a = adeganKini(), ka = JSON.stringify(a);
+        if (ka !== L.adegan) { L.adegan = ka; siarkan({ t: 'adegan', a }); }
         L.saya.pos = posAman(pos);
         siarkan({ t: 'pos', d: [...L.peserta.values()].map(p => ({ id: p.id, ...(p.pos ? { jalan: 1, ...p.pos } : { jalan: 0 }) })) });
       } else if (kunci !== L.posLama && L.host && L.host.open) { L.posLama = kunci; L.host.send({ t: 'pos', ...pos }); }

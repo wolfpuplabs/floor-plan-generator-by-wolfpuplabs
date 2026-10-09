@@ -3152,6 +3152,68 @@
     "target": "≥ 5",
     "tinjau": "2027-01-09"
    }
+  },
+  {
+   "id": "JEV-078",
+   "judul": "Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di lobi main bareng tiap peserta melihat dunianya sendiri: host mengganti suasana atau langit, tamu tidak melihatnya; satu orang menyalakan lampu atau bermain piano, yang lain tidak melihat/mendengar apa-apa.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-09 (\"kalo setting scene dirubah sama host di yang lain juga berubah, terus pas online multiplayer kalo satu user interaksi user yg lain juga ngerasain efeknya (misal matiin/ nyalain lampu, main piano)\")",
+    "alternatif": [
+     "kirim ulang seluruh rumah tiap interaksi (berat, memotong animasi)",
+     "hanya host yang boleh berinteraksi"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.25,
+      "pakaiPerTahun": 10,
+      "menitHemat": 10
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.015
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "aksi dikirim sebagai keadaan akhir; jenis dari daftar putih, id objek ID_AMAN dan harus ada di rumah, kuota 12 aksi & 40 not per detik per peserta, nada/durasi/volume dijepit; suasana hanya dari host"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru di luar kanal WebRTC peserta"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa aset baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pesan puluhan bita hanya saat ada aksi; suasana dibandingkan 10×/detik di host tanpa kirim bila tetap"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "bunyi aksi peserta lain datang dari posisi objeknya (HRTF), tuts piano ikut menyala bila panel piano yang sama terbuka"
+    }
+   },
+   "metrik": {
+    "nama": "aksi bersama per sesi lobi",
+    "target": "≥ 3",
+    "tinjau": "2027-01-09"
+   }
   }
  ]
 }
