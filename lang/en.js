@@ -1204,6 +1204,8 @@ window.KAMUS_EN={
   "Tautan pendek belum aktif — aktifkan Vercel Blob di proyek Vercel (Storage → Blob), lalu Redeploy.":"Short links are not active yet — enable Vercel Blob in the Vercel project (Storage → Blob), then Redeploy.",
   "Tautan pendek tidak bisa dihubungi (luring atau hosting tanpa fungsi server, mis. GitHub Pages).":"The short-link service can't be reached (offline, or hosting without server functions such as GitHub Pages).",
   "Keluar layar penuh":"Exit full screen",
+  "Peramban menolak menyalin otomatis — tekan lama tautan di atas lalu pilih Salin":"The browser blocked automatic copying — long-press the link above and choose Copy",
+  "Langit 360° sendiri tidak ikut.":"Your own 360° sky is not included.",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",

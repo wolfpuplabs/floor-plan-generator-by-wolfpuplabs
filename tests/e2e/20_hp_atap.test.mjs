@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { CORS, bukaApp } from './harness.mjs';
 
 // JEV-069: (1) tautan lihat di HP — bilah lihat, bilah lantai, petunjuk & bilah jalan tidak saling
-// menumpuk; (2) status atap tertutup ikut proyek/tautan dan jalan-jalan selalu beratap;
+// menumpuk; (2) status atap tertutup ikut proyek/tautan (JEV-074: mode jalan mengikuti pilihan itu);
 // (3) tautan pendek yang gagal menyebut sebabnya
 const require = createRequire(import.meta.url);
 const api = require('../../api/tautan.js');
@@ -20,7 +20,7 @@ const kotakEl = (page, sel) => page.evaluate(s => { const e = document.querySele
   const r = e.getBoundingClientRect(); return r.width ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null; }, sel);
 
 export const tes = {
-  'atap tertutup tersimpan di proyek & ikut tautan; jalan-jalan selalu beratap': async (page) => {
+  'atap tertutup tersimpan di proyek & ikut tautan; mode jalan mengikuti pilihan atap': async (page) => {
     await rumah2(page, true);
     const j = await page.evaluate(() => JSON.parse(JSON.stringify(PROJECT)));
     assert.equal(j.atap.tutup, true, 'status atap ikut berkas proyek');
@@ -28,11 +28,11 @@ export const tes = {
     await page.evaluate(j => { toggleAtap(false); muatProyekObjek(j); }, j);
     assert.equal(await page.evaluate(() => ATAP_TUTUP), true);
     assert.ok(await jumlahAtap(page) > 0);
-    // atap dibuka: editor tanpa atap, jalan-jalan tetap beratap, keluar → terbuka lagi
+    // atap dibuka: editor & mode jalan sama-sama tanpa atap (JEV-074: tidak lagi ditutup otomatis)
     await page.evaluate(() => toggleAtap(false));
     assert.equal(await jumlahAtap(page), 0);
     await page.evaluate(() => enterFPS());
-    assert.ok(await jumlahAtap(page) > 0, 'mode jalan harus beratap');
+    assert.equal(await jumlahAtap(page), 0, 'mode jalan tidak menutup atap sendiri');
     await page.evaluate(() => exitFPS());
     assert.equal(await jumlahAtap(page), 0);
     assert.equal(await page.evaluate(() => sanitasiProyek({ levels: [{}], atap: { tutup: 'ya' } }).atap.tutup), undefined, 'hanya true yang diterima');
