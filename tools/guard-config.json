@@ -17,7 +17,8 @@
     "3d.si.edu": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
     "www.fab.com": "hanya tautan pencarian yang dibuka di tab baru (tanpa permintaan jaringan dari aplikasi) (JEV-060)",
     "fuel.gazebosim.org": "daftar, thumbnail & unduhan ZIP Google Scanned Objects (CC-BY 4.0, API publik tanpa token) (JEV-063)",
-    "app.gazebosim.org": "tautan kredit/halaman model Google Scanned Objects (tidak ada permintaan jaringan) (JEV-063)"
+    "app.gazebosim.org": "tautan kredit/halaman model Google Scanned Objects (tidak ada permintaan jaringan) (JEV-063)",
+    "0.peerjs.com": "server sinyal PeerJS publik untuk \"main bareng\" — hanya mempertemukan peramban; isi lewat kanal WebRTC terenkripsi antar-peserta (JEV-077)"
   },
   "anggaran": {
     "indexHtmlKB": 950,

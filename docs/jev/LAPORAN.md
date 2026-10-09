@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 51 GO · 3 DEFER · 5 NO-GO dari 59 item.
+**Ringkasan:** 52 GO · 3 DEFER · 5 NO-GO dari 60 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -18,6 +18,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-071 | Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh | terkirim | 0.65 | 16,8 jt | 0,2 jt | 153.7× | 76.3× | 0.1 bln | 7 | **GO** |
 | JEV-070 | Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata | terkirim | 0.80 | 57,6 jt | 0,8 jt | 138.6× | 68.8× | 0.1 bln | 8 | **GO** |
 | JEV-058 | Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit | terkirim | 0.65 | 92,1 jt | 1,5 jt | 121.8× | 60.4× | 0.2 bln | 9 | **GO** |
+| JEV-077 | Lobi main bareng: host membuat ruang dari tautan lihat, tamu masuk dengan nama sebagai avatar, jalan-jalan & mengobrol bersama, pilihan lihat saja / bangun bareng, maks. orang per ruang | terkirim | 0.65 | 173,9 jt | 3 jt | 114.9× | 57.0× | 0.1 bln | 9 | **GO** |
 | JEV-065 | Lantai hantu tanpa kaca putih + material lantai per tingkat + layar TV hidup (saluran bawaan, video, GIF) | terkirim | 0.75 | 103,8 jt | 1,8 jt | 114.3× | 56.7× | 0.1 bln | 9 | **GO** |
 | JEV-072 | Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan | terkirim | 0.80 | 20,7 jt | 0,4 jt | 103.2× | 51.1× | 0.2 bln | 10 | **GO** |
 | JEV-068 | Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi) | terkirim | 0.65 | 60,5 jt | 1,2 jt | 99.8× | 49.4× | 0.2 bln | 10 | **GO** |
@@ -82,6 +83,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-071 Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh — GO.** ROI 153.7× ≥ 1, payback 0.1 bln.
 - **JEV-070 Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata — GO.** ROI 138.6× ≥ 1, payback 0.1 bln.
 - **JEV-058 Tautan lihat-saja: proyek di fragmen URL, penerima bisa jalan-jalan tanpa bisa mengedit — GO.** ROI 121.8× ≥ 1, payback 0.2 bln.
+- **JEV-077 Lobi main bareng: host membuat ruang dari tautan lihat, tamu masuk dengan nama sebagai avatar, jalan-jalan & mengobrol bersama, pilihan lihat saja / bangun bareng, maks. orang per ruang — GO.** ROI 114.9× ≥ 1, payback 0.1 bln.
 - **JEV-065 Lantai hantu tanpa kaca putih + material lantai per tingkat + layar TV hidup (saluran bawaan, video, GIF) — GO.** ROI 114.3× ≥ 1, payback 0.1 bln.
 - **JEV-072 Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan — GO.** ROI 103.2× ≥ 1, payback 0.2 bln.
 - **JEV-068 Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi) — GO.** ROI 99.8× ≥ 1, payback 0.2 bln.

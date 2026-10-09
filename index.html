@@ -6,7 +6,7 @@
 <!-- GUARDRAIL G4 — Content Security Policy: skrip hanya dari halaman ini dan
      jsDelivr (terkunci SRI), tanpa plugin/objek, tanpa <base> sisipan, tanpa form
      keluar. Unduhan data (HDRI/model) dibatasi ke HTTPS. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: blob: https: wss://0.peerjs.com; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Plan23D — Editor Denah, Dinding, Lantai & Furnitur</title>
 <style>
@@ -40,8 +40,9 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 
 .group{display:flex;flex-direction:column;gap:6px}
 .group>label,.section-title{font-size:.74rem;color:var(--muted);font-weight:600}
-.tanah-alat{flex-wrap:wrap;gap:6px}
-.tanah-alat .btn.active{background:#1f2f2c;color:var(--accent);border-color:var(--accent)}
+.tanah-alat,.lobi-mode{flex-wrap:wrap;gap:6px}
+.tanah-alat .btn.active,.lobi-mode .btn.active{background:#1f2f2c;color:var(--accent);border-color:var(--accent)}
+#lobiDaftar{margin:4px 0 8px 18px;font-size:.78rem;color:var(--muted)}
 .section-title{text-transform:uppercase;letter-spacing:.6px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:6px;margin-top:4px}
 .row{display:flex;gap:8px;align-items:center}
 .row>*{flex:1;min-width:0}
@@ -746,6 +747,24 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <input type="text" id="bagikanUrl" readonly aria-label="Tautan lihat-saja">
         <div class="row"><button class="btn sm" id="bagikanSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin tautan</button><button class="btn sm ghost" id="bagikanKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
         <p class="hint" id="bagikanInfo"></p>
+      </div>
+      <div class="section-title">Main bareng (lobi)</div>
+      <div id="lobiSiap">
+        <p class="hint">Undang teman masuk ke rumah ini: tiap orang menulis nama, tampil sebagai karakter, jalan-jalan bersama &amp; mengobrol. Koneksi langsung antar-peramban — rumah tidak disimpan di server.</p>
+        <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Host"></div>
+        <div class="group"><label>Izin tamu</label>
+          <div class="row lobi-mode" role="group" aria-label="Izin tamu"><button class="btn sm ghost active" data-lobi-mode="lihat" aria-pressed="true">Lihat saja</button><button class="btn sm ghost" data-lobi-mode="edit" aria-pressed="false">Bangun bareng</button></div>
+          <p class="hint">Lihat saja: tamu jalan-jalan &amp; mengobrol. Bangun bareng: tamu juga ikut mengubah rumah.</p>
+        </div>
+        <div class="group"><label for="lobiMaks">Maks. orang per ruang (termasuk kamu)</label><select id="lobiMaks"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option selected>10</option></select></div>
+        <button class="btn" id="lobiBuat"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat ruang &amp; undangan</button>
+      </div>
+      <div id="lobiAktif" class="group" hidden>
+        <p class="hint" id="lobiInfo"></p>
+        <input type="text" id="lobiUrl" readonly aria-label="Tautan undangan">
+        <div class="row"><button class="btn sm" id="lobiSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin undangan</button><button class="btn sm ghost" id="lobiKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
+        <ul id="lobiDaftar"></ul>
+        <button class="btn danger" id="lobiTutup">Tutup ruang</button>
       </div>
       <div class="section-title">AR / Model Viewer</div>
       <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
@@ -6856,6 +6875,7 @@ function pushHistory(){
   HIST.idx=HIST.stack.length-1;
   HIST.label='Edit properti';
   updateHistUI();
+  if(window.LOBI) window.LOBI.proyekBerubah();               // main bareng: perubahan dikirim ke peserta
 }
 function scheduleHistory(){
   clearTimeout(HIST.timer);
@@ -6871,6 +6891,7 @@ function applyHistory(i){
   HIST.idx=i;
   renderLevels(); rebuildScene();
   updateHistUI();
+  if(window.LOBI) window.LOBI.proyekBerubah();
 }
 function undo(){
   if(LIHAT.on) return;
@@ -13150,6 +13171,45 @@ $('#bagikanKirim').onclick=async()=>{
   if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Jalan-jalan di '+PROJECT.name+' (lihat saja)', url:u}); }catch(e){} }
   else $('#bagikanSalin').click();
 };
+/* LOBI main bareng (JEV-077): modul terpisah, dimuat hanya saat dipakai — editor biasa tidak
+   mengunduh pustaka WebRTC sama sekali */
+const MODUL={};
+function muatModul(nama){
+  if(!/^[a-z]+$/.test(nama)) return Promise.reject(new Error('modul tidak dikenal'));
+  return MODUL[nama]||(MODUL[nama]=new Promise((ok,no)=>{
+    const s=document.createElement('script'); s.src='modul/'+nama+'.js?v=1';
+    s.onload=()=>ok(); s.onerror=()=>{ delete MODUL[nama]; no(new Error('modul '+nama+' tidak bisa dimuat — periksa koneksi')); };
+    document.head.appendChild(s);
+  }));
+}
+const LOBI_UI={mode:'lihat'};
+try{ $('#lobiNamaHost').value=localStorage.getItem('lobiNama')||''; }catch(e){}
+for(const b of $$('[data-lobi-mode]')) b.onclick=()=>{
+  LOBI_UI.mode=b.dataset.lobiMode;
+  for(const x of $$('[data-lobi-mode]')){ const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-pressed',String(on)); }
+};
+$('#lobiBuat').onclick=async()=>{
+  if(typeof CompressionStream!=='function') return toast('Peramban ini belum bisa membuat tautan — perbarui ke iOS 16.4 / Chrome 80 ke atas');
+  if(proyekKosong()) return toast('Proyek masih kosong — buat dinding atau muat rumah contoh dulu');
+  if(typeof RTCPeerConnection!=='function') return toast('Peramban ini tidak mendukung koneksi langsung (WebRTC)');
+  const btn=$('#lobiBuat'); btn.disabled=true;
+  try{
+    await muatModul('lobi');
+    await window.LOBI.buka({nama:$('#lobiNamaHost').value, mode:LOBI_UI.mode, maks:+$('#lobiMaks').value});
+  }catch(e){ toast('Ruang gagal dibuka: '+(e.message||e)); }
+  finally{ btn.disabled=false; }
+};
+$('#lobiSalin').onclick=async()=>{
+  const u=$('#lobiUrl').value; if(!u) return;
+  if(await salinTeks(u)) toast('Undangan disalin');
+  else { const i=$('#lobiUrl'); i.focus(); i.setSelectionRange(0,u.length); toast('Peramban menolak menyalin otomatis — tekan lama tautan di atas lalu pilih Salin'); }
+};
+$('#lobiKirim').onclick=async()=>{
+  const u=$('#lobiUrl').value; if(!u) return;
+  if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Ayo masuk ke '+PROJECT.name+' bareng', url:u}); }catch(e){} }
+  else $('#lobiSalin').click();
+};
+$('#lobiTutup').onclick=()=>{ if(window.LOBI) window.LOBI.tutup(); toast('Ruang ditutup'); };
 /* penerima tautan: mode lihat — jalan-jalan & interaksi (pintu, lampu, duduk) boleh,
    mengubah proyek tidak */
 // galat tautan tampil TETAP di bilah lihat-saja (toast hilang dalam 2½ detik — di HP pemakai
@@ -15058,7 +15118,9 @@ window.__siap=true;
 // beberapa detik dan tidak boleh menahan tampilan pertama
 if(/^#(lihat|l)=/.test(location.hash)){
   document.body.classList.add('lihat'); $('#loader-txt').textContent='Membuka rumah yang dibagikan…'; $('#loader').classList.add('on');
-  const pendek=location.hash.match(/^#l=([A-HJ-NP-Za-km-z2-9]{10})$/);
+  // undangan main bareng: …&r=<ruang> di ujung tautan lihat-saja
+  const [hashRumah,ruangLobi]=(()=>{ const m=location.hash.match(/^(.*)&r=(p23d-[a-z0-9]{12})$/); return m?[m[1],m[2]]:[location.hash,null]; })();
+  const pendek=hashRumah.match(/^#l=([A-HJ-NP-Za-km-z2-9]{10})$/);
   addEventListener('load',()=>setTimeout(async()=>{
     try{
       if(pendek){
@@ -15066,7 +15128,8 @@ if(/^#(lihat|l)=/.test(location.hash)){
         if(!r||!r.ok) throw new Error(r&&r.status===404?'tautan tidak ditemukan atau sudah dihapus':'tautan pendek tidak bisa dimuat — periksa koneksi internet');
         const buf=new Uint8Array(await r.arrayBuffer()); if(buf.length>BAGI.batasKode) throw new Error('tautan terlalu besar');
         await bukaTautanLihat('',buf);
-      } else await bukaTautanLihat(location.hash.slice(7));
+      } else await bukaTautanLihat(hashRumah.slice(7));
+      if(ruangLobi) muatModul('lobi').then(()=>window.LOBI.tawarGabung(ruangLobi)).catch(e=>toast('Ruang main bareng tidak bisa dibuka: '+(e.message||e)));
     }catch(e){ gagalTautanLihat(e); }
     finally{ $('#loader').classList.remove('on'); }
   },0),{once:true});

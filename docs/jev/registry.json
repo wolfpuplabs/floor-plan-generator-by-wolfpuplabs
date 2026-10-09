@@ -3089,6 +3089,69 @@
     "target": "≥ 0,3",
     "tinjau": "2027-01-09"
    }
+  },
+  {
+   "id": "JEV-077",
+   "judul": "Lobi main bareng: host membuat ruang dari tautan lihat, tamu masuk dengan nama sebagai avatar, jalan-jalan & mengobrol bersama, pilihan lihat saja / bangun bareng, maks. orang per ruang",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tautan lihat-saja hanya bisa dijelajahi sendirian; pemilik tidak bisa menemani klien/teman berkeliling rumah, berbicara tentang ruangan, atau merancang bersama dari jarak jauh.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-09 (\"dibikin jadi kaya lobby multiplayer online game, yg ngeshare jadi host lobby … tulis nama, jadi icon karakter user, jalan2 di dalem bareng, bisa chat … toggle pilihan view only atau bisa edit/build bareng … batasan max user per invitation session biar ga traffic (misal 10 orang)\"); melanjutkan JEV-047 (DEFER karena penyimpanan cloud) dengan desain tanpa penyimpanan server",
+    "alternatif": [
+     "server WebSocket sendiri (biaya & data lewat server pemilik situs)",
+     "layanan realtime berbayar (Firebase/Ably: akun, kuota, data di pihak ketiga)",
+     "tetap sendirian (berbagi layar lewat aplikasi rapat)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 10,
+     "ujiJam": 4,
+     "pemeliharaanJamPerTahun": 3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.25,
+      "pakaiPerTahun": 10,
+      "menitHemat": 20
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "semua pesan peer = masukan tak tepercaya: jenis disaring, teks dipotong & hanya lewat textContent, angka posisi dijepit, laju obrolan dibatasi, rumah lewat sanitasiProyek() & batas 3 MB; ruang 'lihat saja' menolak perubahan tamu di host; id ruang acak 12 karakter (crypto); PeerJS dikunci versi + SRI, modul dimuat dari origin sendiri"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada akun & tidak ada penyimpanan server: obrolan, posisi & rumah lewat kanal WebRTC (DTLS) langsung antar-peserta; server sinyal 0.peerjs.com hanya melihat id ruang & alamat IP untuk mempertemukan; peserta saling melihat alamat IP (sifat WebRTC) — disebut di keterangan; ruang hilang saat host menutup tab"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "PeerJS MIT; server sinyal publik gratis tanpa kunci"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul & pustaka hanya diunduh saat lobi dipakai; posisi 10×/detik (puluhan bita), rumah dikirim hanya saat berubah (debounce 250 ms); maks. 10 orang per ruang (bisa diturunkan host)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kartu masuk berlabel dialog, input berlabel, obrolan bisa diciutkan & punya lencana belum dibaca; Enter mengirim"
+    }
+   },
+   "metrik": {
+    "nama": "ruang dengan ≥ 2 peserta per minggu",
+    "target": "≥ 5",
+    "tinjau": "2027-01-09"
+   }
   }
  ]
 }

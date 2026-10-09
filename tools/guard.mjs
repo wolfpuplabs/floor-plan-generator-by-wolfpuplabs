@@ -8,6 +8,10 @@ import { fileURLToPath } from 'node:url';
 const DIR = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.join(DIR, '..');
 const cfg = JSON.parse(fs.readFileSync(path.join(DIR, 'guard-config.json'), 'utf8'));
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// modul yang dimuat belakangan (modul/*.js) ikut diperiksa host, CDN, sink & eval — kecuali anggaran ukuran index.html
+const modul = fs.existsSync(path.join(ROOT, 'modul')) ? fs.readdirSync(path.join(ROOT, 'modul')).filter(f => /\.js$/.test(f)).sort() : [];
+const kodeModul = modul.map(f => fs.readFileSync(path.join(ROOT, 'modul', f), 'utf8'));
+const semuaKode = [html, ...kodeModul].join('\n');
 const hasil = [];
 const cek = (kode, lolos, pesan) => hasil.push({ kode, lolos: !!lolos, pesan });
 
@@ -15,7 +19,9 @@ const cek = (kode, lolos, pesan) => hasil.push({ kode, lolos: !!lolos, pesan });
 const skrip = [...html.matchAll(/<script\b[^>]*\bsrc="(https?:[^"]+)"[^>]*>/g)];
 const tanpaSRI = skrip.filter(m => !/\bintegrity="sha(256|384|512)-/.test(m[0]) || !/\bcrossorigin=/.test(m[0]));
 cek('G-SRI', !tanpaSRI.length, tanpaSRI.length ? 'tanpa SRI: ' + tanpaSRI.map(m => m[1]).join(', ') : `${skrip.length} skrip luar terkunci SRI`);
-const takTerkunci = [...html.matchAll(/https:\/\/cdn\.jsdelivr\.net\/npm\/((?:@[^/@]+\/)?[^/@"']+)(@[^/"']*)?/g)].filter(m => !/^@\d+\.\d+\.\d+$/.test(m[2] || ''));
+const takTerkunci = [...semuaKode.matchAll(/https:\/\/cdn\.jsdelivr\.net\/npm\/((?:@[^/@]+\/)?[^/@"']+)(@[^/"']*)?/g)].filter(m => !/^@\d+\.\d+\.\d+$/.test(m[2] || ''));
+const modulTanpaSRI = modul.filter((f, i) => /cdn\.jsdelivr\.net/.test(kodeModul[i]) && !/sha(256|384|512)-[A-Za-z0-9+/=]{40,}/.test(kodeModul[i]));
+cek('G-SRI-MODUL', !modulTanpaSRI.length, modulTanpaSRI.length ? 'modul memuat CDN tanpa SRI: ' + modulTanpaSRI.join(', ') : `${modul.length} modul diperiksa`);
 cek('G-PIN', !takTerkunci.length, takTerkunci.length ? 'versi tidak dikunci: ' + takTerkunci.map(m => m[0]).join(', ') : 'semua paket CDN terkunci versi x.y.z');
 
 // G-CSP: kebijakan ada & tidak dilonggarkan
@@ -28,7 +34,7 @@ if (/script-src[^;]*\s(https:|\*)(\s|;|$)/.test(csp)) cspSalah.push('script-src 
 cek('G-CSP', !cspSalah.length, cspSalah.join('; ') || 'CSP utuh');
 
 // G-HOST: host luar hanya dari daftar izin (keputusan privasi/hukum tercatat)
-const host = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)].map(m => m[1].toLowerCase()));
+const host = new Set([...semuaKode.matchAll(/https?:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)].map(m => m[1].toLowerCase()));
 const asing = [...host].filter(h => !cfg.hostDiizinkan[h] && !/\.example$/.test(h));
 cek('G-HOST', !asing.length, asing.length ? 'host belum disetujui: ' + asing.join(', ') : `${host.size} host, semua di daftar izin`);
 
@@ -36,8 +42,9 @@ cek('G-HOST', !asing.length, asing.length ? 'host belum disetujui: ' + asing.joi
 const rx = new RegExp(cfg.identitasTakTepercaya);
 const sink = [], semua = [];
 // satu pernyataan penuh (bisa multi-baris) sejak innerHTML= / insertAdjacentHTML( sampai ';' di akhir baris
-for (const st of html.matchAll(/(?:innerHTML\s*\+?=|insertAdjacentHTML\s*\()([\s\S]*?);[ \t]*(?:\/\/[^\n]*)?\n/g)) {
-  const baris = html.slice(0, st.index).split('\n').length;
+for (const [nama, teks] of [['index.html', html], ...modul.map((f, i) => ['modul/' + f, kodeModul[i]])])
+for (const st of teks.matchAll(/(?:innerHTML\s*\+?=|insertAdjacentHTML\s*\()([\s\S]*?);[ \t]*(?:\/\/[^\n]*)?\n/g)) {
+  const baris = (nama === 'index.html' ? '' : nama + ' ') + teks.slice(0, st.index).split('\n').length;
   for (const m of st[1].matchAll(/\$\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g)) {
     semua.push(baris);
     if (rx.test(m[1]) && !/^\s*(esc|fmt|ikonObjek)\(/.test(m[1])) sink.push(`baris ${baris}: \${${m[1].slice(0, 60)}}`);
@@ -47,7 +54,7 @@ cek('G-SINK', !sink.length, sink.length ? 'tanpa esc(): ' + sink.join(' · ') : 
 cek('G-SINK-RATCHET', semua.length <= cfg.anggaran.innerHTMLInterpolasi, `${semua.length} interpolasi innerHTML (batas ${cfg.anggaran.innerHTMLInterpolasi}) — utamakan textContent/el()`);
 
 // G-EVAL: tidak ada eksekusi kode dari teks
-const evalB = html.split('\n').map((b, i) => [b, i + 1]).filter(([b]) => /\beval\s*\(|new Function\s*\(|set(Timeout|Interval)\s*\(\s*['"`]/.test(b));
+const evalB = semuaKode.split('\n').map((b, i) => [b, i + 1]).filter(([b]) => /\beval\s*\(|new Function\s*\(|set(Timeout|Interval)\s*\(\s*['"`]/.test(b));
 cek('G-EVAL', !evalB.length, evalB.length ? 'baris ' + evalB.map(x => x[1]).join(', ') : 'tidak ada eval/new Function');
 
 // G-RAHASIA: tidak ada kunci/token di berkas yang dilacak git

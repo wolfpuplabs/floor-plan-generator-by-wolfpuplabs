@@ -25,6 +25,14 @@ for (const x of warn) perAturan[x.ruleId] = (perAturan[x.ruleId] || 0) + 1;
 console.log(`ESLint: ${galat.length} galat, ${warn.length} peringatan (baseline ${base.eslintPeringatan})`, perAturan);
 if (process.argv.includes('--rinci')) console.log(warn.map(tulis).join('\n'));
 let gagal = galat.length > 0;
+// modul/*.js (dimuat belakangan): aturan yang sama, tanpa utang — 0 peringatan
+const dirModul = path.join(DIR, '../modul');
+for (const f of fs.existsSync(dirModul) ? fs.readdirSync(dirModul).filter(x => /\.js$/.test(x)).sort() : []) {
+  const [h] = await eslint.lintText(fs.readFileSync(path.join(dirModul, f), 'utf8'), { filePath: 'modul/' + f });
+  const t = x => `  modul/${f}:${x.line}:${x.column}  ${x.ruleId || 'parse'}  ${x.message}`;
+  console.log(`ESLint modul/${f}: ${h.messages.length} temuan`);
+  if (h.messages.length) { gagal = true; console.log(h.messages.map(t).join('\n')); }
+}
 if (warn.length > base.eslintPeringatan) { gagal = true; console.log(`Peringatan naik ${base.eslintPeringatan} → ${warn.length}. Perbaiki yang baru (jalankan: node lint.mjs --rinci).`); }
 else if (warn.length < base.eslintPeringatan) console.log(`Bagus — turun ${base.eslintPeringatan - warn.length}. Perbarui baseline.json → ${warn.length} agar tidak naik lagi.`);
 process.exit(gagal ? 1 : 0);
