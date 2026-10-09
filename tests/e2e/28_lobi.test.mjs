@@ -79,7 +79,9 @@ export const tes = {
       // avatar: tamu berjalan → host melihat karakter bernama di posisi tamu
       const posG = await G.evaluate(() => { enterFPS(); camera.position.set(2.5, 1.6, 3.2); FPS.feet = 0; FPS.yaw = 1.1; return { x: camera.position.x, z: camera.position.z }; });
       // mengetik W A S D di obrolan saat berjalan tidak menggerakkan avatar
-      await G.locator('#lobiObrolan form input').pressSequentially('wasd');
+      // tombol dikirim langsung ke kolom obrolan (input sungguhan di 3 halaman berat bisa macet di CI)
+      await G.evaluate(() => { const i = document.querySelector('#lobiObrolan form input'); i.focus();
+        for (const key of 'wasd') i.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); });
       assert.equal(await G.evaluate(() => FPS.keys.size), 0, 'tombol obrolan tidak bocor ke kontrol jalan');
       await H.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible && a.tuju), undefined, { timeout: 25000 });
       const av = await H.evaluate(() => { const a = [...LOBI.avatar.values()][0]; return { x: a.tuju.x, z: a.tuju.z, yaw: a.tuju.yaw, label: !!a.g.children.find(c => c.isSprite) }; });
