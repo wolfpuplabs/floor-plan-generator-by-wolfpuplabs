@@ -40,6 +40,8 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 
 .group{display:flex;flex-direction:column;gap:6px}
 .group>label,.section-title{font-size:.74rem;color:var(--muted);font-weight:600}
+.tanah-alat{flex-wrap:wrap;gap:6px}
+.tanah-alat .btn.active{background:#1f2f2c;color:var(--accent);border-color:var(--accent)}
 .section-title{text-transform:uppercase;letter-spacing:.6px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:6px;margin-top:4px}
 .row{display:flex;gap:8px;align-items:center}
 .row>*{flex:1;min-width:0}
@@ -697,6 +699,17 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
           <option value="none">Tidak ada</option><option value="rumput">Rumput</option><option value="tanah">Tanah</option><option value="kerikil">Kerikil</option><option value="paving">Paving</option></select></div>
         <div class="group"><label>Luas di luar bangunan (m)</label><input type="number" id="situsMargin" value="6" min="0" max="60" step="1"></div>
       </div>
+      <div class="group"><label>Bentuk tanah</label></div>
+      <div class="row tanah-alat" role="group" aria-label="Kuas tanah">
+        <button class="btn sm ghost" data-tanah="naik">Naikkan</button><button class="btn sm ghost" data-tanah="turun">Turunkan</button>
+        <button class="btn sm ghost" data-tanah="ratakan">Ratakan</button><button class="btn sm ghost" data-tanah="haluskan">Haluskan</button>
+      </div>
+      <div class="f-grid">
+        <div class="group"><label>Ukuran kuas (m)</label><input type="range" id="tanahKuas" min="1" max="10" step="0.5" value="3"></div>
+        <div class="group"><label>Kekuatan</label><input type="range" id="tanahKuat" min="0.1" max="1" step="0.1" value="0.5"></div>
+      </div>
+      <div class="row"><button class="btn sm ghost" id="tanahReset">Datarkan semua tanah</button></div>
+      <p class="hint">Pilih kuas lalu sapukan jari / mouse di tanah. Di sekitar rumah tanah otomatis tetap di bawah lantai; di mode jalan kaki mengikuti bukit &amp; lembah.</p>
       <div class="cat-grid" id="cat-situs"></div>
       <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs. Pohon, bunga, gazebo, dan perabot taman lain ada di katalog <b>Taman &amp; Luar</b> di atas.</p>
       <div class="section-title">Void (Lubang Pelat Lantai)</div>
@@ -4942,28 +4955,88 @@ function buildGaris(o){
   }
   return g;
 }
-/* ---------- tanah situs: bidang luas di sekeliling bangunan, berlubang di kolam ---------- */
-function buildSitus(){
-  const st=PROJECT.site; if(!st||!st.tanah||st.tanah==='none') return null;
-  const lv=PROJECT.levels[0]; if(!lv) return null;
-  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+/* ---------- TANAH SITUS BERELIEF (JEV-075) ----------
+   Tanah = peta ketinggian (PROJECT.site.relief: sel ≥ 0,5 m, tinggi dalam cm) yang dibentuk
+   dengan kuas (naikkan / turunkan / ratakan / haluskan). Aturan yang membuatnya aman dipakai:
+   di tapak rumah + 0,6 m tanah selalu ditekan di bawah lantai, dan di dalam tapak lantai dasar
+   selalu tampil — dulu rumput menembus ke dalam rumah bila pelat lantai 1 dimatikan.
+   Di mode jalan kaki mengikuti permukaan tanah (bukit & lembah). Kolam tetap melubangi tanah. */
+const TANAH={mode:'naik', kuas:3, kuat:0.5, sapuan:null, masker:null, cincin:null};
+const TANAH_DASAR=-0.03;                         // tanah datar sedikit di bawah lantai (y = 0)
+function luasSitus(){
+  const lv=PROJECT.levels[0]; let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
   const ikut=(x,z)=>{ x0=Math.min(x0,x); x1=Math.max(x1,x); z0=Math.min(z0,z); z1=Math.max(z1,z); };
-  for(const w of lv.walls){ ikut(w.x1,w.z1); ikut(w.x2,w.z2); }
-  for(const o of lv.objects){ if(o.kind==='area'||o.kind==='garis') for(const [x,z] of (o.kind==='area'?areaDunia(o):garisPoli(o).map(([x,z])=>[o.x+x,o.z+z]))) ikut(x,z); else ikut(o.x,o.z); }
+  if(lv){ for(const w of lv.walls){ ikut(w.x1,w.z1); ikut(w.x2,w.z2); }
+    for(const o of lv.objects){ if(o.kind==='area'||o.kind==='garis') for(const [x,z] of (o.kind==='area'?areaDunia(o):garisPoli(o).map(([x,z])=>[o.x+x,o.z+z]))) ikut(x,z); else ikut(o.x,o.z); } }
   if(x0>x1){ x0=-6; x1=6; z0=-6; z1=6; }
-  const m=clamp(st.margin??6,0,60); x0-=m; x1+=m; z0-=m; z1+=m;
+  const m=clamp((PROJECT.site||{}).margin??6,0,60);
+  return [x0-m,x1+m,z0-m,z1+m];
+}
+function reliefDi(x,z){
+  const R=PROJECT.site&&PROJECT.site.relief; if(!R) return 0;
+  const fx=(x-R.x0)/R.c, fz=(z-R.z0)/R.c; if(!(fx>=0&&fz>=0&&fx<=R.nx-1&&fz<=R.nz-1)) return 0;
+  const i=Math.min(R.nx-2,Math.floor(fx)), k=Math.min(R.nz-2,Math.floor(fz)), u=fx-i, v=fz-k, h=(a,b)=>R.h[b*R.nx+a]/100;
+  return (h(i,k)*(1-u)+h(i+1,k)*u)*(1-v)+(h(i,k+1)*(1-u)+h(i+1,k+1)*u)*v;
+}
+function diMasker(M,x,z){ const i=Math.floor((x-M.x0)/M.c), k=Math.floor((z-M.z0)/M.c); return i>=0&&k>=0&&i<M.nx&&k<M.nz&&!!M.T[i*M.nz+k]; }
+function adaTanahSitus(){ const st=PROJECT.site; return !!(st&&st.tanah&&st.tanah!=='none'); }
+// permukaan tanah di (x,z) — dipakai mesh tanah dan pijakan mode jalan
+function tinggiTanah(x,z){ let h=TANAH_DASAR+reliefDi(x,z); if(TANAH.masker&&diMasker(TANAH.masker,x,z)) h=Math.min(h,-0.12); return h; }
+function buildSitus(opsi={}){
+  const st=PROJECT.site; if(!adaTanahSitus()){ TANAH.masker=null; return null; }
+  const lv=PROJECT.levels[0]; if(!lv) return null;
+  if(!opsi.cepat) TANAH.masker = lv.walls.some(w=>!w.rail) ? tapakAtap(lv,0.6) : null;
+  const [x0,x1,z0,z1]=luasSitus(), W=x1-x0, D=z1-z0;
+  const r=clamp(Math.max(W,D)/150,0.25,1), nx=Math.max(2,Math.ceil(W/r)+1), nz=Math.max(2,Math.ceil(D/r)+1);
+  const pos=new Float32Array(nx*nz*3);
+  for(let k=0;k<nz;k++) for(let i=0;i<nx;i++){ const q=(k*nx+i)*3, x=x0+i*W/(nx-1), z=z0+k*D/(nz-1); pos[q]=x; pos[q+1]=tinggiTanah(x,z); pos[q+2]=z; }
   const lubang=lv.objects.filter(o=>o.kind==='area'&&/^kolam/.test(o.params.jenis||'')).map(areaDunia).filter(p=>p.length>=3);
-  const mat=matSitus(st.tanah), T=0.05;
-  let geo;
-  if(!lubang.length){ geo=new THREE.BoxGeometry(x1-x0,T,z1-z0); geo.translate((x0+x1)/2,-T/2,(z0+z1)/2); }
-  else { const strips=slabStrips(x0,x1,z0,z1,lubang); if(!strips.length) return null; snapStripSeams(strips,1e-6);
-    geo=slabGeometry(strips,T,(x,z)=>x>=x0&&x<=x1&&z>=z0&&z<=z1&&!lubang.some(p=>pointInPoly(x,z,p))); }
-  uvDunia(geo,mat.userData.ukuran);
-  // satu bahan untuk tiap indeks grup (BoxGeometry punya 6, pelat berlubang 2) — indeks tanpa bahan membuat raycast mode jalan error
-  const nGrup=(geo.groups||[]).reduce((a,g)=>Math.max(a,g.materialIndex+1),0);
-  const g=new THREE.Mesh(geo,nGrup>1?Array(nGrup).fill(mat):mat);
-  g.position.y=-0.02; g.receiveShadow=true; g.castShadow=false; g.userData.situs=true;
+  const idx=[];
+  for(let k=0;k<nz-1;k++) for(let i=0;i<nx-1;i++){
+    if(lubang.length){ const cx=x0+(i+0.5)*W/(nx-1), cz=z0+(k+0.5)*D/(nz-1); if(lubang.some(p=>pointInPoly(cx,cz,p))) continue; }
+    const a=k*nx+i, b=a+1, c=a+nx, d=c+1; idx.push(a,c,b, b,c,d);
+  }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mat=matSitus(st.tanah); uvDunia(geo,mat.userData.ukuran);
+  const tanah=new THREE.Mesh(geo,mat); tanah.receiveShadow=true; tanah.castShadow=!!st.relief; tanah.userData.situs=true;
+  const g=new THREE.Group(); g.userData.situsGrup=true; g.add(tanah);
+  // lantai dasar selalu ada di tapak rumah, walau pelat lantai 1 dimatikan
+  const pelat=$('#showSlab'), adaPelat=lv.slab && (!pelat || pelat.checked);
+  if(!adaPelat && lv.walls.some(w=>!w.rail)){
+    const tp=tapakAtap(lv,0), gl=tp && geoAtapHalus(tp.T,tp.nx,tp.nz,tp.x0,tp.z0,tp.c,0.04);
+    if(gl){ const ml=matLantai(lv), m=new THREE.Mesh(gl,[ml,ml]); m.receiveShadow=true; m.userData.lantaiDasar=true; g.add(m); }
+  }
   return g;
+}
+// peta ketinggian dibuat saat pertama kali tanah dibentuk (maks. ±20 000 sel)
+function reliefSiap(){
+  const st=PROJECT.site; if(st.relief) return st.relief;
+  const [x0,x1,z0,z1]=luasSitus(); let c=0.5;
+  while(((x1-x0)/c+1)*((z1-z0)/c+1)>20000) c*=1.25;
+  const nx=Math.ceil((x1-x0)/c)+1, nz=Math.ceil((z1-z0)/c)+1;
+  return (st.relief={c:+c.toFixed(3), x0:+x0.toFixed(2), z0:+z0.toFixed(2), nx, nz, h:new Array(nx*nz).fill(0)});
+}
+function sapuTanah(p,dt){
+  const R=reliefSiap(), rad=TANAH.kuas, kuat=TANAH.kuat, S=TANAH.sapuan;
+  const i0=Math.max(0,Math.floor((p.x-rad-R.x0)/R.c)), i1=Math.min(R.nx-1,Math.ceil((p.x+rad-R.x0)/R.c));
+  const k0=Math.max(0,Math.floor((p.z-rad-R.z0)/R.c)), k1=Math.min(R.nz-1,Math.ceil((p.z+rad-R.z0)/R.c));
+  const lama=TANAH.mode==='haluskan'?R.h.slice():null;
+  for(let k=k0;k<=k1;k++) for(let i=i0;i<=i1;i++){
+    const d=Math.hypot(R.x0+i*R.c-p.x,R.z0+k*R.c-p.z); if(d>=rad) continue;
+    const f=(1-(d/rad)**2)**2, q=k*R.nx+i; let h=R.h[q];
+    if(TANAH.mode==='naik') h+=f*kuat*dt*160;
+    else if(TANAH.mode==='turun') h-=f*kuat*dt*160;
+    else if(TANAH.mode==='ratakan') h+=((S?S.datar:0)-h)*Math.min(1,f*kuat*dt*8);
+    else { let s=0,n=0; for(const [a,b] of [[i-1,k],[i+1,k],[i,k-1],[i,k+1]]) if(a>=0&&b>=0&&a<R.nx&&b<R.nz){ s+=lama[b*R.nx+a]; n++; } if(n) h+=(s/n-h)*Math.min(1,f*kuat*dt*10); }
+    R.h[q]=Math.round(clamp(h,-1000,3000));
+  }
+}
+function segarkanTanah(){
+  const lama=worldRoot.children.find(o=>o.userData.situsGrup), baru=buildSitus({cepat:true});
+  if(lama){ worldRoot.remove(lama); lama.traverse(m=>{ if(m.isMesh) m.geometry.dispose(); }); }
+  if(baru) worldRoot.add(baru);
+  bayangKotor();
 }
 
 /* ---------- katalog taman ---------- */
@@ -7741,6 +7814,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(e.button!==0) return;
 
   if(TOOL==='voidTrace'){ klikTrace(e); return; }
+  if(TOOL==='tanah') return;
   if(TOOL==='measure'){
     const p0=groundPoint(e); if(!p0) return;
     const p=titikUkur(p0);
@@ -8138,8 +8212,11 @@ function setTool(t){
                                                   : 'Klik titik <b>awal</b> dinding di viewport.'); }
   else if(t==='measure'){}
   else if(t==='voidTrace'){ gizmo.detach(); }
+  else if(t==='tanah'){ gizmo.detach(); select(null); setHint(`Sapukan di tanah untuk <b>${({naik:'menaikkan',turun:'menurunkan',ratakan:'meratakan',haluskan:'menghaluskan'})[TANAH.mode]}</b> tanah. <b>Esc</b> / Pilih untuk selesai.`); }
   else if(t==='select') setHint('Klik objek untuk memilih. <b>W</b> geser · <b>E</b> putar · <b>R</b> skala.');
   else setHint(`Mode <b>${t==='translate'?'geser':t==='rotate'?'putar':'skala'}</b> — tarik gizmo pada objek terpilih.`);
+  if(typeof renderTanahUI==='function') renderTanahUI();
+  if(t!=='tanah' && typeof cincinTanah==='function') cincinTanah(null);
   refreshSelectionVisual();
 }
 
@@ -8172,7 +8249,7 @@ addEventListener('keydown',e=>{
   else if(e.key==='Escape'){
     if(!$('#helpPanel').hidden) toggleHelp(false);
     else if((TOOL==='wall'||TOOL==='measure')&&drawState){ drawState=null; if(previewLine){ helperRoot.remove(previewLine); previewLine.geometry.dispose(); previewLine=null; } }
-    else if(TOOL==='measure'){ setTool('select'); }
+    else if(TOOL==='measure'||TOOL==='tanah'){ setTool('select'); }
     else select(null);
   }
   else if(e.key==='Delete'||e.key==='Backspace'){
@@ -12565,6 +12642,13 @@ function nilaiAman(v,d){                       // params objek: hanya data polos
   if(v && typeof v==='object'){ const o={}; for(const k of Object.keys(v).slice(0,200)){ if(k==='__proto__'||k==='constructor'||k==='prototype') continue; const x=nilaiAman(v[k],d+1); if(x!==undefined) o[k]=x; } return o; }
   return undefined;
 }
+// peta ketinggian tanah: ukuran dibatasi, isinya bilangan bulat cm (−10 m … +30 m)
+function reliefAman(R){
+  if(!R||typeof R!=='object'||!Array.isArray(R.h)) return {};
+  const nx=Math.floor(+R.nx), nz=Math.floor(+R.nz), c=+R.c, x0=+R.x0, z0=+R.z0;
+  if(!(nx>=2&&nz>=2&&nx<=400&&nz<=400&&nx*nz<=40000&&R.h.length===nx*nz&&c>=0.25&&c<=4&&Math.abs(x0)<1e4&&Math.abs(z0)<1e4)) return {};
+  return {relief:{c, x0, z0, nx, nz, h:R.h.map(v=>Math.round(clamp(+v||0,-1000,3000)))}};
+}
 function sanitasiProyek(j){
   if(!j || typeof j!=='object' || !Array.isArray(j.levels) || !j.levels.length) throw new Error('format tidak dikenali');
   if(j.levels.length>BATAS_PROYEK.lantai) throw new Error(`lebih dari ${BATAS_PROYEK.lantai} lantai`);
@@ -12621,7 +12705,7 @@ function sanitasiProyek(j){
     active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans, tekstur, media,
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
     atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12), ...(j.atap&&j.atap.tutup===true?{tutup:true}:{})},
-    site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6)},
+    site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6), ...reliefAman(j.site&&j.site.relief)},
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
 }
@@ -13957,9 +14041,9 @@ function fpsStep(dt){
 
   [px,pz]=fpsResolveWalls(px,pz,FPS.feet);
 
-  const tanah0=levelElevation(0);
+  const tanahDi=(x,z)=>levelElevation(0)+(adaTanahSitus()?tinggiTanah(x,z):0);
   if(FPS.vy>-0.5){                                  // sedang berpijak, bukan sedang jatuh
-    const dukung=(x,z)=>{ const g=fpsPijakan(x,z,FPS.feet); return Math.max(g==null?-1e9:g, tanah0); };
+    const dukung=(x,z)=>{ const g=fpsPijakan(x,z,FPS.feet); return Math.max(g==null?-1e9:g, tanahDi(x,z)); };
     const ox=camera.position.x, oz=camera.position.z, batas=FPS.feet-JATUH_MAX;
     if(dukung(px,pz)<batas){
       // meluncur menyusuri tepi bila salah satu sumbu masih aman
@@ -13983,7 +14067,7 @@ function fpsStep(dt){
   }
   // di luar bangunan masih ada tanah: turun dari teras atau jatuh lewat void
   // berhenti di permukaan tanah, bukan melayang terus ke bawah
-  const tanah=levelElevation(0);
+  const tanah=tanahDi(px,pz);
   if(FPS.feet<tanah){ FPS.feet=tanah; FPS.vy=0; }
 
   { const dj=Math.hypot(px-camera.position.x,pz-camera.position.z);
@@ -14280,6 +14364,54 @@ $('#walkBtn').onclick=enterFPS;
 function renderSitusUI(){ const st=PROJECT.site||{}; $('#situsTanah').value=st.tanah||'none'; $('#situsMargin').value=st.margin??6; }
 $('#situsTanah').onchange=e=>{ PROJECT.site=Object.assign({margin:6},PROJECT.site,{tanah:e.target.value}); HIST.label='Tanah situs'; rebuildScene();
   toast(e.target.value==='none'?'Tanah situs dihapus':'Tanah situs: '+e.target.selectedOptions[0].textContent); };
+/* kuas tanah (JEV-075) */
+function renderTanahUI(){ $$('.tanah-alat button').forEach(b=>b.classList.toggle('active',TOOL==='tanah'&&b.dataset.tanah===TANAH.mode)); }
+$$('.tanah-alat button').forEach(b=>b.onclick=()=>{
+  if(!adaTanahSitus()){ PROJECT.site=Object.assign({margin:6},PROJECT.site,{tanah:'rumput'}); renderSitusUI(); HIST.label='Tanah situs'; rebuildScene(); }
+  TANAH.mode=b.dataset.tanah; setTool('tanah');
+  if(innerWidth<=900) setSidebar(false);                 // HP: panel menutupi tanah yang mau dibentuk
+});
+$('#tanahKuas').oninput=e=>{ TANAH.kuas=+e.target.value; };
+$('#tanahKuat').oninput=e=>{ TANAH.kuat=+e.target.value; };
+$('#tanahReset').onclick=()=>{ if(!PROJECT.site||!PROJECT.site.relief) return; delete PROJECT.site.relief; HIST.label='Datarkan tanah'; rebuildScene(); toast('Tanah didatarkan'); };
+function titikTanah(e){
+  ndc(e); raycaster.setFromCamera(pointer,camera);
+  const g=worldRoot.children.find(o=>o.userData.situsGrup), t=g&&g.children.find(m=>m.userData.situs);
+  const h=t&&raycaster.intersectObject(t,false)[0]; if(h) return h.point;
+  const hit=new THREE.Vector3(); return raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),hit)?hit:null;
+}
+function cincinTanah(p){
+  if(!TANAH.cincin){ TANAH.cincin=new THREE.Mesh(new THREE.RingGeometry(0.94,1,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x4ec9b0,transparent:true,opacity:0.85,depthTest:false}));
+    TANAH.cincin.renderOrder=5; TANAH.cincin.userData.noExport=true; helperRoot.add(TANAH.cincin); }
+  TANAH.cincin.visible=!!p && TOOL==='tanah';
+  if(p){ TANAH.cincin.position.set(p.x,p.y+0.05,p.z); TANAH.cincin.scale.setScalar(TANAH.kuas); }
+}
+function akhiriSapuan(){
+  if(!TANAH.sapuan) return; TANAH.sapuan=null; orbit.enabled=true;
+  HIST.label='Bentuk tanah'; rebuildScene();
+}
+function langkahSapuan(){
+  const S=TANAH.sapuan; if(!S) return;
+  const t=performance.now(), dt=Math.min(0.1,(t-S.t)/1000); S.t=t;
+  if(S.p){ sapuTanah(S.p,dt); if(t-S.segar>70){ S.segar=t; segarkanTanah(); } }
+  requestAnimationFrame(langkahSapuan);
+}
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(TOOL!=='tanah'||FPS.on) return;
+  if(TANAH.sapuan){ akhiriSapuan(); return; }          // jari kedua: berhenti membentuk, kamera bebas lagi
+  if(e.button!==0 && e.pointerType==='mouse') return;
+  const p=titikTanah(e); if(!p) return;
+  e.stopImmediatePropagation(); orbit.enabled=false;
+  TANAH.sapuan={id:e.pointerId, p, t:performance.now(), segar:0, datar:Math.round(reliefDi(p.x,p.z)*100)};
+  try{ renderer.domElement.setPointerCapture(e.pointerId); }catch(er){}
+  langkahSapuan();
+},true);
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(TOOL!=='tanah'||FPS.on) return;
+  const p=titikTanah(e); cincinTanah(p);
+  if(TANAH.sapuan && e.pointerId===TANAH.sapuan.id && p) TANAH.sapuan.p=p;
+},true);
+for(const ev of ['pointerup','pointercancel']) renderer.domElement.addEventListener(ev,e=>{ if(TANAH.sapuan && e.pointerId===TANAH.sapuan.id) akhiriSapuan(); },true);
 $('#situsMargin').onchange=e=>{ PROJECT.site=Object.assign({tanah:'none'},PROJECT.site,{margin:clamp(+e.target.value||0,0,60)}); HIST.label='Luas tanah situs'; rebuildScene(); };
 const tulisSfx=()=>{ isiIkon($('#fpsSfx'),SFX.on?'suara':'senyap','SFX'); };
 $('#fpsSfx').onclick=e=>{ SFX.on=!SFX.on; try{ localStorage.setItem('sfx_on',SFX.on?'1':'0'); }catch(_){} tulisSfx(); if(SFX.on) sfx('klik'); e.target.blur(); };

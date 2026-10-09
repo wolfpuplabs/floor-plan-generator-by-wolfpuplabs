@@ -1206,6 +1206,20 @@ window.KAMUS_EN={
   "Keluar layar penuh":"Exit full screen",
   "Peramban menolak menyalin otomatis — tekan lama tautan di atas lalu pilih Salin":"The browser blocked automatic copying — long-press the link above and choose Copy",
   "Langit 360° sendiri tidak ikut.":"Your own 360° sky is not included.",
+  "Bentuk tanah":"Shape terrain",
+  "Naikkan":"Raise",
+  "Turunkan":"Lower",
+  "Ratakan":"Flatten",
+  "Haluskan":"Smooth",
+  "Ukuran kuas (m)":"Brush size (m)",
+  "Kekuatan":"Strength",
+  "Datarkan semua tanah":"Flatten all terrain",
+  "Tanah didatarkan":"Terrain flattened",
+  "menaikkan":"raise",
+  "menurunkan":"lower",
+  "meratakan":"flatten",
+  "menghaluskan":"smooth",
+  "Pilih kuas lalu sapukan jari / mouse di tanah. Di sekitar rumah tanah otomatis tetap di bawah lantai; di mode jalan kaki mengikuti bukit & lembah.":"Pick a brush, then sweep your finger / mouse over the ground. Around the house the ground always stays below the floor; in walk mode your feet follow hills & valleys.",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1480,7 +1494,8 @@ window.KAMUS_EN={
   ["Klik titik <b>awal</b> railing \\((.+?)\\) di tepi balkon — jenisnya bisa diganti di inspector\\.","Click the railing's <b>start</b> point ($1) at the balcony edge — the type can be changed in the inspector."],
   ["Atur <b>skala</b> lalu klik <b>Generate Dinding 3D</b> untuk <b>(.+?)</b>\\.","Set the <b>scale</b> then click <b>Generate 3D Walls</b> for <b>$1</b>."],
   ["Ketuk titik-titik jalur (.+?)( \\(telusuri gambar denah di lantai\\))?\\. Selesai dengan ketuk-ganda, <b>Enter</b>, atau tombol <b>Selesai</b>\\. <b>⌫</b> hapus titik · <b>Esc</b> batal\\.","Tap the points of the $1 path$2. Finish with a double-tap, <b>Enter</b>, or the <b>Done</b> button. <b>⌫</b> delete point · <b>Esc</b> cancel."],
-  ["Ketuk titik-titik sudut (.+?)( \\(telusuri gambar denah di lantai\\))?\\. Tutup dengan mengetuk <b>titik pertama</b>, ketuk-ganda, atau <b>Enter</b>\\. <b>⌫</b> hapus titik · <b>Esc</b> batal\\.","Tap the corner points of the $1$2. Close it by tapping the <b>first point</b>, a double-tap, or <b>Enter</b>. <b>⌫</b> delete point · <b>Esc</b> cancel."]
+  ["Ketuk titik-titik sudut (.+?)( \\(telusuri gambar denah di lantai\\))?\\. Tutup dengan mengetuk <b>titik pertama</b>, ketuk-ganda, atau <b>Enter</b>\\. <b>⌫</b> hapus titik · <b>Esc</b> batal\\.","Tap the corner points of the $1$2. Close it by tapping the <b>first point</b>, a double-tap, or <b>Enter</b>. <b>⌫</b> delete point · <b>Esc</b> cancel."],
+  ["Sapukan di tanah untuk <b>(menaikkan|menurunkan|meratakan|menghaluskan)</b> tanah\\. <b>Esc</b> / Pilih untuk selesai\\.","Brush the ground to <b>$1</b> it. <b>Esc</b> / Select to finish."]
  ],
  // ganti
  "ganti":[
