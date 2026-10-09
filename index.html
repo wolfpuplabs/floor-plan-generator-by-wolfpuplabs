@@ -116,6 +116,7 @@ details#adv>*:not(summary){margin-bottom:8px}
 .model-btn span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- VIEWPORT ---------- */
+html{touch-action:manipulation}
 #viewport{flex:1;min-width:0;position:relative;background:#0a0a0c;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 #viewport canvas{display:block}
 .float{position:absolute;background:rgba(23,23,27,.94);border:1px solid var(--line);border-radius:8px;backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.5)}
@@ -811,6 +812,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
     <div class="float" id="lihatBar" hidden>
       <span class="lihat-tag"><svg class="ik" aria-hidden="true"><use href="#i-mata"/></svg> Lihat saja</span><b id="lihatNama"></b>
       <button class="btn" id="lihatJalan"><svg class="ik" aria-hidden="true"><use href="#i-jalan"/></svg> Jalan-jalan</button>
+      <button class="btn ghost" id="lihatAR" title="Lihat model di AR / 3D viewer"><svg class="ik" aria-hidden="true"><use href="#i-kubus"/></svg> AR</button>
       <select class="pilih-bahasa" id="lihatBahasa" aria-label="Bahasa / Language"><option value="en">EN</option><option value="id">ID</option></select>
     </div>
     <div class="float" id="inspector" hidden></div>
@@ -6839,8 +6841,8 @@ function rebuildScene0(){
     lg.add(buildJunctions(lv));
     if(lv.slab && showSlabOpt){ const s=buildSlab(lv); if(s) lg.add(s); }
     for(const o of lv.objects) lg.add(buildObject(o,lv));
-    // jalan-jalan selalu beratap: dari dalam lantai teratas langit tidak boleh terlihat
-    if(ATAP_TUTUP||FPS.on){ const a=buildAtap(lv,idx); if(a) lg.add(a); }
+    // atap mengikuti pilihan pemilik (tersimpan di proyek & tautan), juga di mode jalan
+    if(ATAP_TUTUP){ const a=buildAtap(lv,idx); if(a) lg.add(a); }
 
     if(idx!==PROJECT.active && modeLain==='ghost'){
       lg.traverse(m=>{ if(m.isMesh){ m.material=ghost(m.material); m.castShadow=false; m.receiveShadow=false; } });
@@ -6890,6 +6892,8 @@ function refreshSelectionVisual(){
   helperRoot.add(selBox);
   if(TOOL==='translate'||TOOL==='rotate'||TOOL==='scale'){
     gizmo.setMode(TOOL);
+    // sumbu geser/skala mengikuti rotasi objek (dulu sumbu dunia: objek miring digeser "menyamping")
+    gizmo.setSpace(TOOL==='rotate'?'world':'local');
     gizmo.attach(g);
     const isWall=SEL.kind==='wall';
     gizmo.showY = !(isWall && TOOL==='translate');
@@ -12890,6 +12894,13 @@ async function buatTautanLihat(kemajuan=()=>{}){
     const b=await lampirkan(md.nama,new Uint8Array(bufFromB64(md.data)));
     if(b) lampiran.media[k]={nama:md.nama, mime:md.mime, bagian:b}; else mediaDitinggal++;
   }
+  // langit 360° dari berkas sendiri (dulu penerima mendapat panorama acak)
+  let langitDitinggal=false;
+  const bl=berkasLangitUnggah();
+  if(bl){
+    const b=await lampirkan(bl.nama,bl.u8);
+    if(b) lampiran.langit={nama:bl.nama, bagian:b}; else langitDitinggal=true;
+  }
   const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan,
     ...(nLampiran?{lampiran}:{})};
   // angka dibulatkan ke milimeter / 0,001 — jauh lebih ringkas setelah dipadatkan
@@ -12897,7 +12908,7 @@ async function buatTautanLihat(kemajuan=()=>{}){
   const padat=await padatkan(JSON.stringify(isi,bulat));
   const dasar=location.origin+location.pathname;
   const pendek=await simpanTautanPendek(padat);
-  const lap={ditinggal, fotoDitinggal, mediaDitinggal, alasanLampiran, nLampiran, mbLampiran:total/1048576};
+  const lap={ditinggal, fotoDitinggal, mediaDitinggal, langitDitinggal, alasanLampiran, nLampiran, mbLampiran:total/1048576};
   if(pendek.id) return {url:dasar+'#l='+pendek.id, pendek:true, panjang:padat.length, ...lap};
   const kode=b64url(padat);
   return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, kodeGalat:pendek.kode, panjang:kode.length, ...lap};
@@ -12932,16 +12943,31 @@ $('#bagikanBtn').onclick=async()=>{
   if(r.ditinggal.length) kal.push(`Model unggahan sendiri tidak ikut: ${r.ditinggal.slice(0,4).join(', ')}${r.ditinggal.length>4?', …':''}.`);
   if(r.fotoDitinggal) kal.push(`Tekstur foto sendiri (${r.fotoDitinggal}) tidak ikut — objeknya tampil dengan bahan aslinya.`);
   if(r.mediaDitinggal) kal.push(`Video TV sendiri (${r.mediaDitinggal}) tidak ikut.`);
-  if(r.ditinggal.length||r.fotoDitinggal||r.mediaDitinggal){
+  if(r.langitDitinggal) kal.push('Langit 360° sendiri tidak ikut.');
+  if(r.ditinggal.length||r.fotoDitinggal||r.mediaDitinggal||r.langitDitinggal){
     if(r.alasanLampiran==='blob') kal.push('Agar model, foto & video sendiri ikut, aktifkan Vercel Blob (Storage → Blob).');
     else if(r.alasanLampiran==='batas') kal.push('Batas berkas sendiri per tautan 80 MB.');
     else if(r.alasanLampiran) kal.push('Unggahan berkas sendiri gagal — periksa koneksi lalu coba lagi.');
   }
   inf.textContent=''; for(const k of kal){ inf.appendChild(el('span',null,k)); inf.appendChild(document.createTextNode(' ')); }
 };
+/* salin teks: Clipboard API bisa menolak/menggantung di iOS (Chrome) — dibatasi waktu, lalu
+   cadangan textarea sementara (input readonly tidak bisa diseleksi di iOS). Hasil dilaporkan jujur. */
+async function salinTeks(t){
+  try{ if(navigator.clipboard && window.isSecureContext){
+    await Promise.race([navigator.clipboard.writeText(t), new Promise((_,no)=>setTimeout(()=>no(new Error('waktu')),1500))]); return true; } }catch(e){}
+  const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly','');
+  Object.assign(ta.style,{position:'fixed',top:'0',left:'0',opacity:'0',fontSize:'16px'});
+  document.body.appendChild(ta); ta.contentEditable='true'; ta.readOnly=false;
+  const r=document.createRange(); r.selectNodeContents(ta); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  ta.setSelectionRange(0,t.length);
+  let ok=false; try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+  ta.remove(); return ok;
+}
 $('#bagikanSalin').onclick=async()=>{
   const u=$('#bagikanUrl').value; if(!u) return;
-  try{ await navigator.clipboard.writeText(u); toast('Tautan disalin'); }catch(e){ $('#bagikanUrl').select(); document.execCommand('copy'); toast('Tautan disalin'); }
+  if(await salinTeks(u)) toast('Tautan disalin');
+  else { const i=$('#bagikanUrl'); i.focus(); i.setSelectionRange(0,u.length); toast('Peramban menolak menyalin otomatis — tekan lama tautan di atas lalu pilih Salin'); }
 };
 $('#bagikanKirim').onclick=async()=>{
   const u=$('#bagikanUrl').value; if(!u) return;
@@ -13009,7 +13035,8 @@ async function pasangLampiran(L){
   if(!L||typeof L!=='object') return 0;
   const isi=o=>o&&typeof o==='object'?Object.entries(o).filter(([k,v])=>ID_AMAN.test(k)&&v&&typeof v==='object'):[];
   let sisa=LAMPIRAN.maks, n=0, i=0;
-  const semua=isi(L.aset).length+isi(L.tekstur).length+isi(L.media).length;
+  const adaLangit=!!(L.langit && typeof L.langit==='object');
+  const semua=isi(L.aset).length+isi(L.tekstur).length+isi(L.media).length+(adaLangit?1:0);
   const ambil=async(nama,d)=>{ toast(`Memuat berkas ${++i}/${semua}: ${String(nama||'').slice(0,60)}`); const u=await ambilLampiran(d,sisa); sisa-=u.length; return u; };
   const tekstur={}, media={}, assets={};
   for(const [k,t] of isi(L.tekstur).slice(0,TEKSTUR_BATAS.jumlah)){
@@ -13025,6 +13052,12 @@ async function pasangLampiran(L){
     try{ const u=await ambil(a.name,a.bagian); assets[k]={name:a.name, size:u.length, dims:[1,1,1], fit:1, data:b64FromBuf(u.buffer), sumber:a.sumber, lisensi:a.lisensi}; }
     catch(e){ console.warn('lampiran model',k,e); }
   }
+  if(adaLangit){
+    // nama berkas hanya penentu jenis (.hdr / gambar); isinya diurai & disaring oleh pembaca panorama
+    try{ const u=await ambil(L.langit.nama,L.langit.bagian), nama=String(L.langit.nama||'').replace(/[^\w .()-]/g,'').slice(0,120)||'langit.jpg';
+      await unggahLangit(new File([u],nama)); n++; }
+    catch(e){ console.warn('lampiran langit',e); }
+  }
   const B=sanitasiProyek({levels:[{}], tekstur, media, assets});
   Object.assign(PROJECT.tekstur||(PROJECT.tekstur={}),B.tekstur); Object.assign(PROJECT.media||(PROJECT.media={}),B.media);
   n+=Object.keys(B.tekstur).length+Object.keys(B.media).length;
@@ -13038,6 +13071,15 @@ async function pasangLampiran(L){
   return n;
 }
 $('#lihatJalan').onclick=()=>enterFPS();
+/* iOS memperbesar halaman pada ketukan ganda (main piano cepat) dan sesudahnya tidak bisa
+   diperkecil karena kanvas & piano menahan cubitan: ketukan kedua yang cepat di area itu ditahan */
+{ let akhir=0;
+  document.addEventListener('touchend',e=>{
+    const t=e.target, n=performance.now();
+    if(t && t.closest && t.closest('#pianoPanel,#viewport canvas,#fpsStick') && n-akhir<350 && e.cancelable) e.preventDefault();
+    akhir=n;
+  },{passive:false});
+  document.addEventListener('gesturestart',e=>{ if(e.target&&e.target.closest&&e.target.closest('#pianoPanel,#viewport')) e.preventDefault(); },{passive:false}); }
 // di mode lihat, pintasan alat edit tidak berlaku (tombol jalan W A S D / E tetap milik mode jalan)
 addEventListener('keydown',e=>{
   if(!LIHAT.on || FPS.on || /input|select|textarea/i.test(e.target.tagName)) return;
@@ -13237,6 +13279,8 @@ var FOTO={tex:null, kecil:null, env:null, w:0, h:0, nama:'', id:null, waktu:'sia
 const EXP_RGBE=new Float32Array(256); for(let e=1;e<256;e++) EXP_RGBE[e]=Math.pow(2,e-136);
 function langitP(){ return PROJECT.langit||(PROJECT.langit=Object.assign({},LANGIT_BAWAAN)); }
 function fotoAktif(){ return !!(FOTO && FOTO.tex) && langitP().mode==='foto'; }
+// berkas panorama yang diunggah pemilik (untuk lampiran tautan lihat), bila sedang dipakai
+function berkasLangitUnggah(){ return langitP().mode==='foto' && FOTO.id==='unggah' && FOTO.berkas ? FOTO.berkas : null; }
 
 /* --- pembaca Radiance .hdr (RGBE, baris RLE baru maupun datar) --- */
 function bacaHDR(buf){
@@ -13555,6 +13599,7 @@ async function unggahLangit(file){
     if(token!==FOTO.token) return;
     if(Math.abs(P.w/P.h-2)>0.15) toast('Peringatan: panorama 360° biasanya 2:1 — gambar ini '+P.w+'×'+P.h);
     pasangPano(P,{id:'unggah', nama:file.name.replace(/\.[^.]+$/,'')});
+    FOTO.berkas={u8:new Uint8Array(await file.arrayBuffer()), nama:file.name.slice(0,120)};   // ikut tautan lihat (JEV-074)
     FOTO.sibuk=false; renderLangitUI(); toast('Langit 360° dari berkas: '+file.name);
   }catch(e){ FOTO.sibuk=false; renderLangitUI(); infoLangit('Berkas tidak bisa dipakai: '+(e.message||e)); toast('Panorama tidak terbaca'); }
 }
@@ -14569,6 +14614,7 @@ function closeAR(){
 }
 
 $('#arBtn').onclick=openAR;
+$('#lihatAR').onclick=openAR;
 $('#arBtn2').onclick=openAR;
 $('#arClose').onclick=closeAR;
 $('#arDownload').onclick=arDownload;

@@ -20,8 +20,9 @@
     "app.gazebosim.org": "tautan kredit/halaman model Google Scanned Objects (tidak ada permintaan jaringan) (JEV-063)"
   },
   "anggaran": {
-    "indexHtmlKB": 900,
-    "innerHTMLInterpolasi": 36
+    "indexHtmlKB": 950,
+    "innerHTMLInterpolasi": 36,
+    "_catatan": "900 → 950 KB (JEV-074): fitur yang diminta pengguna terus bertambah di index.html; fitur besar baru (mis. lobi multiplayer JEV-077) wajib modul terpisah yang dimuat saat dipakai"
   },
   "identitasTakTepercaya": "\\b(name|nama|label|judul|title|kat|tag|tags|id|sumber|kredit)\\b"
 }

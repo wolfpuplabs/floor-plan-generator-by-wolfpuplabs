@@ -2906,6 +2906,67 @@
     "target": "≥ 80% sesi HP",
     "tinjau": "2027-01-06"
    }
+  },
+  {
+   "id": "JEV-074",
+   "judul": "Perbaikan cepat: salin tautan andal, atap tidak ditutup otomatis saat jalan, ketukan ganda tidak memperbesar, gizmo ikut rotasi, langit 360 unggahan & AR di tautan lihat",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tombol salin tautan tidak berfungsi di iPhone; mode jalan memaksa atap tertutup; main piano cepat memperbesar halaman dan tidak bisa diperkecil; objek yang diputar digeser menurut sumbu dunia; langit 360 hasil unggahan diganti panorama acak di penerima; AR tidak ada di mode lihat.",
+    "bukti": "uji-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-09 (\"button copy link ga fungsi … pas walk mode jangan auto ketutup roofnya … pas main piano kalo ke tap 2 kali layar jadi zoom … kalo object di rotate, pas dimove jadi ga sesuai axis … 360 hasil upload kok ga kebawa pas dishare? AR viewer juga ada pas di share\")",
+    "alternatif": [
+     "Web Share API saja (tidak semua peramban)",
+     "user-scalable=no (diabaikan iOS)"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 2.5,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "berkas langit dari tautan diurai pembaca panorama yang sama (HDR/gambar), nama disaring, lewat lampiran bersidik SHA-256"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "langit unggahan hanya ikut bila pemilik membuat tautan pendek"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "anggaran index.html 900 → 950 KB tercatat di guard-config; fitur besar berikutnya modul terpisah"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "cubit-perbesar tetap bisa di luar kanvas & piano; pesan gagal salin jujur"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan salin tautan / zoom terkunci",
+    "target": "0",
+    "tinjau": "2027-01-09"
+   }
   }
  ]
 }
