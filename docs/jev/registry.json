@@ -2967,6 +2967,66 @@
     "target": "0",
     "tinjau": "2027-01-09"
    }
+  },
+  {
+   "id": "JEV-075",
+   "judul": "Tanah situs selalu di bawah lantai + terrain builder (kuas naik/turun/ratakan/haluskan) yang bisa dijalani",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Rumput/tanah situs tampil di atas lantai di dalam rumah (bila pelat lantai 1 mati) dan tanah selalu datar — tidak bisa membuat bukit/lembah untuk dijelajahi.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-09 (\"environment (grass, soil,etc) masih diatas lantai, bikin selalu dibawah lantai sama bikin bisa jalan2 diatasnya (terrain builder)\")",
+    "alternatif": [
+     "impor heightmap dari gambar (lebih sulit dipakai di HP)",
+     "hanya menurunkan tanah tanpa relief"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 10
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "peta ketinggian disaring: ≤ 40 000 sel, sel 0,25–4 m, tinggi bilangan bulat −10…+30 m"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "mesh tanah ≤ ±150×150 titik; saat menyapu hanya tanah yang dibangun ulang (±70 ms sekali)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kuas bisa dengan satu jari; jari kedua menghentikan sapuan agar kamera bebas"
+    }
+   },
+   "metrik": {
+    "nama": "proyek bertanah situs yang memakai relief",
+    "target": "≥ 20%",
+    "tinjau": "2027-01-09"
+   }
   }
  ]
 }
