@@ -13625,16 +13625,26 @@ $('#bagikanBtn').onclick=async()=>{
 };
 /* salin teks: Clipboard API bisa menolak/menggantung di iOS (Chrome) — dibatasi waktu, lalu
    cadangan textarea sementara (input readonly tidak bisa diseleksi di iOS). Hasil dilaporkan jujur. */
-async function salinTeks(t){
-  try{ if(navigator.clipboard && window.isSecureContext){
-    await Promise.race([navigator.clipboard.writeText(t), new Promise((_,no)=>setTimeout(()=>no(new Error('waktu')),1500))]); return true; } }catch(e){}
-  const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly','');
+/* Salin ke papan klip. iPad/iPhone (WebKit, termasuk Chrome iOS) hanya mengizinkan menyalin LANGSUNG di
+   dalam ketukan: setelah satu 'await' izinnya hilang — dulu jalur cadangan baru dicoba setelah menunggu
+   clipboard.writeText sehingga selalu ditolak. Kini jalur sinkron (execCommand) lebih dulu, lalu
+   writeText dipanggil masih di dalam ketukan. */
+function salinSinkron(t){
+  const aktif=document.activeElement, ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly','');
   Object.assign(ta.style,{position:'fixed',top:'0',left:'0',opacity:'0',fontSize:'16px'});
   document.body.appendChild(ta); ta.contentEditable='true'; ta.readOnly=false;
   const r=document.createRange(); r.selectNodeContents(ta); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
   ta.setSelectionRange(0,t.length);
   let ok=false; try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
-  ta.remove(); return ok;
+  ta.remove(); sel.removeAllRanges(); if(aktif&&aktif.focus) try{ aktif.focus({preventScroll:true}); }catch(e){}
+  return ok;
+}
+async function salinTeks(t){
+  if(salinSinkron(t)) return true;
+  let janji=null;
+  try{ if(navigator.clipboard && window.isSecureContext) janji=navigator.clipboard.writeText(t); }catch(e){ janji=null; }
+  if(!janji) return false;
+  try{ await Promise.race([janji, new Promise((_,no)=>setTimeout(()=>no(new Error('waktu')),1500))]); return true; }catch(e){ return false; }
 }
 $('#bagikanSalin').onclick=async()=>{
   const u=$('#bagikanUrl').value; if(!u) return;

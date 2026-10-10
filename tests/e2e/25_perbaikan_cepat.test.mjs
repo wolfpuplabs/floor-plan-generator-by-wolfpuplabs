@@ -34,11 +34,24 @@ export const tes = {
       document.getElementById('bagikanHasil').hidden = false; document.getElementById('bagikanUrl').value = 'https://contoh.app/#l=Ab3dEf7hJk';
       const tunggu = async () => { for (let i = 0; i < 40 && !/disalin|menolak/.test(document.getElementById('toast').textContent); i++) await new Promise(r => setTimeout(r, 100)); return document.getElementById('toast').textContent; };
       const klik = async () => { document.getElementById('toast').textContent = ''; document.getElementById('bagikanSalin').click(); return tunggu(); };
+      // jalur sinkron tidak tersedia → Clipboard API
+      document.execCommand = () => false;
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async t => { disalin = t; } } });
       hasil.api = [await klik(), disalin];
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => new Promise(() => {}) } });   // menggantung (iOS)
       document.execCommand = c => { perintah++; return c === 'copy'; };
       hasil.gantung = [await klik(), perintah];
+      // iPad/iPhone: hanya boleh menyalin LANGSUNG di dalam ketukan — jalur sinkron dicoba sebelum menunggu apa pun
+      let api = 0; perintah = 0;
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { api++; } } });
+      document.execCommand = c => { perintah++; return c === 'copy'; };
+      document.getElementById('toast').textContent = ''; document.getElementById('bagikanSalin').click();
+      const langsung = perintah;                                       // sebelum await pertama
+      hasil.sinkron = [await tunggu(), langsung, api];
+      // tombol "Salin undangan" lobi memakai jalur yang sama
+      document.getElementById('lobiUrl').value = 'https://contoh.app/#l=Ab3dEf7hJk&r=p23d-abcdefghijkl'; perintah = 0;
+      document.getElementById('toast').textContent = ''; document.getElementById('lobiSalin').click();
+      hasil.lobi = [perintah, await tunggu()];
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('NotAllowedError'); } } });
       document.execCommand = () => false;
       hasil.gagal = await klik();
@@ -47,6 +60,8 @@ export const tes = {
     });
     assert.deepEqual(r.api, ['Tautan disalin', 'https://contoh.app/#l=Ab3dEf7hJk']);
     assert.equal(r.gantung[0], 'Tautan disalin'); assert.equal(r.gantung[1], 1);
+    assert.deepEqual(r.sinkron, ['Tautan disalin', 1, 0]);
+    assert.deepEqual(r.lobi, [1, 'Undangan disalin']);
     assert.match(r.gagal, /tekan lama/);
   },
   'gizmo: sumbu geser & skala mengikuti rotasi objek, putar tetap sumbu dunia': async (page) => {
