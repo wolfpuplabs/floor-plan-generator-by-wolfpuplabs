@@ -15552,11 +15552,42 @@ function arBuildScene(){
   return n ? root : null;
 }
 
+/* GLTFExporter r128 menunggu canvas.toBlob untuk tiap tekstur; bila hasilnya null (gambar belum termuat,
+   ukuran 0, atau kanvas melampaui anggaran memori Safari iOS) janjinya tidak pernah selesai — panel AR
+   berputar selamanya. Tekstur video diganti cuplikan kanvas kecil, tekstur yang tidak bisa digambar
+   (ukuran 0, data mentah bukan RGBA) dilepas. Bahan dikloning: bahan adegan editor tidak tersentuh. */
+const PETA_TEKSTUR=['map','normalMap','roughnessMap','metalnessMap','aoMap','emissiveMap'];
+function teksturAmanAR(t){
+  const im=t&&t.image; if(!im) return null;
+  if(typeof HTMLVideoElement!=='undefined' && im instanceof HTMLVideoElement){
+    const w=im.videoWidth, h=im.videoHeight; if(!w||!h) return null;
+    const k=Math.min(1,512/Math.max(w,h)), c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k));
+    try{ c.getContext('2d').drawImage(im,0,0,c.width,c.height); }catch(e){ return null; }
+    const n=t.clone(); n.image=c; return n;
+  }
+  const w=im.width||im.videoWidth||0, h=im.height||im.videoHeight||0; if(!w||!h) return null;
+  const gambar=(typeof HTMLImageElement!=='undefined'&&im instanceof HTMLImageElement&&im.complete)||(typeof HTMLCanvasElement!=='undefined'&&im instanceof HTMLCanvasElement)||(typeof ImageBitmap!=='undefined'&&im instanceof ImageBitmap);
+  if(gambar) return t;
+  return im.data && t.format===THREE.RGBAFormat && im.data.length===w*h*4 && !(im.data instanceof Float32Array) ? t : null;
+}
+function amankanTeksturAR(root){
+  const ganti=new Map();
+  root.traverse(m=>{ if(!m.isMesh) return;
+    const daftar=Array.isArray(m.material)?m.material:[m.material];
+    const baru=daftar.map(b=>{ if(!b) return b;
+      if(ganti.has(b)) return ganti.get(b);
+      let k=null;
+      for(const p of PETA_TEKSTUR){ const t=b[p]; if(!t) continue; const a=teksturAmanAR(t); if(a!==t){ k=k||b.clone(); k[p]=a; } }
+      ganti.set(b,k||b); return k||b; });
+    m.material=Array.isArray(m.material)?baru:baru[0];
+  });
+}
 /* titik nol di tengah denah, alas di y=0 (syarat penempatan AR), lalu
    diperkecil sesuai skala maket supaya muat di atas meja */
 function arBuildModel(){
   const root=arBuildScene();
   if(!root) return null;
+  amankanTeksturAR(root);
   root.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(root);
   if(!isFinite(box.min.x)) return null;
