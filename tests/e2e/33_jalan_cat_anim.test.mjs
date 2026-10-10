@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { muatProyekJSON } from './harness.mjs';
 
 // JEV-084: jalan di tanah bawaan tanpa dinding, kuas cat tanah/batu yang membaur, animasi model
-// unggahan (diketuk / otomatis, ikut lobi) dan pemutar media video/audio.
+// unggahan (diketuk / otomatis, ikut lobi) dan media audio/video yang diputar saat objek diketuk.
 
 // kesalahan shader three.js muncul sebagai console.error, bukan pageerror
 const catatGalat = page => { const g = []; page.on('console', m => { if (m.type() === 'error' && /shader|WebGL|THREE/i.test(m.text())) g.push(m.text().slice(0, 300)); }); return g; };
@@ -120,7 +120,7 @@ export const tes = {
     });
     assert.deepEqual(r, { beda: true, tulang: true, asli: true });
   },
-  'pemutar media: video & audio di panel, ikut tautan, tidak dibuang selama dipakai': async (page) => {
+  'media objek: diputar langsung saat diketuk seperti suara, ikut tautan, tidak dibuang selama dipakai': async (page) => {
     const r = await page.evaluate(async () => {
       // WAV 0,1 dtk sunyi & potongan MP4 (cukup kepala ftyp untuk dikenali)
       const wav = new Uint8Array(44 + 1600), dv = new DataView(wav.buffer), tulis = (o, s) => [...s].forEach((c, i) => { wav[o + i] = c.charCodeAt(0); });
@@ -130,22 +130,25 @@ export const tes = {
       const ma = await unggahMediaObjek(new File([wav], 'bel.wav'), 'media'), mv = await unggahMediaObjek(new File([mp4], 'tur.mp4'), 'media');
       let tolak = ''; try { await unggahMediaObjek(new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], 'x.txt'), 'media'); } catch (e) { tolak = e.message; }
       L().walls = [[0, 0, 4, 0], [4, 0, 4, 3], [4, 3, 0, 3], [0, 3, 0, 0]].map(([a, b, c, d]) => ({ id: uid('w'), x1: a, z1: b, x2: c, z2: d, thickness: 0.15, openings: [] }));
-      L().objects.push({ id: 'ov', kind: 'furn', type: 'sofa3', x: 1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: mv } } },
-                       { id: 'oau', kind: 'furn', type: 'sofa3', x: -1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: ma } } });
+      L().objects.push({ id: 'ov', kind: 'furn', type: 'bentuk_kotak', x: 1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: mv } } },
+                       { id: 'oau', kind: 'furn', type: 'bentuk_kotak', x: -1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: ma } } });
       rebuildScene();
-      bukaMedia('ov'); const v = { panel: !$('#mediaPanel').hidden, video: !$('#mediaVideo').hidden, audio: !$('#mediaAudio').hidden, src: /^blob:/.test($('#mediaVideo').src), judul: $('#mediaJudul').textContent };
-      bukaMedia('oau'); const a = { video: !$('#mediaVideo').hidden, audio: !$('#mediaAudio').hidden, src: /^blob:/.test($('#mediaAudio').src), lama: $('#mediaVideo').hasAttribute('src') };
-      tutupMedia(); const t = { panel: $('#mediaPanel').hidden, url: PEMUTAR.url };
+      // jenis aksi yang dibidik untuk objek bermedia saja (tanpa aksi bawaan)
+      const cariTargetUji = id => { const g = grupObjek(id)[0]; g.updateMatrixWorld(true); const c = new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3());
+        const r = new THREE.Raycaster(c.clone().add(new THREE.Vector3(0, 0, 1.5)), new THREE.Vector3(0, 0, -1)); const t = cariTarget(r); return t && t.jenis; };
+      // diketuk = langsung diputar seperti suara (tanpa panel pemutar); ketuk lagi = berhenti
+      const t1 = { jenis: cariTargetUji('oau'), label: labelAksi({ jenis: 'bunyi', id: 'oau' }) };
+      pakai({ jenis: 'bunyi', id: 'oau' }); const main = mediaObjekJalan('oau'), loop = MEDIA_OBJ.get('oau').a.loop, label2 = labelAksi({ jenis: 'bunyi', id: 'oau' });
+      pakai({ jenis: 'bunyi', id: 'oau' }); const henti = !mediaObjekJalan('oau');
+      pakai({ jenis: 'bunyi', id: 'ov' }); const video = mediaObjekJalan('ov') && MEDIA_OBJ.get('ov').a instanceof HTMLAudioElement; hentikanSemuaMediaObjek();
       buangMediaYatim(mv); const tetap = !!PROJECT.media[mv];
-      return { mime: [PROJECT.media[ma].mime, PROJECT.media[mv].mime], tolak, v, a, t, tetap, label: labelAksi({ jenis: 'media', id: 'ov' }) };
+      return { mime: [PROJECT.media[ma].mime, PROJECT.media[mv].mime], tolak, t1, main, loop, label2, henti, video, tetap, panel: !!document.getElementById('mediaPanel') };
     });
     assert.deepEqual(r.mime, ['audio/wav', 'video/mp4']);
     assert.match(r.tolak, /perlu video/);
-    assert.deepEqual(r.v, { panel: true, video: true, audio: false, src: true, judul: 'tur' });
-    assert.deepEqual(r.a, { video: false, audio: true, src: true, lama: false });
-    assert.deepEqual(r.t, { panel: true, url: null });
+    assert.deepEqual(r.t1, { jenis: 'bunyi', label: 'Bunyikan' });
+    assert.deepEqual([r.main, r.loop, r.label2, r.henti, r.video, r.panel], [true, false, 'Hentikan suara', true, true, false]);
     assert.equal(r.tetap, true);
-    assert.equal(r.label, 'Putar media');
     // tautan lihat: media yang dipakai pemutar ikut sebagai lampiran
     await page.route('**/api/tautan**', async rt => { const u = new URL(rt.request().url());
       if (u.searchParams.get('cek')) return rt.fulfill({ json: { ada: false } });
