@@ -5,13 +5,14 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 57 GO · 3 DEFER · 5 NO-GO dari 65 item.
+**Ringkasan:** 60 GO · 3 DEFER · 5 NO-GO dari 68 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
 | JEV-069 | Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan | terkirim | 0.80 | 72 jt | 0,6 jt | 239.0× | 119.0× | 0.1 bln | 5 | **GO** |
 | JEV-074 | Perbaikan cepat: salin tautan andal, atap tidak ditutup otomatis saat jalan, ketukan ganda tidak memperbesar, gizmo ikut rotasi, langit 360 unggahan & AR di tautan lihat | terkirim | 0.80 | 73,8 jt | 0,8 jt | 195.8× | 97.4× | 0.1 bln | 6 | **GO** |
+| JEV-085 | Material dinding pindah ke inspector dinding: material per sisi tiap dinding, bawaan proyek di inspector, material lantai bawaan di tab Lantai | terkirim | 0.65 | 57,3 jt | 0,6 jt | 189.9× | 94.5× | 0.1 bln | 6 | **GO** |
 | JEV-064 | Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak | terkirim | 0.80 | 83 jt | 1 jt | 169.3× | 84.1× | 0.1 bln | 6 | **GO** |
 | JEV-062 | Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL | terkirim | 0.80 | 113,1 jt | 1,4 jt | 166.6× | 82.8× | 0.1 bln | 6 | **GO** |
 | JEV-076 | Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek | terkirim | 0.65 | 109,7 jt | 1,4 jt | 161.5× | 80.3× | 0.1 bln | 7 | **GO** |
@@ -28,8 +29,10 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-066 | Garis tepi lembut untuk lampu padam saat malam (mode jalan) | terkirim | 0.80 | 30 jt | 0,6 jt | 99.0× | 49.0× | 0.2 bln | 10 | **GO** |
 | JEV-081 | Pembuat kolam seperti void (persegi & L berukuran, bebas lewat tracing) dan titik yang menempel ke ujung dinding, railing, pagar & sudut kolam | terkirim | 0.65 | 35,6 jt | 0,8 jt | 93.9× | 46.5× | 0.2 bln | 11 | **GO** |
 | JEV-075 | Tanah situs selalu di bawah lantai + terrain builder (kuas naik/turun/ratakan/haluskan) yang bisa dijalani | terkirim | 0.65 | 55,6 jt | 1,2 jt | 91.6× | 45.3× | 0.2 bln | 11 | **GO** |
+| JEV-083 | AR dari tautan yang dibagikan: Scene Viewer Android dengan model di server, arahan Safari untuk browser di dalam aplikasi iOS | terkirim | 0.65 | 34,4 jt | 0,8 jt | 90.7× | 44.8× | 0.2 bln | 11 | **GO** |
 | JEV-067 | Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG | terkirim | 0.80 | 78 jt | 1,8 jt | 85.7× | 42.3× | 0.2 bln | 12 | **GO** |
 | JEV-052 | Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) | terkirim | 0.65 | 61,4 jt | 1,7 jt | 73.5× | 36.2× | 0.3 bln | 14 | **GO** |
+| JEV-084 | Jalan di tanah bawaan tanpa dinding, kuas cat tanah & batu yang membaur, animasi model unggahan dan pemutar media video/audio | terkirim | 0.65 | 62,3 jt | 1,8 jt | 68.2× | 33.6× | 0.2 bln | 15 | **GO** |
 | JEV-061 | Bahasa Inggris sebagai bahasa bawaan, Bahasa Indonesia tetap bisa dipilih | terkirim | 0.65 | 71,2 jt | 2,1 jt | 66.8× | 32.9× | 0.2 bln | 15 | **GO** |
 | JEV-056 | Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model | terkirim | 0.65 | 65,5 jt | 2 jt | 66.2× | 32.6× | 0.3 bln | 15 | **GO** |
 | JEV-063 | Model hasil scan 3D: tag fotogrametri Sketchfab + sumber Google Scanned Objects | terkirim | 0.60 | 49,8 jt | 1,5 jt | 65.4× | 32.2× | 0.2 bln | 16 | **GO** |
@@ -82,6 +85,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
 - **JEV-069 Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan — GO.** ROI 239.0× ≥ 1, payback 0.1 bln.
 - **JEV-074 Perbaikan cepat: salin tautan andal, atap tidak ditutup otomatis saat jalan, ketukan ganda tidak memperbesar, gizmo ikut rotasi, langit 360 unggahan & AR di tautan lihat — GO.** ROI 195.8× ≥ 1, payback 0.1 bln.
+- **JEV-085 Material dinding pindah ke inspector dinding: material per sisi tiap dinding, bawaan proyek di inspector, material lantai bawaan di tab Lantai — GO.** ROI 189.9× ≥ 1, payback 0.1 bln.
 - **JEV-064 Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak — GO.** ROI 169.3× ≥ 1, payback 0.1 bln.
 - **JEV-062 Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL — GO.** ROI 166.6× ≥ 1, payback 0.1 bln.
 - **JEV-076 Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek — GO.** ROI 161.5× ≥ 1, payback 0.1 bln.
@@ -98,8 +102,10 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-066 Garis tepi lembut untuk lampu padam saat malam (mode jalan) — GO.** ROI 99.0× ≥ 1, payback 0.2 bln.
 - **JEV-081 Pembuat kolam seperti void (persegi & L berukuran, bebas lewat tracing) dan titik yang menempel ke ujung dinding, railing, pagar & sudut kolam — GO.** ROI 93.9× ≥ 1, payback 0.2 bln.
 - **JEV-075 Tanah situs selalu di bawah lantai + terrain builder (kuas naik/turun/ratakan/haluskan) yang bisa dijalani — GO.** ROI 91.6× ≥ 1, payback 0.2 bln.
+- **JEV-083 AR dari tautan yang dibagikan: Scene Viewer Android dengan model di server, arahan Safari untuk browser di dalam aplikasi iOS — GO.** ROI 90.7× ≥ 1, payback 0.2 bln.
 - **JEV-067 Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG — GO.** ROI 85.7× ≥ 1, payback 0.2 bln.
 - **JEV-052 Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) — GO.** ROI 73.5× ≥ 1, payback 0.3 bln.
+- **JEV-084 Jalan di tanah bawaan tanpa dinding, kuas cat tanah & batu yang membaur, animasi model unggahan dan pemutar media video/audio — GO.** ROI 68.2× ≥ 1, payback 0.2 bln.
 - **JEV-061 Bahasa Inggris sebagai bahasa bawaan, Bahasa Indonesia tetap bisa dipilih — GO.** ROI 66.8× ≥ 1, payback 0.2 bln.
 - **JEV-056 Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model — GO.** ROI 66.2× ≥ 1, payback 0.3 bln.
 - **JEV-063 Model hasil scan 3D: tag fotogrametri Sketchfab + sumber Google Scanned Objects — GO.** ROI 65.4× ≥ 1, payback 0.2 bln.

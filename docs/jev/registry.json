@@ -3462,6 +3462,192 @@
     "target": "≥ 10%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-083",
+   "judul": "AR dari tautan yang dibagikan: Scene Viewer Android dengan model di server, arahan Safari untuk browser di dalam aplikasi iOS",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tombol AR di tautan lihat-saja membuka penampil 3D tetapi \"Lihat di ruanganmu\" tidak jalan: di Android tanpa WebXR model-viewer menyerahkan model blob: ke Google Scene Viewer yang tidak bisa membacanya, dan tautan yang dibuka dari aplikasi chat di iOS (Instagram, LINE, Facebook) tidak punya AR Quick Look sama sekali tanpa penjelasan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"AR model yg di share ga jalan\")",
+    "alternatif": [
+     "hanya tombol unduh .glb",
+     "mengunggah model AR setiap kali tautan dibuat (boros kuota Blob)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 6,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "api/tautan?ar: badan ≤ 4 MB, nama = SHA-256 isi (diperiksa server), harus GLB v2 (tanda glTF + panjang kepala), disimpan beralamat isi — tidak bisa menimpa isi lain; hanya POST"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "model diunggah hanya saat pemakai Android tanpa WebXR membuka panel AR; GLB berisi geometri & bahan rumah yang memang sedang dibagikan"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru; Scene Viewer dibuka lewat intent standar Google"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "unggah sekali per model (beralamat isi, dilewati bila sudah ada); tidak ada unggahan di iOS/WebXR"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel teks; arahan Safari dan tombol Salin tautan di panel AR"
+    }
+   },
+   "metrik": {
+    "nama": "sesi panel AR di Android/iOS yang membuka mode AR",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-10"
+   }
+  },
+  {
+   "id": "JEV-084",
+   "judul": "Jalan di tanah bawaan tanpa dinding, kuas cat tanah & batu yang membaur, animasi model unggahan dan pemutar media video/audio",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Mode jalan menolak proyek tanpa dinding padahal petak rumput bawaan sudah ada; tanah hanya bisa dibentuk, tidak bisa diberi jalur tanah/batu alami; model beranimasi (karakter, mesin) tampil diam; tidak ada cara memutar video/audio dengan kontrol putar-jeda dari sebuah objek.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"bisa walk di default terrain, sama bisa brush texture batu, tanah yg ngeblend sama terrain / tambahin interaksi play animation buat uploaded model yg animated, sama play media (audio/video)\")",
+    "alternatif": [
+     "area paving/kerikil bertepi tegas (sudah ada) sebagai ganti cat",
+     "SkeletonUtils dari CDN (tambah satu skrip & SRI) alih-alih klon kerangka 10 baris"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.35,
+      "pakaiPerTahun": 10,
+      "menitHemat": 6
+     },
+     "konversi": {
+      "jangkauan": 0.35,
+      "upliftMenang": 0.015
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "bobot cat dijepit 0–100 dan harus sepanjang kisi relief (selain itu dibuang); klip animasi dipilih dari nama yang memang ada di aset (≤ 24 klip); media pemutar lewat sniff tanda tangan berkas (audio/video saja), batas 15 MB × 20 yang sama, diputar dari blob: lokal"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar; media pemutar ikut tautan sebagai lampiran beralamat isi seperti musik/video TV"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru: AnimationMixer bawaan three.js, klon kerangka ditulis sendiri, tekstur batu prosedural"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "mixer hanya untuk objek yang sedang diputar; cat = satu atribut vec2 per titik tanah + dua tekstur 512² yang sudah ada/dibuat sekali"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pemutar memakai kontrol bawaan peramban (papan ketik & pembaca layar), tombol berlabel teks"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan cat tanah, animasi model, atau pemutar media",
+    "target": "≥ 10%",
+    "tinjau": "2027-01-10"
+   }
+  },
+  {
+   "id": "JEV-085",
+   "judul": "Material dinding pindah ke inspector dinding: material per sisi tiap dinding, bawaan proyek di inspector, material lantai bawaan di tab Lantai",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Material dinding hanya bisa diatur sekali untuk seluruh proyek di tab Tampilan — jauh dari dinding yang sedang dipilih, dan tidak bisa membedakan satu dinding (mis. dinding aksen bata, sisi kamar mandi berkeramik).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (tangkapan layar iPad, panah dari \"Finish Materials\" ke inspector dinding: \"wall material dipindah\")",
+    "alternatif": [
+     "memindahkan bagian yang sama apa adanya ke inspector (tetap seluruh proyek)",
+     "material per ruangan dari peta ruang (lebih rumit, sisi dinding ambigu)"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 10,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kunci material hanya dari daftar FINISH (hasOwnProperty — __proto__ dll. diabaikan), warna sendiri hanya #rrggbb"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka/aset baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "material per kunci+warna tetap di-cache finMat; dinding tanpa pilihan memakai bahan bersama seperti sebelumnya"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pilihan berlabel teks (sisi dalam/luar, sisi A/B dengan arah hadap di denah)"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan ≥ 1 dinding bermaterial sendiri",
+    "target": "≥ 15%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }

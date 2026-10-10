@@ -9,6 +9,9 @@
    - GET   /api/tautan?bagian=<sha256>&cek=1  →  { ada }   (lewati unggah ulang potongan yang sama)
    - POST  /api/tautan?bagian=<sha256>        badan = potongan  →  { ok }
    - GET   /api/tautan?bagian=<sha256>        →  byte potongan
+   AR Android (JEV-083): Scene Viewer berjalan di aplikasi Google, bukan di peramban, sehingga tidak
+   bisa membaca model `blob:` buatan halaman — modelnya butuh alamat https publik:
+   - POST  /api/tautan?ar=<sha256>            badan = GLB ≤ 4 MB  →  { url }   (beralamat isi)
    Penjaga: ≤ 1,5 MB masuk, isi harus benar-benar proyek (dibuka dengan batas 20 MB lalu
    diperiksa bentuknya), id acak 10 karakter tanpa huruf mirip. Bila Blob belum diaktifkan
    (BLOB_READ_WRITE_TOKEN tidak ada) POST menjawab 501 dan aplikasi memakai tautan panjang. */
@@ -18,9 +21,13 @@ const crypto = require('node:crypto');
 const BATAS_MASUK = 1.5 * 1048576, BATAS_BUKA = 20 * 1048576, ID = /^[A-HJ-NP-Za-km-z2-9]{10}$/;
 // potongan lampiran: 3 MB dari peramban (batas badan fungsi Vercel 4,5 MB)
 const BATAS_BAGIAN = 3 * 1048576, SHA = /^[0-9a-f]{64}$/;
+// GLB untuk Scene Viewer: satu badan permintaan (batas fungsi Vercel 4,5 MB)
+const BATAS_AR = 4 * 1048576;
 const HURUF = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
 function idBaru() { let s = ''; for (const x of crypto.randomBytes(10)) s += HURUF[x % HURUF.length]; return s; }
+// GLB sah: tanda 'glTF', versi 2, panjang di kepala = panjang badan
+function glbSah(buf) { return buf.length >= 20 && buf.toString('latin1', 0, 4) === 'glTF' && buf.readUInt32LE(4) === 2 && buf.readUInt32LE(8) === buf.length; }
 function sahkan(buf) {
   let teks;
   try { teks = zlib.inflateRawSync(buf, { maxOutputLength: BATAS_BUKA }).toString('utf8'); } catch (e) { return false; }
@@ -49,6 +56,19 @@ function buatHandler(ambilBlob, siap = () => !!process.env.BLOB_READ_WRITE_TOKEN
   return async function handler(req, res) {
     res.setHeader('x-content-type-options', 'nosniff');
     try {
+      const ar = param(req, 'ar');
+      if (ar) {
+        if (!SHA.test(ar)) return kirim(res, 400, { galat: 'ar' });
+        if (req.method !== 'POST') { res.setHeader('allow', 'POST'); return kirim(res, 405, { galat: 'metode' }); }
+        if (!siap()) return kirim(res, 501, { galat: 'blob-belum-diatur' });
+        const buf = await bacaBadan(req, BATAS_AR);
+        if (!buf.length || buf.length > BATAS_AR) return kirim(res, 413, { galat: 'ukuran' });
+        if (crypto.createHash('sha256').update(buf).digest('hex') !== ar) return kirim(res, 400, { galat: 'sidik' });
+        if (!glbSah(buf)) return kirim(res, 400, { galat: 'bukan-glb' });
+        const path = 'ar/' + ar + '.glb';
+        const info = (await ada(ambilBlob, path)) || await ambilBlob().put(path, buf, { access: 'public', addRandomSuffix: false, contentType: 'model/gltf-binary', cacheControlMaxAge: 31536000 });
+        return kirim(res, 200, { url: info.url });
+      }
       const bagian = param(req, 'bagian');
       if (bagian) {
         if (!SHA.test(bagian)) return kirim(res, 400, { galat: 'bagian' });
@@ -98,3 +118,4 @@ module.exports.buatHandler = buatHandler;
 module.exports.sahkan = sahkan;
 module.exports.ID = ID;
 module.exports.BATAS_BAGIAN = BATAS_BAGIAN;
+module.exports.BATAS_AR = BATAS_AR;

@@ -156,6 +156,14 @@ html{touch-action:manipulation}
 #pianoPanel[hidden]{display:none}
 #detailPanel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;z-index:60;padding:14px;display:flex;flex-direction:column;gap:8px;border-radius:14px}
 #detailPanel[hidden]{display:none}
+#mediaPanel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;z-index:60;padding:14px;display:flex;flex-direction:column;gap:10px;border-radius:14px}
+#mediaPanel[hidden]{display:none}
+#mediaTutup{position:absolute;top:8px;right:8px;width:36px;height:36px;padding:0}
+#mediaJudul{font-size:1rem;padding-right:40px;margin:0}
+#mediaVideo{width:100%;max-height:60vh;border-radius:10px;background:#000}
+#mediaAudio{width:100%}
+#inspector details.bawaan-fin{margin:8px 0 2px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+#inspector details.bawaan-fin summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
 #inspector label.cek{display:flex;gap:8px;align-items:flex-start;font-size:.8rem;margin:6px 0;line-height:1.35}
 #inspector label.cek input{margin-top:2px}
 #detailTutup{position:absolute;top:8px;right:8px;width:36px;height:36px;padding:0}
@@ -594,21 +602,16 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       </div>
       <div class="section-title">Properti Lantai Aktif</div>
       <div id="lvl-props" class="group"></div>
+      <div class="f-row"><label>Material lantai bawaan</label><select id="finFloor"></select></div>
+      <p class="hint">Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian <b>Material</b> di panel kanan.</p>
       <button class="btn sm ghost" id="autoVoidBtn">Lubangi Pelat dari Tangga Lantai Bawah</button>
       <p class="hint">Membuat void di pelat lantai ini tepat di tempat ruang bebas kepala tangga di bawahnya kurang dari 2,00 m.</p>
     </div>
 
     <!-- ============ TAB TAMPILAN ============ -->
     <div class="tab-body" data-panel="tampilan" hidden>
-      <div class="section-title">Material Finishing</div>
-      <div class="f-row"><label>Muka dalam</label><select id="finIn"></select></div>
-      <div class="f-row" id="finInColorRow" hidden><label>Warna dalam</label><input type="color" id="finInColor" value="#efece5"></div>
-      <div class="f-row"><label>Muka luar</label><select id="finOut"></select></div>
-      <div class="f-row" id="finOutColorRow" hidden><label>Warna luar</label><input type="color" id="finOutColor" value="#d9d3c7"></div>
-      <div class="f-row"><label>Lantai</label><select id="finFloor"></select></div>
-      <label class="chk"><input type="checkbox" id="finTex" checked><span>Tekstur material (bata, kayu, keramik…)</span></label>
-      <p class="hint">Muka luar hanya dikenakan pada dinding yang berada di keliling bangunan; dinding sekat di dalam memakai finishing dalam pada kedua mukanya.</p>
       <div class="section-title">Render</div>
+      <label class="chk"><input type="checkbox" id="finTex" checked><span>Tekstur material (bata, kayu, keramik…)</span></label>
       <div class="f-row"><label>Kualitas</label><select id="rq">
         <option value="cepat">Cepat — hemat baterai</option>
         <option value="halus" selected>Halus — bawaan</option>
@@ -743,12 +746,17 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <button class="btn sm ghost" data-tanah="naik">Naikkan</button><button class="btn sm ghost" data-tanah="turun">Turunkan</button>
         <button class="btn sm ghost" data-tanah="ratakan">Ratakan</button><button class="btn sm ghost" data-tanah="haluskan">Haluskan</button>
       </div>
+      <div class="section-title">Cat tanah</div>
+      <div class="row tanah-alat" role="group" aria-label="Kuas cat tanah">
+        <button class="btn sm ghost" data-tanah="cat_tanah">Tanah</button><button class="btn sm ghost" data-tanah="cat_batu">Batu</button>
+        <button class="btn sm ghost" data-tanah="cat_hapus">Hapus cat</button>
+      </div>
       <div class="f-grid">
         <div class="group"><label>Ukuran kuas (m)</label><input type="range" id="tanahKuas" min="1" max="10" step="0.5" value="3"></div>
         <div class="group"><label>Kekuatan</label><input type="range" id="tanahKuat" min="0.1" max="1" step="0.1" value="0.5"></div>
       </div>
-      <div class="row"><button class="btn sm ghost" id="tanahReset">Datarkan semua tanah</button></div>
-      <p class="hint">Pilih kuas lalu sapukan jari / mouse di tanah. Di sekitar rumah tanah otomatis tetap di bawah lantai; di mode jalan kaki mengikuti bukit &amp; lembah.</p>
+      <div class="row"><button class="btn sm ghost" id="tanahReset">Datarkan semua tanah</button><button class="btn sm ghost" id="tanahCatReset">Hapus semua cat</button></div>
+      <p class="hint">Pilih kuas lalu sapukan jari / mouse di tanah. Di sekitar rumah tanah otomatis tetap di bawah lantai; di mode jalan kaki mengikuti bukit &amp; lembah. Cat tanah &amp; batu membaur dengan tanah di sekitarnya.</p>
     </div>
 
     <!-- ============ TAB FILE ============ -->
@@ -910,6 +918,12 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <button class="btn" id="detailBuka" hidden><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buka tautan</button>
       <small id="detailHost"></small>
     </div>
+    <div class="float" id="mediaPanel" hidden role="dialog" aria-labelledby="mediaJudul">
+      <button class="btn ghost sm" id="mediaTutup" aria-label="Tutup" title="Tutup"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg></button>
+      <h3 id="mediaJudul"></h3>
+      <video id="mediaVideo" controls playsinline hidden></video>
+      <audio id="mediaAudio" controls hidden></audio>
+    </div>
     <div class="float" id="pianoPanel" hidden>
       <div class="pp-head"><b><svg class="ik" aria-hidden="true"><use href="#i-piano"/></svg> Piano</b>
         <select id="pianoLagu" title="Lagu"></select>
@@ -989,12 +1003,13 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
   </header>
   <div id="arStage">
     <model-viewer id="arViewer" alt="Model 3D denah" camera-controls touch-action="pan-y"
-                  ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+                  ar ar-modes="webxr quick-look" ar-scale="fixed" ar-placement="floor"
                   shadow-intensity="1" shadow-softness="0.7" exposure="1.05" environment-image="neutral"
                   camera-orbit="-35deg 62deg auto" min-camera-orbit="auto 0deg auto"
                   interaction-prompt="none">
       <button slot="ar-button" class="btn sm" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%)">Lihat di ruanganmu (AR)</button>
     </model-viewer>
+    <button id="arSV" class="btn sm" hidden style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%)">Lihat di ruanganmu (AR)</button>
     <div id="arFallback"></div>
   </div>
   <div id="arInfo"></div>
@@ -1741,7 +1756,7 @@ const clock=new THREE.Clock();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
-  stepTV(dt); stepGaris(dt); stepHadap(dt);
+  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -2229,18 +2244,31 @@ function levelBBox(lv){
 /* Muka mana yang menghadap keluar dihitung dari letak dinding terhadap kotak
    bangunan — kaidah yang sama dipakai saat membaca denah. Dinding sekat di
    dalam rumah tidak punya muka luar, jadi kedua mukanya finishing dalam. */
-function wallFinishMats(w,lv){
-  const mi=matDalam(), mo=matLuar();
+// muka A (+Z lokal) dinding keliling menghadap ke dalam? null = dinding sekat (kedua muka di dalam)
+function sisiDalamA(w,lv){
   const bb=levelBBox(lv);
-  if(!bb) return mi;
+  if(!bb) return null;
   const m=wallMid(w), tepi=0.6;
   const luar = Math.abs(m.x-bb.x0)<tepi || Math.abs(m.x-bb.x1)<tepi
             || Math.abs(m.z-bb.z0)<tepi || Math.abs(m.z-bb.z1)<tepi;
-  if(!luar) return mi;
+  if(!luar) return null;
   const a=wallAngle(w), nx=-Math.sin(a), nz=Math.cos(a);   // arah +Z lokal
   const cx=(bb.x0+bb.x1)/2, cz=(bb.z0+bb.z1)/2;
-  const keDalam=(cx-m.x)*nx + (cz-m.z)*nz > 0;             // +Z menghadap ke dalam?
-  return [mi,mi,mi,mi, keDalam?mi:mo, keDalam?mo:mi];       // +x,-x,+y,-y,+z,-z
+  return (cx-m.x)*nx + (cz-m.z)*nz > 0;
+}
+/* material per dinding (JEV-085): w.finA = muka +Z lokal, w.finB = muka −Z; kosong = bawaan proyek.
+   Warna sendiri (finAWarna/finBWarna) hanya #rrggbb dan hanya untuk finishing "warna". */
+const WARNA_HEX=/^#[0-9a-f]{6}$/i;
+function matSisiDinding(w,s){
+  const k=w['fin'+s]; if(typeof k!=='string'||!Object.prototype.hasOwnProperty.call(FINISH,k)) return null;
+  const c=w['fin'+s+'Warna']; return finMat(FINISH,k,typeof c==='string'&&WARNA_HEX.test(c)?c:undefined);
+}
+function wallFinishMats(w,lv){
+  const mi=matDalam(), mo=matLuar(), dA=sisiDalamA(w,lv);
+  const oa=matSisiDinding(w,'A'), ob=matSisiDinding(w,'B');
+  if(dA===null && !oa && !ob) return mi;
+  const A = dA===null||dA ? mi : mo, B = dA===null||!dA ? mi : mo;
+  return [mi,mi,mi,mi, oa||A, ob||B];                      // +x,-x,+y,-y,+z,-z
 }
 
 /* ---------------------------------------------------------------------
@@ -4879,6 +4907,15 @@ function teksturSitus(jenis){
       for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const v=((R()*16)|0); c.fillStyle=`rgb(${70+v},${165+v},${196+v})`; c.fillRect(i*u+1.5,j*u+1.5,u-3,u-3); }
     } else if(jenis==='batu_kolam'){
       c.fillStyle='#2f3a33'; c.fillRect(0,0,S,S); noda(1800,['#3b473f','#26302a','#4a554c'],2,8);
+    } else if(jenis==='batu'){
+      // tanah berbatu untuk kuas cat (JEV-084): bongkah tak beraturan, digambar melingkar agar menyambung
+      c.fillStyle='#5f5a52'; c.fillRect(0,0,S,S); noda(2400,['#6b665d','#545049','#78726a'],1,3);
+      for(let i=0;i<150;i++){ const cx=R()*S, cy=R()*S, r=9+R()*22, n=6+((R()*3)|0), v=82+((R()*46)|0), sudut=[];
+        for(let k=0;k<n;k++) sudut.push([k/n*6.283+R()*0.5, r*(0.7+R()*0.3)]);
+        for(const ox of [-S,0,S]) for(const oy of [-S,0,S]){ if(cx+ox+r<0||cx+ox-r>S||cy+oy+r<0||cy+oy-r>S) continue;
+          c.beginPath(); sudut.forEach(([a,rr],k)=>{ const x=cx+ox+Math.cos(a)*rr, y=cy+oy+Math.sin(a)*rr*0.8; k?c.lineTo(x,y):c.moveTo(x,y); }); c.closePath();
+          c.fillStyle=`rgb(${v},${v-4},${v-10})`; c.fill(); c.strokeStyle='rgba(30,26,22,.55)'; c.lineWidth=2; c.stroke();
+          c.fillStyle='rgba(255,255,255,.08)'; c.beginPath(); c.arc(cx+ox-r*0.25,cy+oy-r*0.25,r*0.35,0,7); c.fill(); } }
     }
   });
 }
@@ -4891,6 +4928,37 @@ function matSitus(jenis,ukuran){
   }
   const m=DECOTEX.get(key); m.userData.ukuran=ukuran||{rumput:2,kerikil:1.2,tanah:1.5,paving:2,dek:1.6,ubin_kolam:2,batu_kolam:1.5}[jenis]||2;
   return m;
+}
+/* Tanah yang dicat (JEV-084): tekstur tanah & batu dicampur ke tanah dasar menurut bobot per
+   titik (atribut catBobot), tepinya dipecah noise supaya membaur alami, bukan lingkaran kuas */
+function matSitusCat(jenis){
+  const key='m_situs_cat_'+jenis;
+  if(!DECOTEX.has(key)){
+    const dasar=matSitus(jenis), m=dasar.clone(), tt=teksturSitus('tanah'), tb=teksturSitus('batu');
+    for(const t of [tt,tb]){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.needsUpdate=true; }
+    m.customProgramCacheKey=()=>'situsCat';
+    m.onBeforeCompile=sh=>{
+      pasangGIShader(sh);
+      sh.uniforms.catT={value:tt}; sh.uniforms.catB={value:tb};
+      sh.vertexShader=sh.vertexShader
+        .replace('#include <common>','#include <common>\nattribute vec2 catBobot; varying vec2 vCat;')
+        .replace('#include <begin_vertex>','#include <begin_vertex>\n vCat=catBobot;');
+      sh.fragmentShader=sh.fragmentShader
+        .replace('#include <common>',`#include <common>
+uniform sampler2D catT, catB; varying vec2 vCat;
+float cH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float cN(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(cH(i),cH(i+vec2(1,0)),f.x),mix(cH(i+vec2(0,1)),cH(i+vec2(1,1)),f.x),f.y); }`)
+        .replace('#include <map_fragment>',`#include <map_fragment>
+  { float n=cN(vGIPos.xz*1.1)*0.6+cN(vGIPos.xz*3.7+7.0)*0.4;
+    float wt=smoothstep(0.3,0.7,vCat.x+(n-0.5)*0.6), wb=smoothstep(0.32,0.68,vCat.y+(n-0.5)*0.75);
+    vec3 ct=mapTexelToLinear(texture2D(catT,vGIPos.xz/1.5)).rgb, cb=mapTexelToLinear(texture2D(catB,vGIPos.xz/1.8)).rgb;
+    diffuseColor.rgb=mix(diffuseColor.rgb,ct*diffuse,wt);
+    diffuseColor.rgb=mix(diffuseColor.rgb,cb*diffuse,wb); }`);
+    };
+    DECOTEX.set(key,m);
+  }
+  const m=DECOTEX.get(key); m.userData.ukuran=matSitus(jenis).userData.ukuran; return m;
 }
 /* UV dari koordinat dunia (x,z) supaya pola menyambung antarbidang */
 function uvDunia(geo,ukuran,ox=0,oz=0){
@@ -5056,6 +5124,14 @@ function reliefDi(x,z){
   const i=Math.min(R.nx-2,Math.floor(fx)), k=Math.min(R.nz-2,Math.floor(fz)), u=fx-i, v=fz-k, h=(a,b)=>R.h[b*R.nx+a]/100;
   return (h(i,k)*(1-u)+h(i+1,k)*u)*(1-v)+(h(i,k+1)*(1-u)+h(i+1,k+1)*u)*v;
 }
+// bobot cat [tanah, batu] 0..1 di (x,z), bilinear dari kisi relief
+function catDi(R,x,z){
+  const C=R&&R.cat; if(!C) return [0,0];
+  const fx=(x-R.x0)/R.c, fz=(z-R.z0)/R.c; if(!(fx>=0&&fz>=0&&fx<=R.nx-1&&fz<=R.nz-1)) return [0,0];
+  const i=Math.min(R.nx-2,Math.floor(fx)), k=Math.min(R.nz-2,Math.floor(fz)), u=fx-i, v=fz-k;
+  const b=A=>((A[k*R.nx+i]*(1-u)+A[k*R.nx+i+1]*u)*(1-v)+(A[(k+1)*R.nx+i]*(1-u)+A[(k+1)*R.nx+i+1]*u)*v)/100;
+  return [b(C.t),b(C.b)];
+}
 function diMasker(M,x,z){ const i=Math.floor((x-M.x0)/M.c), k=Math.floor((z-M.z0)/M.c); return i>=0&&k>=0&&i<M.nx&&k<M.nz&&!!M.T[i*M.nz+k]; }
 function adaTanahSitus(){ const st=PROJECT.site; return !!(st&&st.tanah&&st.tanah!=='none'&&!st.sembunyi); }
 // permukaan tanah di (x,z) — dipakai mesh tanah dan pijakan mode jalan
@@ -5080,8 +5156,12 @@ function buildSitus(opsi={}){
   }
   const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); geo.setIndex(idx);
   geo.computeVertexNormals();
-  const mat=matSitus(st.tanah); uvDunia(geo,mat.userData.ukuran);
-  const tanah=new THREE.Mesh(geo,mat); tanah.receiveShadow=true; tanah.castShadow=!!st.relief; tanah.userData.situs=true;
+  const R=st.relief, dicat=!!(R&&R.cat&&(R.cat.t.some(v=>v)||R.cat.b.some(v=>v)));
+  if(dicat){ const w=new Float32Array(nx*nz*2);
+    for(let q=0;q<nx*nz;q++){ const [a,b]=catDi(R,pos[q*3],pos[q*3+2]); w[q*2]=a; w[q*2+1]=b; }
+    geo.setAttribute('catBobot',new THREE.BufferAttribute(w,2)); }
+  const mat=dicat?matSitusCat(st.tanah):matSitus(st.tanah); uvDunia(geo,mat.userData.ukuran);
+  const tanah=new THREE.Mesh(geo,mat); tanah.receiveShadow=true; tanah.castShadow=!!(R&&R.h.some(v=>v)); tanah.userData.situs=true;
   const g=new THREE.Group(); g.userData.situsGrup=true; g.add(tanah);
   // lantai dasar selalu ada di tapak rumah, walau pelat lantai 1 dimatikan
   const pelat=$('#showSlab'), adaPelat=lv.slab && (!pelat || pelat.checked);
@@ -5103,6 +5183,18 @@ function sapuTanah(p,dt){
   const R=reliefSiap(), rad=TANAH.kuas, kuat=TANAH.kuat, S=TANAH.sapuan;
   const i0=Math.max(0,Math.floor((p.x-rad-R.x0)/R.c)), i1=Math.min(R.nx-1,Math.ceil((p.x+rad-R.x0)/R.c));
   const k0=Math.max(0,Math.floor((p.z-rad-R.z0)/R.c)), k1=Math.min(R.nz-1,Math.ceil((p.z+rad-R.z0)/R.c));
+  if(TANAH.mode.startsWith('cat_')){
+    const n=R.nx*R.nz, C=R.cat||(R.cat={t:new Array(n).fill(0), b:new Array(n).fill(0)});
+    for(let k=k0;k<=k1;k++) for(let i=i0;i<=i1;i++){
+      const d=Math.hypot(R.x0+i*R.c-p.x,R.z0+k*R.c-p.z); if(d>=rad) continue;
+      const q=k*R.nx+i, a=(1-(d/rad)**2)**2*kuat*dt*420;
+      if(TANAH.mode==='cat_tanah'){ C.t[q]+=a; C.b[q]-=a; }
+      else if(TANAH.mode==='cat_batu') C.b[q]+=a;
+      else { C.t[q]-=a; C.b[q]-=a; }
+      C.t[q]=Math.round(clamp(C.t[q],0,100)); C.b[q]=Math.round(clamp(C.b[q],0,100));
+    }
+    return;
+  }
   const lama=TANAH.mode==='haluskan'?R.h.slice():null;
   for(let k=k0;k<=k1;k++) for(let i=i0;i<=i1;i++){
     const d=Math.hypot(R.x0+i*R.c-p.x,R.z0+k*R.c-p.z); if(d>=rad) continue;
@@ -6970,6 +7062,17 @@ function stepLampu(dt){
   stepGI(s);
 }
 
+/* klon model: mesh berkulit (karakter beranimasi) butuh kerangka sendiri yang menunjuk tulang
+   salinannya — clone() biasa tetap menunjuk tulang templat (seperti SkeletonUtils.clone) */
+function klonModel(tpl){
+  const c=tpl.clone(true); if(!tpl.userData.berkulit) return c;
+  const a=[], b=[]; tpl.traverse(n=>a.push(n)); c.traverse(n=>b.push(n));
+  const peta=new Map(a.map((n,i)=>[n,b[i]]));
+  a.forEach((n,i)=>{ if(!n.isSkinnedMesh) return; const d=b[i];
+    d.skeleton=n.skeleton.clone(); d.bindMatrix.copy(n.bindMatrix);
+    d.skeleton.bones=n.skeleton.bones.map(t=>peta.get(t)); d.bind(d.skeleton,d.bindMatrix); });
+  return c;
+}
 function buildObject(o, lv){
   let g;
   if(o.kind==='stair') g=buildStair(o,lv);
@@ -6979,7 +7082,7 @@ function buildObject(o, lv){
   else if(o.kind==='garis') g=buildGaris(o);
   else if(o.kind==='model'){
     const tpl=ASSET_OBJ.get(o.type);
-    g = tpl ? tpl.clone(true) : missingModelBox();
+    g = tpl ? klonModel(tpl) : missingModelBox();
     if(tpl) hiasModel(g,o);
   }
   else {
@@ -7088,7 +7191,7 @@ function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry) c.geometry.dis
 function rebuildScene(){
   ANIM.clear(); OPS.clear(); REG=true;
   try{ rebuildScene0(); } finally { REG=false; }
-  kumpulkanLampu(); kumpulkanHadap();
+  kumpulkanLampu(); kumpulkanHadap(); kumpulkanGerak();
   kumpulkanAudio();
   if(window.__siap) terapkanPantulan();       // MOOD & finishing sudah terdefinisi
   rebuildDims();
@@ -7337,6 +7440,7 @@ function renderInspector(){
     fRow(ins,'Tebal custom',numInput(d.thickness,0.01,v=>{ d.thickness=clamp(v,0.05,1.5); rebuildScene(); },0.05,1.5));
     fRow(ins,'Tinggi (m)',numInput(d.height||0,0.05,v=>{ d.height=v<=0?0:clamp(v,0.3,12); rebuildScene(); },0,12));
     ins.appendChild(el('p','hint','Tinggi 0 = mengikuti tinggi lantai ('+fmt(L().height)+' m).'));
+    inspektorMaterialDinding(ins,d);
 
     ins.appendChild(el('div','section-title','Bukaan'));
     const wrap=el('div','group');
@@ -7703,6 +7807,7 @@ const ASSET_MAX=20*1024*1024;
 const ZIP_MAKS=200*1048576;          // isi ZIP sesudah dibuka (model unduhan situs lain)
 const RAMPING_MAKS=100*1048576;      // GLB mentah yang masih boleh dirampingkan; sesudahnya tetap ≤ ASSET_MAX
 const TEKS_MAKS=1024;                // sisi terpanjang tekstur model (lihat RAMPINGKAN MODEL)
+const ASSET_ANIM=new Map();          // id -> klip animasi glTF (JEV-084)
 const ASSET_BUF=new Map();           // id -> GLB yang sedang dipakai (untuk pemulihan konteks WebGL)
 
 function b64FromBuf(buf){
@@ -7775,6 +7880,11 @@ function parseAsset(id,buf){
         if(!root) return rej(new Error('berkas tidak memuat scene'));
         const r=prepareAssetObject(root);
         if(!r.dims[0]&&!r.dims[1]&&!r.dims[2]) return rej(new Error('modelnya kosong'));
+        // animasi (JEV-084): klip disimpan per aset; mesh berkulit tidak dipotong frustum (posenya bergerak di luar kotak awal)
+        const klip=(gltf.animations||[]).filter(c=>c&&c.duration>0&&c.tracks.length).slice(0,24);
+        let kulit=false; r.obj.traverse(n=>{ if(n.isSkinnedMesh){ kulit=true; n.frustumCulled=false; } });
+        r.obj.userData.berkulit=kulit; r.anim=klip.length;
+        if(klip.length) ASSET_ANIM.set(id,klip); else ASSET_ANIM.delete(id);
         ASSET_OBJ.set(id,r.obj); ASSET_BUF.set(id,buf);
         res(r);
       },err=>rej(new Error(err&&err.message?err.message:'berkas glTF tidak terbaca')));
@@ -7783,7 +7893,7 @@ function parseAsset(id,buf){
 }
 async function loadProjectAssets(){
   const ids=Object.keys(PROJECT.assets||{});
-  ASSET_OBJ.clear();
+  ASSET_OBJ.clear(); ASSET_ANIM.clear();
   ASSET_BUF.clear();
   let gagal=0, ramping=0;
   for(const id of ids){
@@ -8071,7 +8181,11 @@ renderer.domElement.addEventListener('pointerup',e=>{
     return;
   }
   const hit=pickObject(e);
-  if(LIHAT.on){ if(hit && hit.kind==='obj' && aksiObjek(cariObjek(hit.id))?.detail) bukaDetail(hit.id); return; }
+  if(LIHAT.on){ const ak=hit && hit.kind==='obj' ? aksiObjek(cariObjek(hit.id)) : null;
+    if(ak?.detail) bukaDetail(hit.id);
+    else if(ak?.media) bukaMedia(hit.id);
+    else if(ak?.anim){ togelGerak(hit.id); laporAksi('anim',hit.id,gerakJalan(hit.id)); }
+    return; }
   select(hit?hit.kind:null, hit?hit.id:null);
 });
 
@@ -8474,7 +8588,9 @@ function setTool(t){
                                                   : 'Klik titik <b>awal</b> dinding di viewport.'); }
   else if(t==='measure'){}
   else if(t==='voidTrace'){ gizmo.detach(); }
-  else if(t==='tanah'){ gizmo.detach(); select(null); setHint(`Sapukan di tanah untuk <b>${({naik:'menaikkan',turun:'menurunkan',ratakan:'meratakan',haluskan:'menghaluskan'})[TANAH.mode]}</b> tanah. <b>Esc</b> / Pilih untuk selesai.`); }
+  else if(t==='tanah'){ gizmo.detach(); select(null);
+    if(TANAH.mode.startsWith('cat_')) setHint(`Sapukan di tanah untuk <b>${({cat_tanah:'mengecat tekstur tanah',cat_batu:'mengecat tekstur batu',cat_hapus:'menghapus cat'})[TANAH.mode]}</b>. <b>Esc</b> / Pilih untuk selesai.`);
+    else setHint(`Sapukan di tanah untuk <b>${({naik:'menaikkan',turun:'menurunkan',ratakan:'meratakan',haluskan:'menghaluskan'})[TANAH.mode]}</b> tanah. <b>Esc</b> / Pilih untuk selesai.`); }
   else if(t==='select') setHint('Klik objek untuk memilih. <b>W</b> geser · <b>E</b> putar · <b>R</b> skala.');
   else setHint(`Mode <b>${t==='translate'?'geser':t==='rotate'?'putar':'skala'}</b> — tarik gizmo pada objek terpilih.`);
   if(typeof renderTanahUI==='function') renderTanahUI();
@@ -12928,7 +13044,9 @@ function reliefAman(R){
   if(!R||typeof R!=='object'||!Array.isArray(R.h)) return {};
   const nx=Math.floor(+R.nx), nz=Math.floor(+R.nz), c=+R.c, x0=+R.x0, z0=+R.z0;
   if(!(nx>=2&&nz>=2&&nx<=400&&nz<=400&&nx*nz<=40000&&R.h.length===nx*nz&&c>=0.25&&c<=4&&Math.abs(x0)<1e4&&Math.abs(z0)<1e4)) return {};
-  return {relief:{c, x0, z0, nx, nz, h:R.h.map(v=>Math.round(clamp(+v||0,-1000,3000)))}};
+  const bobot=A=>Array.isArray(A)&&A.length===nx*nz?A.map(v=>Math.round(clamp(+v||0,0,100))):null;
+  const ct=R.cat&&typeof R.cat==='object'?bobot(R.cat.t):null, cb=R.cat&&typeof R.cat==='object'?bobot(R.cat.b):null;
+  return {relief:{c, x0, z0, nx, nz, h:R.h.map(v=>Math.round(clamp(+v||0,-1000,3000))), ...(ct&&cb?{cat:{t:ct,b:cb}}:{})}};
 }
 function sanitasiProyek(j){
   if(!j || typeof j!=='object' || !Array.isArray(j.levels) || !j.levels.length) throw new Error('format tidak dikenali');
@@ -13058,10 +13176,11 @@ async function unggahMediaObjek(f,jenis){
   let buf=await f.arrayBuffer(), mime=jenisMedia(new Uint8Array(buf,0,Math.min(16,buf.byteLength)));
   const ext=((f.name||'').match(/\.([a-z0-9]+)$/i)||[])[1]||'';
   // M4A/AAC dari iPhone & perekam sering berlabel mp42/isom (dikira video): percaya nama/jenis berkasnya bila audio
-  if(jenis==='audio' && mime==='video/mp4' && (/^audio\//.test(f.type) || /^(m4a|m4b|aac|mp4a)$/i.test(ext))) mime='audio/mp4';
+  if((jenis==='audio'||jenis==='media') && mime==='video/mp4' && (/^audio\//.test(f.type) || /^(m4a|m4b|aac|mp4a)$/i.test(ext))) mime='audio/mp4';
   if(jenis==='image' && (!mime || !mime.startsWith('image/') || (mime!=='image/gif' && f.size>2.5*1048576))){
     try{ buf=await keJPEG(f); mime='image/jpeg'; }catch(e){ /* tetap ditolak di bawah */ } }
-  if(!mime || !mime.startsWith(jenis+'/')) throw new Error(jenis==='audio'?'perlu musik MP3 / M4A / OGG / WAV':'perlu gambar JPG / PNG / WebP / GIF / HEIC');
+  const cocok=jenis==='media' ? /^(audio|video)\//.test(mime||'') : !!mime && mime.startsWith(jenis+'/');
+  if(!cocok) throw new Error(jenis==='media'?'perlu video MP4 / MOV / WebM atau audio MP3 / M4A / OGG / WAV':jenis==='audio'?'perlu musik MP3 / M4A / OGG / WAV':'perlu gambar JPG / PNG / WebP / GIF / HEIC');
   PROJECT.media=PROJECT.media||{};
   if(Object.keys(PROJECT.media).length>=MEDIA_BATAS.jumlah) throw new Error(`maksimal ${MEDIA_BATAS.jumlah} berkas media per proyek`);
   const mid=uid('md'); PROJECT.media[mid]={nama:f.name.replace(/\.[^.]+$/,'').slice(0,120)||jenis, mime, data:b64FromBuf(buf)}; return mid;
@@ -13070,10 +13189,44 @@ async function unggahMediaObjek(f,jenis){
 function buangMediaYatim(mid){
   if(!mid||!PROJECT.media||!PROJECT.media[mid]) return;
   for(const lv of PROJECT.levels) for(const o of lv.objects){ const p=o.params||{}, a=p.aksi||{};
-    if(p.tvMedia===mid||a.musik===mid||a.sfxMedia===mid||(a.detail&&a.detail.gambar===mid)) return; }
+    if(p.tvMedia===mid||a.musik===mid||a.sfxMedia===mid||a.media===mid||(a.detail&&a.detail.gambar===mid)) return; }
   delete PROJECT.media[mid];
 }
 const LABEL_BAWAAN={lampu:'menyalakan / mematikan lampu', duduk:'duduk', tv:'menyalakan TV', audio:'memutar musik', piano:'bermain piano', api:'menyalakan api', gorden:'membuka / menutup gorden'};
+/* ---------- inspector: material dinding per sisi (JEV-085) ---------- */
+// arah hadap muka dinding di denah (tampak atas: −Z = atas)
+function arahDenah(nx,nz){ return Math.abs(nx)>Math.abs(nz) ? (nx>0?'kanan':'kiri') : (nz>0?'bawah':'atas'); }
+const warnaFinish=(k,c)=>typeof c==='string'&&WARNA_HEX.test(c)?c:'#'+new THREE.Color(FINISH[k]?FINISH[k].warna:0xefece5).getHexString();
+function inspektorMaterialDinding(ins,d){
+  ins.appendChild(el('div','section-title','Material'));
+  const dA=sisiDalamA(d,L()), a=wallAngle(d), F=PROJECT.finish, nama=k=>(FINISH[k]||{}).l||k;
+  const sisi = dA===null
+    ? [['A','Sisi A (hadap '+arahDenah(-Math.sin(a),Math.cos(a))+')',F.in], ['B','Sisi B (hadap '+arahDenah(Math.sin(a),-Math.cos(a))+')',F.in]]
+    : [[dA?'A':'B','Sisi dalam',F.in], [dA?'B':'A','Sisi luar',F.out]];
+  for(const [s,label,bawaan] of sisi){
+    fRow(ins,label,selInput([['','Bawaan — '+nama(bawaan)],...Object.entries(FINISH).map(([k,v])=>[k,v.l])],d['fin'+s]||'',v=>{
+      if(v) d['fin'+s]=v; else delete d['fin'+s];
+      if(v!=='warna') delete d['fin'+s+'Warna'];
+      HIST.label='Material dinding'; rebuildScene(); renderInspector(); }));
+    if(d['fin'+s]==='warna'){ const c=document.createElement('input'); c.type='color'; c.value=warnaFinish('warna',d['fin'+s+'Warna']);
+      c.onchange=()=>{ d['fin'+s+'Warna']=c.value; HIST.label='Warna dinding'; rebuildScene(); }; fRow(ins,'Warna '+label[0].toLowerCase()+label.slice(1),c); }
+  }
+  ins.appendChild(el('p','hint',dA===null?'Dinding sekat: tiap sisi bisa berbeda (mis. keramik di sisi kamar mandi).':'Dinding keliling: sisi luar menghadap ke luar bangunan.'));
+  // bawaan proyek — dulu di tab Tampilan; berlaku untuk dinding yang memilih "Bawaan"
+  const det=document.createElement('details'); det.className='bawaan-fin';
+  const sum=document.createElement('summary'); sum.textContent='Bawaan semua dinding'; det.appendChild(sum);
+  for(const [k,label] of [['in','Muka dalam'],['out','Muka luar']]){
+    fRow(det,label,selInput(Object.entries(FINISH).map(([x,v])=>[x,v.l]),F[k],v=>{ F[k]=v; HIST.label='Ganti material'; rebuildScene(); renderInspector(); }));
+    if(F[k]==='warna'){ const c=document.createElement('input'); c.type='color'; c.value=warnaFinish('warna',F[k+'Color']);
+      c.onchange=()=>{ F[k+'Color']=c.value; HIST.label='Ganti material'; rebuildScene(); }; fRow(det,'Warna '+label.toLowerCase(),c); }
+  }
+  const bs=el('button','btn sm ghost','Samakan semua dinding lantai ini ke bawaan');
+  bs.onclick=()=>{ let n=0; for(const w of L().walls) for(const s of ['A','B']) if(w['fin'+s]){ delete w['fin'+s]; delete w['fin'+s+'Warna']; n++; }
+    HIST.label='Samakan material dinding'; rebuildScene(); renderInspector(); toast(n?'Material dinding disamakan ke bawaan':'Semua dinding sudah memakai bawaan'); };
+  det.appendChild(bs);
+  det.appendChild(el('p','hint','Muka luar hanya untuk dinding di keliling bangunan; dinding sekat memakai muka dalam di kedua sisinya.'));
+  ins.appendChild(det);
+}
 function inspektorAksi(ins,d){
   d.params=d.params||{};
   const A=Object.assign({},d.params.aksi);
@@ -13128,6 +13281,25 @@ function inspektorAksi(ins,d){
     ins.appendChild(rs);
     if(A.sfx==='unggah') ins.appendChild(el('p','hint',ns?'♪ '+ns.nama:'Pilih berkas MP3 / M4A / WAV / OGG pendek.'));
   }
+  // PEMUTAR MEDIA (JEV-084): video / audio diputar di panel dengan tombol putar, jeda & geser
+  const nmd=A.media&&PROJECT.media&&PROJECT.media[A.media];
+  const rd=el('div','row'), bd=tombolIkon('btn sm ghost','main',nmd?'Ganti media':'Pemutar video / audio…');
+  bd.onclick=()=>pilihBerkas('video/*,audio/*,.mp4,.mov,.webm,.mp3,.m4a,.aac,.wav,.ogg',async f=>{ const lama=A.media; A.media=await unggahMediaObjek(f,'media'); simpan('media'); buangMediaYatim(lama); toast('Media: '+f.name); });
+  rd.appendChild(bd);
+  if(nmd){ const bh=tombolIkon('btn sm ghost','hapus','Hapus media'); bh.onclick=()=>{ const m=A.media; delete A.media; simpan('hapus media'); buangMediaYatim(m); }; rd.appendChild(bh); }
+  ins.appendChild(rd);
+  ins.appendChild(el('p','hint',nmd?'▶ '+nmd.nama+' — diputar di panel pemutar saat objek diketuk.':`Video MP4 / MOV / WebM atau audio, maks. ${MEDIA_BATAS.mb} MB — diputar di panel pemutar saat objek diketuk.`));
+  // ANIMASI MODEL (JEV-084)
+  const klip=d.kind==='model'?ASSET_ANIM.get(d.type):null;
+  if(klip&&klip.length){
+    centang('Animasi — putar saat diketuk',!!A.anim,v=>{ if(v) A.anim={klip:'',ulang:true}; else { hentikanGerak(d.id); delete A.anim; } simpan('animasi'); });
+    if(A.anim){ const N=A.anim=Object.assign({},A.anim);
+      if(klip.length>1) fRow(ins,'Klip',selInput([['','Semua klip ('+klip.length+')'],...klip.map(c=>[c.name,(c.name||'tanpa nama').slice(0,40)+' · '+fmt(c.duration,1)+' dtk'])],N.klip||'',v=>{ N.klip=v; hentikanGerak(d.id); simpan('klip animasi'); }));
+      centang('Ulang terus',N.ulang!==false,v=>{ N.ulang=v; hentikanGerak(d.id); simpan('ulang animasi'); });
+      centang('Putar otomatis di mode jalan & lihat',N.otomatis===true,v=>{ if(v) N.otomatis=true; else delete N.otomatis; simpan('animasi otomatis'); });
+      const rp=el('div','row'), bp=tombolIkon('btn sm ghost','main',gerakJalan(d.id)?'Hentikan pratinjau':'Pratinjau animasi');
+      bp.onclick=()=>{ togelGerak(d.id); renderInspector(); }; rp.appendChild(bp); ins.appendChild(rp); }
+  } else if(d.kind==='model') ins.appendChild(el('p','hint','Model ini tidak punya animasi. Model GLB beranimasi (mis. karakter dari Mixamo / Sketchfab) bisa diputar saat diketuk.'));
   // HADAP KAMERA
   centang('Selalu menghadap pengunjung (mode jalan & lihat)',A.hadap===true,v=>{ if(v) A.hadap=true; else delete A.hadap; simpan('hadap kamera'); });
 }
@@ -13352,7 +13524,7 @@ async function buatTautanLihat(kemajuan=()=>{}){
   let mediaDitinggal=0;
   const dipakaiTV=new Set();
   for(const lv of PROJECT.levels) for(const o of lv.objects){ if(o.params&&o.params.tvMedia) dipakaiTV.add(o.params.tvMedia);
-    const ak=aksiObjek(o); if(ak){ if(ak.musik) dipakaiTV.add(ak.musik); if(ak.sfxMedia) dipakaiTV.add(ak.sfxMedia); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
+    const ak=aksiObjek(o); if(ak){ if(ak.musik) dipakaiTV.add(ak.musik); if(ak.sfxMedia) dipakaiTV.add(ak.sfxMedia); if(ak.media) dipakaiTV.add(ak.media); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
   for(const [k,md] of Object.entries(PROJECT.media||{})){
     if(!dipakaiTV.has(k)) continue;
     const b=await lampirkan(md.nama,new Uint8Array(bufFromB64(md.data)));
@@ -13628,21 +13800,10 @@ function isiPilihan(sel,tabel,nilai){
     sel.appendChild(o);
   }
 }
-function renderFinishUI(){
-  isiPilihan($('#finIn'),FINISH,PROJECT.finish.in);
-  isiPilihan($('#finOut'),FINISH,PROJECT.finish.out);
-  isiPilihan($('#finFloor'),LANTAI,PROJECT.finish.floor);
-  $('#finInColor').value=PROJECT.finish.inColor||'#efece5';
-  $('#finOutColor').value=PROJECT.finish.outColor||'#d9d3c7';
-  $('#finInColorRow').hidden = PROJECT.finish.in!=='warna';
-  $('#finOutColorRow').hidden= PROJECT.finish.out!=='warna';
-}
+// material dinding pindah ke inspector dinding (JEV-085); di sini tinggal material lantai bawaan (tab Lantai)
+function renderFinishUI(){ isiPilihan($('#finFloor'),LANTAI,PROJECT.finish.floor); }
 const ubahFinish=(k,v)=>{ PROJECT.finish[k]=v; HIST.label='Ganti material'; renderFinishUI(); rebuildScene(); };
-$('#finIn').onchange   =e=>ubahFinish('in',e.target.value);
-$('#finOut').onchange  =e=>ubahFinish('out',e.target.value);
-$('#finFloor').onchange=e=>ubahFinish('floor',e.target.value);
-$('#finInColor').oninput =e=>ubahFinish('inColor',e.target.value);
-$('#finOutColor').oninput=e=>ubahFinish('outColor',e.target.value);
+$('#finFloor').onchange=e=>{ ubahFinish('floor',e.target.value); renderLevels(); };
 
 /* Peranti seperti DLSS tidak tersedia untuk halaman web — yang bisa dipakai
    di sini adalah menggambar pada resolusi lebih tinggi lalu mengecilkannya
@@ -14595,9 +14756,64 @@ function aksiObjek(o){
     out.detail={judul:String(d.judul||'').slice(0,120), teks:String(d.teks||'').slice(0,500), url, gambar:md(d.gambar,/^image\//)}; }
   const mu=md(a.musik,/^audio\//); if(mu){ out.musik=mu; out.ulang=a.ulang!==false; }
   if(a.hadap===true) out.hadap=true;
+  // animasi model unggahan (JEV-084): hanya bila asetnya memang punya klip
+  if(a.anim&&typeof a.anim==='object'&&o.kind==='model'){ const kl=ASSET_ANIM.get(o.type);
+    if(kl&&kl.length) out.anim={klip:typeof a.anim.klip==='string'&&kl.some(c=>c.name===a.anim.klip)?a.anim.klip:'', ulang:a.anim.ulang!==false, otomatis:a.anim.otomatis===true}; }
+  const me=md(a.media,/^(audio|video)\//); if(me) out.media=me;
   if(a.sfx==='klik'||a.sfx==='swoosh') out.sfx=a.sfx;
   else if(a.sfx==='unggah'){ const sm=md(a.sfxMedia,/^audio\//); if(sm){ out.sfx='unggah'; out.sfxMedia=sm; } }
   return Object.keys(out).length?out:null;
+}
+/* ---------- ANIMASI MODEL & PEMUTAR MEDIA (JEV-084) ----------
+   GERAK: animasi model unggahan yang sedang diputar (id objek → waktu & mixer). Mixer dibuat
+   ulang tiap kali adegan dibangun ulang, lalu dilanjutkan dari waktunya — tidak melompat. */
+var GERAK={main:new Map()};        // var: rebuildScene & putaran gambar pertama berjalan sebelum baris ini
+function gerakJalan(id){ return !!GERAK && GERAK.main.has(id); }
+function mulaiGerak(id){ const ak=aksiObjek(cariObjek(id)); if(!ak||!ak.anim||GERAK.main.has(id)) return; GERAK.main.set(id,{t:0, gs:null, mixers:null}); }
+function hentikanGerak(id){ const A=GERAK.main.get(id); if(!A) return; GERAK.main.delete(id); bayangKotor(); }   // pose terakhir tetap (seperti jeda)
+function togelGerak(id){ if(GERAK.main.has(id)) hentikanGerak(id); else mulaiGerak(id); }
+function hentikanSemuaGerak(){ for(const id of [...GERAK.main.keys()]) hentikanGerak(id); }
+function kumpulkanGerak(){
+  if(!GERAK) return;
+  for(const A of GERAK.main.values()) A.gs=null;
+  if(!(FPS.on||LIHAT.on)) return;
+  for(const lv of PROJECT.levels) for(const o of lv.objects) if(aksiObjek(o)?.anim?.otomatis) mulaiGerak(o.id);
+}
+function stepGerak(dt){
+  if(!GERAK||!GERAK.main.size) return;
+  for(const [id,A] of GERAK.main){
+    if(!A.gs){
+      const o=cariObjek(id), ak=aksiObjek(o), kl=o&&ASSET_ANIM.get(o.type);
+      if(!ak||!ak.anim||!kl){ GERAK.main.delete(id); continue; }
+      const pilih=ak.anim.klip?kl.filter(c=>c.name===ak.anim.klip):kl;
+      A.ulang=ak.anim.ulang; A.durasi=Math.max(...pilih.map(c=>c.duration));
+      A.gs=grupObjek(id).filter((g,_,semua)=>{ for(let p=g.parent;p;p=p.parent) if(semua.includes(p)) return false; return true; });
+      A.mixers=A.gs.map(g=>{ const m=new THREE.AnimationMixer(g);
+        for(const c of pilih){ const x=m.clipAction(c); x.setLoop(A.ulang?THREE.LoopRepeat:THREE.LoopOnce,Infinity); x.clampWhenFinished=true; x.play(); }
+        m.setTime(A.t); return m; });
+    }
+    A.t+=dt; for(const m of A.mixers) m.update(dt);
+    if(!A.ulang && A.t>=A.durasi) GERAK.main.delete(id);           // sekali putar: berhenti di pose akhir
+  }
+  bayangKotor();
+}
+// pemutar media: video / audio milik objek diputar di panel dengan kontrol bawaan peramban
+const PEMUTAR={url:null};
+function bukaMedia(id){
+  const o=cariObjek(id), ak=aksiObjek(o); if(!ak||!ak.media) return;
+  tutupMedia(); tutupDetail();
+  const m=PROJECT.media[ak.media], video=/^video\//.test(m.mime), x=$(video?'#mediaVideo':'#mediaAudio');
+  PEMUTAR.url=URL.createObjectURL(new Blob([bufFromB64(m.data)],{type:m.mime}));
+  $('#mediaJudul').textContent=m.nama||namaObjek(o);
+  $('#mediaVideo').hidden=!video; $('#mediaAudio').hidden=video;
+  x.src=PEMUTAR.url; $('#mediaPanel').hidden=false;
+  if(document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+  const c=x.play(); if(c&&c.catch) c.catch(()=>{});                 // diblokir? tombol putar tetap ada
+}
+function tutupMedia(){
+  for(const x of [$('#mediaVideo'),$('#mediaAudio')]){ try{ x.pause(); }catch(e){} x.removeAttribute('src'); try{ x.load(); }catch(e){} }
+  $('#mediaPanel').hidden=true;
+  if(PEMUTAR.url){ URL.revokeObjectURL(PEMUTAR.url); PEMUTAR.url=null; }
 }
 function namaObjek(o){ return !o ? '' : o.kind==='model' ? ((PROJECT.assets||{})[o.type]||{}).name||'Model' : (FURN[o.type]||{}).l||o.type; }
 const MUSIK={main:new Map(), tunda:null};
@@ -14665,6 +14881,8 @@ function cariTarget(ray){
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
         if(ak&&ak.detail) ekstra.push('detail');
         if(ak&&ak.musik&&n.userData.nyalaJenis!=='audio') ekstra.push('musik');
+        if(ak&&ak.media) ekstra.push('media');
+        if(ak&&ak.anim) ekstra.push('anim');
         if(ak&&ak.sfx&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
         return {jenis:n.userData.nyalaJenis||ekstra.shift(), ekstra, id:n.userData.id, grp:n, titik:h.point.clone()};
@@ -14689,6 +14907,8 @@ function labelAksi(t){
   if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.musik ? (MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='detail') return 'Lihat detail';
   if(t.jenis==='bunyi') return 'Bunyikan';
+  if(t.jenis==='media') return 'Putar media';
+  if(t.jenis==='anim') return GERAK.main.has(t.id)?'Hentikan animasi':'Putar animasi';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
   if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
   if(t.jenis==='duduk') return FPS.duduk&&FPS.duduk.id===t.id?'Berdiri':'Duduk';
@@ -14722,6 +14942,8 @@ function pakai(t){
   if(t.jenis==='duduk'){ if(FPS.duduk&&FPS.duduk.id===t.id) berdiri(); else duduk(t); AIM_T=0; return; }
   if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
   if(t.jenis==='detail'){ bukaDetail(t.id); AIM_T=0; return; }
+  if(t.jenis==='media'){ bukaMedia(t.id); AIM_T=0; return; }
+  if(t.jenis==='anim'){ togelGerak(t.id); laporAksi('anim',t.id,GERAK.main.has(t.id)); AIM_T=0; return; }
   if(t.jenis==='musik' || (t.jenis==='audio' && aksiObjek(cariObjek(t.id))?.musik)){ togelMusik(t.id); laporAksi('musik',t.id,MUSIK.main.has(t.id)); AIM_T=0; return; }
   sfxAksi(t);
   if(t.jenis==='bukaan'){ BUKA.set(t.o.id, bukaan(t.o)>0.5?0:1); }
@@ -14740,7 +14962,7 @@ function pakai(t){
 }
 /* MAIN BARENG (JEV-078): aksi & suasana dibagi ke peserta lain lewat modul lobi. Yang dikirim
    KEADAAN AKHIR (nyala/mati, buka/tutup), bukan sakelar — pesan ganda/terlambat tidak membalik. */
-const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi'];
+const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi','anim'];
 function laporAksi(j,id,on){ if(window.LOBI && window.LOBI.aktif) window.LOBI.aksi(j,id,!!on); }
 function cariBukaanId(id){
   for(let i=0;i<PROJECT.levels.length;i++) for(const w of PROJECT.levels[i].walls) for(const o of w.openings||[]) if(o.id===id) return {o,w,lv:i};
@@ -14753,6 +14975,7 @@ function keadaanSatu(j,id){
   if(j==='gorden') return GORDEN_BUKA.has(id);
   if(j==='audio') return AUDIO.main.has(id);
   if(j==='musik') return MUSIK.main.has(id);
+  if(j==='anim') return GERAK.main.has(id);
   return false;
 }
 function titikGrup(g){ return new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3()); }
@@ -14775,6 +14998,7 @@ function terapkanAksiLuar(j,id,on){
   else if(j==='gorden'){ if(on) GORDEN_BUKA.add(id); else GORDEN_BUKA.delete(id); for(const x of g) terapkanGorden(x,on); sfx('gorden',titik); }
   else if(j==='audio'){ sfx('klik',titik); if(on) mulaiMusik(id); else hentikanMusik(id); }
   else if(j==='musik'){ if(on) mulaiMusikUnggah(id); else hentikanMusikUnggah(id); }
+  else if(j==='anim'){ if(on) mulaiGerak(id); else hentikanGerak(id); }
   bayangKotor();
   return true;
 }
@@ -14782,7 +15006,7 @@ function terapkanAksiLuar(j,id,on){
 function keadaanAksi(){
   const buka=[];
   for(const lv of PROJECT.levels) for(const w of lv.walls) for(const o of w.openings||[]) if(BUKA.has(o.id)) buka.push([o.id,BUKA.get(o.id)>0.5?1:0]);
-  return {buka, mati:[...MATI], tv:[...TV_NYALA], gorden:[...GORDEN_BUKA], audio:[...AUDIO.main.keys()], musik:[...MUSIK.main.keys()]};
+  return {buka, mati:[...MATI], tv:[...TV_NYALA], gorden:[...GORDEN_BUKA], audio:[...AUDIO.main.keys()], musik:[...MUSIK.main.keys()], anim:[...GERAK.main.keys()]};
 }
 function pasangKeadaanAksi(k){
   if(!k||typeof k!=='object') return;
@@ -14798,6 +15022,7 @@ function pasangKeadaanAksi(k){
   }
   const audio=daftar(k.audio); for(const id of [...AUDIO.main.keys()]) if(!audio.has(id)) hentikanMusik(id); for(const id of audio) if(!AUDIO.main.has(id)) mulaiMusik(id);
   const musik=daftar(k.musik); for(const id of [...MUSIK.main.keys()]) if(!musik.has(id)) hentikanMusikUnggah(id); for(const id of musik) if(!MUSIK.main.has(id)) mulaiMusikUnggah(id);
+  if(Array.isArray(k.anim)){ const anim=daftar(k.anim); for(const id of [...GERAK.main.keys()]) if(!anim.has(id)) hentikanGerak(id); for(const id of anim) mulaiGerak(id); }
   bayangKotor();
 }
 // suasana & langit host — tamu mengikuti
@@ -14899,13 +15124,17 @@ $('#fpsLangitNext').onclick=e=>{ e.currentTarget.blur(); langkahLangit(1); };
 function enterFPS(){
   if(FPS.on) return;
   const lv=L();
-  if(!lv.walls.length) return toast('Belum ada ruangan untuk dijelajahi.');
+  // tanpa dinding pun bisa berjalan: di tanah situs (petak rumput bawaan) atau di antara objek (JEV-084)
+  const tanahSaja=!lv.walls.length;
+  if(tanahSaja && !lv.objects.length && !(PROJECT.active===0 && adaTanahSitus())) return toast('Belum ada ruangan untuk dijelajahi.');
   FPS.save={pos:camera.position.clone(), target:orbit.target.clone(), tool:TOOL, orto:camera.isOrthographicCamera, view:VIEW.cur, ortoTop:kameraOrto.top, ortoZoom:kameraOrto.zoom};
   if(camera.isOrthographicCamera){ pakaiKamera(false); camera.fov=45; camera.updateProjectionMatrix(); }
   // berdiri di tengah denah lantai aktif
   let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
   for(const w of lv.walls){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2);
                             z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  if(tanahSaja){ if(PROJECT.active===0) [x0,x1,z0,z1]=luasSitus();
+    else for(const o of lv.objects){ x0=Math.min(x0,o.x-1); x1=Math.max(x1,o.x+1); z0=Math.min(z0,o.z-1); z1=Math.max(z1,o.z+1); } }
   FPS.feet=levelElevation(PROJECT.active);
   FPS.vy=0; FPS.yaw=0; FPS.pitch=0; FPS.keys.clear(); FPS.move=null; FPS.look=null;
   VIEW.anim=null;
@@ -14921,8 +15150,9 @@ function enterFPS(){
     if(Math.hypot(hx,hz)<0.2*dist){ const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion); dx=up.x; dz=up.z; }   // tampak atas: "atas layar" = maju
     if(Math.hypot(dx,dz)>1e-6) FPS.yaw=Math.atan2(dx,dz); }
   let [px,pz]=fpsResolveWalls(sx,sz,FPS.feet);
-  const g=fpsGround(px,pz,FPS.feet+0.5);
-  if(g!=null && Math.abs(g-FPS.feet)<1.5) FPS.feet=g;
+  // di atas bukit hasil kuas tanah: berdiri di permukaannya, bukan terkubur
+  const g=fpsGround(px,pz,FPS.feet+(tanahSaja?3.5:0.5));
+  if(g!=null && Math.abs(g-FPS.feet)<(tanahSaja?4:1.5)) FPS.feet=g;
   camera.position.set(px,FPS.feet+FPS.eye,pz);
   FPS.fovEditor=camera.fov; camera.fov=FPS.fov; camera.updateProjectionMatrix();
   if(SFX.on){ const c=audioSiap(); if(c&&c.state!=='running') c.resume().catch(()=>{}); }   // ketukan tombol Walk = gestur sah iOS: langkah & perapian langsung bersuara
@@ -14948,7 +15178,7 @@ function enterFPS(){
 function exitFPS(){
   if(!FPS.on) return;
   hentikanSemuaMusik();                      // musik hanya bagian dari mode jalan
-  hentikanSemuaMusikUnggah(); tutupDetail();
+  hentikanSemuaMusikUnggah(); tutupDetail(); tutupMedia(); hentikanSemuaGerak();
   FPS.duduk=null;
   FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
   if(PIANO.buka) tutupPiano();
@@ -15006,7 +15236,12 @@ $$('.tanah-alat button').forEach(b=>b.onclick=()=>{
 });
 $('#tanahKuas').oninput=e=>{ TANAH.kuas=+e.target.value; };
 $('#tanahKuat').oninput=e=>{ TANAH.kuat=+e.target.value; };
-$('#tanahReset').onclick=()=>{ if(!PROJECT.site||!PROJECT.site.relief) return; delete PROJECT.site.relief; HIST.label='Datarkan tanah'; rebuildScene(); toast('Tanah didatarkan'); };
+$('#tanahReset').onclick=()=>{ const R=PROJECT.site&&PROJECT.site.relief; if(!R) return;
+  if(R.cat) R.h=R.h.map(()=>0); else delete PROJECT.site.relief;    // cat tetap ada
+  HIST.label='Datarkan tanah'; rebuildScene(); toast('Tanah didatarkan'); };
+$('#tanahCatReset').onclick=()=>{ const R=PROJECT.site&&PROJECT.site.relief; if(!R||!R.cat) return;
+  delete R.cat; if(!R.h.some(v=>v)) delete PROJECT.site.relief;
+  HIST.label='Hapus cat tanah'; rebuildScene(); toast('Cat tanah dihapus'); };
 function titikTanah(e){
   ndc(e); raycaster.setFromCamera(pointer,camera);
   const g=worldRoot.children.find(o=>o.userData.situsGrup), t=g&&g.children.find(m=>m.userData.situs);
@@ -15141,7 +15376,7 @@ for(const ev of ['pointerup','pointercancel'])
    AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
    ====================================================================== */
 const AR={ url:null, blob:null, usdz:null, usdzUrl:null,
-           denom:50, open:false, dim:null, lib:null, usdzLib:null };
+           denom:50, open:false, dim:null, lib:null, usdzLib:null, sv:'', svUrl:null };
 
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
@@ -15150,6 +15385,15 @@ const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
    USDZ-nya kita sediakan sendiri lewat ios-src — itu yang dilakukan di bawah. */
 const IS_IOS_THIRDPARTY = IS_IOS &&
   /CriOS\/|EdgiOS\/|FxiOS\/|GSA\/|DuckDuckGo\//.test(navigator.userAgent);
+/* Tautan yang dibagikan sering dibuka di browser DALAM aplikasi chat (Instagram, LINE,
+   Facebook…). Di iOS browser itu tidak mengenal rel="ar", jadi AR Quick Look tidak bisa
+   dibuka sama sekali — pemakai perlu diarahkan ke Safari (JEV-083). */
+const AR_QL = (()=>{ try{ return document.createElement('a').relList.supports('ar'); }catch(e){ return false; } })();
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+/* Scene Viewer (AR Android tanpa WebXR) berjalan di aplikasi Google, bukan di peramban, jadi
+   tidak bisa membaca model blob: buatan halaman. Modelnya diunggah dulu ke api/tautan?ar
+   (beralamat isi, ≤ 4 MB) supaya punya alamat https publik. */
+const AR_SV_MAKS = 4*1048576;
 
 /* scene bersih khusus ekspor: semua lantai yang tampak, tanpa material hantu,
    tanpa helper/gizmo — dibangun ulang dari data supaya tidak mengusik viewport */
@@ -15274,6 +15518,8 @@ async function arExport(withUSDZ){
 
 function arNote(){
   const mv=$('#arViewer');
+  if(IS_IOS && !AR_QL)
+    return 'Browser di dalam aplikasi ini (mis. Instagram, LINE, Facebook) tidak bisa membuka AR. Buka tautan ini di <b>Safari</b> — ketuk ⋯ lalu <b>Buka di Safari</b>, atau salin tautannya.';
   if(IS_IOS){
     if(!IS_IOS_THIRDPARTY)
       return 'Tekan <b>Lihat di ruanganmu</b> — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis.';
@@ -15282,6 +15528,10 @@ function arNote(){
     return 'Di browser iOS selain Safari, AR menuntut berkas USDZ dan pembuatannya gagal di sini. Buka halaman ini lewat <b>Safari</b>.';
   }
   if(mv && mv.canActivateAR) return 'Perangkat ini mendukung AR — tekan <b>Lihat di ruanganmu</b>.';
+  if(IS_ANDROID && AR.svUrl) return 'Tekan <b>Lihat di ruanganmu</b> — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).';
+  if(IS_ANDROID && AR.sv==='unggah') return 'Menyiapkan model untuk AR (Google Scene Viewer)…';
+  if(IS_ANDROID && AR.sv==='besar') return 'Model lebih dari 4 MB — terlalu besar untuk Google Scene Viewer. Unduh .glb lalu buka di aplikasi AR.';
+  if(IS_ANDROID && AR.sv==='gagal') return 'AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal. Unduh .glb lalu buka di aplikasi AR.';
   return 'AR belum tersedia di perangkat ini (butuh Android dengan ARCore atau browser ber-WebXR); panel tetap berfungsi sebagai 3D viewer.';
 }
 function arInfo(){
@@ -15292,6 +15542,39 @@ function arInfo(){
     t=`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
   }
   $('#arInfo').innerHTML=t+arNote();
+  if(IS_IOS && !AR_QL){
+    const b=el('button','btn ghost sm','Salin tautan');
+    b.onclick=async()=>toast(await salinTeks(location.href)?'Tautan disalin — tempel di Safari':'Tautan tidak bisa disalin — salin dari bilah alamat');
+    $('#arInfo').append(' ',b);
+  }
+}
+/* Android tanpa WebXR: siapkan Scene Viewer — unggah GLB lebih dulu (saat panel terbuka),
+   karena membuka aplikasi lain harus langsung dari ketukan, tidak boleh menunggu unggahan */
+async function arSiapkanSV(){
+  const mv=$('#arViewer'), blob=AR.blob;
+  $('#arSV').hidden=true; AR.svUrl=null; AR.sv='';
+  if(!IS_ANDROID || !blob || !AR.open) return;
+  await new Promise(r=>setTimeout(r,400));          // canActivateAR diperbarui setelah load
+  if(mv.canActivateAR || AR.blob!==blob) return;    // WebXR tersedia → tombol bawaan model-viewer
+  if(blob.size>AR_SV_MAKS){ AR.sv='besar'; return arInfo(); }
+  AR.sv='unggah'; arInfo();
+  try{
+    const buf=new Uint8Array(await blob.arrayBuffer()), h=await sidikSHA(buf);
+    const r=await fetch('api/tautan?ar='+h,{method:'POST',headers:{'content-type':'model/gltf-binary'},body:buf});
+    const j=r.ok?await r.json():null;
+    if(!j || typeof j.url!=='string' || !/^https:\/\//.test(j.url)) throw new Error('unggah');
+    if(AR.blob!==blob || !AR.open) return;          // model diganti/panel ditutup selagi mengunggah
+    AR.svUrl=j.url; AR.sv='siap'; $('#arSV').hidden=false;
+  }catch(e){ if(AR.blob===blob) AR.sv='gagal'; }
+  arInfo();
+}
+function arBukaSV(){
+  if(!AR.svUrl) return;
+  const q=new URLSearchParams({file:AR.svUrl, mode:'ar_preferred', resizable:'false', disable_occlusion:'true', title:String(PROJECT.name||'Plan23D').slice(0,60)});
+  // tanpa browser_fallback_url: bila aplikasi Google belum ada, Chrome membuka Play Store
+  const a=document.createElement('a');
+  a.href='intent://arvr.google.com/scene-viewer/1.2?'+q+'#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;';
+  a.click();
 }
 
 /* custom element dimuat sebagai modul; tunggu sebentar lalu menyerah dengan anggun */
@@ -15371,8 +15654,8 @@ async function openAR(){
   $('#arPanel').hidden=false;
 }
 function closeAR(){
-  AR.open=false;
-  $('#arPanel').hidden=true;
+  AR.open=false; AR.svUrl=null; AR.sv='';
+  $('#arPanel').hidden=true; $('#arSV').hidden=true;
   const mv=$('#arViewer');
   if(mv){ mv.removeAttribute('src'); mv.removeAttribute('ios-src'); }
   if(AR.url){ URL.revokeObjectURL(AR.url); AR.url=null; }
@@ -15382,12 +15665,14 @@ function closeAR(){
 $('#arBtn').onclick=openAR;
 $('#lihatAR').onclick=openAR;
 $('#detailTutup').onclick=tutupDetail;
+$('#mediaTutup').onclick=tutupMedia;
 $('#arBtn2').onclick=openAR;
 $('#arClose').onclick=closeAR;
 $('#arDownload').onclick=arDownload;
 $('#arUsdz').onclick=arDownloadUsdz;
 $('#arScale').onchange=e=>{ AR.denom=parseFloat(e.target.value)||50; if(AR.open){ toast('Menyusun ulang maket…'); arRefresh(); } };
-$('#arViewer').addEventListener('load',arInfo);
+$('#arViewer').addEventListener('load',()=>{ arInfo(); arSiapkanSV(); });
+$('#arSV').onclick=arBukaSV;
 $('#exportGlbBtn').onclick=async()=>{
   try{ const {glb}=await arExport(false); AR.blob=glb; arDownload(); }
   catch(err){ toast(err.message); }
