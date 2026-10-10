@@ -1383,6 +1383,9 @@ window.KAMUS_EN={
   "prisma bebas":"free prism",
   "potongan":"cut",
   "lantai (pelat)":"floor (slab)",
+  "Tautan disalin — tempel di Safari":"Link copied — paste it in Safari",
+  "Tautan tidak bisa disalin — salin dari bilah alamat":"Couldn't copy the link — copy it from the address bar",
+  "Menyiapkan model untuk AR (Google Scene Viewer)…":"Preparing the model for AR (Google Scene Viewer)…",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1454,7 +1457,9 @@ window.KAMUS_EN={
   "Duduk · ketuk Berdiri atau geser stik":"<b>Seated</b> · tap <b>Stand up</b> or move the stick",
   "Duduk · E atau W A S D untuk berdiri":"<b>Seated</b> · <b>E</b> or <b>W A S D</b> to stand up",
   "Mode lihat — seret untuk memutar, cubit untuk zoom, Jalan-jalan untuk masuk ke dalam rumah.":"View mode — drag to orbit, pinch to zoom, <b>Walk</b> to step inside the house.",
-  "Area, kolam, jalan setapak, dan pagar digambar dengan tracing: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.":"Areas, pools, paths and fences are drawn by <b>tracing</b>: tap their points on the floor (the plan image shows underneath). Pools cut into the site ground automatically."
+  "Area, kolam, jalan setapak, dan pagar digambar dengan tracing: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.":"Areas, pools, paths and fences are drawn by <b>tracing</b>: tap their points on the floor (the plan image shows underneath). Pools cut into the site ground automatically.",
+  "Browser di dalam aplikasi ini (mis. Instagram, LINE, Facebook) tidak bisa membuka AR. Buka tautan ini di Safari — ketuk ⋯ lalu Buka di Safari, atau salin tautannya.":"This in-app browser (e.g. Instagram, LINE, Facebook) cannot open AR. Open this link in <b>Safari</b> — tap ⋯ then <b>Open in Safari</b>, or copy the link.",
+  "Tekan Lihat di ruanganmu — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).":"Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR)."
  },
  // pola
  "pola":[
@@ -1708,6 +1713,11 @@ window.KAMUS_EN={
   ["Di browser iOS selain Safari, AR menuntut berkas USDZ dan pembuatannya gagal di sini\\. Buka halaman ini lewat <b>Safari</b>\\.","In iOS browsers other than Safari, AR requires a USDZ file and creating it failed here. Open this page in <b>Safari</b>."],
   ["Tekan <b>Lihat di ruanganmu</b> — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis\\.","Press <b>View in your room</b> — iOS opens it with AR Quick Look; the model is converted to USDZ automatically."],
   ["Perangkat ini mendukung AR — tekan <b>Lihat di ruanganmu</b>\\.","This device supports AR — press <b>View in your room</b>."],
-  ["AR belum tersedia di perangkat ini \\(butuh Android dengan ARCore atau browser ber-WebXR\\); panel tetap berfungsi sebagai 3D viewer\\.","AR is not available on this device yet (needs Android with ARCore or a WebXR browser); the panel still works as a 3D viewer."]
+  ["AR belum tersedia di perangkat ini \\(butuh Android dengan ARCore atau browser ber-WebXR\\); panel tetap berfungsi sebagai 3D viewer\\.","AR is not available on this device yet (needs Android with ARCore or a WebXR browser); the panel still works as a 3D viewer."],
+  ["Browser di dalam aplikasi ini \\(mis\\. Instagram, LINE, Facebook\\) tidak bisa membuka AR\\. Buka tautan ini di <b>Safari</b> — ketuk ⋯ lalu <b>Buka di Safari</b>, atau salin tautannya\\.","This in-app browser (e.g. Instagram, LINE, Facebook) cannot open AR. Open this link in <b>Safari</b> — tap ⋯ then <b>Open in Safari</b>, or copy the link."],
+  ["Tekan <b>Lihat di ruanganmu</b> — model dibuka di Google Scene Viewer \\(butuh Google Play Services for AR\\)\\.","Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR)."],
+  ["Menyiapkan model untuk AR \\(Google Scene Viewer\\)…","Preparing the model for AR (Google Scene Viewer)…"],
+  ["Model lebih dari 4 MB — terlalu besar untuk Google Scene Viewer\\. Unduh \\.glb lalu buka di aplikasi AR\\.","The model is over 4 MB — too large for Google Scene Viewer. Download the .glb and open it in an AR app."],
+  ["AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal\\. Unduh \\.glb lalu buka di aplikasi AR\\.","AR on this device goes through Google Scene Viewer, which needs the model on a server — not available on this hosting or the connection failed. Download the .glb and open it in an AR app."]
  ]
 };

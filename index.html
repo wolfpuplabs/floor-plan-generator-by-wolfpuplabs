@@ -989,12 +989,13 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
   </header>
   <div id="arStage">
     <model-viewer id="arViewer" alt="Model 3D denah" camera-controls touch-action="pan-y"
-                  ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+                  ar ar-modes="webxr quick-look" ar-scale="fixed" ar-placement="floor"
                   shadow-intensity="1" shadow-softness="0.7" exposure="1.05" environment-image="neutral"
                   camera-orbit="-35deg 62deg auto" min-camera-orbit="auto 0deg auto"
                   interaction-prompt="none">
       <button slot="ar-button" class="btn sm" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%)">Lihat di ruanganmu (AR)</button>
     </model-viewer>
+    <button id="arSV" class="btn sm" hidden style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%)">Lihat di ruanganmu (AR)</button>
     <div id="arFallback"></div>
   </div>
   <div id="arInfo"></div>
@@ -15141,7 +15142,7 @@ for(const ev of ['pointerup','pointercancel'])
    AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
    ====================================================================== */
 const AR={ url:null, blob:null, usdz:null, usdzUrl:null,
-           denom:50, open:false, dim:null, lib:null, usdzLib:null };
+           denom:50, open:false, dim:null, lib:null, usdzLib:null, sv:'', svUrl:null };
 
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
@@ -15150,6 +15151,15 @@ const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
    USDZ-nya kita sediakan sendiri lewat ios-src — itu yang dilakukan di bawah. */
 const IS_IOS_THIRDPARTY = IS_IOS &&
   /CriOS\/|EdgiOS\/|FxiOS\/|GSA\/|DuckDuckGo\//.test(navigator.userAgent);
+/* Tautan yang dibagikan sering dibuka di browser DALAM aplikasi chat (Instagram, LINE,
+   Facebook…). Di iOS browser itu tidak mengenal rel="ar", jadi AR Quick Look tidak bisa
+   dibuka sama sekali — pemakai perlu diarahkan ke Safari (JEV-083). */
+const AR_QL = (()=>{ try{ return document.createElement('a').relList.supports('ar'); }catch(e){ return false; } })();
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+/* Scene Viewer (AR Android tanpa WebXR) berjalan di aplikasi Google, bukan di peramban, jadi
+   tidak bisa membaca model blob: buatan halaman. Modelnya diunggah dulu ke api/tautan?ar
+   (beralamat isi, ≤ 4 MB) supaya punya alamat https publik. */
+const AR_SV_MAKS = 4*1048576;
 
 /* scene bersih khusus ekspor: semua lantai yang tampak, tanpa material hantu,
    tanpa helper/gizmo — dibangun ulang dari data supaya tidak mengusik viewport */
@@ -15274,6 +15284,8 @@ async function arExport(withUSDZ){
 
 function arNote(){
   const mv=$('#arViewer');
+  if(IS_IOS && !AR_QL)
+    return 'Browser di dalam aplikasi ini (mis. Instagram, LINE, Facebook) tidak bisa membuka AR. Buka tautan ini di <b>Safari</b> — ketuk ⋯ lalu <b>Buka di Safari</b>, atau salin tautannya.';
   if(IS_IOS){
     if(!IS_IOS_THIRDPARTY)
       return 'Tekan <b>Lihat di ruanganmu</b> — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis.';
@@ -15282,6 +15294,10 @@ function arNote(){
     return 'Di browser iOS selain Safari, AR menuntut berkas USDZ dan pembuatannya gagal di sini. Buka halaman ini lewat <b>Safari</b>.';
   }
   if(mv && mv.canActivateAR) return 'Perangkat ini mendukung AR — tekan <b>Lihat di ruanganmu</b>.';
+  if(IS_ANDROID && AR.svUrl) return 'Tekan <b>Lihat di ruanganmu</b> — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).';
+  if(IS_ANDROID && AR.sv==='unggah') return 'Menyiapkan model untuk AR (Google Scene Viewer)…';
+  if(IS_ANDROID && AR.sv==='besar') return 'Model lebih dari 4 MB — terlalu besar untuk Google Scene Viewer. Unduh .glb lalu buka di aplikasi AR.';
+  if(IS_ANDROID && AR.sv==='gagal') return 'AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal. Unduh .glb lalu buka di aplikasi AR.';
   return 'AR belum tersedia di perangkat ini (butuh Android dengan ARCore atau browser ber-WebXR); panel tetap berfungsi sebagai 3D viewer.';
 }
 function arInfo(){
@@ -15292,6 +15308,39 @@ function arInfo(){
     t=`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
   }
   $('#arInfo').innerHTML=t+arNote();
+  if(IS_IOS && !AR_QL){
+    const b=el('button','btn ghost sm','Salin tautan');
+    b.onclick=async()=>toast(await salinTeks(location.href)?'Tautan disalin — tempel di Safari':'Tautan tidak bisa disalin — salin dari bilah alamat');
+    $('#arInfo').append(' ',b);
+  }
+}
+/* Android tanpa WebXR: siapkan Scene Viewer — unggah GLB lebih dulu (saat panel terbuka),
+   karena membuka aplikasi lain harus langsung dari ketukan, tidak boleh menunggu unggahan */
+async function arSiapkanSV(){
+  const mv=$('#arViewer'), blob=AR.blob;
+  $('#arSV').hidden=true; AR.svUrl=null; AR.sv='';
+  if(!IS_ANDROID || !blob || !AR.open) return;
+  await new Promise(r=>setTimeout(r,400));          // canActivateAR diperbarui setelah load
+  if(mv.canActivateAR || AR.blob!==blob) return;    // WebXR tersedia → tombol bawaan model-viewer
+  if(blob.size>AR_SV_MAKS){ AR.sv='besar'; return arInfo(); }
+  AR.sv='unggah'; arInfo();
+  try{
+    const buf=new Uint8Array(await blob.arrayBuffer()), h=await sidikSHA(buf);
+    const r=await fetch('api/tautan?ar='+h,{method:'POST',headers:{'content-type':'model/gltf-binary'},body:buf});
+    const j=r.ok?await r.json():null;
+    if(!j || typeof j.url!=='string' || !/^https:\/\//.test(j.url)) throw new Error('unggah');
+    if(AR.blob!==blob || !AR.open) return;          // model diganti/panel ditutup selagi mengunggah
+    AR.svUrl=j.url; AR.sv='siap'; $('#arSV').hidden=false;
+  }catch(e){ if(AR.blob===blob) AR.sv='gagal'; }
+  arInfo();
+}
+function arBukaSV(){
+  if(!AR.svUrl) return;
+  const q=new URLSearchParams({file:AR.svUrl, mode:'ar_preferred', resizable:'false', disable_occlusion:'true', title:String(PROJECT.name||'Plan23D').slice(0,60)});
+  // tanpa browser_fallback_url: bila aplikasi Google belum ada, Chrome membuka Play Store
+  const a=document.createElement('a');
+  a.href='intent://arvr.google.com/scene-viewer/1.2?'+q+'#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;';
+  a.click();
 }
 
 /* custom element dimuat sebagai modul; tunggu sebentar lalu menyerah dengan anggun */
@@ -15371,8 +15420,8 @@ async function openAR(){
   $('#arPanel').hidden=false;
 }
 function closeAR(){
-  AR.open=false;
-  $('#arPanel').hidden=true;
+  AR.open=false; AR.svUrl=null; AR.sv='';
+  $('#arPanel').hidden=true; $('#arSV').hidden=true;
   const mv=$('#arViewer');
   if(mv){ mv.removeAttribute('src'); mv.removeAttribute('ios-src'); }
   if(AR.url){ URL.revokeObjectURL(AR.url); AR.url=null; }
@@ -15387,7 +15436,8 @@ $('#arClose').onclick=closeAR;
 $('#arDownload').onclick=arDownload;
 $('#arUsdz').onclick=arDownloadUsdz;
 $('#arScale').onchange=e=>{ AR.denom=parseFloat(e.target.value)||50; if(AR.open){ toast('Menyusun ulang maket…'); arRefresh(); } };
-$('#arViewer').addEventListener('load',arInfo);
+$('#arViewer').addEventListener('load',()=>{ arInfo(); arSiapkanSV(); });
+$('#arSV').onclick=arBukaSV;
 $('#exportGlbBtn').onclick=async()=>{
   try{ const {glb}=await arExport(false); AR.blob=glb; arDownload(); }
   catch(err){ toast(err.message); }

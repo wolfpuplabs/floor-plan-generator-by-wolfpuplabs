@@ -3462,6 +3462,68 @@
     "target": "≥ 10%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-083",
+   "judul": "AR dari tautan yang dibagikan: Scene Viewer Android dengan model di server, arahan Safari untuk browser di dalam aplikasi iOS",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tombol AR di tautan lihat-saja membuka penampil 3D tetapi \"Lihat di ruanganmu\" tidak jalan: di Android tanpa WebXR model-viewer menyerahkan model blob: ke Google Scene Viewer yang tidak bisa membacanya, dan tautan yang dibuka dari aplikasi chat di iOS (Instagram, LINE, Facebook) tidak punya AR Quick Look sama sekali tanpa penjelasan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"AR model yg di share ga jalan\")",
+    "alternatif": [
+     "hanya tombol unduh .glb",
+     "mengunggah model AR setiap kali tautan dibuat (boros kuota Blob)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 6,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "api/tautan?ar: badan ≤ 4 MB, nama = SHA-256 isi (diperiksa server), harus GLB v2 (tanda glTF + panjang kepala), disimpan beralamat isi — tidak bisa menimpa isi lain; hanya POST"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "model diunggah hanya saat pemakai Android tanpa WebXR membuka panel AR; GLB berisi geometri & bahan rumah yang memang sedang dibagikan"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru; Scene Viewer dibuka lewat intent standar Google"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "unggah sekali per model (beralamat isi, dilewati bila sudah ada); tidak ada unggahan di iOS/WebXR"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel teks; arahan Safari dan tombol Salin tautan di panel AR"
+    }
+   },
+   "metrik": {
+    "nama": "sesi panel AR di Android/iOS yang membuka mode AR",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }

@@ -41,7 +41,8 @@ export const butuh = nama => require(nama);
 export const CORS = { 'access-control-allow-origin': '*' };
 
 export async function bukaApp(browser, url, opsi = {}) {
-  const page = await browser.newPage({ viewport: opsi.viewport || { width: 1366, height: 1024 } });
+  // opsi.ua: user agent tiruan (mis. Android / browser di dalam aplikasi iOS)
+  const page = await browser.newPage({ viewport: opsi.viewport || { width: 1366, height: 1024 }, ...(opsi.ua ? { userAgent: opsi.ua } : {}) });
   const log = { galat: [], csp: [] };
   page.on('pageerror', e => log.galat.push(e.message));
   page.on('console', m => { const t = m.text(); if (/Content Security Policy|Refused to|integrity/i.test(t)) log.csp.push(t); });
