@@ -58,7 +58,8 @@ const peserta = page => page.evaluate(() => window.LOBI ? [...LOBI.peserta.value
 const peran = page => page.evaluate(() => window.LOBI && LOBI.aktif ? LOBI.peran : null);
 
 export const tes = {
-  'lobi bangun bareng: tamu masuk dengan nama, avatar, obrolan aman, edit dua arah; pembuat keluar → ruang tetap hidup, pusat pindah': async () => {
+  'lobi bangun bareng: tamu masuk dengan nama, avatar, obrolan aman, edit dua arah; pembuat keluar → ruang tetap hidup, pusat pindah': async (page) => {
+    await page.goto('about:blank');                     // halaman bawaan pelari berhenti merender: CPU untuk halaman lobi
     const L = await lingkungan();
     try {
       const H = await L.buka(L.url); await rumah(H);
@@ -120,7 +121,8 @@ export const tes = {
       assert.deepEqual(await C.evaluate(() => [LOBI.peran, PROJECT.levels[0].walls.length]), ['tamu', 3], 'orang baru menerima rumah terbaru dari pusat');
     } finally { await L.tutup(); }
   },
-  'lobi lihat saja: hanya pemilik mengubah rumah, perubahan tamu ditolak, ruang penuh menolak orang ke-3': async () => {
+  'lobi lihat saja: hanya pemilik mengubah rumah, perubahan tamu ditolak, ruang penuh menolak orang ke-3': async (page) => {
+    await page.goto('about:blank');                     // halaman bawaan pelari berhenti merender: CPU untuk halaman lobi
     const L = await lingkungan();
     try {
       const H = await L.buka(L.url); await rumah(H);
@@ -147,7 +149,8 @@ export const tes = {
       assert.equal(await B.evaluate(() => !!document.querySelector('#lobiMasuk')), false);
     } finally { await L.tutup(); }
   },
-  'lobi: suasana host diikuti tamu; lampu, pintu, TV & piano terasa oleh semua (JEV-078)': async () => {
+  'lobi: suasana host diikuti tamu; lampu, pintu, TV & piano terasa oleh semua (JEV-078)': async (page) => {
+    await page.goto('about:blank');                     // halaman bawaan pelari berhenti merender: CPU untuk halaman lobi
     const L = await lingkungan();
     try {
       const H = await L.buka(L.url);
@@ -206,7 +209,8 @@ export const tes = {
       assert.deepEqual(r.b, { iceServers: [{ urls: 'turn:turn.contoh.id:3478' }], turn: true });
     } finally { if (lama === undefined) delete process.env.TURN_URLS; else process.env.TURN_URLS = lama; }
   },
-  'lobi tanpa host: pembuat offline, pengunjung pertama jadi pusat; pemilik dikenali dari tanda tangan; pusat mati → penerus mengambil alih': async () => {
+  'lobi tanpa host: pembuat offline, pengunjung pertama jadi pusat; pemilik dikenali dari tanda tangan; pusat mati → penerus mengambil alih': async (page) => {
+    await page.goto('about:blank');                     // halaman bawaan pelari berhenti merender: CPU untuk halaman lobi
     const L = await lingkungan();
     try {
       const H = await L.buka(L.url); await rumah(H);
