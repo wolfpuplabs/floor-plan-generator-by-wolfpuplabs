@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 58 GO · 3 DEFER · 5 NO-GO dari 66 item.
+**Ringkasan:** 59 GO · 3 DEFER · 5 NO-GO dari 67 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -31,6 +31,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-083 | AR dari tautan yang dibagikan: Scene Viewer Android dengan model di server, arahan Safari untuk browser di dalam aplikasi iOS | terkirim | 0.65 | 34,4 jt | 0,8 jt | 90.7× | 44.8× | 0.2 bln | 11 | **GO** |
 | JEV-067 | Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG | terkirim | 0.80 | 78 jt | 1,8 jt | 85.7× | 42.3× | 0.2 bln | 12 | **GO** |
 | JEV-052 | Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) | terkirim | 0.65 | 61,4 jt | 1,7 jt | 73.5× | 36.2× | 0.3 bln | 14 | **GO** |
+| JEV-084 | Jalan di tanah bawaan tanpa dinding, kuas cat tanah & batu yang membaur, animasi model unggahan dan pemutar media video/audio | terkirim | 0.65 | 62,3 jt | 1,8 jt | 68.2× | 33.6× | 0.2 bln | 15 | **GO** |
 | JEV-061 | Bahasa Inggris sebagai bahasa bawaan, Bahasa Indonesia tetap bisa dipilih | terkirim | 0.65 | 71,2 jt | 2,1 jt | 66.8× | 32.9× | 0.2 bln | 15 | **GO** |
 | JEV-056 | Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model | terkirim | 0.65 | 65,5 jt | 2 jt | 66.2× | 32.6× | 0.3 bln | 15 | **GO** |
 | JEV-063 | Model hasil scan 3D: tag fotogrametri Sketchfab + sumber Google Scanned Objects | terkirim | 0.60 | 49,8 jt | 1,5 jt | 65.4× | 32.2× | 0.2 bln | 16 | **GO** |
@@ -102,6 +103,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-083 AR dari tautan yang dibagikan: Scene Viewer Android dengan model di server, arahan Safari untuk browser di dalam aplikasi iOS — GO.** ROI 90.7× ≥ 1, payback 0.2 bln.
 - **JEV-067 Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG — GO.** ROI 85.7× ≥ 1, payback 0.2 bln.
 - **JEV-052 Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) — GO.** ROI 73.5× ≥ 1, payback 0.3 bln.
+- **JEV-084 Jalan di tanah bawaan tanpa dinding, kuas cat tanah & batu yang membaur, animasi model unggahan dan pemutar media video/audio — GO.** ROI 68.2× ≥ 1, payback 0.2 bln.
 - **JEV-061 Bahasa Inggris sebagai bahasa bawaan, Bahasa Indonesia tetap bisa dipilih — GO.** ROI 66.8× ≥ 1, payback 0.2 bln.
 - **JEV-056 Furnitur bawaan realistis: kasur, sofa, sanitair, dapur (prosedural) + pintasan ruangan di galeri model — GO.** ROI 66.2× ≥ 1, payback 0.3 bln.
 - **JEV-063 Model hasil scan 3D: tag fotogrametri Sketchfab + sumber Google Scanned Objects — GO.** ROI 65.4× ≥ 1, payback 0.2 bln.

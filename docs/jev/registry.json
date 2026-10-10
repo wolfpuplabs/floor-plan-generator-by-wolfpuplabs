@@ -3524,6 +3524,68 @@
     "target": "≥ 30%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-084",
+   "judul": "Jalan di tanah bawaan tanpa dinding, kuas cat tanah & batu yang membaur, animasi model unggahan dan pemutar media video/audio",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Mode jalan menolak proyek tanpa dinding padahal petak rumput bawaan sudah ada; tanah hanya bisa dibentuk, tidak bisa diberi jalur tanah/batu alami; model beranimasi (karakter, mesin) tampil diam; tidak ada cara memutar video/audio dengan kontrol putar-jeda dari sebuah objek.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"bisa walk di default terrain, sama bisa brush texture batu, tanah yg ngeblend sama terrain / tambahin interaksi play animation buat uploaded model yg animated, sama play media (audio/video)\")",
+    "alternatif": [
+     "area paving/kerikil bertepi tegas (sudah ada) sebagai ganti cat",
+     "SkeletonUtils dari CDN (tambah satu skrip & SRI) alih-alih klon kerangka 10 baris"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.35,
+      "pakaiPerTahun": 10,
+      "menitHemat": 6
+     },
+     "konversi": {
+      "jangkauan": 0.35,
+      "upliftMenang": 0.015
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "bobot cat dijepit 0–100 dan harus sepanjang kisi relief (selain itu dibuang); klip animasi dipilih dari nama yang memang ada di aset (≤ 24 klip); media pemutar lewat sniff tanda tangan berkas (audio/video saja), batas 15 MB × 20 yang sama, diputar dari blob: lokal"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar; media pemutar ikut tautan sebagai lampiran beralamat isi seperti musik/video TV"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru: AnimationMixer bawaan three.js, klon kerangka ditulis sendiri, tekstur batu prosedural"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "mixer hanya untuk objek yang sedang diputar; cat = satu atribut vec2 per titik tanah + dua tekstur 512² yang sudah ada/dibuat sekali"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pemutar memakai kontrol bawaan peramban (papan ketik & pembaca layar), tombol berlabel teks"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan cat tanah, animasi model, atau pemutar media",
+    "target": "≥ 10%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }
