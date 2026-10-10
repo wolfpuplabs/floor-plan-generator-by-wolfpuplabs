@@ -120,7 +120,7 @@ export const tes = {
     });
     assert.deepEqual(r, { beda: true, tulang: true, asli: true });
   },
-  'media objek: diputar langsung saat diketuk seperti suara, ikut tautan, tidak dibuang selama dipakai': async (page) => {
+  'media objek: diputar saat diketuk di pemutar bawah (video tampil, bisa disembunyikan), satu sekaligus, ikut tautan': async (page) => {
     const r = await page.evaluate(async () => {
       // WAV 0,1 dtk sunyi & potongan MP4 (cukup kepala ftyp untuk dikenali)
       const wav = new Uint8Array(44 + 1600), dv = new DataView(wav.buffer), tulis = (o, s) => [...s].forEach((c, i) => { wav[o + i] = c.charCodeAt(0); });
@@ -138,16 +138,26 @@ export const tes = {
         const r = new THREE.Raycaster(c.clone().add(new THREE.Vector3(0, 0, 1.5)), new THREE.Vector3(0, 0, -1)); const t = cariTarget(r); return t && t.jenis; };
       // diketuk = langsung diputar seperti suara (tanpa panel pemutar); ketuk lagi = berhenti
       const t1 = { jenis: cariTargetUji('oau'), label: labelAksi({ jenis: 'bunyi', id: 'oau' }) };
-      pakai({ jenis: 'bunyi', id: 'oau' }); const main = mediaObjekJalan('oau'), loop = MEDIA_OBJ.get('oau').a.loop, label2 = labelAksi({ jenis: 'bunyi', id: 'oau' });
-      pakai({ jenis: 'bunyi', id: 'oau' }); const henti = !mediaObjekJalan('oau');
-      pakai({ jenis: 'bunyi', id: 'ov' }); const video = mediaObjekJalan('ov') && MEDIA_OBJ.get('ov').a instanceof HTMLAudioElement; hentikanSemuaMediaObjek();
+      pakai({ jenis: 'bunyi', id: 'oau' }); const main = mediaObjekJalan('oau'), loop = $('#mediaAudio').loop, label2 = labelAksi({ jenis: 'bunyi', id: 'oau' });
+      const dock = { tampil: !$('#mediaDock').hidden, audio: !$('#mediaAudio').hidden && /^blob:/.test($('#mediaAudio').src), video: !$('#mediaVideo').hidden };
+      pakai({ jenis: 'bunyi', id: 'oau' }); const henti = !mediaObjekJalan('oau') && $('#mediaDock').hidden;
+      // video tampil di pemutar bawah; satu media sekaligus (mengetuk objek lain mengganti yang sedang diputar)
+      pakai({ jenis: 'bunyi', id: 'oau' }); pakai({ jenis: 'bunyi', id: 'ov' });
+      const video = { ov: mediaObjekJalan('ov'), oau: mediaObjekJalan('oau'), tampil: !$('#mediaVideo').hidden && /^blob:/.test($('#mediaVideo').src), audio: !$('#mediaAudio').hidden };
+      // disembunyikan ke bawah: tetap diputar, hanya bilah judul
+      $('#mediaCiut').click(); const ciut = { kelas: $('#mediaDock').classList.contains('ciut'), jalan: mediaObjekJalan('ov'), video: getComputedStyle($('#mediaVideo')).display };
+      $('#mediaJudul').click(); const buka = !$('#mediaDock').classList.contains('ciut');
+      $('#mediaTutup').click(); const tutup = !mediaObjekJalan('ov') && $('#mediaDock').hidden;
       buangMediaYatim(mv); const tetap = !!PROJECT.media[mv];
-      return { mime: [PROJECT.media[ma].mime, PROJECT.media[mv].mime], tolak, t1, main, loop, label2, henti, video, tetap, panel: !!document.getElementById('mediaPanel') };
+      return { mime: [PROJECT.media[ma].mime, PROJECT.media[mv].mime], tolak, t1, main, loop, label2, dock, henti, video, ciut, buka, tutup, tetap };
     });
     assert.deepEqual(r.mime, ['audio/wav', 'video/mp4']);
     assert.match(r.tolak, /perlu video/);
-    assert.deepEqual(r.t1, { jenis: 'bunyi', label: 'Bunyikan' });
-    assert.deepEqual([r.main, r.loop, r.label2, r.henti, r.video, r.panel], [true, false, 'Hentikan suara', true, true, false]);
+    assert.deepEqual(r.t1, { jenis: 'bunyi', label: 'Putar media' });
+    assert.deepEqual([r.main, r.loop, r.label2, r.henti], [true, false, 'Hentikan media', true]);
+    assert.deepEqual(r.dock, { tampil: true, audio: true, video: false });
+    assert.deepEqual(r.video, { ov: true, oau: false, tampil: true, audio: false });
+    assert.deepEqual([r.ciut, r.buka, r.tutup], [{ kelas: true, jalan: true, video: 'none' }, true, true]);
     assert.equal(r.tetap, true);
     // tautan lihat: media yang dipakai pemutar ikut sebagai lampiran
     await page.route('**/api/tautan**', async rt => { const u = new URL(rt.request().url());
