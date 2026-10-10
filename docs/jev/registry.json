@@ -3214,6 +3214,68 @@
     "target": "≥ 3",
     "tinjau": "2027-01-09"
    }
+  },
+  {
+   "id": "JEV-079",
+   "judul": "Lobi tanpa host: undangan tetap berlaku saat pembuat offline; pengunjung pertama jadi pusat koneksi, perannya pindah saat ia keluar; pemilik dikenali lewat tanda tangan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Ruang main bareng mati begitu pembuatnya menutup tab: undangan tidak bisa dipakai saat pemilik offline, dan semua tamu terputus bila host keluar.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"No host: links work even when the sharer is offline. The walk-together room becomes hostless: whoever arrives first becomes the connection hub automatically, and it hands over when they leave.\")",
+    "alternatif": [
+     "server relai/WebSocket sendiri yang selalu hidup (biaya, data lewat server)",
+     "jaring penuh (mesh) antar semua peserta (koneksi n², berat di HP)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.25,
+      "pakaiPerTahun": 10,
+      "menitHemat": 15
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "aturan ruang (mode, maks.) ada di id ruang — mengubahnya berarti ruang lain; pemilik = pemegang kunci ECDSA P-256 yang sidik SHA-256 kunci publiknya (64 bit) ada di id; bukti = tanda tangan atas ruang|id peer|waktu (2 menit), kunci rahasia tidak pernah dikirim; suasana yang diteruskan pusat dinormalkan. Residual: pusat yang jahat bisa melanggar aturan di sesinya sendiri (proyek asli pemilik tidak tersentuh)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tetap tanpa server penyimpanan; kunci pemilik hanya di localStorage peramban pembuat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tetap topologi bintang (n koneksi); penyerahan berurutan menurut lama bergabung, jeda 0,9 dtk per urutan agar tidak berebut"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tanda pemilik / pusat koneksi / kamu sebagai label teks; pesan sistem saat pusat berpindah"
+    }
+   },
+   "metrik": {
+    "nama": "sesi lobi yang berlanjut setelah pembuat keluar",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }

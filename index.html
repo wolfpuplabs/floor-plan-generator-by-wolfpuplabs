@@ -751,10 +751,11 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="section-title">Main bareng (lobi)</div>
       <div id="lobiSiap">
         <p class="hint">Undang teman masuk ke rumah ini: tiap orang menulis nama, tampil sebagai karakter, jalan-jalan bersama &amp; mengobrol. Koneksi langsung antar-peramban — rumah tidak disimpan di server.</p>
-        <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Host"></div>
+        <p class="hint">Undangan tetap berlaku walau kamu offline: siapa pun yang masuk duluan otomatis jadi pusat koneksi, dan perannya pindah ke orang lain saat ia keluar.</p>
+        <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Pemilik"></div>
         <div class="group"><label>Izin tamu</label>
           <div class="row lobi-mode" role="group" aria-label="Izin tamu"><button class="btn sm ghost active" data-lobi-mode="lihat" aria-pressed="true">Lihat saja</button><button class="btn sm ghost" data-lobi-mode="edit" aria-pressed="false">Bangun bareng</button></div>
-          <p class="hint">Lihat saja: tamu jalan-jalan &amp; mengobrol. Bangun bareng: tamu juga ikut mengubah rumah.</p>
+          <p class="hint">Lihat saja: tamu jalan-jalan, mengobrol &amp; menyalakan lampu dsb.; hanya kamu yang mengubah rumah &amp; suasana. Bangun bareng: semua ikut mengubah rumah.</p>
         </div>
         <div class="group"><label for="lobiMaks">Maks. orang per ruang (termasuk kamu)</label><select id="lobiMaks"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option selected>10</option></select></div>
         <button class="btn" id="lobiBuat"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat ruang &amp; undangan</button>
@@ -764,7 +765,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <input type="text" id="lobiUrl" readonly aria-label="Tautan undangan">
         <div class="row"><button class="btn sm" id="lobiSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin undangan</button><button class="btn sm ghost" id="lobiKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
         <ul id="lobiDaftar"></ul>
-        <button class="btn danger" id="lobiTutup">Tutup ruang</button>
+        <button class="btn ghost" id="lobiTutup">Keluar dari ruang</button>
       </div>
       <div class="section-title">AR / Model Viewer</div>
       <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
@@ -13226,7 +13227,7 @@ $('#lobiKirim').onclick=async()=>{
   if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Ayo masuk ke '+PROJECT.name+' bareng', url:u}); }catch(e){} }
   else $('#lobiSalin').click();
 };
-$('#lobiTutup').onclick=()=>{ if(window.LOBI) window.LOBI.tutup(); toast('Ruang ditutup'); };
+$('#lobiTutup').onclick=()=>{ if(window.LOBI) window.LOBI.tutup(); toast('Kamu keluar dari ruang — undangan tetap berlaku'); };
 /* penerima tautan: mode lihat — jalan-jalan & interaksi (pintu, lampu, duduk) boleh,
    mengubah proyek tidak */
 // galat tautan tampil TETAP di bilah lihat-saja (toast hilang dalam 2½ detik — di HP pemakai
@@ -13472,6 +13473,10 @@ const kubahLangit=new THREE.Mesh(new THREE.SphereGeometry(300,48,24), matLangit(
 kubahLangit.frustumCulled=false; kubahLangit.renderOrder=-10; kubahLangit.visible=false; kubahLangit.raycast=()=>{};
 kubahLangit.onBeforeRender=(r,sc,cam)=>{ kubahLangit.position.copy(cam.position); kubahLangit.updateMatrixWorld(); };
 scene.add(kubahLangit);
+/* main bareng: suasana/langit yang diganti di sini dilaporkan ke ruang; yang datang dari ruang
+   (pasangAdegan) tidak dipantulkan balik */
+let ADEGAN_LUAR=0;
+function laporAdegan(){ if(!ADEGAN_LUAR && window.LOBI && window.LOBI.aktif) window.LOBI.adegan(adeganKini()); }
 function terapkanLangit(){
   const foto=fotoAktif(), tampil=FPS.on || (foto && langitP().editor!==false && !camera.isOrthographicCamera);
   if(kubahFoto) kubahFoto.visible=tampil&&foto;
@@ -13497,6 +13502,7 @@ function setSuasana(k){
   terapkanLangit(); LAMPU_T=0;
   sun.userData.arah.set(...s.sunPos).normalize(); pasBayangMatahari();
   if(fotoAktif()){ terapkanCahayaFoto(); langitIkutSuasana(); }
+  laporAdegan();
 }
 /* ======================================================================
    LANGIT FOTO 360° — panorama HDR sungguhan (Poly Haven, lisensi CC0)
@@ -13705,6 +13711,7 @@ function pasangPano(P,info){
   const lp=langitP(); lp.mode='foto'; lp.id=info.id; lp.nama=info.nama;
   terapkanCahayaFoto();
   renderLangitUI();
+  laporAdegan();
 }
 /* --- jaringan: daftar HDRI Poly Haven + unduhan dengan progres & cache --- */
 const LANGIT_CACHE='langit360-v1';
@@ -13857,13 +13864,14 @@ async function unggahLangit(file){
   }catch(e){ FOTO.sibuk=false; renderLangitUI(); infoLangit('Berkas tidak bisa dipakai: '+(e.message||e)); toast('Panorama tidak terbaca'); }
 }
 function kembaliProsedural(){ dasarCahaya(); terapkanEnv(); pasBayangMatahari(); bayangKotor(); terapkanLangit(); if(typeof PROBE!=='undefined') PROBE.kotor=true; }
-function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; FOTO.target=null; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); }
+function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; FOTO.target=null; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); laporAdegan(); }
 /* putar panorama: hanya arah (latar, pantulan, matahari) yang ikut berubah */
 let PUTAR_T=0;
 function putarLangit(deg){
   langitP().putar=((+deg%360)+360)%360; if(!fotoAktif()) return;
   kubahFoto.material.uniforms.putar.value=FOTO.putarU();
-  clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); },180);
+  const luar=ADEGAN_LUAR;
+  clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); if(!luar) laporAdegan(); },180);
 }
 function simpanPrefLangit(){ if(LIHAT.on) return; try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor,pilih:lp.pilih,id:lp.id!=='unggah'?lp.id:null,nama:lp.nama})); }catch(e){} }
 function renderLangitUI(){
@@ -14508,6 +14516,10 @@ function pasangKeadaanAksi(k){
 // suasana & langit host — tamu mengikuti
 function adeganKini(){ const lp=langitP(); return {mood:MOOD, langit:{mode:lp.mode, jenis:lp.jenis, id:lp.id, nama:lp.nama, putar:+lp.putar||0}}; }
 function pasangAdegan(a){
+  ADEGAN_LUAR++;
+  try{ pasangAdegan0(a); } finally { ADEGAN_LUAR--; }
+}
+function pasangAdegan0(a){
   if(!a||typeof a!=='object') return;
   const lp=langitP(), g=a.langit&&typeof a.langit==='object'?a.langit:{};
   lp.pilih='manual';                       // tamu tidak mengacak panorama sendiri saat suasana berganti
@@ -15215,7 +15227,7 @@ window.__siap=true;
 if(/^#(lihat|l)=/.test(location.hash)){
   document.body.classList.add('lihat'); $('#loader-txt').textContent='Membuka rumah yang dibagikan…'; $('#loader').classList.add('on');
   // undangan main bareng: …&r=<ruang> di ujung tautan lihat-saja
-  const [hashRumah,ruangLobi]=(()=>{ const m=location.hash.match(/^(.*)&r=(p23d-[a-z0-9]{12})$/); return m?[m[1],m[2]]:[location.hash,null]; })();
+  const [hashRumah,ruangLobi]=(()=>{ const m=location.hash.match(/^(.*)&r=(p23d-(?:[le][2-9a]-[0-9a-f]{16}|[a-z0-9]{12}))$/); return m?[m[1],m[2]]:[location.hash,null]; })();
   const pendek=hashRumah.match(/^#l=([A-HJ-NP-Za-km-z2-9]{10})$/);
   addEventListener('load',()=>setTimeout(async()=>{
     try{
