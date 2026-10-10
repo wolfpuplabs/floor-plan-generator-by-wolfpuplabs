@@ -1454,6 +1454,8 @@ window.KAMUS_EN={
   "Hentikan":"Stop",
   "Volume":"Volume",
   "Musik":"Music",
+  "Media saat diketuk…":"Media on tap…",
+  "Hentikan suara":"Stop sound",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1749,7 +1751,9 @@ window.KAMUS_EN={
   ["Bawaan — (.+)","Default — $1"],
   ["Sisi ([AB]) \\(hadap (kiri|kanan|atas|bawah)\\)","Side $1 (faces $2)"],
   ["Warna sisi ([AB]) \\(hadap (kiri|kanan|atas|bawah)\\)","Side $1 colour (faces $2)"],
-  ["Musik latar: (.+)","Background music: $1"]
+  ["Musik latar: (.+)","Background music: $1"],
+  ["▶ (.+) — diputar saat objek diketuk, ketuk lagi untuk berhenti\\.","▶ $1 — plays when the object is tapped; tap again to stop."],
+  ["Audio atau video \\(suaranya diputar\\), maks\\. (\\d+) MB — langsung diputar saat objek diketuk, seperti suara\\.","Audio or video (its sound plays), max. $1 MB — plays right away when the object is tapped, like a sound."]
  ],
  // frasaPola
  "frasaPola":[

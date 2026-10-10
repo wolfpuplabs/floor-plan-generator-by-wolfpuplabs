@@ -3,7 +3,7 @@ import zlib from 'node:zlib';
 import { muatProyekJSON } from './harness.mjs';
 
 // JEV-086: musik latar (BGM) di tab Tampilan — unggah, ulang, otomatis, volume, tombol Musik di
-// mode jalan, ikut tautan lihat; musik objek menerima MP4 berisi suara; pemutar media bisa dikecilkan.
+// mode jalan, ikut tautan lihat; musik objek menerima MP4 berisi suara; media objek diputar saat diketuk (ulang opsional).
 
 // WAV 0,2 dtk sunyi
 function wav() {
@@ -57,7 +57,7 @@ export const tes = {
     await muatProyekJSON(page, { ...p, bgm: { media: '../x<script>' } });
     assert.equal(await page.evaluate(() => 'bgm' in PROJECT), false);
   },
-  'pemutar media bisa dikecilkan & diulang; musik objek menerima MP4 berisi suara': async (page) => {
+  'media objek bisa diulang & dihentikan dengan ketukan; musik objek menerima MP4 berisi suara': async (page) => {
     const r = await page.evaluate(async w => {
       const u8 = Uint8Array.from(atob(w), c => c.charCodeAt(0));
       const ma = await unggahMediaObjek(new File([u8], 'ombak.wav'), 'media');
@@ -65,14 +65,10 @@ export const tes = {
       const mus = await unggahMediaObjek(new File([mp4], 'rekaman'), 'audio');
       L().objects.push({ id: 'om', kind: 'furn', type: 'sofa3', x: 1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: ma, mediaUlang: true, musik: mus } } });
       rebuildScene();
-      bukaMedia('om'); const p = document.getElementById('mediaPanel'), a = document.getElementById('mediaAudio');
-      const awal = { kecil: p.classList.contains('kecil'), loop: a.loop };
-      document.getElementById('mediaKecil').click(); const kecil = p.classList.contains('kecil') && !p.hidden && !!a.getAttribute('src');
-      document.getElementById('mediaJudul').click(); const besar = !p.classList.contains('kecil');
-      document.getElementById('mediaKecil').click(); tutupMedia(); bukaMedia('om'); const bukaLagi = !p.classList.contains('kecil'); tutupMedia();
+      togelMediaObjek('om'); const loop = MEDIA_OBJ.get('om').a.loop; togelMediaObjek('om'); const henti = !mediaObjekJalan('om');
       mulaiMusikUnggah('om'); const main = MUSIK.main.has('om'); hentikanMusikUnggah('om');
-      return { awal, kecil, besar, bukaLagi, mimeMusik: PROJECT.media[mus].mime, ak: !!aksiObjek(cariObjek('om')).musik, main };
+      return { loop, henti, mimeMusik: PROJECT.media[mus].mime, ak: !!aksiObjek(cariObjek('om')).musik, main };
     }, wav().toString('base64'));
-    assert.deepEqual(r, { awal: { kecil: false, loop: true }, kecil: true, besar: true, bukaLagi: true, mimeMusik: 'audio/mp4', ak: true, main: true });
+    assert.deepEqual(r, { loop: true, henti: true, mimeMusik: 'audio/mp4', ak: true, main: true });
   },
 };
