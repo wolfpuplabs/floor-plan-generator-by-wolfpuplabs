@@ -3338,6 +3338,130 @@
     "target": "≥ 40%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-081",
+   "judul": "Pembuat kolam seperti void (persegi & L berukuran, bebas lewat tracing) dan titik yang menempel ke ujung dinding, railing, pagar & sudut kolam",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Kolam hanya bisa digambar bebas titik demi titik tanpa ukuran pasti; saat menggambar dinding, pagar atau kolam, titik tidak menempel ke ujung pagar/railing/sudut kolam sehingga sambungan meleset beberapa sentimeter.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"pool builder by tracing kaya void builder, snap wall sama fence/ rail point end\")",
+    "alternatif": [
+     "kolam hanya dari model unggahan",
+     "grid snap saja tanpa tangkap ujung"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 10,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "ukuran kolam dijepit 0,5–60 m (potongan L < sisi), titik tetap disaring sanitasiProyek"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "—"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pencarian ujung linear atas dinding & objek lantai aktif, hanya saat kursor bergerak di alat gambar"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "cincin penanda saat titik menempel; ukuran bisa diketik"
+    }
+   },
+   "metrik": {
+    "nama": "kolam berukuran per proyek bertaman",
+    "target": "≥ 20%",
+    "tinjau": "2027-01-10"
+   }
+  },
+  {
+   "id": "JEV-082",
+   "judul": "Bentuk dasar padat (collider & bisa dipijak), prisma bebas & potongan bentuk lewat tracing, lantai bebas lewat tracing, tanah selalu di bawah lantai",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Bentuk dasar bisa ditembus di mode jalan dan tidak bisa dipotong; tidak ada cara menambah pelat lantai berbentuk bebas; bukit hasil kuas tanah bisa menutupi dek/paving/lantai tambahan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"basic shapes ga ada collider, sama bisa di slice/ cut tracing kaya void, build lantai selalu diatas terrain, ada floor add by tracing juga\")",
+    "alternatif": [
+     "pustaka CSG eksternal (berat, perlu three.js baru)",
+     "bentuk hanya dari model unggahan"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 10,
+      "menitHemat": 6
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "alas prisma ≤ 200 titik, potongan ≤ 8 × 120 titik, angka dijepit ±2 (lokal); tebal pelat 5–60 cm"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru: potongan memakai kisi + kontur yang sama dengan tepi atap"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "potongan dihitung saat bangun ulang (kisi ±160²); collider bentuk dicache per bentuk"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Potong / Hapus potongan / Gambar ulang alas berlabel teks"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan bentuk terpotong atau lantai bebas",
+    "target": "≥ 10%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }
