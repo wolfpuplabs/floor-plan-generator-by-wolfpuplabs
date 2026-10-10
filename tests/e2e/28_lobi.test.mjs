@@ -111,9 +111,11 @@ export const tes = {
       assert.equal(await H.evaluate(() => [LOBI.aktif, document.querySelector('#lobiSiap').hidden, document.querySelector('#lobiAktif').hidden].join()), 'false,false,true');
       await G.waitForFunction(() => LOBI.aktif && LOBI.peran === 'pusat' && LOBI.peserta.size === 1, undefined, { timeout: 75000 });
       await G.waitForFunction(() => /Kamu kini pusat koneksi/.test(document.querySelector('#lobiObrolan .lb-pesan').textContent), undefined, { timeout: 15000 });
+      // pembuat benar-benar offline (tab ditutup) — juga mengurangi beban 3 halaman WebGL di mesin CI
+      await H.close();
       // undangan yang sama tetap berlaku walau pembuatnya offline: orang baru tersambung lewat pusat baru
       const C = await L.buka(undangan); await masuk(C, 'Cici');
-      await C.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 75000 });
+      await C.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 120000 });
       assert.deepEqual(await peserta(C), ['Cici', 'Sari']);
       assert.deepEqual(await C.evaluate(() => [LOBI.peran, PROJECT.levels[0].walls.length]), ['tamu', 3], 'orang baru menerima rumah terbaru dari pusat');
     } finally { await L.tutup(); }
