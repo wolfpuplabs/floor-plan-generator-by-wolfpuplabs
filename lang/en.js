@@ -1468,6 +1468,7 @@ window.KAMUS_EN={
   "Tampilkan pemutar":"Show player",
   "Hentikan & tutup":"Stop & close",
   "Interaksi: saat diketuk":"Interaction: when tapped",
+  "Kecilkan ke bawah":"Minimise to the bottom",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1767,7 +1768,9 @@ window.KAMUS_EN={
   ["▶ (.+) — diputar saat objek diketuk, ketuk lagi untuk berhenti\\.","▶ $1 — plays when the object is tapped; tap again to stop."],
   ["Audio atau video \\(suaranya diputar\\), maks\\. (\\d+) MB — langsung diputar saat objek diketuk, seperti suara\\.","Audio or video (its sound plays), max. $1 MB — plays right away when the object is tapped, like a sound."],
   ["▶ (.+) — diputar di pemutar bawah saat objek diketuk; ketuk lagi untuk berhenti\\.","▶ $1 — plays in the bottom player when the object is tapped; tap again to stop."],
-  ["Audio atau video, maks\\. (\\d+) MB — diputar di pemutar bawah \\(bisa disembunyikan\\) saat objek diketuk\\.","Audio or video, max. $1 MB — plays in the bottom player (can be hidden) when the object is tapped."]
+  ["Audio atau video, maks\\. (\\d+) MB — diputar di pemutar bawah \\(bisa disembunyikan\\) saat objek diketuk\\.","Audio or video, max. $1 MB — plays in the bottom player (can be hidden) when the object is tapped."],
+  ["▶ (.+) — diputar saat objek diketuk; ketuk lagi untuk berhenti\\.","▶ $1 — plays when the object is tapped; tap again to stop."],
+  ["Audio atau video, maks\\. (\\d+) MB — video tampil di tengah layar, audio di pojok bawah; keduanya bisa dikecilkan\\.","Audio or video, max. $1 MB — video shows in the middle of the screen, audio in the bottom corner; both can be minimised."]
  ],
  // frasaPola
  "frasaPola":[

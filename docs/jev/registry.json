@@ -3657,7 +3657,7 @@
    "J": {
     "masalah": "Musik hanya bisa ditempel ke objek dan tidak ada musik latar rumah; di iPad unggahan/pemutaran musik gagal; musik, suara saat diketuk & media objek bisa berbunyi bersamaan (membingungkan) dan video tidak tampil.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-10 (tangkapan layar iPad: \"BGM uploader ga jalan sama loop option dipisah di tab luar, media playernya bisa dihide?\"); susulan 2026-10-10: \"media yg udah di upload disatu object autoplay pas di tap kaya sfx, ga usah ada button terpisah sama ga usah ada ui media player\"; susulan 2026-10-10 (tangkapan layar inspector): \"ini ngebingungin, pas diplay tabrakan semua sama videonya ga keluar, jadiin play sfx, media (audio sama video aja salah satu) sama media playernya bisa di hide ke bawah\"",
+    "sumberBukti": "pesan pengguna 2026-10-10 (tangkapan layar iPad: \"BGM uploader ga jalan sama loop option dipisah di tab luar, media playernya bisa dihide?\"); susulan 2026-10-10: \"media yg udah di upload disatu object autoplay pas di tap kaya sfx, ga usah ada button terpisah sama ga usah ada ui media player\"; susulan 2026-10-10 (tangkapan layar inspector): \"ini ngebingungin, pas diplay tabrakan semua sama videonya ga keluar, jadiin play sfx, media (audio sama video aja salah satu) sama media playernya bisa di hide ke bawah\"; susulan 2026-10-10 (rekaman layar iPad): \"play animation sama sfxnya kok cuma bisa sekali? buat media video floating di tengah layar aja kaya sebelumnya cuma bisa di minimize\"",
     "alternatif": [
      "musik objek + suara + media sebagai tiga pilihan terpisah (lama — bertabrakan)",
      "media tanpa pemutar (dicoba — video tidak tampil)"
