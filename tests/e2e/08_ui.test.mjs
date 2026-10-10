@@ -26,7 +26,7 @@ export const tes = {
     const tab = await page.$$eval('.tabs button', bs => bs.map(b => [b.dataset.tab, b.textContent.trim(), Math.round(b.getBoundingClientRect().height)]));
     assert.deepEqual(tab.map(t => t[0]), ['plan', 'levels', 'objects', 'taman', 'tampilan', 'file']);
     assert.ok(tab.every(t => t[2] >= 44), 'tab harus ≥ 44 px: ' + JSON.stringify(tab));
-    const di = await page.evaluate(() => ['rq', 'mood', 'langitMode', 'finIn', 'otherLevels'].map(id => document.getElementById(id).closest('.tab-body').dataset.panel));
+    const di = await page.evaluate(() => ['rq', 'mood', 'langitMode', 'finTex', 'otherLevels'].map(id => document.getElementById(id).closest('.tab-body').dataset.panel));
     assert.deepEqual(di, ['tampilan', 'tampilan', 'tampilan', 'tampilan', 'tampilan']);
     await page.click('.tabs button[data-tab="tampilan"]');
     assert.equal(await page.isVisible('#rq'), true);

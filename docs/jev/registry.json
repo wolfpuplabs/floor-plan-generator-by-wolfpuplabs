@@ -3586,6 +3586,68 @@
     "target": "≥ 10%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-085",
+   "judul": "Material dinding pindah ke inspector dinding: material per sisi tiap dinding, bawaan proyek di inspector, material lantai bawaan di tab Lantai",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Material dinding hanya bisa diatur sekali untuk seluruh proyek di tab Tampilan — jauh dari dinding yang sedang dipilih, dan tidak bisa membedakan satu dinding (mis. dinding aksen bata, sisi kamar mandi berkeramik).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (tangkapan layar iPad, panah dari \"Finish Materials\" ke inspector dinding: \"wall material dipindah\")",
+    "alternatif": [
+     "memindahkan bagian yang sama apa adanya ke inspector (tetap seluruh proyek)",
+     "material per ruangan dari peta ruang (lebih rumit, sisi dinding ambigu)"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 10,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kunci material hanya dari daftar FINISH (hasOwnProperty — __proto__ dll. diabaikan), warna sendiri hanya #rrggbb"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka/aset baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "material per kunci+warna tetap di-cache finMat; dinding tanpa pilihan memakai bahan bersama seperti sebelumnya"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pilihan berlabel teks (sisi dalam/luar, sisi A/B dengan arah hadap di denah)"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan ≥ 1 dinding bermaterial sendiri",
+    "target": "≥ 15%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }

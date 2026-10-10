@@ -1415,6 +1415,27 @@ window.KAMUS_EN={
   "Interaksi: klip animasi":"Interaction: animation clip",
   "Interaksi: ulang animasi":"Interaction: loop animation",
   "Interaksi: animasi otomatis":"Interaction: autoplay animation",
+  "Material lantai bawaan":"Default floor material",
+  "Sisi dalam":"Inner side",
+  "Sisi luar":"Outer side",
+  "Warna sisi dalam":"Inner side colour",
+  "Warna sisi luar":"Outer side colour",
+  "Warna muka dalam":"Interior face colour",
+  "Warna muka luar":"Exterior face colour",
+  "Bawaan semua dinding":"Default for all walls",
+  "Samakan semua dinding lantai ini ke bawaan":"Reset all walls on this floor to default",
+  "Material dinding disamakan ke bawaan":"Wall materials reset to default",
+  "Semua dinding sudah memakai bawaan":"All walls already use the default",
+  "Dinding sekat: tiap sisi bisa berbeda (mis. keramik di sisi kamar mandi).":"Partition wall: each side can differ (e.g. tiles on the bathroom side).",
+  "Dinding keliling: sisi luar menghadap ke luar bangunan.":"Perimeter wall: the outer side faces outside the building.",
+  "Muka luar hanya untuk dinding di keliling bangunan; dinding sekat memakai muka dalam di kedua sisinya.":"The exterior face only applies to perimeter walls; partitions use the interior face on both sides.",
+  "Material dinding":"Wall material",
+  "Warna dinding":"Wall colour",
+  "Samakan material dinding":"Reset wall materials",
+  "kiri":"left",
+  "kanan":"right",
+  "atas":"top",
+  "bawah":"bottom",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1488,7 +1509,8 @@ window.KAMUS_EN={
   "Mode lihat — seret untuk memutar, cubit untuk zoom, Jalan-jalan untuk masuk ke dalam rumah.":"View mode — drag to orbit, pinch to zoom, <b>Walk</b> to step inside the house.",
   "Area, kolam, jalan setapak, dan pagar digambar dengan tracing: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.":"Areas, pools, paths and fences are drawn by <b>tracing</b>: tap their points on the floor (the plan image shows underneath). Pools cut into the site ground automatically.",
   "Browser di dalam aplikasi ini (mis. Instagram, LINE, Facebook) tidak bisa membuka AR. Buka tautan ini di Safari — ketuk ⋯ lalu Buka di Safari, atau salin tautannya.":"This in-app browser (e.g. Instagram, LINE, Facebook) cannot open AR. Open this link in <b>Safari</b> — tap ⋯ then <b>Open in Safari</b>, or copy the link.",
-  "Tekan Lihat di ruanganmu — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).":"Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR)."
+  "Tekan Lihat di ruanganmu — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).":"Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR).",
+  "Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian Material di panel kanan.":"Used by every floor that doesn't pick its own material. Wall materials are set per wall: select a wall, then see the <b>Material</b> section in the right panel."
  },
  // pola
  "pola":[
@@ -1705,7 +1727,10 @@ window.KAMUS_EN={
   ["Video MP4 / MOV / WebM atau audio, maks\\. (\\d+) MB — diputar di panel pemutar saat objek diketuk\\.","MP4 / MOV / WebM video or audio, max. $1 MB — plays in the media player when the object is tapped."],
   ["Media: (.+)","Media: $1"],
   ["Semua klip \\((\\d+)\\)","All clips ($1)"],
-  ["(.+) · ([\\d.,]+) dtk","$1 · $2 s"]
+  ["(.+) · ([\\d.,]+) dtk","$1 · $2 s"],
+  ["Bawaan — (.+)","Default — $1"],
+  ["Sisi ([AB]) \\(hadap (kiri|kanan|atas|bawah)\\)","Side $1 (faces $2)"],
+  ["Warna sisi ([AB]) \\(hadap (kiri|kanan|atas|bawah)\\)","Side $1 colour (faces $2)"]
  ],
  // frasaPola
  "frasaPola":[

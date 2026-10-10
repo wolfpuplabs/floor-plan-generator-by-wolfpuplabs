@@ -162,6 +162,8 @@ html{touch-action:manipulation}
 #mediaJudul{font-size:1rem;padding-right:40px;margin:0}
 #mediaVideo{width:100%;max-height:60vh;border-radius:10px;background:#000}
 #mediaAudio{width:100%}
+#inspector details.bawaan-fin{margin:8px 0 2px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+#inspector details.bawaan-fin summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
 #inspector label.cek{display:flex;gap:8px;align-items:flex-start;font-size:.8rem;margin:6px 0;line-height:1.35}
 #inspector label.cek input{margin-top:2px}
 #detailTutup{position:absolute;top:8px;right:8px;width:36px;height:36px;padding:0}
@@ -600,21 +602,16 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       </div>
       <div class="section-title">Properti Lantai Aktif</div>
       <div id="lvl-props" class="group"></div>
+      <div class="f-row"><label>Material lantai bawaan</label><select id="finFloor"></select></div>
+      <p class="hint">Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian <b>Material</b> di panel kanan.</p>
       <button class="btn sm ghost" id="autoVoidBtn">Lubangi Pelat dari Tangga Lantai Bawah</button>
       <p class="hint">Membuat void di pelat lantai ini tepat di tempat ruang bebas kepala tangga di bawahnya kurang dari 2,00 m.</p>
     </div>
 
     <!-- ============ TAB TAMPILAN ============ -->
     <div class="tab-body" data-panel="tampilan" hidden>
-      <div class="section-title">Material Finishing</div>
-      <div class="f-row"><label>Muka dalam</label><select id="finIn"></select></div>
-      <div class="f-row" id="finInColorRow" hidden><label>Warna dalam</label><input type="color" id="finInColor" value="#efece5"></div>
-      <div class="f-row"><label>Muka luar</label><select id="finOut"></select></div>
-      <div class="f-row" id="finOutColorRow" hidden><label>Warna luar</label><input type="color" id="finOutColor" value="#d9d3c7"></div>
-      <div class="f-row"><label>Lantai</label><select id="finFloor"></select></div>
-      <label class="chk"><input type="checkbox" id="finTex" checked><span>Tekstur material (bata, kayu, keramik…)</span></label>
-      <p class="hint">Muka luar hanya dikenakan pada dinding yang berada di keliling bangunan; dinding sekat di dalam memakai finishing dalam pada kedua mukanya.</p>
       <div class="section-title">Render</div>
+      <label class="chk"><input type="checkbox" id="finTex" checked><span>Tekstur material (bata, kayu, keramik…)</span></label>
       <div class="f-row"><label>Kualitas</label><select id="rq">
         <option value="cepat">Cepat — hemat baterai</option>
         <option value="halus" selected>Halus — bawaan</option>
@@ -2247,18 +2244,31 @@ function levelBBox(lv){
 /* Muka mana yang menghadap keluar dihitung dari letak dinding terhadap kotak
    bangunan — kaidah yang sama dipakai saat membaca denah. Dinding sekat di
    dalam rumah tidak punya muka luar, jadi kedua mukanya finishing dalam. */
-function wallFinishMats(w,lv){
-  const mi=matDalam(), mo=matLuar();
+// muka A (+Z lokal) dinding keliling menghadap ke dalam? null = dinding sekat (kedua muka di dalam)
+function sisiDalamA(w,lv){
   const bb=levelBBox(lv);
-  if(!bb) return mi;
+  if(!bb) return null;
   const m=wallMid(w), tepi=0.6;
   const luar = Math.abs(m.x-bb.x0)<tepi || Math.abs(m.x-bb.x1)<tepi
             || Math.abs(m.z-bb.z0)<tepi || Math.abs(m.z-bb.z1)<tepi;
-  if(!luar) return mi;
+  if(!luar) return null;
   const a=wallAngle(w), nx=-Math.sin(a), nz=Math.cos(a);   // arah +Z lokal
   const cx=(bb.x0+bb.x1)/2, cz=(bb.z0+bb.z1)/2;
-  const keDalam=(cx-m.x)*nx + (cz-m.z)*nz > 0;             // +Z menghadap ke dalam?
-  return [mi,mi,mi,mi, keDalam?mi:mo, keDalam?mo:mi];       // +x,-x,+y,-y,+z,-z
+  return (cx-m.x)*nx + (cz-m.z)*nz > 0;
+}
+/* material per dinding (JEV-085): w.finA = muka +Z lokal, w.finB = muka −Z; kosong = bawaan proyek.
+   Warna sendiri (finAWarna/finBWarna) hanya #rrggbb dan hanya untuk finishing "warna". */
+const WARNA_HEX=/^#[0-9a-f]{6}$/i;
+function matSisiDinding(w,s){
+  const k=w['fin'+s]; if(typeof k!=='string'||!Object.prototype.hasOwnProperty.call(FINISH,k)) return null;
+  const c=w['fin'+s+'Warna']; return finMat(FINISH,k,typeof c==='string'&&WARNA_HEX.test(c)?c:undefined);
+}
+function wallFinishMats(w,lv){
+  const mi=matDalam(), mo=matLuar(), dA=sisiDalamA(w,lv);
+  const oa=matSisiDinding(w,'A'), ob=matSisiDinding(w,'B');
+  if(dA===null && !oa && !ob) return mi;
+  const A = dA===null||dA ? mi : mo, B = dA===null||!dA ? mi : mo;
+  return [mi,mi,mi,mi, oa||A, ob||B];                      // +x,-x,+y,-y,+z,-z
 }
 
 /* ---------------------------------------------------------------------
@@ -7430,6 +7440,7 @@ function renderInspector(){
     fRow(ins,'Tebal custom',numInput(d.thickness,0.01,v=>{ d.thickness=clamp(v,0.05,1.5); rebuildScene(); },0.05,1.5));
     fRow(ins,'Tinggi (m)',numInput(d.height||0,0.05,v=>{ d.height=v<=0?0:clamp(v,0.3,12); rebuildScene(); },0,12));
     ins.appendChild(el('p','hint','Tinggi 0 = mengikuti tinggi lantai ('+fmt(L().height)+' m).'));
+    inspektorMaterialDinding(ins,d);
 
     ins.appendChild(el('div','section-title','Bukaan'));
     const wrap=el('div','group');
@@ -13182,6 +13193,40 @@ function buangMediaYatim(mid){
   delete PROJECT.media[mid];
 }
 const LABEL_BAWAAN={lampu:'menyalakan / mematikan lampu', duduk:'duduk', tv:'menyalakan TV', audio:'memutar musik', piano:'bermain piano', api:'menyalakan api', gorden:'membuka / menutup gorden'};
+/* ---------- inspector: material dinding per sisi (JEV-085) ---------- */
+// arah hadap muka dinding di denah (tampak atas: −Z = atas)
+function arahDenah(nx,nz){ return Math.abs(nx)>Math.abs(nz) ? (nx>0?'kanan':'kiri') : (nz>0?'bawah':'atas'); }
+const warnaFinish=(k,c)=>typeof c==='string'&&WARNA_HEX.test(c)?c:'#'+new THREE.Color(FINISH[k]?FINISH[k].warna:0xefece5).getHexString();
+function inspektorMaterialDinding(ins,d){
+  ins.appendChild(el('div','section-title','Material'));
+  const dA=sisiDalamA(d,L()), a=wallAngle(d), F=PROJECT.finish, nama=k=>(FINISH[k]||{}).l||k;
+  const sisi = dA===null
+    ? [['A','Sisi A (hadap '+arahDenah(-Math.sin(a),Math.cos(a))+')',F.in], ['B','Sisi B (hadap '+arahDenah(Math.sin(a),-Math.cos(a))+')',F.in]]
+    : [[dA?'A':'B','Sisi dalam',F.in], [dA?'B':'A','Sisi luar',F.out]];
+  for(const [s,label,bawaan] of sisi){
+    fRow(ins,label,selInput([['','Bawaan — '+nama(bawaan)],...Object.entries(FINISH).map(([k,v])=>[k,v.l])],d['fin'+s]||'',v=>{
+      if(v) d['fin'+s]=v; else delete d['fin'+s];
+      if(v!=='warna') delete d['fin'+s+'Warna'];
+      HIST.label='Material dinding'; rebuildScene(); renderInspector(); }));
+    if(d['fin'+s]==='warna'){ const c=document.createElement('input'); c.type='color'; c.value=warnaFinish('warna',d['fin'+s+'Warna']);
+      c.onchange=()=>{ d['fin'+s+'Warna']=c.value; HIST.label='Warna dinding'; rebuildScene(); }; fRow(ins,'Warna '+label[0].toLowerCase()+label.slice(1),c); }
+  }
+  ins.appendChild(el('p','hint',dA===null?'Dinding sekat: tiap sisi bisa berbeda (mis. keramik di sisi kamar mandi).':'Dinding keliling: sisi luar menghadap ke luar bangunan.'));
+  // bawaan proyek — dulu di tab Tampilan; berlaku untuk dinding yang memilih "Bawaan"
+  const det=document.createElement('details'); det.className='bawaan-fin';
+  const sum=document.createElement('summary'); sum.textContent='Bawaan semua dinding'; det.appendChild(sum);
+  for(const [k,label] of [['in','Muka dalam'],['out','Muka luar']]){
+    fRow(det,label,selInput(Object.entries(FINISH).map(([x,v])=>[x,v.l]),F[k],v=>{ F[k]=v; HIST.label='Ganti material'; rebuildScene(); renderInspector(); }));
+    if(F[k]==='warna'){ const c=document.createElement('input'); c.type='color'; c.value=warnaFinish('warna',F[k+'Color']);
+      c.onchange=()=>{ F[k+'Color']=c.value; HIST.label='Ganti material'; rebuildScene(); }; fRow(det,'Warna '+label.toLowerCase(),c); }
+  }
+  const bs=el('button','btn sm ghost','Samakan semua dinding lantai ini ke bawaan');
+  bs.onclick=()=>{ let n=0; for(const w of L().walls) for(const s of ['A','B']) if(w['fin'+s]){ delete w['fin'+s]; delete w['fin'+s+'Warna']; n++; }
+    HIST.label='Samakan material dinding'; rebuildScene(); renderInspector(); toast(n?'Material dinding disamakan ke bawaan':'Semua dinding sudah memakai bawaan'); };
+  det.appendChild(bs);
+  det.appendChild(el('p','hint','Muka luar hanya untuk dinding di keliling bangunan; dinding sekat memakai muka dalam di kedua sisinya.'));
+  ins.appendChild(det);
+}
 function inspektorAksi(ins,d){
   d.params=d.params||{};
   const A=Object.assign({},d.params.aksi);
@@ -13755,21 +13800,10 @@ function isiPilihan(sel,tabel,nilai){
     sel.appendChild(o);
   }
 }
-function renderFinishUI(){
-  isiPilihan($('#finIn'),FINISH,PROJECT.finish.in);
-  isiPilihan($('#finOut'),FINISH,PROJECT.finish.out);
-  isiPilihan($('#finFloor'),LANTAI,PROJECT.finish.floor);
-  $('#finInColor').value=PROJECT.finish.inColor||'#efece5';
-  $('#finOutColor').value=PROJECT.finish.outColor||'#d9d3c7';
-  $('#finInColorRow').hidden = PROJECT.finish.in!=='warna';
-  $('#finOutColorRow').hidden= PROJECT.finish.out!=='warna';
-}
+// material dinding pindah ke inspector dinding (JEV-085); di sini tinggal material lantai bawaan (tab Lantai)
+function renderFinishUI(){ isiPilihan($('#finFloor'),LANTAI,PROJECT.finish.floor); }
 const ubahFinish=(k,v)=>{ PROJECT.finish[k]=v; HIST.label='Ganti material'; renderFinishUI(); rebuildScene(); };
-$('#finIn').onchange   =e=>ubahFinish('in',e.target.value);
-$('#finOut').onchange  =e=>ubahFinish('out',e.target.value);
-$('#finFloor').onchange=e=>ubahFinish('floor',e.target.value);
-$('#finInColor').oninput =e=>ubahFinish('inColor',e.target.value);
-$('#finOutColor').oninput=e=>ubahFinish('outColor',e.target.value);
+$('#finFloor').onchange=e=>{ ubahFinish('floor',e.target.value); renderLevels(); };
 
 /* Peranti seperti DLSS tidak tersedia untuk halaman web — yang bisa dipakai
    di sini adalah menggambar pada resolusi lebih tinggi lalu mengecilkannya
