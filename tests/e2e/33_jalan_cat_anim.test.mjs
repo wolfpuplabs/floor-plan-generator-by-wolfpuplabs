@@ -106,6 +106,47 @@ export const tes = {
       ASSET_ANIM.delete(id); return { k, tanpa: aksiObjek(cariObjek('oa')) }; }, id);
     assert.deepEqual(n, { k: '', tanpa: null });
   },
+  'ketuk benda di sisi kiri (sisi stik jalan) juga memakai benda; animasi sekali putar diulang dari awal tiap ketukan': async (page) => {
+    const id = await modelBeranimasi(page);
+    await page.evaluate(id => {
+      L().objects.push({ id: 'oa', kind: 'model', type: id, x: 0, y: 0, z: 0, rotY: 0, sx: 2, sy: 2, sz: 2, params: { aksi: { anim: { ulang: false }, sfx: 'klik' } } });
+      rebuildScene(); enterFPS();
+      window.__nsfx = 0; const asli = window.sfx; window.sfx = (...a) => { window.__nsfx++; return asli(...a); };
+    }, id);
+    // titik layar tempat objek tampak, dipaksa berada di sisi kiri (< 45% lebar) dengan memutar kamera
+    const titik = await page.evaluate(() => {
+      FPS.yaw = 0; FPS.pitch = 0; camera.position.set(0.9, 0.3, 2.2); camera.rotation.set(0, 0, 0); camera.updateMatrixWorld(true);
+      const p = grupObjek('oa')[0].getObjectByName('kotak').getWorldPosition(new THREE.Vector3()).project(camera), r = renderer.domElement.getBoundingClientRect();
+      return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height, kiri: (p.x + 1) / 2 < 0.45 };
+    });
+    assert.equal(titik.kiri, true, JSON.stringify(titik));
+    // titik ketuk dihitung ulang dari letak kotak saat ini (animasi uji menggeser kotak naik-turun)
+    const ketuk = () => page.evaluate(() => {
+      FPS.yaw = 0; FPS.pitch = 0; camera.position.set(0.9, 0.3, 2.2); camera.rotation.set(0, 0, 0); camera.updateMatrixWorld(true);
+      const p = grupObjek('oa')[0].getObjectByName('kotak').getWorldPosition(new THREE.Vector3()).project(camera), r = renderer.domElement.getBoundingClientRect();
+      const x = r.left + (p.x + 1) / 2 * r.width, y = r.top + (1 - p.y) / 2 * r.height;
+      const c = renderer.domElement, o = { pointerId: 7, pointerType: 'touch', clientX: x, clientY: y, bubbles: true, cancelable: true };
+      c.dispatchEvent(new PointerEvent('pointerdown', o)); c.dispatchEvent(new PointerEvent('pointerup', o));
+      return { main: gerakJalan('oa'), sfx: window.__nsfx, t: gerakJalan('oa') ? GERAK.main.get('oa').t : null, kiri: (p.x + 1) / 2 < 0.45 };
+    });
+    const k1 = await ketuk();
+    assert.equal(k1.main, true); assert.equal(k1.sfx, 1); assert.equal(k1.kiri, true);
+    // ketukan kedua saat masih diputar: diulang dari awal (bukan dihentikan), suara ikut lagi
+    await page.evaluate(() => { GERAK.main.get('oa').t = 0.8; });
+    const k2 = await ketuk();
+    assert.deepEqual([k2.main, k2.sfx, k2.t, k2.kiri], [true, 2, 0, true], JSON.stringify(k2));
+    // selesai sendiri, lalu diketuk lagi: diputar lagi
+    await page.evaluate(() => { stepGerak(3); });
+    assert.equal(await page.evaluate(() => gerakJalan('oa')), false);
+    const k3 = await ketuk();
+    assert.deepEqual([k3.main, k3.sfx], [true, 3], JSON.stringify(k3));
+    // "Ulang terus": ketukan berikutnya menghentikan
+    // (putaran gambar terus memajukan waktu: pastikan masih diputar sebelum ketukan)
+    await page.evaluate(() => { cariObjek('oa').params.aksi.anim.ulang = true; if (!gerakJalan('oa')) mulaiGerak('oa'); else GERAK.main.get('oa').t = 0; });
+    const k4 = await ketuk();
+    assert.deepEqual([k4.main, k4.sfx], [false, 4], JSON.stringify(k4));
+    await page.evaluate(() => exitFPS());
+  },
   'klon model berkulit: kerangka salinan menunjuk tulangnya sendiri': async (page) => {
     const r = await page.evaluate(() => {
       const geo = new THREE.BoxGeometry(0.2, 1, 0.2, 1, 4, 1), n = geo.attributes.position.count, si = [], sw = [];
@@ -139,11 +180,11 @@ export const tes = {
       // diketuk = langsung diputar seperti suara (tanpa panel pemutar); ketuk lagi = berhenti
       const t1 = { jenis: cariTargetUji('oau'), label: labelAksi({ jenis: 'bunyi', id: 'oau' }) };
       pakai({ jenis: 'bunyi', id: 'oau' }); const main = mediaObjekJalan('oau'), loop = $('#mediaAudio').loop, label2 = labelAksi({ jenis: 'bunyi', id: 'oau' });
-      const dock = { tampil: !$('#mediaDock').hidden, audio: !$('#mediaAudio').hidden && /^blob:/.test($('#mediaAudio').src), video: !$('#mediaVideo').hidden };
+      const dock = { tampil: !$('#mediaDock').hidden, audio: !$('#mediaAudio').hidden && /^blob:/.test($('#mediaAudio').src), video: !$('#mediaVideo').hidden, tengah: $('#mediaDock').classList.contains('tengah') };
       pakai({ jenis: 'bunyi', id: 'oau' }); const henti = !mediaObjekJalan('oau') && $('#mediaDock').hidden;
       // video tampil di pemutar bawah; satu media sekaligus (mengetuk objek lain mengganti yang sedang diputar)
       pakai({ jenis: 'bunyi', id: 'oau' }); pakai({ jenis: 'bunyi', id: 'ov' });
-      const video = { ov: mediaObjekJalan('ov'), oau: mediaObjekJalan('oau'), tampil: !$('#mediaVideo').hidden && /^blob:/.test($('#mediaVideo').src), audio: !$('#mediaAudio').hidden };
+      const video = { ov: mediaObjekJalan('ov'), oau: mediaObjekJalan('oau'), tampil: !$('#mediaVideo').hidden && /^blob:/.test($('#mediaVideo').src), audio: !$('#mediaAudio').hidden, tengah: $('#mediaDock').classList.contains('tengah') };
       // disembunyikan ke bawah: tetap diputar, hanya bilah judul
       $('#mediaCiut').click(); const ciut = { kelas: $('#mediaDock').classList.contains('ciut'), jalan: mediaObjekJalan('ov'), video: getComputedStyle($('#mediaVideo')).display };
       $('#mediaJudul').click(); const buka = !$('#mediaDock').classList.contains('ciut');
@@ -155,8 +196,8 @@ export const tes = {
     assert.match(r.tolak, /perlu video/);
     assert.deepEqual(r.t1, { jenis: 'bunyi', label: 'Putar media' });
     assert.deepEqual([r.main, r.loop, r.label2, r.henti], [true, false, 'Hentikan media', true]);
-    assert.deepEqual(r.dock, { tampil: true, audio: true, video: false });
-    assert.deepEqual(r.video, { ov: true, oau: false, tampil: true, audio: false });
+    assert.deepEqual(r.dock, { tampil: true, audio: true, video: false, tengah: false });
+    assert.deepEqual(r.video, { ov: true, oau: false, tampil: true, audio: false, tengah: true });
     assert.deepEqual([r.ciut, r.buka, r.tutup], [{ kelas: true, jalan: true, video: 'none' }, true, true]);
     assert.equal(r.tetap, true);
     // tautan lihat: media yang dipakai pemutar ikut sebagai lampiran
