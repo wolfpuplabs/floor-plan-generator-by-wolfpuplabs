@@ -3648,6 +3648,68 @@
     "target": "≥ 15%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-086",
+   "judul": "Musik latar (BGM) proyek dengan pilihan ulang/otomatis/volume, musik objek tidak sunyi di iOS, pemutar media bisa dikecilkan & diulang",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Musik hanya bisa ditempel ke objek (harus diketuk dulu, tidak ada musik latar rumah) dan di iPad unggahan/pemutarannya gagal; pilihan ulang tersembunyi di objek; panel pemutar media menutupi pandangan selama audio diputar.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (tangkapan layar iPad: \"BGM uploader ga jalan sama loop option dipisah di tab luar, media playernya bisa dihide?\")",
+    "alternatif": [
+     "musik objek dengan opsi putar otomatis (tetap terikat posisi objek)",
+     "menutup panel pemutar = menghentikan media (perilaku lama)"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 8,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.01
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "PROJECT.bgm disaring: id media harus ID_AMAN & media audio yang ada, volume dijepit 0–1; berkas lewat sniff tanda tangan & batas 15 MB × 20 yang sama"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "musik latar ikut tautan lihat sebagai lampiran beralamat isi seperti media lain; tidak ada host baru"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru; musik milik pengguna"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "satu elemen <audio> streaming dari blob:, tanpa dekode penuh ke memori"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Musik berlabel & aria-pressed; pemutar memakai kontrol bawaan, tombol kecilkan/besarkan berlabel"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan musik latar",
+    "target": "≥ 15%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }
