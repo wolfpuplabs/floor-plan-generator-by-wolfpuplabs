@@ -15508,7 +15508,8 @@ for(const ev of ['pointerup','pointercancel'])
    AR VIEWER — model diekspor ke GLB lalu ditampilkan lewat <model-viewer>
    ====================================================================== */
 const AR={ url:null, blob:null, usdz:null, usdzUrl:null,
-           denom:50, open:false, dim:null, lib:null, usdzLib:null, sv:'', svUrl:null };
+           denom:50, open:false, dim:null, lib:null, usdzLib:null, sv:'', svUrl:null,
+           batasMs:25000 };       // batas menyusun model AR — di iPad/HP lambat jangan sampai memutar selamanya
 
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
@@ -15575,7 +15576,7 @@ function arGLB(wrap){
     try{
       new THREE.GLTFExporter().parse(wrap,out=>{
         res(new Blob([out instanceof ArrayBuffer?out:JSON.stringify(out)],{type:'model/gltf-binary'}));
-      },{binary:true});
+      },{binary:true, maxTextureSize:1024});          // maket AR: tekstur 1K cukup, jauh lebih ringan di iPad/HP
     }catch(err){ rej(err); }
   });
 }
@@ -15751,20 +15752,28 @@ async function arDownloadUsdz(){
   }catch(err){ toast('USDZ gagal dibuat: '+err.message); }
 }
 
+const batasWaktu=(p,ms,pesan)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error(pesan)),ms))]);
+/* USDZ hanya dibutuhkan browser iOS pihak ketiga yang punya AR Quick Look (Safari membuatnya sendiri lewat
+   model-viewer; browser di dalam aplikasi tidak bisa AR sama sekali). Dulu dibuat SETIAP kali panel AR
+   dibuka di iOS sebelum panel tampil — berat dan bisa menggantung ("Menyiapkan model AR…" selamanya).
+   Kini disiapkan di latar setelah panel terbuka, dengan batas waktu. */
+async function siapkanUsdzLatar(){
+  const mv=$('#arViewer'), m=arBuildModel(); if(!m) return;
+  try{ const u=await batasWaktu(arUSDZ(m.wrap),AR.batasMs,'USDZ terlalu lama');
+    if(AR.usdzUrl) URL.revokeObjectURL(AR.usdzUrl);
+    AR.usdz=u; AR.usdzUrl=URL.createObjectURL(u); mv.setAttribute('ios-src',AR.usdzUrl); }
+  catch(err){ console.warn('USDZ gagal dibuat:',err); }
+  finally{ disposeTree(m.wrap); arInfo(); }
+}
 async function arRefresh(){
   const mv=$('#arViewer');
   try{
-    const {glb,usdz}=await arExport(IS_IOS);
+    const {glb}=await batasWaktu(arExport(false),AR.batasMs,'Model terlalu berat untuk disusun di perangkat ini. Coba buka di Safari / Chrome, atau unduh .glb dari editor.');
     if(AR.url) URL.revokeObjectURL(AR.url);
     AR.blob=glb; AR.url=URL.createObjectURL(glb);
     if(AR.usdzUrl){ URL.revokeObjectURL(AR.usdzUrl); AR.usdzUrl=null; }
-    AR.usdz=usdz;
-    if(usdz){
-      AR.usdzUrl=URL.createObjectURL(usdz);
-      // hanya dipasang di browser iOS pihak ketiga; Safari lebih baik memakai
-      // pengubah USDZ bawaan model-viewer yang lebih baru
-      if(IS_IOS_THIRDPARTY) mv.setAttribute('ios-src',AR.usdzUrl);
-    }
+    AR.usdz=null; mv.removeAttribute('ios-src');
+    if(IS_IOS_THIRDPARTY && AR_QL) siapkanUsdzLatar();
     try{ await arLibReady(); }
     catch(e){ arFallback('Pustaka model-viewer gagal dimuat (butuh koneksi ke CDN). Model tetap bisa diunduh sebagai .glb lalu dibuka di aplikasi AR mana pun.'); arInfo(); return; }
     $('#arFallback').classList.remove('on');
@@ -15779,11 +15788,14 @@ async function arRefresh(){
 async function openAR(){
   $('#loader-txt').textContent='Menyiapkan model AR…';
   $('#loader').classList.add('on');
-  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-  await arRefresh();
-  $('#loader').classList.remove('on');
-  AR.open=true;
-  $('#arPanel').hidden=false;
+  try{
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    await arRefresh();
+  }finally{                                   // apa pun yang terjadi, pemutar tidak boleh berputar selamanya
+    $('#loader').classList.remove('on');
+    AR.open=true;
+    $('#arPanel').hidden=false;
+  }
 }
 function closeAR(){
   AR.open=false; AR.svUrl=null; AR.sv='';
