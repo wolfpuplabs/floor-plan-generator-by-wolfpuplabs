@@ -3276,6 +3276,68 @@
     "target": "≥ 30%",
     "tinjau": "2027-01-10"
    }
+  },
+  {
+   "id": "JEV-080",
+   "judul": "Tab Taman terpisah (rumput 6 × 6 m bawaan, bisa disembunyikan), objek lingkungan (pohon, semak, batu, jalan), bentuk dasar berwarna, suara interaksi (klik / swoosh / audio sendiri), perbaikan unggah audio & gambar",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengaturan situs & taman tercampur di tab Objek dan tanah mati secara bawaan; katalog lingkungan kurang (batu besar, jalan siap pakai, semak bulat); tidak ada bentuk dasar untuk menyusun benda sendiri; interaksi tidak bisa diberi suara; unggah audio & gambar interaksi gagal (input lepas di iOS Safari, M4A berlabel mp42, foto HEIC).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"sites and garden dipisah dari object, defaultnya grass 6x6 m udah aktif, bisa di hide, tambah object environment kategori kaya pohon, batu, path, dan semak terus object bisa nambah basic shape kaya box, cylinder, ball, cone. interaksi object ditambah sfx toggle (click, swoosh, play upload audio) audio sama image ga bisa upload\")",
+    "alternatif": [
+     "tetap satu tab Objek dengan filter kategori",
+     "bentuk dasar hanya lewat model unggahan"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.015
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "warna bentuk hanya #rrggbb; berkas tetap dibatasi 15 MB × 20; gambar non-web didekode peramban lalu disimpan ulang sebagai JPEG ≤ 2048 px (tanpa metadata EXIF); audio M4A hanya diterima bila nama/jenis berkas audio; sembunyi tanah hanya true"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "konversi JPEG membuang metadata lokasi foto"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "objek & suara disintesis sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "objek low-poly; audio suara didekode sekali lalu disimpan di memori"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tab berikon & berlabel; aksi 'Bunyikan' muncul sebagai tombol di mode jalan"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan ≥ 1 objek taman atau bentuk dasar",
+    "target": "≥ 40%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }

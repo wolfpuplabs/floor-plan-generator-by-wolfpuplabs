@@ -341,7 +341,9 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
     // Diteruskan ke semua termasuk pengirim: urutan pusat = urutan akhir di semua peserta.
     if (d.t === 'aksi') {
       if (!kuotaOk(id, 'a', 12) || !idAman(d.id)) return;
-      terapkanAksiLuar(d.j, d.id, !!d.on); siarkan({ t: 'aksi', j: d.j, id: d.id, on: !!d.on });
+      terapkanAksiLuar(d.j, d.id, !!d.on);
+      // keadaan (lampu, pintu…) dipantulkan juga ke pengirim agar urutan sama; bunyi sesaat tidak (terdengar dua kali)
+      siarkan({ t: 'aksi', j: d.j, id: d.id, on: !!d.on }, d.j === 'bunyi' ? id : undefined);
       return;
     }
     if (d.t === 'nada') {
