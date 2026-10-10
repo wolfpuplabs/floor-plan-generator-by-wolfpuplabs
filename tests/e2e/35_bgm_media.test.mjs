@@ -57,18 +57,26 @@ export const tes = {
     await muatProyekJSON(page, { ...p, bgm: { media: '../x<script>' } });
     assert.equal(await page.evaluate(() => 'bgm' in PROJECT), false);
   },
-  'media objek bisa diulang & dihentikan dengan ketukan; musik objek menerima MP4 berisi suara': async (page) => {
+  'media objek: ulang, henti, tidak bertabrakan dengan suara, musik lama jadi media, musik latar mengalah': async (page) => {
     const r = await page.evaluate(async w => {
       const u8 = Uint8Array.from(atob(w), c => c.charCodeAt(0));
       const ma = await unggahMediaObjek(new File([u8], 'ombak.wav'), 'media');
       const mp4 = new Uint8Array(64); mp4.set([0, 0, 0, 24], 0); [...'ftypisom'].forEach((c, i) => { mp4[4 + i] = c.charCodeAt(0); });
       const mus = await unggahMediaObjek(new File([mp4], 'rekaman'), 'audio');
-      L().objects.push({ id: 'om', kind: 'furn', type: 'sofa3', x: 1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: ma, mediaUlang: true, musik: mus } } });
+      L().objects.push({ id: 'om', kind: 'furn', type: 'bentuk_kotak', x: 1, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { media: ma, mediaUlang: true, sfx: 'klik' } } },
+                       { id: 'ol', kind: 'furn', type: 'bentuk_kotak', x: 3, y: 0, z: 1, rotY: 0, sx: 1, sy: 1, sz: 1, params: { aksi: { musik: mus } } });
       rebuildScene();
-      togelMediaObjek('om'); const loop = MEDIA_OBJ.get('om').a.loop; togelMediaObjek('om'); const henti = !mediaObjekJalan('om');
-      mulaiMusikUnggah('om'); const main = MUSIK.main.has('om'); hentikanMusikUnggah('om');
-      return { loop, henti, mimeMusik: PROJECT.media[mus].mime, ak: !!aksiObjek(cariObjek('om')).musik, main };
+      // media & suara bersamaan di data lama: hanya media yang berbunyi (tidak bertabrakan)
+      const akm = aksiObjek(cariObjek('om'));
+      togelMediaObjek('om'); const loop = $('#mediaAudio').loop; togelMediaObjek('om'); const henti = !mediaObjekJalan('om');
+      // "musik sendiri" lama dibaca sebagai media yang diulang
+      const akl = aksiObjek(cariObjek('ol'));
+      // musik latar dijeda selama media diputar, lalu lanjut
+      PROJECT.bgm = { media: ma, ulang: true, otomatis: true, vol: 0.5 }; mulaiBGM(); await new Promise(r => setTimeout(r, 300));
+      const bgmAwal = bgmMain(); togelMediaObjek('ol'); const bgmSaatMedia = bgmMain(); togelMediaObjek('ol'); await new Promise(r => setTimeout(r, 300)); const bgmLagi = bgmMain(); hentikanBGM();
+      return { loop, henti, sfx: akm.sfx === undefined, lama: [akl.media === mus, akl.mediaUlang], mimeMusik: PROJECT.media[mus].mime, bgm: [bgmAwal, bgmSaatMedia, bgmLagi] };
     }, wav().toString('base64'));
-    assert.deepEqual(r, { loop: true, henti: true, mimeMusik: 'audio/mp4', ak: true, main: true });
+    assert.deepEqual([r.loop, r.henti, r.sfx, r.lama, r.mimeMusik], [true, true, true, [true, true], 'audio/mp4']);
+    if (r.bgm[0]) assert.deepEqual(r.bgm, [true, false, true]);   // peramban uji mengizinkan autoplay
   },
 };

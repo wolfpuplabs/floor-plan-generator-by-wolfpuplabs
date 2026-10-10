@@ -156,6 +156,19 @@ html{touch-action:manipulation}
 #pianoPanel[hidden]{display:none}
 #detailPanel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;z-index:60;padding:14px;display:flex;flex-direction:column;gap:8px;border-radius:14px}
 #detailPanel[hidden]{display:none}
+/* pemutar media menempel di bawah; .ciut = disembunyikan ke bawah, tinggal bilah judul (media tetap diputar) */
+#mediaDock{right:12px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 12px);width:min(420px,calc(100% - 24px));z-index:55;padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;border-radius:12px;transition:transform .2s}
+#mediaDock[hidden]{display:none}
+#mediaDock .md-kepala{display:flex;align-items:center;gap:6px}
+#mediaDock .md-kepala b{flex:1;min-width:0;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mediaDock .md-kepala .btn{width:34px;height:34px;padding:0;flex:none}
+#mediaVideo{width:100%;max-height:40vh;border-radius:8px;background:#000}
+#mediaAudio{width:100%}
+#mediaDock.ciut{width:min(260px,calc(100% - 24px));padding:4px 8px}
+#mediaDock.ciut #mediaVideo,#mediaDock.ciut #mediaAudio{display:none}
+#mediaDock.ciut .md-kepala b{cursor:pointer}
+#mediaDock.ciut #mediaCiut svg{transform:rotate(180deg)}
+body.jalan #mediaDock{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 96px)}
 #inspector details.bawaan-fin{margin:8px 0 2px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 #inspector details.bawaan-fin summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
 #inspector label.cek{display:flex;gap:8px;align-items:flex-start;font-size:.8rem;margin:6px 0;line-height:1.35}
@@ -921,6 +934,13 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <p id="detailTeks"></p>
       <button class="btn" id="detailBuka" hidden><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buka tautan</button>
       <small id="detailHost"></small>
+    </div>
+    <div class="float" id="mediaDock" hidden role="region" aria-label="Pemutar media">
+      <div class="md-kepala"><b id="mediaJudul"></b>
+        <button class="btn ghost sm" id="mediaCiut" title="Sembunyikan ke bawah" aria-label="Sembunyikan ke bawah" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-bawah"/></svg></button>
+        <button class="btn ghost sm" id="mediaTutup" title="Hentikan & tutup" aria-label="Hentikan & tutup"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg></button></div>
+      <video id="mediaVideo" controls playsinline hidden></video>
+      <audio id="mediaAudio" controls hidden></audio>
     </div>
     <div class="float" id="pianoPanel" hidden>
       <div class="pp-head"><b><svg class="ik" aria-hidden="true"><use href="#i-piano"/></svg> Piano</b>
@@ -13244,6 +13264,7 @@ function pilihBerkasUmum(accept,cb){ const i=document.createElement('input'); i.
 /* pemilih audio: iPad/iPhone menyaring berkas menurut accept — "audio/*" saja kadang menyembunyikan
    berkas MP3/M4A di Files. MP4 berisi suara saja (rekaman, unduhan) diterima sebagai audio. */
 const TERIMA_AUDIO='audio/*,video/mp4,.mp3,.m4a,.aac,.wav,.ogg,.mp4';
+const TAP_PILIH=new Map();          // pilihan "Saat diketuk" yang berkasnya belum dipilih (id objek → sfx/media)
 function inspektorAksi(ins,d){
   d.params=d.params||{};
   const A=Object.assign({},d.params.aksi);
@@ -13271,37 +13292,33 @@ function inspektorAksi(ins,d){
     ins.appendChild(r);
     if(!D.gambar) ins.appendChild(el('p','hint','Tanpa gambar sendiri, panel memakai gambar objek ini.'));
   }
-  // MUSIK
-  const nm=A.musik&&PROJECT.media&&PROJECT.media[A.musik];
-  const rm=el('div','row');
-  const bm=tombolIkon('btn sm ghost','suara',nm?'Ganti musik':'Musik sendiri…');
-  bm.onclick=()=>pilihBerkas(TERIMA_AUDIO,async f=>{ const lama=A.musik; A.musik=await unggahMediaObjek(f,'audio'); if(A.ulang===undefined) A.ulang=true; simpan('musik'); buangMediaYatim(lama); toast('Musik: '+f.name); });
-  rm.appendChild(bm);
-  if(nm){ const bh=tombolIkon('btn sm ghost','hapus','Hapus musik'); bh.onclick=()=>{ const m=A.musik; hentikanMusikUnggah(d.id); delete A.musik; delete A.ulang; simpan('hapus musik'); buangMediaYatim(m); }; rm.appendChild(bh); }
-  ins.appendChild(rm);
-  if(nm){ ins.appendChild(el('p','hint','♪ '+nm.nama+' — diputar dari posisi objek di mode jalan.')); centang('Ulang terus',A.ulang!==false,v=>{ A.ulang=v; simpan('ulang musik'); }); }
-  // SUARA SAAT DIKETUK (JEV-080): klik, swoosh, atau audio sendiri — menyertai aksi lain, atau jadi aksi sendiri
-  fRow(ins,'Suara saat diketuk',selInput([['','Tanpa suara'],['klik','Klik'],['swoosh','Swoosh'],['unggah','Audio sendiri']],A.sfx||'',v=>{
-    const lama=A.sfxMedia; if(v) A.sfx=v; else delete A.sfx;
-    if(v!=='unggah'){ delete A.sfxMedia; simpan('suara'); buangMediaYatim(lama); } else simpan('suara'); }));
-  if(A.sfx){
+  // SAAT DIKETUK (JEV-086): SATU pilihan — suara klik/swoosh, suara sendiri (SFX), atau media (audio / video)
+  // supaya tidak ada beberapa audio yang berbunyi bersamaan. "Musik sendiri" lama dibaca sebagai media.
+  if(A.musik && !A.media){ A.media=A.musik; if(A.ulang!==false) A.mediaUlang=true; delete A.musik; delete A.ulang; }
+  const mode = A.media ? 'media' : A.sfx==='unggah' ? 'sfx' : (A.sfx || TAP_PILIH.get(d.id) || '');
+  fRow(ins,'Saat diketuk',selInput([['','Tidak ada'],['klik','Suara klik'],['swoosh','Suara swoosh'],['sfx','Suara sendiri (SFX)'],['media','Media — audio / video']],mode,v=>{
+    const lama=[A.sfxMedia,A.media,A.musik];
+    for(const k of ['sfx','sfxMedia','media','mediaUlang','musik','ulang']) delete A[k];
+    TAP_PILIH.delete(d.id); hentikanMediaObjek(d.id);
+    if(v==='klik'||v==='swoosh') A.sfx=v; else if(v) TAP_PILIH.set(d.id,v);     // berkasnya dipilih lewat tombol di bawah
+    simpan('saat diketuk'); lama.forEach(buangMediaYatim); }));
+  if(mode==='klik'||mode==='swoosh'||mode==='sfx'){
     const rs=el('div','row'), ns=A.sfxMedia&&PROJECT.media&&PROJECT.media[A.sfxMedia];
-    if(A.sfx==='unggah'){ const bu=tombolIkon('btn sm ghost','suara',ns?'Ganti audio':'Pilih audio…');
-      bu.onclick=()=>pilihBerkas(TERIMA_AUDIO,async f=>{ const lama=A.sfxMedia; A.sfxMedia=await unggahMediaObjek(f,'audio'); simpan('audio suara'); buangMediaYatim(lama); toast('Suara: '+f.name); });
+    if(mode==='sfx'){ const bu=tombolIkon('btn sm ghost','suara',ns?'Ganti audio':'Pilih audio…');
+      bu.onclick=()=>pilihBerkas(TERIMA_AUDIO,async f=>{ const lama=A.sfxMedia; A.sfx='unggah'; A.sfxMedia=await unggahMediaObjek(f,'audio'); TAP_PILIH.delete(d.id); simpan('audio suara'); buangMediaYatim(lama); toast('Suara: '+f.name); });
       rs.appendChild(bu); }
-    const bc=tombolIkon('btn sm ghost','main','Coba'); bc.onclick=()=>{ const c=audioSiap(); if(c&&c.state!=='running') c.resume().catch(()=>{}); sfxObjek(d.id); }; rs.appendChild(bc);
+    if(mode!=='sfx'||ns){ const bc=tombolIkon('btn sm ghost','main','Coba'); bc.onclick=()=>{ const c=audioSiap(); if(c&&c.state!=='running') c.resume().catch(()=>{}); sfxObjek(d.id); }; rs.appendChild(bc); }
     ins.appendChild(rs);
-    if(A.sfx==='unggah') ins.appendChild(el('p','hint',ns?'♪ '+ns.nama:'Pilih berkas MP3 / M4A / WAV / OGG pendek.'));
+    if(mode==='sfx') ins.appendChild(el('p','hint',ns?'♪ '+ns.nama:'Pilih berkas MP3 / M4A / WAV / OGG pendek.'));
   }
-  // MEDIA SAAT DIKETUK (JEV-086): audio / suara video diputar langsung saat objek diketuk, ketuk lagi untuk berhenti
-  const nmd=A.media&&PROJECT.media&&PROJECT.media[A.media];
-  const rd=el('div','row'), bd=tombolIkon('btn sm ghost','main',nmd?'Ganti media':'Media saat diketuk…');
-  bd.onclick=()=>pilihBerkas('video/*,audio/*,.mp4,.mov,.webm,.mp3,.m4a,.aac,.wav,.ogg',async f=>{ const lama=A.media; A.media=await unggahMediaObjek(f,'media'); simpan('media'); buangMediaYatim(lama); toast('Media: '+f.name); });
-  rd.appendChild(bd);
-  if(nmd){ const bh=tombolIkon('btn sm ghost','hapus','Hapus media'); bh.onclick=()=>{ const m=A.media; delete A.media; delete A.mediaUlang; simpan('hapus media'); buangMediaYatim(m); }; rd.appendChild(bh); }
-  ins.appendChild(rd);
-  if(nmd) centang('Ulang media terus',A.mediaUlang===true,v=>{ if(v) A.mediaUlang=true; else delete A.mediaUlang; simpan('ulang media'); });
-  ins.appendChild(el('p','hint',nmd?'▶ '+nmd.nama+' — diputar saat objek diketuk, ketuk lagi untuk berhenti.':`Audio atau video (suaranya diputar), maks. ${MEDIA_BATAS.mb} MB — langsung diputar saat objek diketuk, seperti suara.`));
+  if(mode==='media'){
+    const nmd=A.media&&PROJECT.media&&PROJECT.media[A.media];
+    const rd=el('div','row'), bd=tombolIkon('btn sm ghost','folder',nmd?'Ganti media':'Pilih audio / video…');
+    bd.onclick=()=>pilihBerkas('video/*,audio/*,.mp4,.mov,.webm,.mp3,.m4a,.aac,.wav,.ogg',async f=>{ const lama=A.media; A.media=await unggahMediaObjek(f,'media'); TAP_PILIH.delete(d.id); simpan('media'); buangMediaYatim(lama); toast('Media: '+f.name); });
+    rd.appendChild(bd); ins.appendChild(rd);
+    if(nmd) centang('Ulang terus',A.mediaUlang===true,v=>{ if(v) A.mediaUlang=true; else delete A.mediaUlang; simpan('ulang media'); });
+    ins.appendChild(el('p','hint',nmd?'▶ '+nmd.nama+' — diputar di pemutar bawah saat objek diketuk; ketuk lagi untuk berhenti.':`Audio atau video, maks. ${MEDIA_BATAS.mb} MB — diputar di pemutar bawah (bisa disembunyikan) saat objek diketuk.`));
+  }
   // ANIMASI MODEL (JEV-084)
   const klip=d.kind==='model'?ASSET_ANIM.get(d.type):null;
   if(klip&&klip.length){
@@ -13540,7 +13557,7 @@ async function buatTautanLihat(kemajuan=()=>{}){
   const dipakaiTV=new Set();
   if(bgmData()) dipakaiTV.add(PROJECT.bgm.media);                    // musik latar ikut tautan
   for(const lv of PROJECT.levels) for(const o of lv.objects){ if(o.params&&o.params.tvMedia) dipakaiTV.add(o.params.tvMedia);
-    const ak=aksiObjek(o); if(ak){ if(ak.musik) dipakaiTV.add(ak.musik); if(ak.sfxMedia) dipakaiTV.add(ak.sfxMedia); if(ak.media) dipakaiTV.add(ak.media); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
+    const ak=aksiObjek(o); if(ak){ if(ak.sfxMedia) dipakaiTV.add(ak.sfxMedia); if(ak.media) dipakaiTV.add(ak.media); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
   for(const [k,md] of Object.entries(PROJECT.media||{})){
     if(!dipakaiTV.has(k)) continue;
     const b=await lampirkan(md.nama,new Uint8Array(bufFromB64(md.data)));
@@ -14771,13 +14788,15 @@ function aksiObjek(o){
   if(a.detail&&typeof a.detail==='object'){ const d=a.detail; let url='';
     try{ const u=new URL(String(d.url||'')); if(/^https?:$/.test(u.protocol)) url=u.href; }catch(e){}
     out.detail={judul:String(d.judul||'').slice(0,120), teks:String(d.teks||'').slice(0,500), url, gambar:md(d.gambar,/^image\//)}; }
-  const mu=md(a.musik,/^audio\//); if(mu){ out.musik=mu; out.ulang=a.ulang!==false; }
   if(a.hadap===true) out.hadap=true;
   // animasi model unggahan (JEV-084): hanya bila asetnya memang punya klip
   if(a.anim&&typeof a.anim==='object'&&o.kind==='model'){ const kl=ASSET_ANIM.get(o.type);
     if(kl&&kl.length) out.anim={klip:typeof a.anim.klip==='string'&&kl.some(c=>c.name===a.anim.klip)?a.anim.klip:'', ulang:a.anim.ulang!==false, otomatis:a.anim.otomatis===true}; }
-  const me=md(a.media,/^(audio|video)\//); if(me){ out.media=me; if(a.mediaUlang===true) out.mediaUlang=true; }
-  if(a.sfx==='klik'||a.sfx==='swoosh') out.sfx=a.sfx;
+  // satu hal saja yang berbunyi saat diketuk: media (audio/video; "musik sendiri" lama ikut di sini) atau suara
+  let me=md(a.media,/^(audio|video)\//), ul=a.mediaUlang===true;
+  if(!me){ const mu=md(a.musik,/^audio\//); if(mu){ me=mu; ul=a.ulang!==false; } }
+  if(me){ out.media=me; if(ul) out.mediaUlang=true; }
+  else if(a.sfx==='klik'||a.sfx==='swoosh') out.sfx=a.sfx;
   else if(a.sfx==='unggah'){ const sm=md(a.sfxMedia,/^audio\//); if(sm){ out.sfx='unggah'; out.sfxMedia=sm; } }
   return Object.keys(out).length?out:null;
 }
@@ -14814,12 +14833,30 @@ function stepGerak(dt){
   }
   bayangKotor();
 }
-// media objek (JEV-086): diputar langsung saat objek diketuk, seperti suara — tanpa tombol & panel
-// pemutar. Ketuk lagi untuk berhenti. Video hanya diputar suaranya.
+/* media objek (JEV-086): diputar saat objek diketuk (tanpa tombol aksi terpisah) di pemutar yang
+   menempel di bawah — video tampil di sana, dan pemutarnya bisa disembunyikan ke bawah sambil tetap
+   berjalan. Satu media sekaligus; musik latar dijeda selama media diputar. Ketuk lagi untuk berhenti. */
 const MEDIA_OBJ=new Map();
-function mulaiMediaObjek(id){ const ak=aksiObjek(cariObjek(id)); if(!ak||!ak.media||MEDIA_OBJ.has(id)) return;
-  const M=putarAudioObjek(id,ak.media,!!ak.mediaUlang,()=>hentikanMediaObjek(id)); if(M) MEDIA_OBJ.set(id,M); }
-function hentikanMediaObjek(id){ const M=MEDIA_OBJ.get(id); if(!M) return; MEDIA_OBJ.delete(id); try{ M.a.pause(); }catch(e){} setTimeout(()=>URL.revokeObjectURL(M.url),1000); }
+function mulaiMediaObjek(id){
+  const o=cariObjek(id), ak=aksiObjek(o); if(!ak||!ak.media||MEDIA_OBJ.has(id)) return;
+  hentikanSemuaMediaObjek();
+  const m=PROJECT.media[ak.media], video=/^video\//.test(m.mime), x=$(video?'#mediaVideo':'#mediaAudio');
+  const url=URL.createObjectURL(new Blob([bufFromB64(m.data)],{type:m.mime}));
+  MEDIA_OBJ.set(id,{x,url,bgm:bgmMain()});
+  if(bgmMain()) jedaBgmSebentar();
+  $('#mediaJudul').textContent=m.nama||namaObjek(o);
+  $('#mediaVideo').hidden=!video; $('#mediaAudio').hidden=video;
+  x.loop=!!ak.mediaUlang; x.src=url; x.onended=()=>{ if(!x.loop){ hentikanMediaObjek(id); laporAksi('media',id,false); } };
+  $('#mediaDock').hidden=false;
+  if(video && document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+  const c=x.play(); if(c&&c.catch) c.catch(()=>tundaPutar(x));
+}
+function hentikanMediaObjek(id){
+  const M=MEDIA_OBJ.get(id); if(!M) return; MEDIA_OBJ.delete(id);
+  try{ M.x.pause(); }catch(e){} M.x.onended=null; M.x.removeAttribute('src'); try{ M.x.load(); }catch(e){}
+  URL.revokeObjectURL(M.url);
+  if(!MEDIA_OBJ.size){ $('#mediaDock').hidden=true; if(M.bgm) lanjutBgmSebentar(); }
+}
 function mediaObjekJalan(id){ return MEDIA_OBJ.has(id); }
 function togelMediaObjek(id){ if(MEDIA_OBJ.has(id)) hentikanMediaObjek(id); else mulaiMediaObjek(id); }
 function hentikanSemuaMediaObjek(){ for(const id of [...MEDIA_OBJ.keys()]) hentikanMediaObjek(id); }
@@ -14851,6 +14888,9 @@ function hentikanBGM(){
   if(BGM.url) URL.revokeObjectURL(BGM.url);
   BGM.a=null; BGM.url=null; BGM.mid=null; BGM.tunda=false; tulisBgm();
 }
+// media objek diputar: musik latar mengalah sebentar, lalu lanjut (kecuali pemakai mematikannya)
+function jedaBgmSebentar(){ if(BGM&&BGM.a) try{ BGM.a.pause(); }catch(e){} tulisBgm(); }
+function lanjutBgmSebentar(){ if(BGM&&BGM.a&&!BGM.mati) BGM.a.play().then(tulisBgm,()=>{}); }
 function togelBGM(){ if(bgmMain()||BGM.tunda){ BGM.mati=true; jedaBGM(); } else { BGM.mati=false; mulaiBGM(); } }
 function tulisBgm(){
   const ada=!!bgmData(), on=bgmMain()||!!(BGM&&BGM.tunda);
@@ -14895,6 +14935,7 @@ function putarAudioObjek(id,mid,ulang,selesai){
 function hentikanMusikUnggah(id){ const M=MUSIK.main.get(id); if(!M) return; MUSIK.main.delete(id); try{ M.a.pause(); }catch(e){} setTimeout(()=>URL.revokeObjectURL(M.url),1000); }
 function hentikanSemuaMusikUnggah(){ for(const id of [...MUSIK.main.keys()]) hentikanMusikUnggah(id); }
 // iOS baru mengizinkan pemutaran di akhir sentuhan — musik yang tertolak dicoba lagi di sana
+function tundaPutar(a){ MUSIK.tunda=a; }     // diputar lagi di akhir sentuhan berikutnya
 addEventListener('touchend',()=>{ const a=MUSIK.tunda; if(!a) return; MUSIK.tunda=null; if(a.src) a.play().catch(()=>{}); },{passive:true,capture:true});
 const DETAIL={url:null};
 function bukaDetail(id){
@@ -14940,7 +14981,6 @@ function cariTarget(ray){
         // satu objek bisa punya beberapa aksi: bawaan (duduk, lampu…) + detail / musik tambahan
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
         if(ak&&ak.detail) ekstra.push('detail');
-        if(ak&&ak.musik&&n.userData.nyalaJenis!=='audio') ekstra.push('musik');
         if(ak&&ak.anim) ekstra.push('anim');
         if(ak&&(ak.sfx||ak.media)&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
@@ -14963,9 +15003,9 @@ function labelAksi(t){
   if(t.jenis==='api')   return MATI.has(t.id)?'Nyalakan api':'Padamkan api';
   if(t.jenis==='tv')    return TV_NYALA.has(t.id)?'Matikan TV':'Nyalakan TV';
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
-  if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.musik ? (MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
+  if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='detail') return 'Lihat detail';
-  if(t.jenis==='bunyi') return MEDIA_OBJ.has(t.id) ? 'Hentikan suara' : 'Bunyikan';
+  if(t.jenis==='bunyi') return aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : 'Bunyikan';
   if(t.jenis==='anim') return GERAK.main.has(t.id)?'Hentikan animasi':'Putar animasi';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
   if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
@@ -14997,13 +15037,14 @@ function pakai(t){
   // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
   if(t.id && aksiObjek(cariObjek(t.id))?.sfx){ sfxObjek(t.id); laporAksi('bunyi',t.id,true); }
   // media objek ikut diketuk seperti suara: putar / hentikan
-  if(t.id && aksiObjek(cariObjek(t.id))?.media){ togelMediaObjek(t.id); laporAksi('media',t.id,MEDIA_OBJ.has(t.id)); }
+  if(t.id && aksiObjek(cariObjek(t.id))?.media){ togelMediaObjek(t.id); laporAksi('media',t.id,MEDIA_OBJ.has(t.id));
+    if(t.jenis==='audio'){ AIM_T=0; return; } }                    // speaker bermedia: media menggantikan musik bawaannya
   if(t.jenis==='bunyi'){ AIM_T=0; return; }
   if(t.jenis==='duduk'){ if(FPS.duduk&&FPS.duduk.id===t.id) berdiri(); else duduk(t); AIM_T=0; return; }
   if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
   if(t.jenis==='detail'){ bukaDetail(t.id); AIM_T=0; return; }
   if(t.jenis==='anim'){ togelGerak(t.id); laporAksi('anim',t.id,GERAK.main.has(t.id)); AIM_T=0; return; }
-  if(t.jenis==='musik' || (t.jenis==='audio' && aksiObjek(cariObjek(t.id))?.musik)){ togelMusik(t.id); laporAksi('musik',t.id,MUSIK.main.has(t.id)); AIM_T=0; return; }
+  if(t.jenis==='musik'){ togelMusik(t.id); laporAksi('musik',t.id,MUSIK.main.has(t.id)); AIM_T=0; return; }
   sfxAksi(t);
   if(t.jenis==='bukaan'){ BUKA.set(t.o.id, bukaan(t.o)>0.5?0:1); }
   else if(t.jenis==='lampu'||t.jenis==='api'){
@@ -15731,6 +15772,11 @@ $('#lihatAR').onclick=openAR;
 $('#detailTutup').onclick=tutupDetail;
 // musik latar: unggah, coba, hapus, pilihan (tab Tampilan) & tombol Musik di bilah jalan / lihat
 const ubahBgm=(lbl,f)=>{ f(PROJECT.bgm); HIST.label=lbl; rebuildScene(); };
+// pemutar media: sembunyikan ke bawah (tetap diputar) / tampilkan lagi, tutup = berhenti
+const togelCiutMedia=()=>{ const k=$('#mediaDock').classList.toggle('ciut'); const b=$('#mediaCiut'); b.title=k?'Tampilkan pemutar':'Sembunyikan ke bawah'; b.setAttribute('aria-label',b.title); b.setAttribute('aria-expanded',k?'false':'true'); };
+$('#mediaCiut').onclick=togelCiutMedia;
+$('#mediaJudul').onclick=()=>{ if($('#mediaDock').classList.contains('ciut')) togelCiutMedia(); };
+$('#mediaTutup').onclick=()=>{ for(const id of [...MEDIA_OBJ.keys()]){ hentikanMediaObjek(id); laporAksi('media',id,false); } };
 $('#bgmPilih').onclick=()=>pilihBerkasUmum(TERIMA_AUDIO,async f=>{
   const lama=PROJECT.bgm&&PROJECT.bgm.media, mid=await unggahMediaObjek(f,'audio');
   PROJECT.bgm=Object.assign({ulang:true, otomatis:true, vol:0.6},PROJECT.bgm,{media:mid});

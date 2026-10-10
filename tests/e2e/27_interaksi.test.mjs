@@ -51,18 +51,21 @@ export const tes = {
     assert.deepEqual(r.buka, [['https://contoh.example/sofa-linen', '_blank', 'noopener,noreferrer']]);
     assert.equal(r.tutup, true, 'panel ditutup saat keluar mode jalan');
   },
-  'musik sendiri: unggah WAV di inspector, diputar dari aksi objek, ikut lampiran tautan; berkas palsu ditolak': async (page) => {
+  'media saat diketuk: pilih Media, unggah WAV di inspector, diputar dari ketukan objek, ikut lampiran tautan; berkas palsu ditolak': async (page) => {
     const id = await sofa(page);
-    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => [...document.querySelectorAll('#inspector button')].find(b => /Musik sendiri/.test(b.textContent)).click())]);
+    // satu pilihan "Saat diketuk" — pilih Media lalu berkasnya
+    await page.evaluate(() => { const r = [...document.querySelectorAll('#inspector .f-row')].find(x => x.querySelector('label').textContent === 'Saat diketuk');
+      const sl = r.querySelector('select'); sl.value = 'media'; sl.dispatchEvent(new Event('change')); });
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => [...document.querySelectorAll('#inspector button')].find(b => /Pilih audio \/ video/.test(b.textContent)).click())]);
     await fc.setFiles({ name: 'santai.wav', mimeType: 'audio/wav', buffer: wav() });
-    await page.waitForFunction(id => aksiObjek(cariObjek(id))?.musik, id, { timeout: 15000 });
-    const m = await page.evaluate(id => { const ak = aksiObjek(cariObjek(id)); return [PROJECT.media[ak.musik].mime, PROJECT.media[ak.musik].nama, ak.ulang]; }, id);
-    assert.deepEqual(m, ['audio/wav', 'santai', true]);
-    const main = await page.evaluate(id => { enterFPS(); pakai({ jenis: 'musik', id }); const ada = MUSIK.main.has(id), loop = MUSIK.main.get(id).a.loop; pakai({ jenis: 'musik', id }); const henti = !MUSIK.main.has(id); exitFPS(); return [ada, loop, henti]; }, id);
+    await page.waitForFunction(id => aksiObjek(cariObjek(id))?.media, id, { timeout: 15000 });
+    const m = await page.evaluate(id => { const ak = aksiObjek(cariObjek(id)); return [PROJECT.media[ak.media].mime, PROJECT.media[ak.media].nama, !!ak.mediaUlang]; }, id);
+    assert.deepEqual(m, ['audio/wav', 'santai', false]);
+    const main = await page.evaluate(id => { enterFPS(); pakai({ jenis: 'bunyi', id }); const ada = mediaObjekJalan(id), dock = !document.getElementById('mediaDock').hidden; pakai({ jenis: 'bunyi', id }); const henti = !mediaObjekJalan(id); exitFPS(); return [ada, dock, henti]; }, id);
     assert.deepEqual(main, [true, true, true]);
     // berkas bukan audio
     await page.evaluate(() => { document.getElementById('toast').textContent = ''; select('obj', L().objects[0].id); renderInspector(); });
-    const [fc2] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => [...document.querySelectorAll('#inspector button')].find(b => /Ganti musik/.test(b.textContent)).click())]);
+    const [fc2] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => [...document.querySelectorAll('#inspector button')].find(b => /Ganti media/.test(b.textContent)).click())]);
     await fc2.setFiles({ name: 'virus.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('<script>alert(1)</script>') });
     await page.waitForFunction(() => /Gagal/.test(document.getElementById('toast').textContent));
     // ikut tautan pendek sebagai lampiran
@@ -72,7 +75,7 @@ export const tes = {
       simpan.last = q.postDataBuffer(); return r.fulfill({ headers: CORS, json: { id: 'Mus1kAbCdE' } }); });
     await page.evaluate(() => buatTautanLihat());
     const isi = JSON.parse(zlib.inflateRawSync(simpan.last).toString());
-    const mid = await page.evaluate(id => aksiObjek(cariObjek(id)).musik, id);
+    const mid = await page.evaluate(id => aksiObjek(cariObjek(id)).media, id);
     assert.deepEqual(Object.keys(isi.lampiran.media), [mid]);
     assert.equal(isi.lampiran.media[mid].mime, 'audio/wav');
     assert.ok([...simpan.keys()].some(k => k === crypto.createHash('sha256').update(wav()).digest('hex')));
