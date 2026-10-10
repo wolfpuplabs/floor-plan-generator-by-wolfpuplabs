@@ -110,6 +110,21 @@ export const tes = {
     assert.equal(r.gantung.buka, true); assert.equal(r.gantung.panel, true); assert.equal(r.gantung.loader, false); assert.equal(r.gantung.cepat, true);
     assert.match(r.gantung.pesan, /terlalu berat/);
   },
+  'tekstur yang membuat penyusun GLB menggantung (belum termuat, video, ukuran 0) dilepas/diganti tanpa mengubah bahan adegan': async (page) => {
+    const r = await page.evaluate(async () => {
+      const kanvas = document.createElement('canvas'); kanvas.width = kanvas.height = 8;
+      const v = document.createElement('video');
+      const bahan = [new THREE.MeshStandardMaterial({ map: new THREE.Texture(new Image()) }),                // gambar belum termuat
+        new THREE.MeshStandardMaterial({ map: new THREE.VideoTexture(v) }),                                   // video tanpa bingkai
+        new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(kanvas), normalMap: new THREE.DataTexture(new Float32Array(16), 2, 2) })];
+      const g = new THREE.Group(); for (const b of bahan) g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), b));
+      amankanTeksturAR(g);
+      const m = g.children.map(x => x.material);
+      const glb = await Promise.race([arGLB(g).then(b => b.size > 0), new Promise(ok => setTimeout(() => ok('menggantung'), 8000))]);
+      return { lepas: [m[0].map, m[1].map, m[2].normalMap], tetap: !!m[2].map, asli: [!!bahan[0].map, !!bahan[1].map, !!bahan[2].normalMap], klon: m[0] !== bahan[0], sama: m[2] !== bahan[2], glb };
+    });
+    assert.deepEqual(r, { lepas: [null, null, null], tetap: true, asli: [true, true, true], klon: true, sama: true, glb: true });
+  },
 };
 tes['iOS: panel AR tidak menunggu USDZ; penyusunan model yang menggantung dibatasi waktu, panel tetap terbuka dengan pesan'].opsi = { ua: IOS_IG, viewport: HP };
 tes['Android tanpa WebXR: tautan lihat → AR menyiapkan Scene Viewer dengan model di server'].opsi = { ua: ANDROID, viewport: HP };
