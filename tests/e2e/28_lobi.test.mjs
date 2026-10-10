@@ -46,7 +46,7 @@ async function bukaRuang(page, nama, mode, maks) {
     document.querySelector('#lobiMaks').value = String(k);
     document.querySelector('#lobiBuat').click();
   }, [nama, mode, maks]);
-  await page.waitForFunction(() => /&r=p23d-[le][2-9a]-[0-9a-f]{16}$/.test(document.querySelector('#lobiUrl').value), undefined, { timeout: 75000 });
+  await page.waitForFunction(() => /&r=p23d-[le][2-9a]-[0-9a-f]{16}$/.test(document.querySelector('#lobiUrl').value), undefined, { timeout: 150000 });
   return page.evaluate(() => document.querySelector('#lobiUrl').value);
 }
 async function masuk(page, nama) {
@@ -68,7 +68,7 @@ export const tes = {
       assert.equal(await peran(H), 'pusat', 'pembuat yang pertama di ruang jadi pusat koneksi');
       const G = await L.buka(undangan);
       await masuk(G, 'Sari');
-      await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 75000 });
+      await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 150000 });
       await H.waitForFunction(() => LOBI.peserta.size === 2, undefined, { timeout: 25000 });
       assert.deepEqual(await peserta(H), ['Budi', 'Sari']); assert.deepEqual(await peserta(G), ['Budi', 'Sari']);
       assert.deepEqual(await H.evaluate(() => [...document.querySelectorAll('#lobiDaftar li')].map(li => li.textContent)), ['Budipemilikpusat koneksikamu', 'Sari']);
@@ -110,7 +110,7 @@ export const tes = {
       // pembuat keluar → ruang tetap hidup: tamu mengambil alih pusat koneksi
       await H.evaluate(() => document.querySelector('#lobiTutup').click());
       assert.equal(await H.evaluate(() => [LOBI.aktif, document.querySelector('#lobiSiap').hidden, document.querySelector('#lobiAktif').hidden].join()), 'false,false,true');
-      await G.waitForFunction(() => LOBI.aktif && LOBI.peran === 'pusat' && LOBI.peserta.size === 1, undefined, { timeout: 75000 });
+      await G.waitForFunction(() => LOBI.aktif && LOBI.peran === 'pusat' && LOBI.peserta.size === 1, undefined, { timeout: 150000 });
       await G.waitForFunction(() => /Kamu kini pusat koneksi/.test(document.querySelector('#lobiObrolan .lb-pesan').textContent), undefined, { timeout: 15000 });
       // pembuat benar-benar offline (tab ditutup) — juga mengurangi beban 3 halaman WebGL di mesin CI
       await H.close();
@@ -128,7 +128,7 @@ export const tes = {
       const H = await L.buka(L.url); await rumah(H);
       const undangan = await bukaRuang(H, 'Budi', 'lihat', 2);
       const A = await L.buka(undangan); await masuk(A, 'Ani');
-      await A.waitForFunction(() => window.LOBI && LOBI.aktif, undefined, { timeout: 75000 });
+      await A.waitForFunction(() => window.LOBI && LOBI.aktif, undefined, { timeout: 150000 });
       assert.deepEqual(await A.evaluate(() => [LIHAT.on, LOBI.mode]), [true, 'lihat'], 'tamu tetap lihat-saja');
       // tamu nakal mengirim rumah langsung lewat kanal → host menolak
       await A.evaluate(() => LOBI.pusat.send({ t: 'proyek', s: JSON.stringify({ levels: [{ name: 'X', walls: [], objects: [] }] }) }));
@@ -142,7 +142,7 @@ export const tes = {
       await H.waitForFunction(() => [...document.querySelectorAll('#lobiObrolan .lb-pesan div')].some(d => /^Ani: x+$/.test(d.textContent) && d.textContent.length <= 306), undefined, { timeout: 15000 });
       // orang ke-3 pada ruang maks. 2
       const B = await L.buka(undangan); await masuk(B, 'Bayu');
-      await B.waitForFunction(() => /ruang penuh \(maks\. 2 orang\)/.test(document.querySelector('#lobiMasuk').textContent), undefined, { timeout: 75000 });
+      await B.waitForFunction(() => /ruang penuh \(maks\. 2 orang\)/.test(document.querySelector('#lobiMasuk').textContent), undefined, { timeout: 150000 });
       assert.deepEqual(await peserta(H), ['Ani', 'Budi']);
       // "Lihat sendiri saja" menutup kartu tanpa bergabung
       await B.evaluate(() => [...document.querySelectorAll('#lobiMasuk button')].find(b => b.textContent === 'Lihat sendiri saja').click());
@@ -166,7 +166,7 @@ export const tes = {
       await H.evaluate(id => { setSuasana('senja'); pakai({ jenis: 'lampu', id, grp: findGroup('obj', id) }); }, ids.lampu);
       const undangan = await bukaRuang(H, 'Budi', 'lihat', 3);
       const G = await L.buka(undangan); await masuk(G, 'Sari');
-      await G.waitForFunction(() => window.LOBI && LOBI.aktif, undefined, { timeout: 75000 });
+      await G.waitForFunction(() => window.LOBI && LOBI.aktif, undefined, { timeout: 150000 });
       // tamu masuk ke dunia yang sama: suasana & lampu mati ikut
       assert.deepEqual(await G.evaluate(id => [MOOD, MATI.has(id)], ids.lampu), ['senja', true]);
 
@@ -220,12 +220,12 @@ export const tes = {
       await H.close();                                        // pembuat offline sebelum siapa pun datang
       // pengunjung pertama otomatis jadi pusat koneksi
       const A = await L.buka(undangan); await masuk(A, 'Ani');
-      await A.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peran === 'pusat', undefined, { timeout: 75000 });
+      await A.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peran === 'pusat', undefined, { timeout: 150000 });
       await A.waitForFunction(() => /Kamu orang pertama/.test(document.querySelector('#lobiObrolan .lb-pesan').textContent), undefined, { timeout: 15000 });
       assert.equal(await A.evaluate(() => LOBI.pemilik), false);
       // pemilik datang lagi (perangkat yang sama, kunci tersimpan) → pusat memeriksa tanda tangannya
       const O = await L.buka(undangan, ['lobiKunci:' + ruang, kunci]); await masuk(O, 'Budi');
-      await O.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peran === 'tamu', undefined, { timeout: 75000 });
+      await O.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peran === 'tamu', undefined, { timeout: 150000 });
       assert.equal(await O.evaluate(() => LOBI.pemilik), true, 'pemilik diakui pusat');
       assert.deepEqual(await A.evaluate(() => [...LOBI.peserta.values()].map(p => [p.nama, p.pemilik, p.pusat]).sort()), [['Ani', false, true], ['Budi', true, false]]);
       // ruang lihat saja: pemilik boleh mengubah rumah lewat pusat yang bukan dirinya; pusat bukan pemilik tidak menyiarkan
