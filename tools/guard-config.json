@@ -21,9 +21,9 @@
     "0.peerjs.com": "server sinyal PeerJS publik untuk \"main bareng\" — hanya mempertemukan peramban; isi lewat kanal WebRTC terenkripsi antar-peserta (JEV-077)"
   },
   "anggaran": {
-    "indexHtmlKB": 950,
+    "indexHtmlKB": 1000,
     "innerHTMLInterpolasi": 36,
-    "_catatan": "900 → 950 KB (JEV-074): fitur yang diminta pengguna terus bertambah di index.html; fitur besar baru (mis. lobi multiplayer JEV-077) wajib modul terpisah yang dimuat saat dipakai"
+    "_catatan": "900 → 950 KB (JEV-074) → 1000 KB (JEV-081): fitur yang diminta pengguna terus bertambah di index.html (tab Taman, kolam, bentuk dasar); fitur besar baru wajib modul terpisah yang dimuat saat dipakai (seperti lobi JEV-077). Terkirim ter-gzip ±310 KB."
   },
   "identitasTakTepercaya": "\\b(name|nama|label|judul|title|kat|tag|tags|id|sumber|kredit)\\b"
 }

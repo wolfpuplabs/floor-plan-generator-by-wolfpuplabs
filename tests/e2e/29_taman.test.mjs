@@ -62,7 +62,7 @@ export const tes = {
   },
   'bentuk dasar: kotak, silinder, bola, kerucut; warna dari inspector tersimpan & disaring': async (page) => {
     await page.click('.tabs button[data-tab="objects"]');
-    assert.deepEqual(await page.$$eval('#cat-bentuk .cat-item', bs => bs.map(b => b.textContent)), ['Kotak', 'Silinder', 'Bola', 'Kerucut']);
+    assert.deepEqual(await page.$$eval('#cat-bentuk .cat-item', bs => bs.map(b => b.textContent)), ['Kotak', 'Silinder', 'Bola', 'Kerucut', 'Prisma bebas (tracing)']);
     await page.click('#cat-bentuk .cat-item:has-text("Bola")');
     const id = await page.evaluate(() => SEL && SEL.id);
     assert.ok(id, 'bola terpilih setelah ditaruh');

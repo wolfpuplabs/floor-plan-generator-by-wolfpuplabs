@@ -711,7 +711,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
       <div class="section-title">Struktur</div>
       <div class="cat-grid" id="cat-struct"></div>
-      <div class="section-title">Void (Lubang Pelat Lantai)</div>
+      <div class="section-title">Lantai bebas &amp; void</div>
       <div class="cat-grid" id="cat-void"></div>
       <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
     </div>
@@ -732,6 +732,9 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <option value="batu">Batu</option><option value="jalan">Jalan setapak</option><option value="perabot">Perabot taman</option>
       </select></div>
       <div class="cat-grid" id="cat-taman"></div>
+      <div class="section-title">Kolam</div>
+      <div class="cat-grid" id="cat-kolam"></div>
+      <p class="hint">Kolam persegi &amp; bentuk L: ukurannya diketik di inspector, seperti void. Kolam bebas digambar titik demi titik (tracing) — titiknya menempel ke ujung dinding, railing &amp; pagar. Kolam otomatis melubangi tanah situs.</p>
       <div class="section-title">Area &amp; jalur (tracing)</div>
       <div class="cat-grid" id="cat-situs"></div>
       <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.</p>
@@ -4849,7 +4852,7 @@ function woodStove(){ const g=new THREE.Group(), H=ceilH();
    Bentuknya digambar dengan tracing; titiknya disimpan dalam meter relatif
    terhadap pusat objek, skala gizmo dilebur ke titik-titiknya.
    ====================================================================== */
-const JENIS_AREA={rumput:'Rumput', kerikil:'Kerikil', tanah:'Tanah / bedeng', paving:'Paving batu', dek:'Dek kayu',
+const JENIS_AREA={lantai:'Lantai (pelat)', rumput:'Rumput', kerikil:'Kerikil', tanah:'Tanah / bedeng', paving:'Paving batu', dek:'Dek kayu',
                   kolam_renang:'Kolam renang', kolam_ikan:'Kolam ikan'};
 const JENIS_GARIS={setapak_batu:'Setapak batu pijakan', setapak_kerikil:'Setapak kerikil', setapak_paving:'Setapak paving',
                    pagar_picket:'Pagar kayu picket', pagar_kayu:'Pagar kayu horizontal', pagar_besi:'Pagar besi', pagar_tanaman:'Pagar tanaman (semak)'};
@@ -4919,13 +4922,30 @@ function stepAir(dt){ const n=MAT.air.normalMap; n.offset.x+=dt*0.015; n.offset.
 const luasPoli=P=>{ let a=0; for(let i=0;i<P.length;i++){ const p=P[i], q=P[(i+1)%P.length]; a+=p[0]*q[1]-q[0]*p[1]; } return a/2; };
 const titikDalam=(P,R)=>{ const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]);
   for(let k=0;k<40;k++){ const x=Math.min(...xs)+R()*(Math.max(...xs)-Math.min(...xs)), z=Math.min(...zs)+R()*(Math.max(...zs)-Math.min(...zs)); if(pointInPoly(x,z,P)) return [x,z]; } return null; };
+// kolam persegi / L: titik dibangkitkan dari ukurannya (meter, relatif pusat)
+function ptsKolam(P){
+  const w=clamp(+P.w||4,0.5,60)/2, d=clamp(+P.d||8,0.5,60)/2;
+  if(P.bentuk!=='L') return [[-w,-d],[w,-d],[w,d],[-w,d]];
+  const cw=clamp(+P.cw||w,0.2,w*2-0.3), cd=clamp(+P.cd||d,0.2,d*2-0.3);
+  return [[-w,-d],[w,-d],[w,d-cd],[w-cw,d-cd],[w-cw,d],[-w,d]];
+}
+function tambahKolam(jenis,bentuk){
+  if(LIHAT.on) return;
+  addObject('area',jenis);
+  const o=L().objects.at(-1), renang=jenis==='kolam_renang';
+  Object.assign(o.params, bentuk==='L' ? {bentuk:'L', w:6, d:8, cw:3, cd:3} : {bentuk:'persegi', w:renang?4:2, d:renang?8:1.4});
+  o.params.pts=ptsKolam(o.params); rebuildScene(); renderInspector();
+}
 function areaPoli(o){ return (o.params.pts||[]).map(([x,z])=>[x*(o.sx||1),z*(o.sz||1)]); }
 function areaDunia(o){ const a=o.rotY||0, c=Math.cos(a), s=Math.sin(a); return areaPoli(o).map(([x,z])=>[o.x+x*c+z*s, o.z-x*s+z*c]); }
 function buildArea(o){
   const g=new THREE.Group(), P=areaPoli(o), j=o.params.jenis||'rumput';
   if(P.length<3) return g;
   const R=acak(o.id.split('').reduce((a,c)=>a*31+c.charCodeAt(0),3));
-  if(j==='rumput'||j==='tanah'){
+  if(j==='lantai'){                               // pelat lantai bebas: permukaan di elevasi lantainya (y = 0)
+    const lv=PROJECT.levels.find(l=>l.objects.includes(o)), t=clamp(+o.params.tebal||0.15,0.05,0.6);
+    const ml=matLantai(lv), m=new THREE.Mesh(ekstrusiXZ(P,t,0),[ml,matTepiPelat()]); m.castShadow=true; m.receiveShadow=true; m.userData.lantaiBebas=true; g.add(m);
+  } else if(j==='rumput'||j==='tanah'){
     const m=new THREE.Mesh(uvDunia(bidangXZ(P,j==='rumput'?0.008:0.004),matSitus(j).userData.ukuran,o.x,o.z),matSitus(j)); m.receiveShadow=true; g.add(m);
   } else if(j==='kerikil'||j==='paving'||j==='dek'){
     const t={kerikil:0.03,paving:0.04,dek:0.15}[j];
@@ -5039,11 +5059,15 @@ function reliefDi(x,z){
 function diMasker(M,x,z){ const i=Math.floor((x-M.x0)/M.c), k=Math.floor((z-M.z0)/M.c); return i>=0&&k>=0&&i<M.nx&&k<M.nz&&!!M.T[i*M.nz+k]; }
 function adaTanahSitus(){ const st=PROJECT.site; return !!(st&&st.tanah&&st.tanah!=='none'&&!st.sembunyi); }
 // permukaan tanah di (x,z) — dipakai mesh tanah dan pijakan mode jalan
-function tinggiTanah(x,z){ let h=TANAH_DASAR+reliefDi(x,z); if(TANAH.masker&&diMasker(TANAH.masker,x,z)) h=Math.min(h,-0.12); return h; }
+function tinggiTanah(x,z){ let h=TANAH_DASAR+reliefDi(x,z);
+  if((TANAH.masker&&diMasker(TANAH.masker,x,z)) || (TANAH.lantai&&TANAH.lantai.some(p=>pointInPoly(x,z,p)))) h=Math.min(h,-0.12);
+  return h; }
 function buildSitus(opsi={}){
   const st=PROJECT.site; if(!adaTanahSitus()){ TANAH.masker=null; return null; }
   const lv=PROJECT.levels[0]; if(!lv) return null;
-  if(!opsi.cepat) TANAH.masker = lv.walls.some(w=>!w.rail) ? tapakAtap(lv,0.6) : null;
+  if(!opsi.cepat){ TANAH.masker = lv.walls.some(w=>!w.rail) ? tapakAtap(lv,0.6) : null;
+    // pelat lantai bebas, dek & paving di lantai dasar: bukit di bawahnya ditekan, lantai selalu di atas tanah
+    TANAH.lantai = lv.objects.filter(o=>o.kind==='area'&&/^(lantai|dek|paving)$/.test(o.params.jenis||'')).map(areaDunia); }
   const [x0,x1,z0,z1]=luasSitus(), W=x1-x0, D=z1-z0;
   const r=clamp(Math.max(W,D)/150,0.25,1), nx=Math.max(2,Math.ceil(W/r)+1), nz=Math.max(2,Math.ceil(D/r)+1);
   const pos=new Float32Array(nx*nz*3);
@@ -5213,10 +5237,38 @@ function jalurKayu(){ const g=new THREE.Group();
   for(const sx of [-1,1]) g.add(box(0.06,0.05,3,MAT.woodDark,sx*0.5,0.02,0));
   return g; }
 // bentuk dasar 1 m: warnanya dipasang buildObject dari params.warna
-function bentukDasar(jenis){ const g=new THREE.Group();
-  const geo=jenis==='kotak'?new THREE.BoxGeometry(1,1,1):jenis==='silinder'?new THREE.CylinderGeometry(0.5,0.5,1,40):jenis==='bola'?new THREE.SphereGeometry(0.5,40,24):new THREE.ConeGeometry(0.5,1,40);
-  const m=msh(geo,MAT.bentuk||(MAT.bentuk=new THREE.MeshStandardMaterial({color:0xd8d2c4, roughness:0.55})),0,0.5,0); m.userData.bentuk=true; g.add(m);
+const PRISMA_AWAL=[[-0.5,-0.2],[0,-0.5],[0.5,-0.2],[0.32,0.5],[-0.32,0.5]];
+function bentukDasar(jenis,o){ const g=new THREE.Group(), P=(o&&o.params)||{};
+  const pot=potonganAman(P.potong), alas=jenis==='prisma'?(alasAman(P.pts)||PRISMA_AWAL):jenis==='kotak'?[[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]]:null;
+  const lingkar=()=>Array.from({length:64},(_,i)=>[Math.cos(i/64*Math.PI*2)*0.5,Math.sin(i/64*Math.PI*2)*0.5]);
+  let geo, y=0.5;
+  if(jenis==='prisma' || (pot.length && (jenis==='kotak'||jenis==='silinder'))){ geo=geoPrisma(alas||lingkar(),pot); y=0; }
+  else geo=jenis==='kotak'?new THREE.BoxGeometry(1,1,1):jenis==='silinder'?new THREE.CylinderGeometry(0.5,0.5,1,40):jenis==='bola'?new THREE.SphereGeometry(0.5,40,24):new THREE.ConeGeometry(0.5,1,40);
+  const m=msh(geo,MAT.bentuk||(MAT.bentuk=new THREE.MeshStandardMaterial({color:0xd8d2c4, roughness:0.55})),0,y,0); m.userData.bentuk=true; g.add(m);
   return g; }
+// alas prisma / potongan dari berkas: hanya larik titik angka, dibatasi jumlah & rentangnya
+function alasAman(pts,maks=200){
+  if(!Array.isArray(pts)||pts.length<3) return null;
+  const out=pts.slice(0,maks).filter(p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1])).map(([x,z])=>[clamp(+x,-2,2),clamp(+z,-2,2)]);
+  return out.length>=3?out:null;
+}
+function potonganAman(L){ return (Array.isArray(L)?L:[]).slice(0,8).map(p=>alasAman(p,120)).filter(Boolean); }
+// prisma setinggi 1 m dari alas (koordinat lokal 1 m); potongan = lubang tegak menembus seluruh tinggi.
+// Alas dikurangi potongan lewat kisi 1/160 m lalu dikonturkan — cara yang sama dengan tepi atap.
+function geoPrisma(alas,pot){
+  let g;
+  if(!pot.length){ g=new THREE.ExtrudeGeometry(new THREE.Shape(alas.map(([x,z])=>new THREE.Vector2(x,z))),{depth:1,bevelEnabled:false,curveSegments:1}); g.rotateX(Math.PI/2); }
+  else {
+    const xs=alas.map(p=>p[0]), zs=alas.map(p=>p[1]), c=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...zs)-Math.min(...zs))/160;
+    const x0=Math.min(...xs)-2*c, z0=Math.min(...zs)-2*c, nx=Math.ceil((Math.max(...xs)-x0)/c)+3, nz=Math.ceil((Math.max(...zs)-z0)/c)+3, T=new Uint8Array(nx*nz);
+    for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){ const x=x0+(i+0.5)*c, z=z0+(k+0.5)*c;
+      T[i*nz+k]=pointInPoly(x,z,alas)&&!pot.some(q=>pointInPoly(x,z,q))?1:0; }
+    g=geoAtapHalus(T,nx,nz,x0,z0,c,1);
+    if(!g) return new THREE.BufferGeometry();
+  }
+  g.translate(0,1,0); g.computeVertexNormals(); return g;
+}
+const BENTUK_POTONG=/^bentuk_(kotak|silinder|prisma)$/;
 const WARNA_BENTUK=/^#[0-9a-f]{6}$/i;
 function warnaiBentuk(g,o){
   const w=o.params&&WARNA_BENTUK.test(o.params.warna)?o.params.warna:null; if(!w) return;
@@ -5394,6 +5446,7 @@ const FURN={
   bentuk_silinder:{l:'Silinder',        i:'⚫', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('silinder')},
   bentuk_bola :{l:'Bola',               i:'⚪', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('bola')},
   bentuk_kerucut:{l:'Kerucut',          i:'🔺', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('kerucut')},
+  bentuk_prisma:{l:'Prisma bebas (tracing)', i:'⬟', c:'bentuk', f:[1,1],    b:()=>bentukDasar('prisma')},
   room_divider:{l:'Partisi Lipat',      i:'🪟', c:'ruang',   f:[1.4,0.5],   b:roomDivider},
   coat_rack   :{l:'Gantungan Baju',     i:'🧥', c:'ruang',   f:[0.5,0.5],   b:coatRack},
   floor_vase  :{l:'Vas Lantai + Pampas',i:'🏺', c:'ruang',   f:[0.6,0.6],   b:floorVase},
@@ -6932,7 +6985,7 @@ function buildObject(o, lv){
   else {
     const def=FURN[o.type];
     BUILD_LV=lv;                      // benda gantung membaca tinggi plafon lantainya
-    g = def ? def.b() : new THREE.Group();
+    g = def ? (def.c==='bentuk' ? bentukDasar(o.type.slice(7),o) : def.b()) : new THREE.Group();
     BUILD_LV=null;
     if(def && def.c==='bentuk') warnaiBentuk(g,o);
     // semua bagian menerima bayangan — bagian yang dibuat langsung dengan
@@ -6956,7 +7009,8 @@ function buildObject(o, lv){
   if(o.kind==='void'||o.kind==='column'||o.kind==='area'||o.kind==='garis') g.scale.set(1,1,1);
   else g.scale.set(o.sx||1,o.sy||1,o.sz||1);
   Object.assign(g.userData,{kind:'obj', id:o.id});   // jangan menimpa keterangan lampu dari hiasNyala
-  if(o.kind==='furn') g.userData.perabot=true;                     // bukan pijakan di mode jalan
+  if(o.kind==='furn' && !(FURN[o.type]&&FURN[o.type].c==='bentuk')) g.userData.perabot=true;   // bukan pijakan di mode jalan
+  if(o.kind==='furn' && FURN[o.type] && FURN[o.type].c==='bentuk') g.userData.modelPijak=true;     // bentuk dasar: padat & bisa dipijak
   if(o.kind==='model'){ if(o.params&&o.params.collider===false) g.userData.perabot=true; else g.userData.modelPijak=true; }   // model: permukaan rendahnya bisa dipijak
   return g;
 }
@@ -7463,12 +7517,19 @@ function renderInspector(){
     const isArea=d.kind==='area', daftar=isArea?JENIS_AREA:JENIS_GARIS, j=d.params.jenis||d.type;
     const h=el('h3',null,isArea?'Area':'Jalur'); h.appendChild(el('span','tag',daftar[j]||j)); ins.appendChild(h);
     // jenis hanya bisa diganti dalam kelompoknya (kolam tetap kolam, pagar tetap pagar)
-    const klp=k=>/^kolam/.test(k)?'kolam':/^pagar/.test(k)?'pagar':/^setapak/.test(k)?'setapak':'permukaan';
+    const klp=k=>/^kolam/.test(k)?'kolam':/^pagar/.test(k)?'pagar':/^setapak/.test(k)?'setapak':k==='lantai'?'lantai':'permukaan';
     fRow(ins,'Jenis',selInput(Object.entries(daftar).filter(([k])=>klp(k)===klp(j)),j,v=>{ d.params.jenis=v; d.type=v;
       if(/^kolam/.test(v)) d.params.kedalaman=v==='kolam_renang'?1.4:0.6; rebuildScene(); renderInspector(); }));
     const P=isArea?areaPoli(d):garisPoli(d);
     if(isArea) ins.appendChild(el('p','hint',`${P.length} titik sudut · luas ${fmt(Math.abs(luasPoli(P)),2)} m²`));
     else { let pj=0; for(let i=0;i<P.length-1;i++) pj+=Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1]); ins.appendChild(el('p','hint',`${P.length} titik · panjang ${fmt(pj,2)} m`)); }
+    if(/^kolam/.test(j) && (d.params.bentuk==='persegi'||d.params.bentuk==='L')){
+      const ubah=(k,mn,mx)=>v=>{ d.params[k]=clamp(v,mn,mx); d.params.pts=ptsKolam(d.params); d.sx=d.sz=1; HIST.label='Ukuran kolam'; rebuildScene(); renderInspector(); };
+      fRow(ins,'Lebar (m)',numInput(d.params.w,0.1,ubah('w',0.5,60),0.5,60));
+      fRow(ins,'Panjang (m)',numInput(d.params.d,0.1,ubah('d',0.5,60),0.5,60));
+      if(d.params.bentuk==='L'){ fRow(ins,'Potongan lebar (m)',numInput(d.params.cw,0.1,ubah('cw',0.2,59),0.2,59)); fRow(ins,'Potongan panjang (m)',numInput(d.params.cd,0.1,ubah('cd',0.2,59),0.2,59)); }
+    }
+    if(j==='lantai') fRow(ins,'Tebal pelat (m)',numInput(+d.params.tebal||0.15,0.01,v=>{ d.params.tebal=clamp(v,0.05,0.6); HIST.label='Tebal pelat'; rebuildScene(); },0.05,0.6));
     if(/^kolam/.test(j)) fRow(ins,'Kedalaman (m)',numInput(d.params.kedalaman||1.4,0.1,v=>{ d.params.kedalaman=clamp(v,0.2,3); rebuildScene(); },0.2,3));
     if(/^setapak_(kerikil|paving)/.test(j)) fRow(ins,'Lebar (m)',numInput(d.params.lebar||0.8,0.05,v=>{ d.params.lebar=clamp(v,0.3,3); rebuildScene(); },0.3,3));
     if(/^pagar/.test(j)) fRow(ins,'Tinggi (m)',numInput(d.params.tinggi||1.2,0.05,v=>{ d.params.tinggi=clamp(v,0.4,2.5); rebuildScene(); },0.4,2.5));
@@ -7540,6 +7601,13 @@ function renderInspector(){
     const w=document.createElement('input'); w.type='color'; w.value=d.params&&WARNA_BENTUK.test(d.params.warna)?d.params.warna:'#d8d2c4';
     w.onchange=()=>{ d.params=d.params||{}; d.params.warna=w.value; HIST.label='Warna bentuk'; rebuildScene(); };
     fRow(ins,'Warna',w);
+    const rb=el('div','row');
+    if(BENTUK_POTONG.test(d.type)){ const bp=tombolIkon('btn sm ghost','pensil','Potong (tracing)'); bp.onclick=()=>mulaiPotong(d.id); rb.appendChild(bp); }
+    if(d.type==='bentuk_prisma'){ const bu=tombolIkon('btn sm ghost','pensil','Gambar ulang alas'); bu.onclick=()=>mulaiTrace({kind:'bentuk'},d.id); rb.appendChild(bu); }
+    const np=potonganAman(d.params&&d.params.potong).length;
+    if(np){ const bh=tombolIkon('btn sm ghost','hapus',`Hapus potongan (${np})`); bh.onclick=()=>{ delete d.params.potong; HIST.label='Hapus potongan'; rebuildScene(); renderInspector(); }; rb.appendChild(bh); }
+    if(rb.children.length) ins.appendChild(rb);
+    ins.appendChild(el('p','hint',BENTUK_POTONG.test(d.type)?'Potong: gambar keliling lubang dari atas — bagian di dalamnya terpotong tegak setinggi bentuk. Di mode jalan bentuk padat & bisa dipijak.':'Bola & kerucut tidak bisa dipotong; di mode jalan tetap padat & bisa dipijak.'));
   }
   if(SEL.kind==='obj' && (d.kind==='furn'||d.kind==='model')) inspektorAksi(ins,d);
   ins.appendChild(el('div','section-title','Aksi'));
@@ -7879,6 +7947,7 @@ function paramsAwal(kind,type){
   // void yang dibuat sendiri adalah lubang terbuka di lantai, jadi pagarnya
   // langsung dipasang; void dari tangga dibiarkan terbuka karena tangganya
   // sendiri yang mengisi lubang itu
+  if(kind==='area' && type==='lantai') return { jenis:'lantai', tebal:0.15, pts:[[-2,-1.5],[2,-1.5],[2,1.5],[-2,1.5]] };
   if(kind==='area') return { jenis:type, kedalaman:type==='kolam_renang'?1.4:type==='kolam_ikan'?0.6:undefined,
       pts:type==='kolam_ikan'?[[-1.2,-0.6],[0.2,-0.9],[1.3,-0.3],[1.0,0.7],[-0.4,0.9],[-1.3,0.3]]:[[-1.5,-1],[1.5,-1],[1.5,1],[-1.5,1]] };
   if(kind==='garis') return { jenis:type, lebar:0.8, tinggi:/^pagar_tanaman/.test(type)?1.0:1.2,
@@ -7935,15 +8004,9 @@ function groundPoint(e){
   if(!raycaster.ray.intersectPlane(plane,hit)) return null;
   let x=hit.x, z=hit.z;
   if(SNAP){ x=Math.round(x*20)/20; z=Math.round(z*20)/20; }
-  // magnet ke ujung dinding terdekat
-  let best=null,bd=0.3;
-  for(const w of L().walls){
-    for(const p of [{x:w.x1,z:w.z1},{x:w.x2,z:w.z2}]){
-      const dd=Math.hypot(p.x-x,p.z-z);
-      if(dd<bd){ bd=dd; best=p; }
-    }
-  }
-  return best?{x:best.x,z:best.z}:{x,z};
+  // magnet ke ujung terdekat: dinding, railing, pagar & jalan setapak, sudut area/kolam
+  const best=ujungTerdekat(x,z,0.3);
+  return best?{x:best.x,z:best.z,ujung:true}:{x,z};
 }
 function pickObject(e){
   ndc(e);
@@ -8215,8 +8278,9 @@ let DRAW_RAIL=false;
    transparan di lantai supaya simbol void di gambar bisa langsung ditelusuri. */
 const VT={pts:[], ganti:null, grp:new THREE.Group(), alas:null, mode:{kind:'void'}};
 VT.grp.renderOrder=25;
-const VT_NAMA=m=>m.kind==='void'?'void':m.kind==='area'?(JENIS_AREA[m.type]||'area').toLowerCase():(JENIS_GARIS[m.type]||'garis').toLowerCase();
+const VT_NAMA=m=>m.kind==='void'?'void':m.kind==='bentuk'?'prisma bebas':m.kind==='potong'?'potongan':m.kind==='area'?(JENIS_AREA[m.type]||'area').toLowerCase():(JENIS_GARIS[m.type]||'garis').toLowerCase();
 function mulaiTraceVoid(gantiId){ mulaiTrace({kind:'void'},gantiId); }
+function mulaiPotong(id){ mulaiTrace({kind:'potong',target:id},null); }
 function mulaiTrace(mode,gantiId){
   if(FPS.on) return;
   akhiriTrace();                                   // tracing sebelumnya (dan alas denahnya) dibersihkan dulu
@@ -8249,6 +8313,22 @@ function akhiriTrace(){
   VT.alas=null;
   $('#traceBar').hidden=true;
 }
+/* ujung yang bisa ditangkap: ujung dinding & railing, titik pagar/jalan setapak, sudut area & kolam
+   (lantai aktif). Dipakai alat Dinding/Railing dan tracing — garis baru menyambung rapat. */
+function titikUjung(){
+  const out=[];
+  for(const w of L().walls){ out.push({x:w.x1,z:w.z1}); out.push({x:w.x2,z:w.z2}); }
+  for(const o of L().objects){
+    if(o.kind==='garis'){ const a=o.rotY||0, c=Math.cos(a), s=Math.sin(a); for(const [x,z] of garisPoli(o)) out.push({x:o.x+x*c+z*s, z:o.z-x*s+z*c}); }
+    else if(o.kind==='area') for(const [x,z] of areaDunia(o)) out.push({x,z});
+  }
+  return out;
+}
+function ujungTerdekat(x,z,jarak,kecuali){
+  let best=null, bd=jarak;
+  for(const p of titikUjung()){ if(kecuali&&kecuali(p)) continue; const dd=Math.hypot(p.x-x,p.z-z); if(dd<bd){ bd=dd; best=p; } }
+  return best;
+}
 function titikTrace(e){
   ndc(e); raycaster.setFromCamera(pointer,camera);
   const hit=new THREE.Vector3(), el0=levelElevation(PROJECT.active);
@@ -8261,6 +8341,9 @@ function titikTrace(e){
   // tutup: dekat titik pertama
   if(VT.mode.kind!=='garis' && VT.pts.length>=3 && Math.hypot(x-VT.pts[0].x,z-VT.pts[0].z)<tangkap*1.6) return {x:VT.pts[0].x, z:VT.pts[0].z, tutup:true};
   if(SNAP){ x=Math.round(x*20)/20; z=Math.round(z*20)/20; }
+  // ujung dinding / railing / pagar / sudut area lebih dulu: garis baru menyambung tepat di ujungnya
+  const uj=ujungTerdekat(hit.x,hit.z,tangkap*1.6);
+  if(uj) return {x:uj.x, z:uj.z, ujung:true};
   // muka dinding terdekat (dua muka tiap dinding); dua muka sekaligus → sudutnya
   const muka=[];
   for(const w of L().walls){ const Lw=wallLen(w); if(Lw<0.1) continue;
@@ -8296,6 +8379,7 @@ function gambarTrace(kursor){
     VT.grp.add(new THREE.Line(tutupG,mat));
   }
   ujung.forEach((p,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(i===0?0.14:0.09,0.02,i===0?0.14:0.09),matT); m.position.set(p.x,y,p.z); VT.grp.add(m); });
+  if(kursor&&kursor.ujung){ const r=new THREE.Mesh(new THREE.RingGeometry(0.12,0.17,24),matT); r.rotation.x=-Math.PI/2; r.position.set(kursor.x,y+0.002,kursor.z); VT.grp.add(r); }
   VT.grp.children.forEach(c=>{ c.renderOrder=26; c.userData.noExport=true; });
   const n=P.length; $('#traceInfo').textContent=`${n} titik`+(kursor&&n?` · sisi ${fmt(Math.hypot(kursor.x-P[n-1].x,kursor.z-P[n-1].z))} m`:'')+(kursor&&kursor.tutup?' · ketuk untuk menutup':'');
   $('#traceDone').disabled=n<(VT.mode.kind==='garis'?2:3);
@@ -8309,6 +8393,7 @@ function klikTrace(e){
 }
 function selesaiTrace(){
   if(VT.mode.kind==='garis') return selesaiTraceGaris();
+  if(VT.mode.kind==='potong') return selesaiPotong();
   let P=VT.pts.map(p=>[p.x,p.z]);
   // titik segaris dibuang
   P=P.filter((p,i)=>{ const a=P[(i+P.length-1)%P.length], b=P[(i+1)%P.length]; return Math.abs((p[0]-a[0])*(b[1]-a[1])-(p[1]-a[1])*(b[0]-a[0]))>1e-4; });
@@ -8321,6 +8406,7 @@ function selesaiTrace(){
   }
   if(luas<0) P.reverse();                         // arah putar sama dengan void persegi
   if(VT.mode.kind==='area') return simpanTraceObjek('area',VT.mode.type,P,`luas ${fmt(Math.abs(luas)/2,2)} m²`);
+  if(VT.mode.kind==='bentuk') return simpanPrisma(P);
   const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]);
   const x0=Math.min(...xs), x1=Math.max(...xs), z0=Math.min(...zs), z1=Math.max(...zs), w=x1-x0, d=z1-z0, cx=(x0+x1)/2, cz=(z0+z1)/2;
   const pts=P.map(([x,z])=>[+((x-cx)/w).toFixed(5), +((z-cz)/d).toFixed(5)]);
@@ -8344,12 +8430,33 @@ function simpanTraceObjek(kind,type,P,ket){
   const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]), cx=(Math.min(...xs)+Math.max(...xs))/2, cz=(Math.min(...zs)+Math.max(...zs))/2;
   const pts=P.map(([x,z])=>[+(x-cx).toFixed(4),+(z-cz).toFixed(4)]);
   const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
-  if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:1,sy:1,sz:1}); o.params.pts=pts; HIST.label='Gambar ulang '+VT_NAMA(VT.mode); }
+  if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:1,sy:1,sz:1}); o.params.pts=pts; delete o.params.bentuk; HIST.label='Gambar ulang '+VT_NAMA(VT.mode); }
   else { o={id:uid('ob'), kind, type, x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal(kind,type),{pts})};
     lv.objects.push(o); HIST.label='Gambar '+VT_NAMA(VT.mode); }
   const nama=VT_NAMA(VT.mode);
   setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
   toast(`${nama[0].toUpperCase()+nama.slice(1)} — ${ket}`);
+}
+/* prisma bebas: alas hasil tracing, disimpan ternormalisasi (−0,5…0,5) + skala = ukuran kotaknya */
+function simpanPrisma(P){
+  const xs=P.map(p=>p[0]), zs=P.map(p=>p[1]), x0=Math.min(...xs), x1=Math.max(...xs), z0=Math.min(...zs), z1=Math.max(...zs);
+  const w=Math.max(0.05,x1-x0), d=Math.max(0.05,z1-z0), cx=(x0+x1)/2, cz=(z0+z1)/2;
+  const pts=P.map(([x,z])=>[+((x-cx)/w).toFixed(4),+((z-cz)/d).toFixed(4)]);
+  const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
+  if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:w,sz:d}); o.params.pts=pts; delete o.params.potong; HIST.label='Gambar ulang prisma'; }
+  else { o={id:uid('ob'), kind:'furn', type:'bentuk_prisma', x:cx, y:0, z:cz, rotY:0, sx:w, sy:1, sz:d, params:{pts}}; lv.objects.push(o); HIST.label='Prisma bebas (tracing)'; }
+  setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  toast(`Prisma ${fmt(w)} × ${fmt(d)} m — tinggi diatur lewat skala Y`);
+}
+/* potong bentuk: keliling tracing (dunia) → koordinat lokal 1 m bentuk itu, jadi lubang tegak */
+function selesaiPotong(){
+  const o=cariObjek(VT.mode.target); if(!o){ setTool('select'); return; }
+  if(VT.pts.length<3) return toast('Perlu minimal 3 titik sudut');
+  const a=o.rotY||0, ca=Math.cos(a), sa=Math.sin(a), sx=o.sx||1, sz=o.sz||1;
+  const lok=VT.pts.map(({x,z})=>{ const dx=x-o.x, dz=z-o.z; let u=(dx*ca-dz*sa)/sx; const v=(dx*sa+dz*ca)/sz; if(o.flip) u=-u; return [+u.toFixed(4),+v.toFixed(4)]; });
+  o.params=o.params||{}; o.params.potong=potonganAman(o.params.potong).concat([lok]).slice(-8);
+  HIST.label='Potong bentuk'; setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  toast(`Bentuk dipotong (${o.params.potong.length} potongan)`);
 }
 $('#traceDone').onclick=()=>selesaiTrace();
 $('#traceUndo').onclick=()=>{ VT.pts.pop(); gambarTrace(null); };
@@ -11806,13 +11913,24 @@ function renderCatalogs(){
     ck.appendChild(b);
   }
   const cSitus=$('#cat-situs'); cSitus.innerHTML='';
-  for(const [kind,type] of [['area','rumput'],['area','kerikil'],['area','tanah'],['area','paving'],['area','dek'],['area','kolam_renang'],['area','kolam_ikan'],
+  // kolam: persegi & L berukuran (seperti void), atau bebas lewat tracing
+  const cKolam=$('#cat-kolam'); cKolam.innerHTML='';
+  for(const [jenis,bentuk,lb] of [['kolam_renang','persegi','Kolam renang persegi'],['kolam_renang','L','Kolam renang bentuk L'],['kolam_renang','bebas','Kolam renang bebas (tracing)'],
+                                  ['kolam_ikan','persegi','Kolam ikan persegi'],['kolam_ikan','bebas','Kolam ikan bebas (tracing)']]){
+    const b=el('div','cat-item'); b.innerHTML=ikonObjek('area',jenis)+lb;
+    b.title=bentuk==='bebas'?'Gambar keliling kolam titik demi titik':'Ukuran bisa diketik di inspector';
+    b.onclick=()=>bentuk==='bebas'?mulaiTrace({kind:'area',type:jenis},null):tambahKolam(jenis,bentuk); cKolam.appendChild(b);
+  }
+  for(const [kind,type] of [['area','rumput'],['area','kerikil'],['area','tanah'],['area','paving'],['area','dek'],
                             ['garis','setapak_batu'],['garis','setapak_kerikil'],['garis','setapak_paving'],['garis','pagar_picket'],['garis','pagar_kayu'],['garis','pagar_besi'],['garis','pagar_tanaman']]){
     const b=el('div','cat-item'); b.innerHTML=ikonObjek(kind,type)+(kind==='area'?JENIS_AREA[type]:JENIS_GARIS[type]);
     b.title=(kind==='area'?'Gambar keliling ':'Gambar jalur ')+(kind==='area'?JENIS_AREA[type]:JENIS_GARIS[type]).toLowerCase()+' titik demi titik';
     b.onclick=()=>mulaiTrace({kind,type},null); cSitus.appendChild(b);
   }
   const cv=$('#cat-void'); cv.innerHTML='';
+  { const bl=el('div','cat-item'); bl.innerHTML=ikonObjek('area','lantai')+'Lantai bebas (tracing)';
+    bl.title='Gambar keliling pelat lantai titik demi titik di lantai aktif (teras, mezanin, lantai tambahan)';
+    bl.onclick=()=>mulaiTrace({kind:'area',type:'lantai'},null); cv.appendChild(bl); }
   for(const [t,ic,lb] of [['rect','▭','Void persegi'],['L','◣','Void bentuk L'],['poly','✎','Void bebas (tracing)']]){
     const bv=el('div','cat-item');
     bv.innerHTML=ikonObjek('void',t)+lb;
@@ -11857,7 +11975,7 @@ function renderCatalogs(){
   if(!ada) cf.appendChild(el('p','hint','Tidak ada furnitur yang cocok — coba kata lain atau pilih "Semua kategori".'));
   const tambahItem=(wadah,k,v)=>{ const b=el('div','cat-item'); b.innerHTML=ikonObjek('furn',k)+v.l; b.title=`${v.f[0]}×${v.f[1]} m`; b.onclick=()=>addObject('furn',k); wadah.appendChild(b); };
   const cb=$('#cat-bentuk'); cb.innerHTML='';
-  for(const [k,v] of Object.entries(FURN)) if(v.c==='bentuk') tambahItem(cb,k,v);
+  for(const [k,v] of Object.entries(FURN)) if(v.c==='bentuk'){ tambahItem(cb,k,v); if(k==='bentuk_prisma') cb.lastChild.onclick=()=>mulaiTrace({kind:'bentuk'},null); }
   const ct=$('#cat-taman'); ct.innerHTML='';
   const ft=$('#taman-filter').value;
   for(const [k,v] of Object.entries(FURN)) if(v.c==='taman' && (ft==='all'||kelompokTaman(k)===ft)) tambahItem(ct,k,v);
@@ -14159,7 +14277,7 @@ function fpsResolveWalls(px,pz,feetY){
         px=cx+nx*rad; pz=cz+nz*rad; moved=true;
       }
       for(const o of lv.objects){
-        if(o.kind==='model' && o.params.collider!==false){ const r=dorongCollider(o,lv,px,pz,feetY); if(r){ px=r[0]; pz=r[1]; moved=true; } continue; }
+        if(punyaCollider(o)){ const r=dorongCollider(o,lv,px,pz,feetY); if(r){ px=r[0]; pz=r[1]; moved=true; } continue; }
         if(o.kind!=='column') continue;
         const rad=Math.max(o.params.w||0.3,o.params.d||0.3)/2+FPS.r, d=Math.hypot(px-o.x,pz-o.z);
         if(d>=rad) continue;
@@ -14190,9 +14308,22 @@ function fpsResolveWalls(px,pz,feetY){
    geometri setinggi badan (di atas langkah, di bawah kepala) menghalangi;
    permukaan rendah bisa dipijak; ambang/lengkung tinggi bisa dilewati. */
 const COLLIDER=new Map();
-function colliderModel(id){
+function colliderModel(id){ return colliderDari(id,ASSET_OBJ.get(id)); }
+// bentuk dasar: collider dari geometri bentuk itu sendiri (ukuran 1 m; skala objek dipasang saat berjalan)
+function colliderObjek(o){
+  if(o.kind==='model') return colliderModel(o.type);
+  if(o.kind==='furn' && FURN[o.type] && FURN[o.type].c==='bentuk'){
+    const P=o.params||{}, kunci='bentuk:'+o.type+':'+JSON.stringify([P.pts||null,P.potong||null]);
+    if(COLLIDER.has(kunci)) return COLLIDER.get(kunci);
+    if(COLLIDER.size>200) for(const k of [...COLLIDER.keys()]) if(k.startsWith('bentuk:')) COLLIDER.delete(k);
+    return colliderDari(kunci,bentukDasar(o.type.slice(7),o));
+  }
+  return null;
+}
+function punyaCollider(o){ return (o.kind==='model' && o.params.collider!==false) || (o.kind==='furn' && !!FURN[o.type] && FURN[o.type].c==='bentuk'); }
+function colliderDari(id,tpl){
   if(COLLIDER.has(id)) return COLLIDER.get(id);
-  const tpl=ASSET_OBJ.get(id); if(!tpl){ return null; }
+  if(!tpl){ return null; }
   tpl.updateMatrixWorld(true);
   const bb=new THREE.Box3().setFromObject(tpl); if(bb.isEmpty()){ COLLIDER.set(id,null); return null; }
   let C=0.08; while(((bb.max.x-bb.min.x)/C+4)*((bb.max.z-bb.min.z)/C+4)>300000) C*=1.5;
@@ -14250,7 +14381,7 @@ function gambarColliderDebug(){
 }
 /* dorong pemain keluar dari sel model yang menghalangi; null = tidak bertabrakan */
 function dorongCollider(o,lv,px,pz,feetY){
-  const col=colliderModel(o.type); if(!col) return null;
+  const col=colliderObjek(o); if(!col) return null;
   const sx=o.sx||1, sy=o.sy||1, sz=o.sz||1, a=o.rotY||0, ca=Math.cos(a), sa=Math.sin(a);
   const r=FPS.r, jari=Math.hypot(col.nx*col.C*sx,col.nz*col.C*sz)/2+r+Math.hypot(col.x0+col.nx*col.C/2,col.z0+col.nz*col.C/2)*Math.max(sx,sz);
   if(Math.hypot(px-o.x,pz-o.z)>jari) return null;

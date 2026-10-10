@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 55 GO · 3 DEFER · 5 NO-GO dari 63 item.
+**Ringkasan:** 57 GO · 3 DEFER · 5 NO-GO dari 65 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -26,6 +26,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-072 | Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan | terkirim | 0.80 | 20,7 jt | 0,4 jt | 103.2× | 51.1× | 0.2 bln | 10 | **GO** |
 | JEV-068 | Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi) | terkirim | 0.65 | 60,5 jt | 1,2 jt | 99.8× | 49.4× | 0.2 bln | 10 | **GO** |
 | JEV-066 | Garis tepi lembut untuk lampu padam saat malam (mode jalan) | terkirim | 0.80 | 30 jt | 0,6 jt | 99.0× | 49.0× | 0.2 bln | 10 | **GO** |
+| JEV-081 | Pembuat kolam seperti void (persegi & L berukuran, bebas lewat tracing) dan titik yang menempel ke ujung dinding, railing, pagar & sudut kolam | terkirim | 0.65 | 35,6 jt | 0,8 jt | 93.9× | 46.5× | 0.2 bln | 11 | **GO** |
 | JEV-075 | Tanah situs selalu di bawah lantai + terrain builder (kuas naik/turun/ratakan/haluskan) yang bisa dijalani | terkirim | 0.65 | 55,6 jt | 1,2 jt | 91.6× | 45.3× | 0.2 bln | 11 | **GO** |
 | JEV-067 | Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG | terkirim | 0.80 | 78 jt | 1,8 jt | 85.7× | 42.3× | 0.2 bln | 12 | **GO** |
 | JEV-052 | Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) | terkirim | 0.65 | 61,4 jt | 1,7 jt | 73.5× | 36.2× | 0.3 bln | 14 | **GO** |
@@ -35,6 +36,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-055 | Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model | terkirim | 0.60 | 28,4 jt | 0,9 jt | 62.0× | 30.5× | 0.3 bln | 16 | **GO** |
 | JEV-057 | Redesign UI/UX: kartu Mulai + rumah contoh, tab berikon (Tampilan terpisah), toolbar berlabel + menu Lainnya, pencarian furnitur, target sentuh ≥ 44 px | terkirim | 0.60 | 44,6 jt | 1,5 jt | 58.4× | 28.7× | 0.3 bln | 17 | **GO** |
 | JEV-059 | Tekstur foto untuk objek (foto sendiri / pustaka Poly Haven) + pola tekstur tidak berulang | terkirim | 0.60 | 47,3 jt | 1,7 jt | 56.3× | 27.6× | 0.3 bln | 18 | **GO** |
+| JEV-082 | Bentuk dasar padat (collider & bisa dipijak), prisma bebas & potongan bentuk lewat tracing, lantai bebas lewat tracing, tanah selalu di bawah lantai | terkirim | 0.65 | 38 jt | 1,4 jt | 55.3× | 27.2× | 0.3 bln | 18 | **GO** |
 | JEV-053 | Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah | terkirim | 0.65 | 30,7 jt | 1,2 jt | 50.2× | 24.6× | 0.4 bln | 20 | **GO** |
 | JEV-045 | RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan) | usulan | 0.45 | 309,8 jt | 12,8 jt | 47.6× | 23.3× | 0.4 bln | 21 | **DEFER** |
 | JEV-060 | Sumber model dari Sketchfab, CGTrader & situs 3D gratis: pencarian Sketchfab + impor ZIP/OBJ/FBX | terkirim | 0.60 | 49,1 jt | 2,1 jt | 45.7× | 22.4× | 0.4 bln | 22 | **GO** |
@@ -94,6 +96,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-072 Pagar tangga putar/lengkung: pegangan heliks, rel tengah, baluster rapat, menahan badan di mode jalan — GO.** ROI 103.2× ≥ 1, payback 0.2 bln.
 - **JEV-068 Model unggahan, foto tekstur & video TV ikut tautan lihat (lampiran beralamat isi) — GO.** ROI 99.8× ≥ 1, payback 0.2 bln.
 - **JEV-066 Garis tepi lembut untuk lampu padam saat malam (mode jalan) — GO.** ROI 99.0× ≥ 1, payback 0.2 bln.
+- **JEV-081 Pembuat kolam seperti void (persegi & L berukuran, bebas lewat tracing) dan titik yang menempel ke ujung dinding, railing, pagar & sudut kolam — GO.** ROI 93.9× ≥ 1, payback 0.2 bln.
 - **JEV-075 Tanah situs selalu di bawah lantai + terrain builder (kuas naik/turun/ratakan/haluskan) yang bisa dijalani — GO.** ROI 91.6× ≥ 1, payback 0.2 bln.
 - **JEV-067 Tautan lihat yang terbuka di HP (tautan pendek), kebocoran cahaya antar-lantai, menu jalan bisa diciutkan + kualitas, ikon SVG — GO.** ROI 85.7× ≥ 1, payback 0.2 bln.
 - **JEV-052 Lampu menerangi ruangannya dari kejauhan & dari luar (GI per ruang untuk semua lampu, semua lantai) — GO.** ROI 73.5× ≥ 1, payback 0.3 bln.
@@ -103,6 +106,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-055 Kaca realistis: Fresnel, serapan Beer–Lambert, pantulan aditif — jendela, pintu kaca, shower, dan kaca model — GO.** ROI 62.0× ≥ 1, payback 0.3 bln.
 - **JEV-057 Redesign UI/UX: kartu Mulai + rumah contoh, tab berikon (Tampilan terpisah), toolbar berlabel + menu Lainnya, pencarian furnitur, target sentuh ≥ 44 px — GO.** ROI 58.4× ≥ 1, payback 0.3 bln.
 - **JEV-059 Tekstur foto untuk objek (foto sendiri / pustaka Poly Haven) + pola tekstur tidak berulang — GO.** ROI 56.3× ≥ 1, payback 0.3 bln.
+- **JEV-082 Bentuk dasar padat (collider & bisa dipijak), prisma bebas & potongan bentuk lewat tracing, lantai bebas lewat tracing, tanah selalu di bawah lantai — GO.** ROI 55.3× ≥ 1, payback 0.3 bln.
 - **JEV-053 Lampu luar (dinding luar, teras, taman) menyala dari jauh tanpa bocor ke dalam rumah — GO.** ROI 50.2× ≥ 1, payback 0.4 bln.
 - **JEV-045 RAB/BOQ otomatis dari denah (volume, luas, bukaan × harga satuan) — DEFER.** ROI 47.6× menjanjikan, tetapi biaya 12,8 jt > 10 jt dengan bukti "anekdot" — validasi murah dulu (wawancara/prototipe) hingga bukti ≥ uji-pengguna. _Hipotesis ROI tertinggi di backlog — validasi dengan 5 wawancara arsitek/kontraktor sebelum dibangun (naikkan bukti ke uji-pengguna)._
 - **JEV-060 Sumber model dari Sketchfab, CGTrader & situs 3D gratis: pencarian Sketchfab + impor ZIP/OBJ/FBX — GO.** ROI 45.7× ≥ 1, payback 0.4 bln.
