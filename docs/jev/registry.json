@@ -3214,6 +3214,130 @@
     "target": "≥ 3",
     "tinjau": "2027-01-09"
    }
+  },
+  {
+   "id": "JEV-079",
+   "judul": "Lobi tanpa host: undangan tetap berlaku saat pembuat offline; pengunjung pertama jadi pusat koneksi, perannya pindah saat ia keluar; pemilik dikenali lewat tanda tangan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Ruang main bareng mati begitu pembuatnya menutup tab: undangan tidak bisa dipakai saat pemilik offline, dan semua tamu terputus bila host keluar.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"No host: links work even when the sharer is offline. The walk-together room becomes hostless: whoever arrives first becomes the connection hub automatically, and it hands over when they leave.\")",
+    "alternatif": [
+     "server relai/WebSocket sendiri yang selalu hidup (biaya, data lewat server)",
+     "jaring penuh (mesh) antar semua peserta (koneksi n², berat di HP)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 3,
+     "pemeliharaanJamPerTahun": 2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.25,
+      "pakaiPerTahun": 10,
+      "menitHemat": 15
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "aturan ruang (mode, maks.) ada di id ruang — mengubahnya berarti ruang lain; pemilik = pemegang kunci ECDSA P-256 yang sidik SHA-256 kunci publiknya (64 bit) ada di id; bukti = tanda tangan atas ruang|id peer|waktu (2 menit), kunci rahasia tidak pernah dikirim; suasana yang diteruskan pusat dinormalkan. Residual: pusat yang jahat bisa melanggar aturan di sesinya sendiri (proyek asli pemilik tidak tersentuh)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tetap tanpa server penyimpanan; kunci pemilik hanya di localStorage peramban pembuat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tetap topologi bintang (n koneksi); penyerahan berurutan menurut lama bergabung, jeda 0,9 dtk per urutan agar tidak berebut"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tanda pemilik / pusat koneksi / kamu sebagai label teks; pesan sistem saat pusat berpindah"
+    }
+   },
+   "metrik": {
+    "nama": "sesi lobi yang berlanjut setelah pembuat keluar",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-10"
+   }
+  },
+  {
+   "id": "JEV-080",
+   "judul": "Tab Taman terpisah (rumput 6 × 6 m bawaan, bisa disembunyikan), objek lingkungan (pohon, semak, batu, jalan), bentuk dasar berwarna, suara interaksi (klik / swoosh / audio sendiri), perbaikan unggah audio & gambar",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengaturan situs & taman tercampur di tab Objek dan tanah mati secara bawaan; katalog lingkungan kurang (batu besar, jalan siap pakai, semak bulat); tidak ada bentuk dasar untuk menyusun benda sendiri; interaksi tidak bisa diberi suara; unggah audio & gambar interaksi gagal (input lepas di iOS Safari, M4A berlabel mp42, foto HEIC).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-10 (\"sites and garden dipisah dari object, defaultnya grass 6x6 m udah aktif, bisa di hide, tambah object environment kategori kaya pohon, batu, path, dan semak terus object bisa nambah basic shape kaya box, cylinder, ball, cone. interaksi object ditambah sfx toggle (click, swoosh, play upload audio) audio sama image ga bisa upload\")",
+    "alternatif": [
+     "tetap satu tab Objek dengan filter kategori",
+     "bentuk dasar hanya lewat model unggahan"
+    ]
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 5,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.015
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "warna bentuk hanya #rrggbb; berkas tetap dibatasi 15 MB × 20; gambar non-web didekode peramban lalu disimpan ulang sebagai JPEG ≤ 2048 px (tanpa metadata EXIF); audio M4A hanya diterima bila nama/jenis berkas audio; sembunyi tanah hanya true"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "konversi JPEG membuang metadata lokasi foto"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "objek & suara disintesis sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "objek low-poly; audio suara didekode sekali lalu disimpan di memori"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tab berikon & berlabel; aksi 'Bunyikan' muncul sebagai tombol di mode jalan"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan ≥ 1 objek taman atau bentuk dasar",
+    "target": "≥ 40%",
+    "tinjau": "2027-01-10"
+   }
   }
  ]
 }

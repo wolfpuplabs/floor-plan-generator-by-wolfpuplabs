@@ -100,8 +100,17 @@ export const tes = {
     assert.deepEqual(m, [['film', 'image/gif']]);
     const warna = new Set();
     // WebGL perangkat lunak di CI: satu bingkai gambar bisa 1–2 detik — beri waktu cukup
-    // bingkai pertama bisa belum tergambar (layar gelap) di mesin lambat: tunggu sampai merah DAN biru terlihat
-    for (let i = 0; i < 120 && !(warna.has('255,0,0') && warna.has('0,0,255')); i++) { const s = await layar(page, id); if (s.px) warna.add(s.px.join(',')); await page.waitForTimeout(250); }
+    // layar dicicipi tiap bingkai gambar (rAF), bukan tiap 250 ms: GIF 2 bingkai berganti tiap langkah render,
+    // dan cicipan berselang tetap bisa selalu jatuh pada bingkai yang sama di mesin CI yang lajunya stabil
+    await page.evaluate(id => { window.__warnaTV = new Set();
+      const cicip = () => { let m = null; for (const g of grupObjek(id)) g.traverse(x => { if (x.isMesh && x.userData.layarTV) m = x; });
+        const c = m && m.material.emissiveMap && m.material.emissiveMap.image;
+        if (c && c.getContext) { const d = c.getContext('2d').getImageData(0, 0, 1, 1).data; window.__warnaTV.add(d[0] + ',' + d[1] + ',' + d[2]); }
+        if (window.__warnaTV.size < 8) requestAnimationFrame(cicip); };
+      requestAnimationFrame(cicip); }, id);
+    await page.waitForFunction(() => window.__warnaTV.has('255,0,0') && window.__warnaTV.has('0,0,255'), undefined, { timeout: 30000 })
+      .catch(() => {});
+    for (const w of await page.evaluate(() => [...window.__warnaTV])) warna.add(w);
     assert.deepEqual([...warna].filter(w => w === '255,0,0' || w === '0,0,255').sort(), ['0,0,255', '255,0,0'], 'kedua bingkai GIF tampil bergantian: ' + [...warna].join(' | '));
     const B = await page.evaluate(() => { const j = sanitasiProyek(JSON.parse(JSON.stringify(PROJECT)));
       const jahat = sanitasiProyek({ ...JSON.parse(JSON.stringify(PROJECT)), media: { x1: { nama: 'a', mime: 'text/html', data: 'PGI+' } } });

@@ -456,6 +456,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <button data-tab="plan" class="active" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-denah"/></svg></span>Denah</button>
       <button data-tab="levels" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-lantai"/></svg></span>Lantai</button>
       <button data-tab="objects" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-sofa"/></svg></span>Objek</button>
+      <button data-tab="taman" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-pohon"/></svg></span>Taman</button>
       <button data-tab="tampilan" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-palet"/></svg></span>Tampilan</button>
       <button data-tab="file" role="tab"><span class="ti" aria-hidden="true"><svg class="ik" aria-hidden="true"><use href="#i-simpan"/></svg></span>File</button>
     </nav>
@@ -690,10 +691,12 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <option value="kamar_mandi">Kamar Mandi</option>
         <option value="kerja">Ruang Kerja</option>
         <option value="audio">Audio &amp; Musik</option>
-        <option value="taman">Taman &amp; Luar</option>
         <option value="lain">Lainnya</option>
       </select></div>
       <div class="cat-grid" id="cat-furn"></div>
+      <div class="section-title">Bentuk dasar</div>
+      <div class="cat-grid" id="cat-bentuk"></div>
+      <p class="hint">Kotak, silinder, bola, dan kerucut 1 m — ubah ukuran dengan Skala, warnanya di inspector.</p>
       <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
       <div class="section-title">Model realistis &amp; model sendiri</div>
       <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi model realistis</button>
@@ -708,13 +711,31 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <p class="hint">Jumlah anak tangga dihitung otomatis dari tinggi lantai aktif dengan aturan optrede 15–19 cm dan rumus 2R + A = 60–65 cm.</p>
       <div class="section-title">Struktur</div>
       <div class="cat-grid" id="cat-struct"></div>
-      <div class="section-title">Lingkungan &amp; Taman</div>
+      <div class="section-title">Void (Lubang Pelat Lantai)</div>
+      <div class="cat-grid" id="cat-void"></div>
+      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
+    </div>
+
+    <!-- ============ TAB TAMAN (situs & lingkungan, JEV-080) ============ -->
+    <div class="tab-body" data-panel="taman" hidden>
+      <div class="section-title">Tanah situs</div>
+      <label class="chk"><input type="checkbox" id="situsTampil" checked><span>Tampilkan tanah situs</span></label>
       <div class="f-grid">
-        <div class="group"><label>Tanah situs</label><select id="situsTanah">
+        <div class="group"><label>Jenis tanah</label><select id="situsTanah">
           <option value="none">Tidak ada</option><option value="rumput">Rumput</option><option value="tanah">Tanah</option><option value="kerikil">Kerikil</option><option value="paving">Paving</option></select></div>
         <div class="group"><label>Luas di luar bangunan (m)</label><input type="number" id="situsMargin" value="6" min="0" max="60" step="1"></div>
       </div>
-      <div class="group"><label>Bentuk tanah</label></div>
+      <p class="hint">Proyek baru langsung beralas rumput: 6 × 6 m di sekitar titik tengah, lalu ikut meluas mengelilingi rumah sejauh angka di atas.</p>
+      <div class="section-title">Pohon, semak, batu &amp; jalan</div>
+      <div class="row"><select id="taman-filter" aria-label="Kategori lingkungan">
+        <option value="all">Semua</option><option value="pohon">Pohon</option><option value="semak">Semak &amp; bunga</option>
+        <option value="batu">Batu</option><option value="jalan">Jalan setapak</option><option value="perabot">Perabot taman</option>
+      </select></div>
+      <div class="cat-grid" id="cat-taman"></div>
+      <div class="section-title">Area &amp; jalur (tracing)</div>
+      <div class="cat-grid" id="cat-situs"></div>
+      <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.</p>
+      <div class="section-title">Bentuk tanah</div>
       <div class="row tanah-alat" role="group" aria-label="Kuas tanah">
         <button class="btn sm ghost" data-tanah="naik">Naikkan</button><button class="btn sm ghost" data-tanah="turun">Turunkan</button>
         <button class="btn sm ghost" data-tanah="ratakan">Ratakan</button><button class="btn sm ghost" data-tanah="haluskan">Haluskan</button>
@@ -725,11 +746,6 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       </div>
       <div class="row"><button class="btn sm ghost" id="tanahReset">Datarkan semua tanah</button></div>
       <p class="hint">Pilih kuas lalu sapukan jari / mouse di tanah. Di sekitar rumah tanah otomatis tetap di bawah lantai; di mode jalan kaki mengikuti bukit &amp; lembah.</p>
-      <div class="cat-grid" id="cat-situs"></div>
-      <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs. Pohon, bunga, gazebo, dan perabot taman lain ada di katalog <b>Taman &amp; Luar</b> di atas.</p>
-      <div class="section-title">Void (Lubang Pelat Lantai)</div>
-      <div class="cat-grid" id="cat-void"></div>
-      <p class="hint">Void memotong pelat lantai aktif — dipakai untuk rongga tangga, void ruang tamu, atau lubang lift. Geser dan skala seperti objek lain; ukurannya bisa diketik di inspector. Beberapa void yang saling menindih menyatu jadi satu lubang, jadi bentuk bebas bisa disusun dari beberapa kotak. Cara cepat: pilih tangganya, lalu tekan <b>Lubangi lantai di atas</b>.</p>
     </div>
 
     <!-- ============ TAB FILE ============ -->
@@ -751,10 +767,11 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="section-title">Main bareng (lobi)</div>
       <div id="lobiSiap">
         <p class="hint">Undang teman masuk ke rumah ini: tiap orang menulis nama, tampil sebagai karakter, jalan-jalan bersama &amp; mengobrol. Koneksi langsung antar-peramban — rumah tidak disimpan di server.</p>
-        <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Host"></div>
+        <p class="hint">Undangan tetap berlaku walau kamu offline: siapa pun yang masuk duluan otomatis jadi pusat koneksi, dan perannya pindah ke orang lain saat ia keluar.</p>
+        <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Pemilik"></div>
         <div class="group"><label>Izin tamu</label>
           <div class="row lobi-mode" role="group" aria-label="Izin tamu"><button class="btn sm ghost active" data-lobi-mode="lihat" aria-pressed="true">Lihat saja</button><button class="btn sm ghost" data-lobi-mode="edit" aria-pressed="false">Bangun bareng</button></div>
-          <p class="hint">Lihat saja: tamu jalan-jalan &amp; mengobrol. Bangun bareng: tamu juga ikut mengubah rumah.</p>
+          <p class="hint">Lihat saja: tamu jalan-jalan, mengobrol &amp; menyalakan lampu dsb.; hanya kamu yang mengubah rumah &amp; suasana. Bangun bareng: semua ikut mengubah rumah.</p>
         </div>
         <div class="group"><label for="lobiMaks">Maks. orang per ruang (termasuk kamu)</label><select id="lobiMaks"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option selected>10</option></select></div>
         <button class="btn" id="lobiBuat"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat ruang &amp; undangan</button>
@@ -764,7 +781,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <input type="text" id="lobiUrl" readonly aria-label="Tautan undangan">
         <div class="row"><button class="btn sm" id="lobiSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin undangan</button><button class="btn sm ghost" id="lobiKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
         <ul id="lobiDaftar"></ul>
-        <button class="btn danger" id="lobiTutup">Tutup ruang</button>
+        <button class="btn ghost" id="lobiTutup">Keluar dari ruang</button>
       </div>
       <div class="section-title">AR / Model Viewer</div>
       <button class="btn ghost" id="arBtn2">Buka AR Viewer</button>
@@ -1113,7 +1130,7 @@ const PROJECT = { name:'Denah 3D', pxPerMeter:30, levels:[], active:0, assets:{}
   // finishing dinding dibedakan muka dalam dan muka luar, seperti gambar kerja
   finish:{ in:'cat', out:'plester', floor:'keramik', inColor:'#efece5', outColor:'#d9d3c7' },
   atap:{ tritisan:0.6, tebal:0.12 },
-  site:{ tanah:'none', margin:6 },
+  site:{ tanah:'rumput', margin:6 },                 // proyek baru langsung beralas rumput (JEV-080)
   media:{},                       // video / GIF untuk layar TV: { [mid]: {nama, mime, data(base64)} } (JEV-065)
   tekstur:{},                     // tekstur foto objek: { [tid]: {nama, sumber:'foto', data, aspek} | {nama, sumber:'ph', ph, res} }
   langit:{ mode:'prosedural', jenis:'acak', id:null, nama:'', putar:0, res:'4k', editor:true, pilih:'manual' } };   // langit: prosedural atau foto 360°                // tanah situs di sekeliling bangunan             // plat atap (dak) di atas lantai teratas
@@ -5009,7 +5026,7 @@ function luasSitus(){
   const ikut=(x,z)=>{ x0=Math.min(x0,x); x1=Math.max(x1,x); z0=Math.min(z0,z); z1=Math.max(z1,z); };
   if(lv){ for(const w of lv.walls){ ikut(w.x1,w.z1); ikut(w.x2,w.z2); }
     for(const o of lv.objects){ if(o.kind==='area'||o.kind==='garis') for(const [x,z] of (o.kind==='area'?areaDunia(o):garisPoli(o).map(([x,z])=>[o.x+x,o.z+z]))) ikut(x,z); else ikut(o.x,o.z); } }
-  if(x0>x1){ x0=-6; x1=6; z0=-6; z1=6; }
+  if(x0>x1) return [-3,3,-3,3];                       // proyek kosong: petak rumput 6 × 6 m
   const m=clamp((PROJECT.site||{}).margin??6,0,60);
   return [x0-m,x1+m,z0-m,z1+m];
 }
@@ -5020,7 +5037,7 @@ function reliefDi(x,z){
   return (h(i,k)*(1-u)+h(i+1,k)*u)*(1-v)+(h(i,k+1)*(1-u)+h(i+1,k+1)*u)*v;
 }
 function diMasker(M,x,z){ const i=Math.floor((x-M.x0)/M.c), k=Math.floor((z-M.z0)/M.c); return i>=0&&k>=0&&i<M.nx&&k<M.nz&&!!M.T[i*M.nz+k]; }
-function adaTanahSitus(){ const st=PROJECT.site; return !!(st&&st.tanah&&st.tanah!=='none'); }
+function adaTanahSitus(){ const st=PROJECT.site; return !!(st&&st.tanah&&st.tanah!=='none'&&!st.sembunyi); }
 // permukaan tanah di (x,z) — dipakai mesh tanah dan pijakan mode jalan
 function tinggiTanah(x,z){ let h=TANAH_DASAR+reliefDi(x,z); if(TANAH.masker&&diMasker(TANAH.masker,x,z)) h=Math.min(h,-0.12); return h; }
 function buildSitus(opsi={}){
@@ -5154,6 +5171,58 @@ function airMancur(){ const g=new THREE.Group();
 function batuHias(){ const g=new THREE.Group(), R=acak(71);
   for(const [x,z,r] of [[0,0,0.35],[0.45,0.15,0.22],[-0.35,0.25,0.18],[0.15,-0.35,0.15]]){ const m=msh(new THREE.DodecahedronGeometry(r,0),MAT.batuTaman,x,r*0.55,z); m.scale.y=0.7; m.rotation.set(R()*3,R()*3,R()*3); g.add(m); }
   return g; }
+
+/* ---------- LINGKUNGAN TAMBAHAN & BENTUK DASAR (JEV-080) ---------- */
+// geser tiap titik menurut posisinya sendiri — geometri three.js tidak berindeks, titik sudut yang sama
+// muncul di beberapa segitiga dan harus bergeser sama agar permukaan tidak retak
+function benjol(geo,seed,a,b,sx=1,sy=1,sz=1){
+  const p=geo.attributes.position;
+  for(let i=0;i<p.count;i++){ const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    const h=Math.sin(x*12.9898+y*78.233+z*37.719+seed)*43758.5453, k=a+(h-Math.floor(h))*b;
+    p.setXYZ(i,x*k*sx,y*k*sy,z*k*sz); }
+  geo.computeVertexNormals(); return geo; }
+const KELOMPOK_TAMAN={pohon:'pohon', pohon_cemara:'pohon', pohon_palem:'pohon',
+  semak:'semak', semak_bulat:'semak', rumput_hias:'semak', pagar_semak:'semak', bunga:'semak', bedeng_bunga:'semak', pot_taman:'semak',
+  batu_hias:'batu', batu_besar:'batu', batu_kecil:'batu', batu_pijak:'jalan', jalur_paving:'jalan', jalur_kerikil:'jalan', jalur_kayu:'jalan'};
+function kelompokTaman(k){ return KELOMPOK_TAMAN[k]||'perabot'; }
+function batuBesar(){ const g=new THREE.Group(), R=acak(113);
+  g.add(msh(benjol(new THREE.IcosahedronGeometry(0.62,1),3.1,0.82,0.32,1.15,0.75,1),MAT.batuTaman,0,0.36,0));
+  for(const [x,z,r] of [[0.62,0.3,0.16],[-0.55,-0.32,0.12],[0.2,-0.55,0.1]]){ const m=msh(new THREE.DodecahedronGeometry(r,0),MAT.batuTaman,x,r*0.5,z); m.scale.y=0.65; m.rotation.set(R()*3,R()*3,R()*3); g.add(m); }
+  return g; }
+function batuKecil(){ const g=new THREE.Group(), R=acak(131);
+  for(let i=0;i<11;i++){ const a=R()*6.28, r=R()*0.36, s=0.05+R()*0.07; const m=msh(new THREE.DodecahedronGeometry(s,0),MAT.batuTaman,Math.cos(a)*r,s*0.45,Math.sin(a)*r*0.75); m.scale.y=0.6; m.rotation.set(R()*3,R()*3,R()*3); g.add(m); }
+  return g; }
+function semakBulat(){ const g=new THREE.Group();
+  g.add(msh(benjol(new THREE.IcosahedronGeometry(0.45,2),7.7,0.94,0.1),MAT.daunTaman,0,0.45,0)); return g; }
+function rumputHias(){ const g=new THREE.Group(), R=acak(157);
+  for(let i=0;i<22;i++){ const a=R()*6.28, r=R()*0.12, h=0.45+R()*0.35, m=msh(new THREE.ConeGeometry(0.018,h,4),[MAT.daunTaman2,MAT.daunTaman][i%2],Math.cos(a)*r,h/2,Math.sin(a)*r);
+    m.rotation.set((R()-0.5)*0.6,0,(R()-0.5)*0.6); g.add(m); }
+  return g; }
+function pagarSemak(){ const g=new THREE.Group(); g.add(box(2.0,0.9,0.55,MAT.daunTaman,0,0.45,0));
+  for(const x of [-0.6,0,0.6]) g.add(msh(new THREE.IcosahedronGeometry(0.33,1),MAT.daunTaman3,x,0.82,0)); return g; }
+function batuPijak(){ const g=new THREE.Group(), R=acak(167);
+  for(let i=0;i<4;i++){ const m=msh(new THREE.CylinderGeometry(0.26+R()*0.04,0.28+R()*0.04,0.05,9),MAT.batuTaman,(R()-0.5)*0.12,0.025,-0.9+i*0.6); m.rotation.y=R()*3; g.add(m); }
+  return g; }
+function jalurPaving(jenis){ const g=new THREE.Group();
+  const mat=matSitus(jenis), geo=uvDunia(new THREE.PlaneGeometry(1.2,3).rotateX(-Math.PI/2),mat.userData.ukuran);
+  const m=msh(geo,mat,0,0.025,0); m.castShadow=false; g.add(m);
+  for(const sx of [-1,1]) g.add(box(0.05,0.05,3,MAT.batuTaman,sx*0.625,0.02,0));
+  return g; }
+function jalurKayu(){ const g=new THREE.Group();
+  for(let i=0;i<20;i++) g.add(box(1.2,0.035,0.14,i%2?MAT.wood:MAT.woodDark,0,0.06,-1.43+i*0.15));
+  for(const sx of [-1,1]) g.add(box(0.06,0.05,3,MAT.woodDark,sx*0.5,0.02,0));
+  return g; }
+// bentuk dasar 1 m: warnanya dipasang buildObject dari params.warna
+function bentukDasar(jenis){ const g=new THREE.Group();
+  const geo=jenis==='kotak'?new THREE.BoxGeometry(1,1,1):jenis==='silinder'?new THREE.CylinderGeometry(0.5,0.5,1,40):jenis==='bola'?new THREE.SphereGeometry(0.5,40,24):new THREE.ConeGeometry(0.5,1,40);
+  const m=msh(geo,MAT.bentuk||(MAT.bentuk=new THREE.MeshStandardMaterial({color:0xd8d2c4, roughness:0.55})),0,0.5,0); m.userData.bentuk=true; g.add(m);
+  return g; }
+const WARNA_BENTUK=/^#[0-9a-f]{6}$/i;
+function warnaiBentuk(g,o){
+  const w=o.params&&WARNA_BENTUK.test(o.params.warna)?o.params.warna:null; if(!w) return;
+  const mat=new THREE.MeshStandardMaterial({color:w, roughness:0.55});
+  g.traverse(m=>{ if(m.isMesh&&m.userData.bentuk) m.material=mat; });
+}
 
 /* ---------- LAIN-LAIN ---------- */
 function ottoman(){ const g=new THREE.Group(); g.add(cyl(0.3,0.3,0.36,MAT.velvet2,0,0.24,0,32)); g.add(cyl(0.3,0.26,0.06,MAT.woodDark,0,0.03,0,32)); return g; }
@@ -5312,6 +5381,19 @@ const FURN={
   payung_taman:{l:'Payung Taman',       i:'⛱️', c:'taman',   f:[2.8,2.8],   b:payungTaman},
   air_mancur  :{l:'Air Mancur',         i:'⛲', c:'taman',   f:[1.9,1.9],   b:airMancur},
   batu_hias   :{l:'Batu Hias',          i:'🪨', c:'taman',   f:[1.1,0.9],   b:batuHias},
+  batu_besar  :{l:'Batu Besar',         i:'🪨', c:'taman',   f:[1.6,1.3],   b:batuBesar},
+  batu_kecil  :{l:'Kerikil Hias',       i:'🪨', c:'taman',   f:[0.9,0.7],   b:batuKecil},
+  semak_bulat :{l:'Semak Bulat',        i:'🌳', c:'taman',   f:[0.9,0.9],   b:semakBulat},
+  rumput_hias :{l:'Rumput Hias',        i:'🌾', c:'taman',   f:[0.6,0.6],   b:rumputHias},
+  pagar_semak :{l:'Pagar Semak',        i:'🌿', c:'taman',   f:[2.0,0.6],   b:pagarSemak},
+  batu_pijak  :{l:'Batu Pijakan',       i:'🪨', c:'taman',   f:[0.6,2.4],   b:batuPijak},
+  jalur_paving:{l:'Jalan Paving',       i:'🧱', c:'taman',   f:[1.2,3.0],   b:()=>jalurPaving('paving')},
+  jalur_kerikil:{l:'Jalan Kerikil',     i:'🪨', c:'taman',   f:[1.2,3.0],   b:()=>jalurPaving('kerikil')},
+  jalur_kayu  :{l:'Jalan Papan Kayu',   i:'🪵', c:'taman',   f:[1.2,3.0],   b:jalurKayu},
+  bentuk_kotak:{l:'Kotak',              i:'⬛', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('kotak')},
+  bentuk_silinder:{l:'Silinder',        i:'⚫', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('silinder')},
+  bentuk_bola :{l:'Bola',               i:'⚪', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('bola')},
+  bentuk_kerucut:{l:'Kerucut',          i:'🔺', c:'bentuk',  f:[1,1],       b:()=>bentukDasar('kerucut')},
   room_divider:{l:'Partisi Lipat',      i:'🪟', c:'ruang',   f:[1.4,0.5],   b:roomDivider},
   coat_rack   :{l:'Gantungan Baju',     i:'🧥', c:'ruang',   f:[0.5,0.5],   b:coatRack},
   floor_vase  :{l:'Vas Lantai + Pampas',i:'🏺', c:'ruang',   f:[0.6,0.6],   b:floorVase},
@@ -6322,6 +6404,11 @@ function sfx(jenis,titik){
       derau(ctx,tb,0.08,envGain(ctx,kayu,tb,0.002,0.22,0.07));
       gagang(tb+0.02,0.8);
     }
+  } else if(jenis==='swoosh'){                               // ayunan udara cepat: derau, pita frekuensi menyapu naik lalu turun
+    const bp=filt('bandpass',400,1.2); bp.connect(d);
+    bp.frequency.setValueAtTime(400,t); bp.frequency.exponentialRampToValueAtTime(2600,t+0.16); bp.frequency.exponentialRampToValueAtTime(700,t+0.34);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.5,t+0.12); g.gain.exponentialRampToValueAtTime(0.0001,t+0.36); g.connect(bp);
+    derau(ctx,t,0.38,g);
   } else if(jenis==='gorden'){                                // kain bergeser
     const bp=filt('bandpass',3200,0.7); bp.connect(d);
     const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.35,t+0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+0.75); g.connect(bp);
@@ -6847,6 +6934,7 @@ function buildObject(o, lv){
     BUILD_LV=lv;                      // benda gantung membaca tinggi plafon lantainya
     g = def ? def.b() : new THREE.Group();
     BUILD_LV=null;
+    if(def && def.c==='bentuk') warnaiBentuk(g,o);
     // semua bagian menerima bayangan — bagian yang dibuat langsung dengan
     // new THREE.Mesh (bak wastafel, mangkuk kloset, …) dulu terlewat dan
     // tampak "menyala" di ruang gelap karena cahaya bulan tidak terhalang
@@ -7448,6 +7536,11 @@ function renderInspector(){
     addTransformFields(ins,d,true);
   }
 
+  if(SEL.kind==='obj' && d.kind==='furn' && FURN[d.type] && FURN[d.type].c==='bentuk'){
+    const w=document.createElement('input'); w.type='color'; w.value=d.params&&WARNA_BENTUK.test(d.params.warna)?d.params.warna:'#d8d2c4';
+    w.onchange=()=>{ d.params=d.params||{}; d.params.warna=w.value; HIST.label='Warna bentuk'; rebuildScene(); };
+    fRow(ins,'Warna',w);
+  }
   if(SEL.kind==='obj' && (d.kind==='furn'||d.kind==='model')) inspektorAksi(ins,d);
   ins.appendChild(el('div','section-title','Aksi'));
   const row=el('div','row');
@@ -11751,6 +11844,7 @@ function renderCatalogs(){
   const filt=$('#furn-filter').value, cari=($('#furnCari').value||'').trim().toLowerCase();
   let ada=0;
   for(const [k,v] of Object.entries(FURN)){
+    if(v.c==='taman'||v.c==='bentuk') continue;          // punya tempat sendiri: tab Taman & "Bentuk dasar"
     if(filt!=='all'&&v.c!==filt) continue;
     if(cari && !(v.l+' '+k.replace(/_/g,' ')+' '+v.c.replace(/_/g,' ')).toLowerCase().includes(cari)) continue;
     ada++;
@@ -11761,8 +11855,15 @@ function renderCatalogs(){
     cf.appendChild(b);
   }
   if(!ada) cf.appendChild(el('p','hint','Tidak ada furnitur yang cocok — coba kata lain atau pilih "Semua kategori".'));
+  const tambahItem=(wadah,k,v)=>{ const b=el('div','cat-item'); b.innerHTML=ikonObjek('furn',k)+v.l; b.title=`${v.f[0]}×${v.f[1]} m`; b.onclick=()=>addObject('furn',k); wadah.appendChild(b); };
+  const cb=$('#cat-bentuk'); cb.innerHTML='';
+  for(const [k,v] of Object.entries(FURN)) if(v.c==='bentuk') tambahItem(cb,k,v);
+  const ct=$('#cat-taman'); ct.innerHTML='';
+  const ft=$('#taman-filter').value;
+  for(const [k,v] of Object.entries(FURN)) if(v.c==='taman' && (ft==='all'||kelompokTaman(k)===ft)) tambahItem(ct,k,v);
 }
 $('#furn-filter').addEventListener('change',renderCatalogs);
+$('#taman-filter').addEventListener('change',renderCatalogs);
 
 /* =====================================================================
    THUMBNAIL KATALOG — gambar 3D kecil tiap objek, digambar dengan builder
@@ -12767,7 +12868,7 @@ function sanitasiProyek(j){
     active:clamp(Math.floor(+j.active||0),0,levels.length-1), assets, plans, tekstur, media,
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
     atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12), ...(j.atap&&j.atap.tutup===true?{tutup:true}:{})},
-    site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6), ...reliefAman(j.site&&j.site.relief)},
+    site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6), ...(j.site&&j.site.sembunyi===true?{sembunyi:true}:{}), ...reliefAman(j.site&&j.site.relief)},
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
 }
@@ -12826,10 +12927,23 @@ $('#tvMediaInput').onchange=async e=>{
   }catch(err){ toast('Gagal: '+(err.message||err)); }
 };
 /* ---------- inspector: interaksi tambahan (JEV-076) ---------- */
+// gambar yang tidak didukung langsung (HEIC iPhone, BMP, AVIF…) atau terlalu besar: dibaca peramban, disimpan JPEG ≤ 2048 px
+async function keJPEG(f,maks=2048){
+  const bmp=await createImageBitmap(f), k=Math.min(1,maks/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(bmp.width*k)); c.height=Math.max(1,Math.round(bmp.height*k));
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); if(bmp.close) bmp.close();
+  const b=await new Promise(ok=>c.toBlob(ok,'image/jpeg',0.86)); if(!b) throw new Error('gambar tidak bisa dibaca');
+  return b.arrayBuffer();
+}
 async function unggahMediaObjek(f,jenis){
   if(f.size>MEDIA_BATAS.mb*1048576) throw new Error(`berkas ${fmt(f.size/1048576,1)} MB melebihi batas ${MEDIA_BATAS.mb} MB`);
-  const buf=await f.arrayBuffer(), mime=jenisMedia(new Uint8Array(buf,0,Math.min(16,buf.byteLength)));
-  if(!mime || !mime.startsWith(jenis+'/')) throw new Error(jenis==='audio'?'perlu musik MP3 / M4A / OGG / WAV':'perlu gambar JPG / PNG / WebP / GIF');
+  let buf=await f.arrayBuffer(), mime=jenisMedia(new Uint8Array(buf,0,Math.min(16,buf.byteLength)));
+  const ext=((f.name||'').match(/\.([a-z0-9]+)$/i)||[])[1]||'';
+  // M4A/AAC dari iPhone & perekam sering berlabel mp42/isom (dikira video): percaya nama/jenis berkasnya bila audio
+  if(jenis==='audio' && mime==='video/mp4' && (/^audio\//.test(f.type) || /^(m4a|m4b|aac|mp4a)$/i.test(ext))) mime='audio/mp4';
+  if(jenis==='image' && (!mime || !mime.startsWith('image/') || (mime!=='image/gif' && f.size>2.5*1048576))){
+    try{ buf=await keJPEG(f); mime='image/jpeg'; }catch(e){ /* tetap ditolak di bawah */ } }
+  if(!mime || !mime.startsWith(jenis+'/')) throw new Error(jenis==='audio'?'perlu musik MP3 / M4A / OGG / WAV':'perlu gambar JPG / PNG / WebP / GIF / HEIC');
   PROJECT.media=PROJECT.media||{};
   if(Object.keys(PROJECT.media).length>=MEDIA_BATAS.jumlah) throw new Error(`maksimal ${MEDIA_BATAS.jumlah} berkas media per proyek`);
   const mid=uid('md'); PROJECT.media[mid]={nama:f.name.replace(/\.[^.]+$/,'').slice(0,120)||jenis, mime, data:b64FromBuf(buf)}; return mid;
@@ -12838,7 +12952,7 @@ async function unggahMediaObjek(f,jenis){
 function buangMediaYatim(mid){
   if(!mid||!PROJECT.media||!PROJECT.media[mid]) return;
   for(const lv of PROJECT.levels) for(const o of lv.objects){ const p=o.params||{}, a=p.aksi||{};
-    if(p.tvMedia===mid||a.musik===mid||(a.detail&&a.detail.gambar===mid)) return; }
+    if(p.tvMedia===mid||a.musik===mid||a.sfxMedia===mid||(a.detail&&a.detail.gambar===mid)) return; }
   delete PROJECT.media[mid];
 }
 const LABEL_BAWAAN={lampu:'menyalakan / mematikan lampu', duduk:'duduk', tv:'menyalakan TV', audio:'memutar musik', piano:'bermain piano', api:'menyalakan api', gorden:'membuka / menutup gorden'};
@@ -12850,8 +12964,13 @@ function inspektorAksi(ins,d){
   ins.appendChild(el('div','section-title','Interaksi'));
   const bw=NYALA_JENIS[d.type]; if(bw) ins.appendChild(el('p','hint','Bawaan: '+LABEL_BAWAAN[bw]+'. Interaksi di bawah ditambahkan sebagai tombol berikutnya.'));
   const centang=(label,on,ubah)=>{ const l=el('label','cek'), c=document.createElement('input'); c.type='checkbox'; c.checked=on; c.onchange=()=>ubah(c.checked); l.appendChild(c); l.appendChild(document.createTextNode(' '+label)); ins.appendChild(l); return c; };
-  const pilihBerkas=(accept,cb)=>{ const i=document.createElement('input'); i.type='file'; i.accept=accept; i.onchange=async()=>{ const f=i.files&&i.files[0]; if(!f) return;
-    try{ await cb(f); }catch(err){ toast('Gagal: '+(err.message||err)); } }; i.click(); };
+  // input berkas ditempel ke dokumen: iOS Safari tidak memicu 'change' untuk input yang tidak terpasang
+  const pilihBerkas=(accept,cb)=>{ const i=document.createElement('input'); i.type='file'; i.accept=accept;
+    i.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(i);
+    i.addEventListener('cancel',()=>i.remove());
+    i.onchange=async()=>{ const f=i.files&&i.files[0]; i.remove(); if(!f) return;
+      try{ await cb(f); }catch(err){ toast('Gagal: '+(err.message||err)); } };
+    i.click(); };
   // DETAIL
   centang('Detail — panel info & tautan saat diketuk',!!A.detail,v=>{ if(v) A.detail={judul:'',teks:'',url:''}; else { const g=A.detail&&A.detail.gambar; delete A.detail; buangMediaYatim(g); } simpan('detail'); });
   if(A.detail){
@@ -12863,7 +12982,7 @@ function inspektorAksi(ins,d){
       if(v && !/^https?:\/\/[^\s]+$/i.test(v)){ toast('Tautan harus diawali https://'); renderInspector(); return; } D.url=v.slice(0,500); simpan('tautan detail'); }));
     const r=el('div','row');
     const bg=tombolIkon('btn sm ghost','folder',D.gambar?'Ganti gambar':'Gambar sendiri…');
-    bg.onclick=()=>pilihBerkas('image/*',async f=>{ const lama=D.gambar; D.gambar=await unggahMediaObjek(f,'image'); simpan('gambar detail'); buangMediaYatim(lama); toast('Gambar detail: '+f.name); });
+    bg.onclick=()=>pilihBerkas('image/*,.heic,.heif',async f=>{ const lama=D.gambar; D.gambar=await unggahMediaObjek(f,'image'); simpan('gambar detail'); buangMediaYatim(lama); toast('Gambar detail: '+f.name); });
     r.appendChild(bg);
     if(D.gambar){ const bh=tombolIkon('btn sm ghost','hapus','Hapus gambar'); bh.onclick=()=>{ const g=D.gambar; delete D.gambar; simpan('hapus gambar detail'); buangMediaYatim(g); }; r.appendChild(bh); }
     ins.appendChild(r);
@@ -12873,11 +12992,24 @@ function inspektorAksi(ins,d){
   const nm=A.musik&&PROJECT.media&&PROJECT.media[A.musik];
   const rm=el('div','row');
   const bm=tombolIkon('btn sm ghost','suara',nm?'Ganti musik':'Musik sendiri…');
-  bm.onclick=()=>pilihBerkas('audio/*',async f=>{ const lama=A.musik; A.musik=await unggahMediaObjek(f,'audio'); if(A.ulang===undefined) A.ulang=true; simpan('musik'); buangMediaYatim(lama); toast('Musik: '+f.name); });
+  bm.onclick=()=>pilihBerkas('audio/*,.mp3,.m4a,.aac,.wav,.ogg',async f=>{ const lama=A.musik; A.musik=await unggahMediaObjek(f,'audio'); if(A.ulang===undefined) A.ulang=true; simpan('musik'); buangMediaYatim(lama); toast('Musik: '+f.name); });
   rm.appendChild(bm);
   if(nm){ const bh=tombolIkon('btn sm ghost','hapus','Hapus musik'); bh.onclick=()=>{ const m=A.musik; hentikanMusikUnggah(d.id); delete A.musik; delete A.ulang; simpan('hapus musik'); buangMediaYatim(m); }; rm.appendChild(bh); }
   ins.appendChild(rm);
   if(nm){ ins.appendChild(el('p','hint','♪ '+nm.nama+' — diputar dari posisi objek di mode jalan.')); centang('Ulang terus',A.ulang!==false,v=>{ A.ulang=v; simpan('ulang musik'); }); }
+  // SUARA SAAT DIKETUK (JEV-080): klik, swoosh, atau audio sendiri — menyertai aksi lain, atau jadi aksi sendiri
+  fRow(ins,'Suara saat diketuk',selInput([['','Tanpa suara'],['klik','Klik'],['swoosh','Swoosh'],['unggah','Audio sendiri']],A.sfx||'',v=>{
+    const lama=A.sfxMedia; if(v) A.sfx=v; else delete A.sfx;
+    if(v!=='unggah'){ delete A.sfxMedia; simpan('suara'); buangMediaYatim(lama); } else simpan('suara'); }));
+  if(A.sfx){
+    const rs=el('div','row'), ns=A.sfxMedia&&PROJECT.media&&PROJECT.media[A.sfxMedia];
+    if(A.sfx==='unggah'){ const bu=tombolIkon('btn sm ghost','suara',ns?'Ganti audio':'Pilih audio…');
+      bu.onclick=()=>pilihBerkas('audio/*,.mp3,.m4a,.aac,.wav,.ogg',async f=>{ const lama=A.sfxMedia; A.sfxMedia=await unggahMediaObjek(f,'audio'); simpan('audio suara'); buangMediaYatim(lama); toast('Suara: '+f.name); });
+      rs.appendChild(bu); }
+    const bc=tombolIkon('btn sm ghost','main','Coba'); bc.onclick=()=>{ const c=audioSiap(); if(c&&c.state!=='running') c.resume().catch(()=>{}); sfxObjek(d.id); }; rs.appendChild(bc);
+    ins.appendChild(rs);
+    if(A.sfx==='unggah') ins.appendChild(el('p','hint',ns?'♪ '+ns.nama:'Pilih berkas MP3 / M4A / WAV / OGG pendek.'));
+  }
   // HADAP KAMERA
   centang('Selalu menghadap pengunjung (mode jalan & lihat)',A.hadap===true,v=>{ if(v) A.hadap=true; else delete A.hadap; simpan('hadap kamera'); });
 }
@@ -13102,7 +13234,7 @@ async function buatTautanLihat(kemajuan=()=>{}){
   let mediaDitinggal=0;
   const dipakaiTV=new Set();
   for(const lv of PROJECT.levels) for(const o of lv.objects){ if(o.params&&o.params.tvMedia) dipakaiTV.add(o.params.tvMedia);
-    const ak=aksiObjek(o); if(ak){ if(ak.musik) dipakaiTV.add(ak.musik); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
+    const ak=aksiObjek(o); if(ak){ if(ak.musik) dipakaiTV.add(ak.musik); if(ak.sfxMedia) dipakaiTV.add(ak.sfxMedia); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
   for(const [k,md] of Object.entries(PROJECT.media||{})){
     if(!dipakaiTV.has(k)) continue;
     const b=await lampirkan(md.nama,new Uint8Array(bufFromB64(md.data)));
@@ -13226,7 +13358,7 @@ $('#lobiKirim').onclick=async()=>{
   if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Ayo masuk ke '+PROJECT.name+' bareng', url:u}); }catch(e){} }
   else $('#lobiSalin').click();
 };
-$('#lobiTutup').onclick=()=>{ if(window.LOBI) window.LOBI.tutup(); toast('Ruang ditutup'); };
+$('#lobiTutup').onclick=()=>{ if(window.LOBI) window.LOBI.tutup(); toast('Kamu keluar dari ruang — undangan tetap berlaku'); };
 /* penerima tautan: mode lihat — jalan-jalan & interaksi (pintu, lampu, duduk) boleh,
    mengubah proyek tidak */
 // galat tautan tampil TETAP di bilah lihat-saja (toast hilang dalam 2½ detik — di HP pemakai
@@ -13472,6 +13604,10 @@ const kubahLangit=new THREE.Mesh(new THREE.SphereGeometry(300,48,24), matLangit(
 kubahLangit.frustumCulled=false; kubahLangit.renderOrder=-10; kubahLangit.visible=false; kubahLangit.raycast=()=>{};
 kubahLangit.onBeforeRender=(r,sc,cam)=>{ kubahLangit.position.copy(cam.position); kubahLangit.updateMatrixWorld(); };
 scene.add(kubahLangit);
+/* main bareng: suasana/langit yang diganti di sini dilaporkan ke ruang; yang datang dari ruang
+   (pasangAdegan) tidak dipantulkan balik */
+let ADEGAN_LUAR=0;
+function laporAdegan(){ if(!ADEGAN_LUAR && window.LOBI && window.LOBI.aktif) window.LOBI.adegan(adeganKini()); }
 function terapkanLangit(){
   const foto=fotoAktif(), tampil=FPS.on || (foto && langitP().editor!==false && !camera.isOrthographicCamera);
   if(kubahFoto) kubahFoto.visible=tampil&&foto;
@@ -13497,6 +13633,7 @@ function setSuasana(k){
   terapkanLangit(); LAMPU_T=0;
   sun.userData.arah.set(...s.sunPos).normalize(); pasBayangMatahari();
   if(fotoAktif()){ terapkanCahayaFoto(); langitIkutSuasana(); }
+  laporAdegan();
 }
 /* ======================================================================
    LANGIT FOTO 360° — panorama HDR sungguhan (Poly Haven, lisensi CC0)
@@ -13705,6 +13842,7 @@ function pasangPano(P,info){
   const lp=langitP(); lp.mode='foto'; lp.id=info.id; lp.nama=info.nama;
   terapkanCahayaFoto();
   renderLangitUI();
+  laporAdegan();
 }
 /* --- jaringan: daftar HDRI Poly Haven + unduhan dengan progres & cache --- */
 const LANGIT_CACHE='langit360-v1';
@@ -13857,13 +13995,14 @@ async function unggahLangit(file){
   }catch(e){ FOTO.sibuk=false; renderLangitUI(); infoLangit('Berkas tidak bisa dipakai: '+(e.message||e)); toast('Panorama tidak terbaca'); }
 }
 function kembaliProsedural(){ dasarCahaya(); terapkanEnv(); pasBayangMatahari(); bayangKotor(); terapkanLangit(); if(typeof PROBE!=='undefined') PROBE.kotor=true; }
-function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; FOTO.target=null; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); }
+function matikanLangitFoto(){ FOTO.token++; FOTO.sibuk=false; FOTO.target=null; lepasFoto(); FOTO.id=null; langitP().mode='prosedural'; kembaliProsedural(); renderLangitUI(); laporAdegan(); }
 /* putar panorama: hanya arah (latar, pantulan, matahari) yang ikut berubah */
 let PUTAR_T=0;
 function putarLangit(deg){
   langitP().putar=((+deg%360)+360)%360; if(!fotoAktif()) return;
   kubahFoto.material.uniforms.putar.value=FOTO.putarU();
-  clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); },180);
+  const luar=ADEGAN_LUAR;
+  clearTimeout(PUTAR_T); PUTAR_T=setTimeout(()=>{ if(fotoAktif()) terapkanCahayaFoto(); if(!luar) laporAdegan(); },180);
 }
 function simpanPrefLangit(){ if(LIHAT.on) return; try{ const lp=langitP(); localStorage.setItem('langitPref',JSON.stringify({mode:lp.mode,jenis:lp.jenis,res:lp.res,editor:lp.editor,pilih:lp.pilih,id:lp.id!=='unggah'?lp.id:null,nama:lp.nama})); }catch(e){} }
 function renderLangitUI(){
@@ -14325,6 +14464,8 @@ function aksiObjek(o){
     out.detail={judul:String(d.judul||'').slice(0,120), teks:String(d.teks||'').slice(0,500), url, gambar:md(d.gambar,/^image\//)}; }
   const mu=md(a.musik,/^audio\//); if(mu){ out.musik=mu; out.ulang=a.ulang!==false; }
   if(a.hadap===true) out.hadap=true;
+  if(a.sfx==='klik'||a.sfx==='swoosh') out.sfx=a.sfx;
+  else if(a.sfx==='unggah'){ const sm=md(a.sfxMedia,/^audio\//); if(sm){ out.sfx='unggah'; out.sfxMedia=sm; } }
   return Object.keys(out).length?out:null;
 }
 function namaObjek(o){ return !o ? '' : o.kind==='model' ? ((PROJECT.assets||{})[o.type]||{}).name||'Model' : (FURN[o.type]||{}).l||o.type; }
@@ -14393,6 +14534,7 @@ function cariTarget(ray){
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
         if(ak&&ak.detail) ekstra.push('detail');
         if(ak&&ak.musik&&n.userData.nyalaJenis!=='audio') ekstra.push('musik');
+        if(ak&&ak.sfx&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
         return {jenis:n.userData.nyalaJenis||ekstra.shift(), ekstra, id:n.userData.id, grp:n, titik:h.point.clone()};
       }
@@ -14415,16 +14557,37 @@ function labelAksi(t){
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.musik ? (MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='detail') return 'Lihat detail';
+  if(t.jenis==='bunyi') return 'Bunyikan';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
   if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
   if(t.jenis==='duduk') return FPS.duduk&&FPS.duduk.id===t.id?'Berdiri':'Duduk';
   if(t.jenis==='berdiri') return 'Berdiri';
   return '';
 }
+// suara pilihan objek: klik / swoosh sintetis, atau audio unggahan (didekode sekali, diputar dari posisi objek)
+const SFX_BUF=new Map();
+async function sfxObjek(id){
+  const ak=aksiObjek(cariObjek(id)); if(!ak||!ak.sfx) return;
+  const g=grupObjek(id)[0], titik=g?titikGrup(g):null;
+  if(ak.sfx!=='unggah'){ sfx(ak.sfx,titik); return; }
+  if(!SFX.on) return;
+  const ctx=audioSiap(); if(!ctx) return;
+  let b=SFX_BUF.get(ak.sfxMedia);
+  if(!b){ try{ const m=PROJECT.media[ak.sfxMedia]; b=await ctx.decodeAudioData(bufFromB64(m.data)); SFX_BUF.set(ak.sfxMedia,b); }catch(e){ toast('Audio suara tidak bisa diputar di peramban ini'); return; } }
+  const src=ctx.createBufferSource(); src.buffer=b;
+  let d=AUDIO.master;
+  if(titik){ const p=ctx.createPanner(); p.panningModel='HRTF'; p.distanceModel='inverse'; p.refDistance=1.2;
+    p.positionX ? (p.positionX.value=titik.x, p.positionY.value=titik.y, p.positionZ.value=titik.z) : p.setPosition(titik.x,titik.y,titik.z);
+    p.connect(AUDIO.master); d=p; src.onended=()=>{ try{ p.disconnect(); }catch(e){} }; }
+  src.connect(d); src.start();
+}
 function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind==='obj' && n.userData.id===id) out.push(n); }); return out; }
 function pakai(t){
   if(!t){ if(FPS.duduk) berdiri(); return; }
   if(t.jenis==='berdiri'){ berdiri(); return; }
+  // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
+  if(t.id && aksiObjek(cariObjek(t.id))?.sfx){ sfxObjek(t.id); laporAksi('bunyi',t.id,true); }
+  if(t.jenis==='bunyi'){ AIM_T=0; return; }
   if(t.jenis==='duduk'){ if(FPS.duduk&&FPS.duduk.id===t.id) berdiri(); else duduk(t); AIM_T=0; return; }
   if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
   if(t.jenis==='detail'){ bukaDetail(t.id); AIM_T=0; return; }
@@ -14446,7 +14609,7 @@ function pakai(t){
 }
 /* MAIN BARENG (JEV-078): aksi & suasana dibagi ke peserta lain lewat modul lobi. Yang dikirim
    KEADAAN AKHIR (nyala/mati, buka/tutup), bukan sakelar — pesan ganda/terlambat tidak membalik. */
-const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik'];
+const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi'];
 function laporAksi(j,id,on){ if(window.LOBI && window.LOBI.aktif) window.LOBI.aksi(j,id,!!on); }
 function cariBukaanId(id){
   for(let i=0;i<PROJECT.levels.length;i++) for(const w of PROJECT.levels[i].walls) for(const o of w.openings||[]) if(o.id===id) return {o,w,lv:i};
@@ -14465,6 +14628,7 @@ function titikGrup(g){ return new THREE.Box3().setFromObject(g).getCenter(new TH
 // aksi peserta lain: diterapkan bila berbeda dari keadaan di sini, dengan bunyi dari posisi objeknya
 function terapkanAksiLuar(j,id,on){
   if(!JENIS_AKSI_BAGI.includes(j) || typeof id!=='string' || !ID_AMAN.test(id)) return false;
+  if(j==='bunyi'){ if(!aksiObjek(cariObjek(id))?.sfx) return false; sfxObjek(id); return true; }   // sesaat, bukan keadaan
   on=!!on; if(keadaanSatu(j,id)===on) return false;
   if(j==='bukaan'){
     const b=cariBukaanId(id); if(!b) return false;
@@ -14508,6 +14672,10 @@ function pasangKeadaanAksi(k){
 // suasana & langit host — tamu mengikuti
 function adeganKini(){ const lp=langitP(); return {mood:MOOD, langit:{mode:lp.mode, jenis:lp.jenis, id:lp.id, nama:lp.nama, putar:+lp.putar||0}}; }
 function pasangAdegan(a){
+  ADEGAN_LUAR++;
+  try{ pasangAdegan0(a); } finally { ADEGAN_LUAR--; }
+}
+function pasangAdegan0(a){
   if(!a||typeof a!=='object') return;
   const lp=langitP(), g=a.langit&&typeof a.langit==='object'?a.langit:{};
   lp.pilih='manual';                       // tamu tidak mengacak panorama sendiri saat suasana berganti
@@ -14692,7 +14860,10 @@ $('#fpsFull').onclick=()=>{
 $('#fpsWall').onclick=()=>toggleWallGhost();
 $('#fpsRoof').onclick=()=>toggleAtap();
 $('#walkBtn').onclick=enterFPS;
-function renderSitusUI(){ const st=PROJECT.site||{}; $('#situsTanah').value=st.tanah||'none'; $('#situsMargin').value=st.margin??6; }
+function renderSitusUI(){ const st=PROJECT.site||{}; $('#situsTanah').value=st.tanah||'none'; $('#situsMargin').value=st.margin??6; $('#situsTampil').checked=!st.sembunyi; }
+$('#situsTampil').onchange=e=>{ const st=PROJECT.site=Object.assign({tanah:'rumput',margin:6},PROJECT.site);
+  if(e.target.checked){ delete st.sembunyi; if(st.tanah==='none') st.tanah='rumput'; } else st.sembunyi=true;
+  renderSitusUI(); HIST.label=e.target.checked?'Tampilkan tanah':'Sembunyikan tanah'; rebuildScene(); };
 $('#situsTanah').onchange=e=>{ PROJECT.site=Object.assign({margin:6},PROJECT.site,{tanah:e.target.value}); HIST.label='Tanah situs'; rebuildScene();
   toast(e.target.value==='none'?'Tanah situs dihapus':'Tanah situs: '+e.target.selectedOptions[0].textContent); };
 /* kuas tanah (JEV-075) */
@@ -15215,7 +15386,7 @@ window.__siap=true;
 if(/^#(lihat|l)=/.test(location.hash)){
   document.body.classList.add('lihat'); $('#loader-txt').textContent='Membuka rumah yang dibagikan…'; $('#loader').classList.add('on');
   // undangan main bareng: …&r=<ruang> di ujung tautan lihat-saja
-  const [hashRumah,ruangLobi]=(()=>{ const m=location.hash.match(/^(.*)&r=(p23d-[a-z0-9]{12})$/); return m?[m[1],m[2]]:[location.hash,null]; })();
+  const [hashRumah,ruangLobi]=(()=>{ const m=location.hash.match(/^(.*)&r=(p23d-(?:[le][2-9a]-[0-9a-f]{16}|[a-z0-9]{12}))$/); return m?[m[1],m[2]]:[location.hash,null]; })();
   const pendek=hashRumah.match(/^#l=([A-HJ-NP-Za-km-z2-9]{10})$/);
   addEventListener('load',()=>setTimeout(async()=>{
     try{
@@ -15236,6 +15407,7 @@ try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
       pilih:pr.pilih==='acak'?'acak':'manual', id:typeof pr.id==='string'&&ID_AMAN.test(pr.id)?pr.id:null, nama:typeof pr.nama==='string'?pr.nama.slice(0,120):''});
     if(pr.mode==='foto') mulaiLangitFoto(); } }catch(e){}
 renderLangitUI();
+renderSitusUI();                                      // tanah bawaan (rumput) tampil benar di tab Taman
 renderLevels();
 setTool('select');
 rebuildScene();
