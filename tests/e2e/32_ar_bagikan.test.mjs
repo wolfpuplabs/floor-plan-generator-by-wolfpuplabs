@@ -94,6 +94,23 @@ export const tes = {
     // tidak ada unggahan Scene Viewer di iOS
     assert.equal(await page.evaluate(() => AR.sv), '');
   },
+  'iOS: panel AR tidak menunggu USDZ; penyusunan model yang menggantung dibatasi waktu, panel tetap terbuka dengan pesan': async (page) => {
+    await bukaTautanRumah(page);
+    const r = await page.evaluate(async () => {
+      let usdz = 0; AR.usdzLib = Promise.resolve(class { parse() { usdz++; return new Promise(() => {}); } });
+      await openAR(); const normal = { buka: AR.open, glb: !!AR.blob, usdz, loader: document.getElementById('loader').classList.contains('on') };
+      closeAR();
+      // penyusun GLB menggantung (perangkat lemah / tekstur raksasa): berhenti setelah batas waktu
+      const asli = THREE.GLTFExporter.prototype.parse; THREE.GLTFExporter.prototype.parse = () => {}; AR.batasMs = 800;
+      const t0 = performance.now(); await openAR(); const ms = performance.now() - t0;
+      THREE.GLTFExporter.prototype.parse = asli; AR.batasMs = 25000;
+      return { normal, gantung: { buka: AR.open, panel: !document.getElementById('arPanel').hidden, loader: document.getElementById('loader').classList.contains('on'), pesan: document.getElementById('arFallback').textContent, cepat: ms < 6000 } };
+    });
+    assert.deepEqual(r.normal, { buka: true, glb: true, usdz: 0, loader: false });
+    assert.equal(r.gantung.buka, true); assert.equal(r.gantung.panel, true); assert.equal(r.gantung.loader, false); assert.equal(r.gantung.cepat, true);
+    assert.match(r.gantung.pesan, /terlalu berat/);
+  },
 };
+tes['iOS: panel AR tidak menunggu USDZ; penyusunan model yang menggantung dibatasi waktu, panel tetap terbuka dengan pesan'].opsi = { ua: IOS_IG, viewport: HP };
 tes['Android tanpa WebXR: tautan lihat → AR menyiapkan Scene Viewer dengan model di server'].opsi = { ua: ANDROID, viewport: HP };
 tes['browser di dalam aplikasi iOS: AR diarahkan ke Safari + tombol salin tautan'].opsi = { ua: IOS_IG, viewport: HP };
