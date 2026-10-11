@@ -174,8 +174,9 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
 .lb-av{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform}
 .lb-av[hidden]{display:none}
 .lb-av .lb-foto{position:absolute;left:-48px;top:-48px;width:96px;height:96px;box-sizing:border-box;border-radius:50%;border:4px solid #fff;object-fit:cover;display:grid;place-items:center;color:#fff;font:700 44px/1 system-ui,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.35)}
-.lb-av .lb-nm{position:absolute;top:58px;left:0;transform:translateX(-50%);background:rgba(16,18,22,.72);color:#fff;font:700 17px/1.2 system-ui,sans-serif;padding:5px 14px;border-radius:999px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
-.lb-av .lb-gel{position:absolute;bottom:62px;left:0;transform:translateX(-50%);width:max-content;max-width:300px;background:rgba(16,18,22,.78);color:#fff;font:500 17px/1.35 system-ui,sans-serif;padding:9px 16px;border-radius:16px;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.lb-av .lb-nm{position:absolute;top:58px;left:0;transform:translateX(-50%);display:flex;align-items:center;gap:7px;background:rgba(14,18,26,.38);-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.24);box-shadow:0 6px 18px rgba(0,0,0,.22);color:#fff;font:700 17px/1.2 system-ui,sans-serif;padding:5px 14px 5px 10px;border-radius:999px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.lb-av .lb-nm::before{content:'';width:9px;height:9px;border-radius:50%;background:var(--c,#4ec9b0);box-shadow:0 0 0 2px rgba(255,255,255,.35);flex:none}
+.lb-av .lb-gel{position:absolute;bottom:62px;left:0;transform:translateX(-50%);width:max-content;max-width:300px;background:rgba(255,255,255,.58);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border:1px solid rgba(255,255,255,.7);box-shadow:0 8px 24px rgba(0,0,0,.18);color:#10141c;font:500 17px/1.35 system-ui,sans-serif;padding:9px 16px;border-radius:18px;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .lb-av.lb-3d .lb-foto{display:none}
 .lb-av.lb-3d .lb-nm{top:-16px}
 .lb-av.lb-3d .lb-gel{bottom:26px}
@@ -183,7 +184,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
 .lb-av.lb-bicara .lb-foto{border-color:#4ec9b0;box-shadow:0 0 0 4px rgba(78,201,176,.45),0 6px 22px rgba(0,0,0,.35)}
 #lobiObrolan .lb-mic{margin-left:auto;display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 10px}
 #lobiObrolan .lb-mic.on{background:var(--accent);color:#06201b}
-.lb-av .lb-gel::after{content:'';position:absolute;left:50%;top:100%;margin-left:-9px;border:9px solid transparent;border-top-color:rgba(16,18,22,.78)}`;
+.lb-av .lb-gel::after{content:'';position:absolute;left:50%;top:100%;margin-left:-8px;border:8px solid transparent;border-top-color:rgba(255,255,255,.62)}`;
     document.head.appendChild(s);
   }
   function panelObrolan() {
@@ -262,26 +263,29 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
      lutut & siku menekuk, badan naik-turun saat berjalan (laju dari pergeseran posisi), napas pelan saat diam.
      Putaran dihitung terhadap sumbu samping avatar sehingga berlaku untuk orientasi tulang apa pun.
      GLB yang membawa klip memakai klipnya sendiri (idle/walk bila bernama begitu). */
-  const RIG = ['hips', 'spine', 'chest', 'leftUpperLeg', 'leftLowerLeg', 'rightUpperLeg', 'rightLowerLeg', 'leftUpperArm', 'leftLowerArm', 'rightUpperArm', 'rightLowerArm'];
+  const RIG = ['hips', 'spine', 'chest', 'neck', 'head', 'leftUpperLeg', 'leftLowerLeg', 'leftFoot', 'rightUpperLeg', 'rightLowerLeg', 'rightFoot',
+    'leftUpperArm', 'leftLowerArm', 'rightUpperArm', 'rightLowerArm'];
   function tebakRig(root, rig) {
-    const pola = { hips: /hips|pelvis/, spine: /^spine$|^spine0?1?$/, chest: /chest|spine0?2$/, upperLeg: /upleg|upperleg|thigh/, lowerLeg: /lowerleg|calf|shin|^leg$/,
-      upperArm: /upperarm|^arm$/, lowerArm: /forearm|lowerarm/ };
+    // [kunci, pola, bersisi]: tulang bersisi dapat awalan left/right
+    const pola = [['hips', /hips|pelvis/, 0], ['spine', /^spine0?1?$/, 0], ['chest', /chest|^spine0?2$/, 0], ['neck', /neck/, 0], ['head', /^head$/, 0],
+      ['UpperLeg', /upleg|upperleg|thigh/, 1], ['LowerLeg', /lowerleg|calf|shin|^leg$/, 1], ['Foot', /foot|ankle/, 1],
+      ['UpperArm', /upperarm|^arm$/, 1], ['LowerArm', /forearm|lowerarm/, 1]];
     root.traverse(n => {
       if (!n.isBone) return;
       const kata = n.name.toLowerCase().replace(/mixamorig\d*:?/, '').split(/[^a-z0-9]+/).filter(Boolean);
       let sisi = '', inti = kata.join('');
-      if (kata[0] === 'left' || kata[0] === 'l' || kata.includes('l')) sisi = 'left'; else if (kata[0] === 'right' || kata[0] === 'r' || kata.includes('r')) sisi = 'right';
+      if (kata[0] === 'left' || kata.includes('l')) sisi = 'left'; else if (kata[0] === 'right' || kata.includes('r')) sisi = 'right';
       if (!sisi) { const m = inti.match(/^(left|right)(.*)$/); if (m) { sisi = m[1]; inti = m[2]; } } else inti = kata.filter(k => !['left', 'right', 'l', 'r', 'j', 'bip', 'c'].includes(k)).join('');
-      for (const [k, re] of Object.entries(pola)) {
+      for (const [k, re, bersisi] of pola) {
         if (!re.test(inti)) continue;
-        const kunci = /^(upper|lower)/.test(k.replace(/[A-Z].*/, '')) || k.endsWith('Leg') || k.endsWith('Arm') ? (sisi ? sisi + k[0].toUpperCase() + k.slice(1) : '') : k;
+        const kunci = bersisi ? (sisi && sisi + k) : (!sisi && k);
         if (kunci && !rig[kunci]) rig[kunci] = n; break;
       }
     });
   }
-  const qSem = new THREE.Quaternion(), qG = new THREE.Quaternion();
+  const qSem = new THREE.Quaternion(), qB = new THREE.Quaternion(), qG = new THREE.Quaternion();
   function siapkanGerak(a, m) {
-    a.model = m; a.dasarY = m.position.y; a.fase = 0; a.t = Math.random() * 10; a.w = 0;
+    a.model = m; a.dasarY = m.position.y; a.fase = 0; a.t = Math.random() * 10; a.w = 0; a.v = 0;
     const klip = m.userData.klip || [];
     if (klip.length) {
       a.mixer = new THREE.AnimationMixer(m);
@@ -296,31 +300,52 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     a.rig = {};
     for (const [k, i] of Object.entries(idx)) {
       const b = urut[i]; if (!b || !b.parent) continue;
-      // sumbu samping avatar (−X: putaran positif = maju ke +Z) dinyatakan dalam ruang induk tulang
-      const qp = qG.clone().multiply(b.parent.getWorldQuaternion(new THREE.Quaternion()));
-      a.rig[k] = { b, rest: b.quaternion.clone(), ax: new THREE.Vector3(-1, 0, 0).applyQuaternion(qp.invert()).normalize() };
+      // sumbu avatar dalam ruang induk tulang: samping (−X: putaran + = maju ke +Z), atas (+Y), depan (+Z)
+      const qp = qG.clone().multiply(b.parent.getWorldQuaternion(new THREE.Quaternion())).invert();
+      const sb = v => new THREE.Vector3(...v).applyQuaternion(qp).normalize();
+      a.rig[k] = { b, rest: b.quaternion.clone(), ax: sb([-1, 0, 0]), ay: sb([0, 1, 0]), az: sb([0, 0, 1]) };
     }
   }
-  function putarTulang(a, k, sudut) { const r = a.rig[k]; if (!r) return; qSem.setFromAxisAngle(r.ax, sudut); r.b.quaternion.multiplyQuaternions(qSem, r.rest); }
+  // x: ayun maju(+)/mundur, y: putar (+ = ke kiri avatar), z: miring (+ = sisi kiri naik)
+  function putarTulang(a, k, x, y = 0, z = 0) {
+    const r = a.rig[k]; if (!r) return;
+    qSem.setFromAxisAngle(r.ax, x);
+    if (y) qSem.multiply(qB.setFromAxisAngle(r.ay, y));
+    if (z) qSem.multiply(qB.setFromAxisAngle(r.az, z));
+    r.b.quaternion.multiplyQuaternions(qSem, r.rest);
+  }
+  /* siklus jalan: fase maju menurut jarak tempuh (±0,62 m per langkah) agar kaki tidak meluncur; pinggul berputar &
+     turun di sisi kaki yang mengayun, dada berputar berlawanan, kepala tetap menghadap depan, telapak menapak datar,
+     badan naik saat kaki berpapasan. Diam: napas, sesekali memindah berat badan & menoleh pelan. */
   function gerakAvatar(a, dt, laju) {
-    a.w += (clamp(laju / 1.3, 0, 1) - a.w) * Math.min(1, dt * 6); a.t += dt;
-    const w = a.w;
+    a.v += (laju - a.v) * Math.min(1, dt * 5); a.t += dt;
+    a.w += (clamp(a.v / 1.1, 0, 1) - a.w) * Math.min(1, dt * 4);
+    const w = a.w, d = 1 - w;
     if (a.mixer) {
-      if (a.aksiJalan && a.aksiDiam) { a.aksiJalan.setEffectiveWeight(w); a.aksiDiam.setEffectiveWeight(1 - w); }
+      if (a.aksiJalan && a.aksiDiam) { a.aksiJalan.setEffectiveWeight(w); a.aksiDiam.setEffectiveWeight(d); }
       else if (a.aksiJalan) a.aksiJalan.timeScale = w;
       a.mixer.update(dt); return;
     }
     if (!a.rig) return;
-    a.fase += dt * (2 + 7 * w);
-    const s = Math.sin(a.fase), c = Math.cos(a.fase), napas = Math.sin(a.t * 1.7);
-    putarTulang(a, 'leftUpperLeg', 0.5 * w * s); putarTulang(a, 'rightUpperLeg', -0.5 * w * s);
-    putarTulang(a, 'leftLowerLeg', -0.75 * w * Math.max(0, c)); putarTulang(a, 'rightLowerLeg', -0.75 * w * Math.max(0, -c));
-    // lengan: ayun berlawanan dengan kaki, lebih jauh ke depan daripada ke belakang; siku menekuk lebih saat lengan di depan
-    const ayun = t => 0.32 * w * t + 0.06 * w;
-    putarTulang(a, 'leftUpperArm', ayun(-s) + 0.02 * (1 - w) * napas); putarTulang(a, 'rightUpperArm', ayun(s) + 0.02 * (1 - w) * napas);
-    putarTulang(a, 'leftLowerArm', 0.1 + w * (0.1 + 0.14 * Math.max(0, -s))); putarTulang(a, 'rightLowerArm', 0.1 + w * (0.1 + 0.14 * Math.max(0, s)));
-    putarTulang(a, 'spine', 0.06 * w + 0.015 * napas * (1 - w)); putarTulang(a, 'chest', 0.012 * napas * (1 - w));
-    a.model.position.y = a.dasarY + 0.03 * w * Math.abs(c);
+    a.fase += dt * Math.PI * Math.max(a.v, 0) / 0.62;
+    const s = Math.sin(a.fase), c = Math.cos(a.fase), t = a.t, napas = Math.sin(t * 1.7), geser = Math.sin(t * 0.45), tengok = Math.sin(t * 0.23);
+    // kaki
+    const pahaL = 0.42 * w * s, pahaR = -0.42 * w * s;
+    const lututL = -w * (0.08 + 0.62 * Math.max(0, c)), lututR = -w * (0.08 + 0.62 * Math.max(0, -c));
+    putarTulang(a, 'leftUpperLeg', pahaL); putarTulang(a, 'rightUpperLeg', pahaR);
+    putarTulang(a, 'leftLowerLeg', lututL); putarTulang(a, 'rightLowerLeg', lututR);
+    putarTulang(a, 'leftFoot', -0.85 * (pahaL + lututL) - 0.18 * w * Math.max(0, -s)); putarTulang(a, 'rightFoot', -0.85 * (pahaR + lututR) - 0.18 * w * Math.max(0, s));
+    // pinggul, badan, kepala
+    const pinggulY = -0.1 * w * s, pinggulZ = -0.045 * w * c + 0.022 * d * geser;
+    putarTulang(a, 'hips', 0, pinggulY, pinggulZ);
+    putarTulang(a, 'spine', 0.04 * w + 0.01 * d * napas, 0.05 * w * s, -0.6 * pinggulZ);
+    putarTulang(a, 'chest', 0.018 * d * napas, 0.07 * w * s, 0);
+    putarTulang(a, 'neck', -0.03 * w, -0.5 * (pinggulY + 0.12 * w * s) + 0.06 * d * tengok, 0);
+    putarTulang(a, 'head', -0.02 * w, -0.4 * (pinggulY + 0.12 * w * s) + 0.08 * d * tengok, 0);
+    // lengan: ayun berlawanan dengan kaki, sedikit ke depan; siku selalu sedikit menekuk
+    putarTulang(a, 'leftUpperArm', -0.28 * w * s + 0.05 * w + 0.015 * d * napas); putarTulang(a, 'rightUpperArm', 0.28 * w * s + 0.05 * w + 0.015 * d * napas);
+    putarTulang(a, 'leftLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, -s))); putarTulang(a, 'rightLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, s)));
+    a.model.position.y = a.dasarY + 0.035 * w * (Math.abs(c) - 0.6);
   }
   L.gerak = { siapkanGerak, gerakAvatar, tebakRig };
   function bacaAvatar3D(buf) {
@@ -388,7 +413,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     let f;
     if (p.foto) { f = el('img', 'lb-foto'); f.alt = ''; f.src = p.foto; }
     else { f = el('div', 'lb-foto', ([...p.nama][0] || '?').toUpperCase()); f.style.background = p.warna; }
-    d.appendChild(f); d.appendChild(el('div', 'lb-nm', p.nama));
+    d.appendChild(f); d.appendChild(el('div', 'lb-nm', p.nama)); d.style.setProperty('--c', p.warna);
     d.classList.toggle('lb-bicara', L.suara.has(p.id));
     lapisan().appendChild(d);
     return { g, d };

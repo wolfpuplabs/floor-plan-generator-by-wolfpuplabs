@@ -26,15 +26,17 @@ export const tes = {
       const z0 = lokal(kakiKiri).z;
       a.w = 1; a.fase = Math.PI / 2 - 0.0001; LOBI.gerak.gerakAvatar(a, 0.0001, 1.3);   // puncak ayunan: kaki kiri di depan
       const langkah = { kiri: lokal(kakiKiri).z, kanan: lokal(kakiKanan).z, tangan: lokal(tanganKiri).z };
+      a.fase = 1.5 * Math.PI - 0.0001; LOBI.gerak.gerakAvatar(a, 0.0001, 1.3);          // fase berlawanan: kaki kiri di belakang
+      langkah.tanganLawan = lokal(tanganKiri).z;
       for (let i = 0; i < 120; i++) LOBI.gerak.gerakAvatar(a, 1 / 30, 0);                // berhenti → kembali diam
       const diam = { w: a.w, kiri: lokal(kakiKiri).z };
       scene.remove(g);
       return { kunci: Object.keys(rig).sort(), z0, langkah, diam };
     });
-    assert.deepEqual(r.kunci, ['hips', 'leftLowerArm', 'leftLowerLeg', 'leftUpperArm', 'leftUpperLeg', 'rightLowerArm', 'rightLowerLeg', 'rightUpperArm', 'rightUpperLeg', 'spine']);
+    assert.deepEqual(r.kunci, ['hips', 'leftFoot', 'leftLowerArm', 'leftLowerLeg', 'leftUpperArm', 'leftUpperLeg', 'rightFoot', 'rightLowerArm', 'rightLowerLeg', 'rightUpperArm', 'rightUpperLeg', 'spine']);
     assert.ok(r.langkah.kiri > r.z0 + 0.2, 'kaki kiri maju: ' + JSON.stringify(r));
     assert.ok(r.langkah.kanan < r.z0 - 0.2, 'kaki kanan mundur');
-    assert.ok(r.langkah.tangan < -0.05, 'tangan kiri berayun ke belakang (berlawanan dengan kaki kiri)');
+    assert.ok(r.langkah.tangan < r.langkah.tanganLawan - 0.08, 'tangan kiri di belakang saat kaki kiri di depan, dan sebaliknya: ' + JSON.stringify(r.langkah));
     assert.ok(r.diam.w < 0.01 && Math.abs(r.diam.kiri - r.z0) < 0.03, 'diam: kaki kembali lurus ' + JSON.stringify(r.diam));
   },
 };
