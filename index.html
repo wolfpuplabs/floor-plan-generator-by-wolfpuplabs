@@ -170,7 +170,7 @@ html{touch-action:manipulation}
 #detailPanel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;z-index:60;padding:14px;display:flex;flex-direction:column;gap:8px;border-radius:14px}
 #detailPanel[hidden]{display:none}
 /* pemutar media menempel di bawah; .ciut = disembunyikan ke bawah, tinggal bilah judul (media tetap diputar) */
-#mediaDock{right:12px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 12px);width:min(420px,calc(100% - 24px));z-index:55;padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;border-radius:12px;transition:transform .2s}
+#mediaDock{left:50%;transform:translateX(-50%);bottom:calc(max(12px,env(safe-area-inset-bottom)) + 12px);width:min(420px,calc(100% - 24px));z-index:55;padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;border-radius:12px;transition:transform .2s}
 #mediaDock[hidden]{display:none}
 #mediaDock .md-kepala{display:flex;align-items:center;gap:6px}
 #mediaDock .md-kepala b{flex:1;min-width:0;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -932,7 +932,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
     </div>
     <div class="float" id="inspector" hidden></div>
     <div class="float" id="fpsbar" hidden>
-      <button class="btn ghost sm" id="fpsCiut" title="Sembunyikan / tampilkan menu" aria-label="Sembunyikan / tampilkan menu" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-ciut"/></svg></button>
+      <button class="btn sm" id="fpsExit"><svg class="ik" aria-hidden="true"><use href="#i-keluar"/></svg> Keluar (Esc)</button>
       <span id="fpsinfo"></span>
       <span class="fps-alat">
       <select id="fpsMood" title="Suasana cahaya">
@@ -949,7 +949,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
       <button class="btn ghost sm" id="fpsFull"><svg class="ik" aria-hidden="true"><use href="#i-penuh"/></svg> Layar penuh</button>
       </span>
-      <button class="btn sm" id="fpsExit"><svg class="ik" aria-hidden="true"><use href="#i-keluar"/></svg> Keluar (Esc)</button>
+      <button class="btn ghost sm" id="fpsCiut" title="Sembunyikan / tampilkan menu" aria-label="Sembunyikan / tampilkan menu" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-ciut"/></svg></button>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
     <div class="float" id="detailPanel" hidden role="dialog" aria-labelledby="detailJudul">
@@ -13770,8 +13770,13 @@ function aturTataLihat(){
   const b=$('#lihatBar'); if(!b||b.hidden) return;
   document.documentElement.style.setProperty('--lihat-bawah',Math.ceil(b.getBoundingClientRect().bottom)+'px');
 }
-if(typeof ResizeObserver==='function') new ResizeObserver(()=>aturTataLihat()).observe($('#lihatBar'));
-addEventListener('resize',()=>aturTataLihat());
+// --bilah-atas: tepi bawah bilah atas yang tampil (bilah mode jalan / bilah lihat) — obrolan lobi menempel di bawahnya
+function aturBilahAtas(){
+  const b=[$('#fpsbar'),$('#lihatBar')].find(x=>x&&!x.hidden); if(!b) return;
+  document.documentElement.style.setProperty('--bilah-atas',Math.ceil(b.getBoundingClientRect().bottom)+'px');
+}
+if(typeof ResizeObserver==='function'){ const ro=new ResizeObserver(()=>{ aturTataLihat(); aturBilahAtas(); }); ro.observe($('#lihatBar')); ro.observe($('#fpsbar')); }
+addEventListener('resize',()=>{ aturTataLihat(); aturBilahAtas(); });
 async function bukaTautanLihat(kode,bytes){
   LIHAT.on=true; document.body.classList.add('lihat'); setSidebar(false); select(null);
   $('#lihatBar').hidden=false; aturTataLihat(); $('#hint').innerHTML='Mode lihat — seret untuk memutar, cubit untuk zoom, <b>Jalan-jalan</b> untuk masuk ke dalam rumah.';

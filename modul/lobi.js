@@ -160,7 +160,9 @@
 #lobiObrolan form input{flex:1;min-width:0}
 #lobiMasuk{left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,calc(100% - 24px));z-index:62;padding:16px;border-radius:14px;display:flex;flex-direction:column;gap:10px}
 #lobiMasuk h3{font-size:1.05rem}
-body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px)}`;
+body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px)}
+body.jalan #lobiObrolan,body.lihat #lobiObrolan{top:calc(var(--bilah-atas,64px) + 8px);bottom:auto}
+body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:min(180px,30vh)}`;
     document.head.appendChild(s);
   }
   function panelObrolan() {
