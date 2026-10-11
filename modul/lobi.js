@@ -258,6 +258,69 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   /* avatar 3D: glTF/VRM mandiri (G3 — tanpa berkas luar), tinggi disamakan 1,7 m, kaki di lantai, menghadap +Z
      (VRM 0.x menghadap −Z → diputar). Lengan kerangka VRM diturunkan dari pose T. Model yang sama dipakai ulang. */
   const AV_MAKS = 8 * 1048576, AV_TINGGI = 1.7, AV_MODEL = new Map();
+  /* animasi avatar 3D: VRM/GLB tanpa klip digerakkan prosedural dari kerangka humanoid — kaki & lengan berayun,
+     lutut & siku menekuk, badan naik-turun saat berjalan (laju dari pergeseran posisi), napas pelan saat diam.
+     Putaran dihitung terhadap sumbu samping avatar sehingga berlaku untuk orientasi tulang apa pun.
+     GLB yang membawa klip memakai klipnya sendiri (idle/walk bila bernama begitu). */
+  const RIG = ['hips', 'spine', 'chest', 'leftUpperLeg', 'leftLowerLeg', 'rightUpperLeg', 'rightLowerLeg', 'leftUpperArm', 'leftLowerArm', 'rightUpperArm', 'rightLowerArm'];
+  function tebakRig(root, rig) {
+    const pola = { hips: /hips|pelvis/, spine: /^spine$|^spine0?1?$/, chest: /chest|spine0?2$/, upperLeg: /upleg|upperleg|thigh/, lowerLeg: /lowerleg|calf|shin|^leg$/,
+      upperArm: /upperarm|^arm$/, lowerArm: /forearm|lowerarm/ };
+    root.traverse(n => {
+      if (!n.isBone) return;
+      const kata = n.name.toLowerCase().replace(/mixamorig\d*:?/, '').split(/[^a-z0-9]+/).filter(Boolean);
+      let sisi = '', inti = kata.join('');
+      if (kata[0] === 'left' || kata[0] === 'l' || kata.includes('l')) sisi = 'left'; else if (kata[0] === 'right' || kata[0] === 'r' || kata.includes('r')) sisi = 'right';
+      if (!sisi) { const m = inti.match(/^(left|right)(.*)$/); if (m) { sisi = m[1]; inti = m[2]; } } else inti = kata.filter(k => !['left', 'right', 'l', 'r', 'j', 'bip', 'c'].includes(k)).join('');
+      for (const [k, re] of Object.entries(pola)) {
+        if (!re.test(inti)) continue;
+        const kunci = /^(upper|lower)/.test(k.replace(/[A-Z].*/, '')) || k.endsWith('Leg') || k.endsWith('Arm') ? (sisi ? sisi + k[0].toUpperCase() + k.slice(1) : '') : k;
+        if (kunci && !rig[kunci]) rig[kunci] = n; break;
+      }
+    });
+  }
+  const qSem = new THREE.Quaternion(), qG = new THREE.Quaternion();
+  function siapkanGerak(a, m) {
+    a.model = m; a.dasarY = m.position.y; a.fase = 0; a.t = Math.random() * 10; a.w = 0;
+    const klip = m.userData.klip || [];
+    if (klip.length) {
+      a.mixer = new THREE.AnimationMixer(m);
+      const jalan = klip.find(c => /walk|run|jalan/i.test(c.name)), diam = klip.find(c => /idle|stand|diam/i.test(c.name)) || (jalan ? null : klip[0]);
+      a.aksiJalan = jalan && a.mixer.clipAction(jalan); a.aksiDiam = diam && a.mixer.clipAction(diam);
+      for (const x of [a.aksiJalan, a.aksiDiam]) if (x) x.play();
+      return;
+    }
+    const idx = m.userData.rigIdx || {}; if (!Object.keys(idx).length) return;
+    const urut = []; m.traverse(n => urut.push(n));
+    a.g.updateMatrixWorld(true); qG.copy(a.g.getWorldQuaternion(new THREE.Quaternion())).invert();
+    a.rig = {};
+    for (const [k, i] of Object.entries(idx)) {
+      const b = urut[i]; if (!b || !b.parent) continue;
+      // sumbu samping avatar (−X: putaran positif = maju ke +Z) dinyatakan dalam ruang induk tulang
+      const qp = qG.clone().multiply(b.parent.getWorldQuaternion(new THREE.Quaternion()));
+      a.rig[k] = { b, rest: b.quaternion.clone(), ax: new THREE.Vector3(-1, 0, 0).applyQuaternion(qp.invert()).normalize() };
+    }
+  }
+  function putarTulang(a, k, sudut) { const r = a.rig[k]; if (!r) return; qSem.setFromAxisAngle(r.ax, sudut); r.b.quaternion.multiplyQuaternions(qSem, r.rest); }
+  function gerakAvatar(a, dt, laju) {
+    a.w += (clamp(laju / 1.3, 0, 1) - a.w) * Math.min(1, dt * 6); a.t += dt;
+    const w = a.w;
+    if (a.mixer) {
+      if (a.aksiJalan && a.aksiDiam) { a.aksiJalan.setEffectiveWeight(w); a.aksiDiam.setEffectiveWeight(1 - w); }
+      else if (a.aksiJalan) a.aksiJalan.timeScale = w;
+      a.mixer.update(dt); return;
+    }
+    if (!a.rig) return;
+    a.fase += dt * (2 + 7 * w);
+    const s = Math.sin(a.fase), c = Math.cos(a.fase), napas = Math.sin(a.t * 1.7);
+    putarTulang(a, 'leftUpperLeg', 0.5 * w * s); putarTulang(a, 'rightUpperLeg', -0.5 * w * s);
+    putarTulang(a, 'leftLowerLeg', -0.75 * w * Math.max(0, c)); putarTulang(a, 'rightLowerLeg', -0.75 * w * Math.max(0, -c));
+    putarTulang(a, 'leftUpperArm', -0.4 * w * s + 0.025 * (1 - w) * napas); putarTulang(a, 'rightUpperArm', 0.4 * w * s + 0.025 * (1 - w) * napas);
+    putarTulang(a, 'leftLowerArm', 0.25 * w + 0.05); putarTulang(a, 'rightLowerArm', 0.25 * w + 0.05);
+    putarTulang(a, 'spine', 0.06 * w + 0.015 * napas * (1 - w)); putarTulang(a, 'chest', 0.012 * napas * (1 - w));
+    a.model.position.y = a.dasarY + 0.03 * w * Math.abs(c);
+  }
+  L.gerak = { siapkanGerak, gerakAvatar, tebakRig };
   function bacaAvatar3D(buf) {
     return new Promise((ok, no) => {
       if (uriLuarGLTF(buf)) return no(new Error('avatar merujuk berkas di luar dirinya'));
@@ -271,6 +334,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
             if (!Number.isInteger(tulang[nama])) continue;
             try { const n = await gltf.parser.getDependency('node', tulang[nama]); if (n) n.rotation.z += arah * 1.2; } catch (e) { /* tanpa kerangka */ }
           }
+          // tulang untuk animasi prosedural: pemetaan humanoid VRM, atau tebakan nama (Mixamo/Avaturn/Blender)
+          const rig = {};
+          for (const kunci of RIG) if (Number.isInteger(tulang[kunci])) { try { const n = await gltf.parser.getDependency('node', tulang[kunci]); if (n) rig[kunci] = n; } catch (e) { /* abaikan */ } }
+          if (!Object.keys(rig).length) tebakRig(root, rig);
           root.updateMatrixWorld(true);
           const kotak = new THREE.Box3().setFromObject(root), uk = kotak.getSize(new THREE.Vector3());
           if (!(uk.y > 1e-4)) throw new Error('avatar kosong');
@@ -279,7 +346,12 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
           const bungkus = new THREE.Group(); bungkus.add(root); if (vrm0) bungkus.rotation.y = Math.PI;
           let kulit = false;
           bungkus.traverse(n => { if (n.isMesh) { n.castShadow = true; n.userData.noExport = true; } if (n.isSkinnedMesh) { kulit = true; n.frustumCulled = false; } });
-          bungkus.userData.berkulit = kulit; ok(bungkus);
+          bungkus.userData.berkulit = kulit;
+          // posisi tulang dalam urutan traverse — dipakai ulang pada tiap klon
+          const urut = []; bungkus.traverse(n => urut.push(n));
+          bungkus.userData.rigIdx = Object.fromEntries(Object.entries(rig).map(([k, n]) => [k, urut.indexOf(n)]).filter(([, i]) => i >= 0));
+          bungkus.userData.klip = (gltf.animations || []).filter(c => c && c.duration > 0 && c.tracks.length).slice(0, 8);
+          ok(bungkus);
         } catch (e) { no(e); }
       }, e => no(new Error((e && e.message) || 'avatar tidak terbaca')));
     });
@@ -295,7 +367,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (!p.av) return;
     muatAvatar3D(p.av).then(tpl => {
       if (L.avatar.get(p.id) !== a) return;              // peserta sudah keluar
-      a.g.add(klonModel(tpl)); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d');
+      const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx;
+      a.g.add(m); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d'); siapkanGerak(a, m);
     }).catch(e => console.warn('avatar 3D', p.nama, e.message));
   }
   function buatAvatar(p) {
@@ -361,9 +434,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   }
   function stepAvatar(dt) {
     for (const a of L.avatar.values()) {
-      if (!a.tuju) continue; const g = a.g, k = Math.min(1, dt * 10);
+      if (!a.tuju) continue; const g = a.g, k = Math.min(1, dt * 10), x0 = g.position.x, z0 = g.position.z;
       g.position.x += (a.tuju.x - g.position.x) * k; g.position.y += (a.tuju.y - g.position.y) * k; g.position.z += (a.tuju.z - g.position.z) * k;
       const d = Math.atan2(Math.sin(a.tuju.yaw - g.rotation.y), Math.cos(a.tuju.yaw - g.rotation.y)); g.rotation.y += d * k;
+      if (a.model && g.visible && dt > 0) gerakAvatar(a, dt, Math.hypot(g.position.x - x0, g.position.z - z0) / dt);
     }
   }
   function posSaya() {
