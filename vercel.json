@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/l/:id", "destination": "/api/lihat?id=:id" }]
+}
