@@ -239,8 +239,8 @@ export const tes = {
       const H = await L.buka(L.url); await rumah(H);
       // host memasang avatar 3D sendiri (segitiga 2 m) — diunggah beralamat isi, tinggi disamakan 1,7 m di peserta lain
       const av = await H.evaluate(async b64 => { const u8 = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-        await avatar3DBaru(new File([u8], 'saya.glb')); return { nama: AVATAR_LOBI.d.nama, n: AVATAR_LOBI.d.bagian.length, label: document.querySelector('#lobiSiap .lobi-av3d-nama').textContent }; }, glbSegitiga().toString('base64'));
-      assert.deepEqual(av, { nama: 'saya.glb', n: 1, label: 'saya.glb' });
+        await avatar3DBaru(new File([u8], 'saya.glb')); return { nama: AVATAR_LOBI.d.nama, n: AVATAR_LOBI.d.bagian.length, simpan: JSON.parse(localStorage.getItem('lobiAvatar3D')).bagian.length }; }, glbSegitiga().toString('base64'));
+      assert.deepEqual(av, { nama: 'saya.glb', n: 1, simpan: 1 });
       assert.match(await H.evaluate(async () => { try { await avatar3DBaru(new File([new Uint8Array(64)], 'bukan.glb')); return 'lolos'; } catch (e) { return e.message; } }), /\.glb atau \.vrm/);
       const undangan = await bukaRuang(H, 'Budi', 'lihat', 3);
       const G = await L.buka(undangan); await masuk(G, 'Sari');

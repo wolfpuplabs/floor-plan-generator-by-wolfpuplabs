@@ -284,7 +284,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       }, e => no(new Error((e && e.message) || 'avatar tidak terbaca')));
     });
   }
-  L.cobaAvatar3D = buf => bacaAvatar3D(buf).then(() => true);
+  L.cobaAvatar3D = buf => bacaAvatar3D(buf);
   function muatAvatar3D(av) {
     const k = av.bagian.join();
     if (!AV_MODEL.has(k)) AV_MODEL.set(k, ambilLampiran(av.bagian, AV_MAKS).then(u8 => bacaAvatar3D(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)))
@@ -430,6 +430,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     } else if (!on && L.mic) {
       for (const c of L.keluar.values()) { try { c.close(); } catch (e) { /* abaikan */ } }
       L.keluar.clear(); for (const t of L.mic.getTracks()) t.stop(); L.mic = null;
+      // penutupan panggilan media tidak selalu sampai ke seberang (PeerJS) — kabari lewat kanal data juga
+      if (L.peran === 'pusat') siarkan({ t: 'mic', id: L.saya.id, on: false }); else kirim({ t: 'mic', on: false });
     }
     tombolMic();
   }
@@ -500,6 +502,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     }
     const p = L.peserta.get(id); if (!p || p.pusat) return;     // belum menyapa
     if (d.t === 'pos') { p.pos = posAman(d); perbaruiPos(id, p.pos); return; }
+    if (d.t === 'mic') { if (!kuotaOk(id, 'm', 6)) return; if (!d.on) hentiSuara(id); siarkan({ t: 'mic', id, on: !!d.on }, id); return; }
     if (d.t === 'chat') {
       if (!lajuOk(id)) return; const teks = teksAman(d.teks, 300); if (!teks) return;
       const m = { t: 'chat', id, nama: p.nama, warna: p.warna, teks }; tampilPesan(m); gelembung(id, teks); siarkan(m);
@@ -582,6 +585,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const p = { id: d.p.id.slice(0, 64), nama: teksAman(d.p.nama, 24) || 'Tamu', warna: WARNA.includes(d.p.warna) ? d.p.warna : WARNA[9], pemilik: !!d.p.pemilik, pusat: false, urut: d.p.urut | 0, foto: fotoAman(d.p.foto), av: avAman(d.p.av) };
       L.peserta.set(p.id, p); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(p.id); return;
     }
+    if (d.t === 'mic') { if (typeof d.id === 'string' && !d.on) hentiSuara(d.id); return; }
     if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); hentiSuara(d.id); L.keluar.delete(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
     if (d.t === 'proyek') { terapkanProyek(d.s, teksAman(d.dari, 24)); return; }
     if (d.t === 'aksi') { if (idAman(d.id)) terapkanAksiLuar(d.j, d.id, !!d.on); return; }

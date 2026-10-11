@@ -49,7 +49,7 @@ export const tes = {
     const buf = Buffer.from(await (await unduh.createReadStream()).toArray().then(b => Buffer.concat(b)));
     assert.deepEqual([buf[0], buf[1], buf.length > 5000], [0xff, 0xd8, true]);
     assert.equal(await page.evaluate(() => !!document.getElementById('kilat')), true, 'efek kilat');
-    const r = await page.evaluate(() => { const r = fotoJalan(); exitFPS(); return [r.lebar === renderer.domElement.width, r.tinggi === renderer.domElement.height, r.bagikan]; });
+    const r = await page.evaluate(() => { const r = fotoJalan(), o = [r.lebar === renderer.domElement.width, r.tinggi === renderer.domElement.height, r.bagikan]; exitFPS(); return o; });
     assert.deepEqual(r, [true, true, false]);
   },
 };
