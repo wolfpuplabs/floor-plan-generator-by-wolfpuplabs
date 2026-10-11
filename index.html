@@ -13817,7 +13817,7 @@ async function bukaTautanLihat(kode,bytes){
   }
   LIHAT.siap=true;
   // tautan yang dibagikan langsung terbuka di mode jalan-jalan; "Keluar" kembali ke tampilan lihat (AR, putar)
-  if(!FPS.on && !$('#lihatNama').classList.contains('galat') && !proyekKosong()) enterFPS();
+  if(!FPS.on && !$('#lihatNama').classList.contains('galat') && !proyekKosong()) enterFPS({depan:true});
   if(bgmData()?.otomatis) mulaiBGM();                                 // diblokir peramban? mulai di ketukan pertama
 }
 // lampiran tautan: diunduh per potongan (sidik diperiksa), lalu disaring seperti berkas proyek
@@ -15314,7 +15314,33 @@ $('#fpsLangit').onclick=e=>{ e.currentTarget.blur(); if(langitP().mode==='foto')
 $('#fpsLangitPrev').onclick=e=>{ e.currentTarget.blur(); langkahLangit(-1); };
 $('#fpsLangitNext').onclick=e=>{ e.currentTarget.blur(); langkahLangit(1); };
 
-function enterFPS(){
+/* Titik muncul "di depan rumah" (pertama membuka tautan lihat / undangan main bareng): pintu luar utama —
+   pintu yang satu sisinya ruang tertutup dan sisi lainnya luar (peta ruang) — lalu berdiri ±1,8 m di luar
+   pintu itu, menghadapnya. Pintu ganda/ayun didahulukan, garasi paling akhir; tanpa pintu luar → null. */
+const PRIORITAS_PINTU={door2:6, door:5, door_glass:5, folding:4, slider:4, opening:2, garage:1};
+function titikDepan(lv){
+  const P=petaRuang(lv); if(!P) return null;
+  const luar=(x,z)=>{ const i=Math.floor((x-P.x0)/P.C), j=Math.floor((z-P.z0)/P.C);
+    if(i<0||j<0||i>=P.nx||j>=P.nz) return true; const v=P.lab[j*P.nx+i]; return v>0&&P.bocor[v]; };
+  const dalam=(x,z)=>{ const v=ruangDi(P,x,z); return v>0&&!P.bocor[v]; };
+  let best=null;
+  for(const w of lv.walls){ if(w.rail) continue;
+    const L=Math.hypot(w.x2-w.x1,w.z2-w.z1); if(L<1e-6) continue;
+    const ux=(w.x2-w.x1)/L, uz=(w.z2-w.z1)/L, nx=-uz, nz=ux, d=(w.thickness||0.15)/2+0.3;
+    for(const o of w.openings||[]){ if(isWindowType(o.type)) continue;
+      const cx=w.x1+ux*o.at, cz=w.z1+uz*o.at;
+      let s=0;
+      if(luar(cx+nx*d,cz+nz*d) && dalam(cx-nx*d,cz-nz*d)) s=1;
+      else if(luar(cx-nx*d,cz-nz*d) && dalam(cx+nx*d,cz+nz*d)) s=-1;
+      if(!s) continue;
+      const skor=(PRIORITAS_PINTU[o.type]||3)*10+Math.min(o.width,3);
+      if(!best||skor>best.skor){ const ox=nx*s, oz=nz*s, k=(w.thickness||0.15)/2+1.8;
+        best={skor, x:cx+ox*k, z:cz+oz*k, yaw:Math.atan2(-ox,-oz)}; }
+    }
+  }
+  return best;
+}
+function enterFPS(opsi){
   if(FPS.on) return;
   const lv=L();
   // tanpa dinding pun bisa berjalan: di tanah situs (petak rumput bawaan) atau di antara objek (JEV-084)
@@ -15342,6 +15368,9 @@ function enterFPS(){
     let dx=hx, dz=hz;
     if(Math.hypot(hx,hz)<0.2*dist){ const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion); dx=up.x; dz=up.z; }   // tampak atas: "atas layar" = maju
     if(Math.hypot(dx,dz)>1e-6) FPS.yaw=Math.atan2(dx,dz); }
+  // pertama masuk lewat tautan lihat / undangan: muncul di depan pintu luar utama, menghadapnya
+  const depan=opsi&&opsi.depan===true&&PROJECT.active===0&&!tanahSaja?titikDepan(lv):null;
+  if(depan){ sx=depan.x; sz=depan.z; FPS.yaw=depan.yaw; }
   let [px,pz]=fpsResolveWalls(sx,sz,FPS.feet);
   // di atas bukit hasil kuas tanah: berdiri di permukaannya, bukan terkubur
   const g=fpsGround(px,pz,FPS.feet+(tanahSaja?3.5:0.5));
