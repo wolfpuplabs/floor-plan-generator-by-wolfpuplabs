@@ -485,7 +485,8 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
       const ruang = `p23d-${mode === 'edit' ? 'e' : 'l'}${maks === 10 ? 'a' : maks}-${k.sidik}`;
       try { localStorage.setItem('lobiKunci:' + ruang, JSON.stringify(k)); } catch (e) { /* kunci hanya di memori sesi ini */ }
       const r = await buatTautanLihat();
-      const url = r.url + '&r=' + ruang;
+      // undangan lewat halaman kartu pratinjau …/l/<id>?r=<ruang> bila tautan pendek aktif (JEV-087)
+      const url = r.urlBagikan ? r.urlBagikan + '?r=' + ruang : r.url + '&r=' + ruang;
       await masukRuang(ruang, nama, url);
       if (!L.kunci) { L.kunci = k; L.pemilik = true; if (L.saya) L.saya.pemilik = true; renderPeserta(); }
       sistem(`Ruang dibuka (${mode === 'edit' ? 'bangun bareng' : 'lihat saja'}, maks. ${maks} orang). Bagikan undangan.`);

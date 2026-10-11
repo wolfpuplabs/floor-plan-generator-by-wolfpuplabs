@@ -12,6 +12,8 @@
    AR Android (JEV-083): Scene Viewer berjalan di aplikasi Google, bukan di peramban, sehingga tidak
    bisa membaca model `blob:` buatan halaman — modelnya butuh alamat https publik:
    - POST  /api/tautan?ar=<sha256>            badan = GLB ≤ 4 MB  →  { url }   (beralamat isi)
+   Pratinjau tautan (JEV-087): gambar kartu WhatsApp/iMessage, dibaca api/lihat.js untuk og:image:
+   - POST  /api/tautan?gambar=<sha256>        badan = JPEG ≤ 600 KB  →  { ok }   (beralamat isi)
    Penjaga: ≤ 1,5 MB masuk, isi harus benar-benar proyek (dibuka dengan batas 20 MB lalu
    diperiksa bentuknya), id acak 10 karakter tanpa huruf mirip. Bila Blob belum diaktifkan
    (BLOB_READ_WRITE_TOKEN tidak ada) POST menjawab 501 dan aplikasi memakai tautan panjang. */
@@ -23,16 +25,21 @@ const BATAS_MASUK = 1.5 * 1048576, BATAS_BUKA = 20 * 1048576, ID = /^[A-HJ-NP-Za
 const BATAS_BAGIAN = 3 * 1048576, SHA = /^[0-9a-f]{64}$/;
 // GLB untuk Scene Viewer: satu badan permintaan (batas fungsi Vercel 4,5 MB)
 const BATAS_AR = 4 * 1048576;
+// gambar pratinjau: WhatsApp mengabaikan og:image di atas ±300 KB; peramban mengecilkannya dulu
+const BATAS_GAMBAR = 600 * 1024;
 const HURUF = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
 function idBaru() { let s = ''; for (const x of crypto.randomBytes(10)) s += HURUF[x % HURUF.length]; return s; }
 // GLB sah: tanda 'glTF', versi 2, panjang di kepala = panjang badan
 function glbSah(buf) { return buf.length >= 20 && buf.toString('latin1', 0, 4) === 'glTF' && buf.readUInt32LE(4) === 2 && buf.readUInt32LE(8) === buf.length; }
-function sahkan(buf) {
+// isi tautan → objek proyek (null bila bukan proyek); dipakai juga api/lihat.js
+function bukaIsi(buf) {
   let teks;
-  try { teks = zlib.inflateRawSync(buf, { maxOutputLength: BATAS_BUKA }).toString('utf8'); } catch (e) { return false; }
-  try { const j = JSON.parse(teks); return !!j && typeof j === 'object' && j.v === 1 && Array.isArray(j.levels); } catch (e) { return false; }
+  try { teks = zlib.inflateRawSync(buf, { maxOutputLength: BATAS_BUKA }).toString('utf8'); } catch (e) { return null; }
+  try { const j = JSON.parse(teks); return !!j && typeof j === 'object' && j.v === 1 && Array.isArray(j.levels) ? j : null; } catch (e) { return null; }
 }
+const sahkan = buf => !!bukaIsi(buf);
+const jpegSah = buf => buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
 async function bacaBadan(req, batas = BATAS_MASUK) {
   if (Buffer.isBuffer(req.body)) return req.body;
   const bag = []; let n = 0;
@@ -68,6 +75,19 @@ function buatHandler(ambilBlob, siap = () => !!process.env.BLOB_READ_WRITE_TOKEN
         const path = 'ar/' + ar + '.glb';
         const info = (await ada(ambilBlob, path)) || await ambilBlob().put(path, buf, { access: 'public', addRandomSuffix: false, contentType: 'model/gltf-binary', cacheControlMaxAge: 31536000 });
         return kirim(res, 200, { url: info.url });
+      }
+      const gambar = param(req, 'gambar');
+      if (gambar) {
+        if (!SHA.test(gambar)) return kirim(res, 400, { galat: 'gambar' });
+        if (req.method !== 'POST') { res.setHeader('allow', 'POST'); return kirim(res, 405, { galat: 'metode' }); }
+        if (!siap()) return kirim(res, 501, { galat: 'blob-belum-diatur' });
+        const buf = await bacaBadan(req, BATAS_GAMBAR);
+        if (!buf.length || buf.length > BATAS_GAMBAR) return kirim(res, 413, { galat: 'ukuran' });
+        if (crypto.createHash('sha256').update(buf).digest('hex') !== gambar) return kirim(res, 400, { galat: 'sidik' });
+        if (!jpegSah(buf)) return kirim(res, 400, { galat: 'bukan-jpeg' });
+        const path = 'gambar/' + gambar + '.jpg';
+        if (!(await ada(ambilBlob, path))) await ambilBlob().put(path, buf, { access: 'public', addRandomSuffix: false, contentType: 'image/jpeg', cacheControlMaxAge: 31536000 });
+        return kirim(res, 200, { ok: true });
       }
       const bagian = param(req, 'bagian');
       if (bagian) {
@@ -116,6 +136,10 @@ function buatHandler(ambilBlob, siap = () => !!process.env.BLOB_READ_WRITE_TOKEN
 module.exports = buatHandler(() => require('@vercel/blob'));
 module.exports.buatHandler = buatHandler;
 module.exports.sahkan = sahkan;
+module.exports.bukaIsi = bukaIsi;
+module.exports.ada = ada;
+module.exports.SHA = SHA;
+module.exports.BATAS_GAMBAR = BATAS_GAMBAR;
 module.exports.ID = ID;
 module.exports.BATAS_BAGIAN = BATAS_BAGIAN;
 module.exports.BATAS_AR = BATAS_AR;

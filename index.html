@@ -9,6 +9,19 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: blob: https: wss://0.peerjs.com; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Plan23D — Editor Denah, Dinding, Lantai & Furnitur</title>
+<!-- ikon layar utama & kartu pratinjau bawaan (JEV-087); tautan bagikan …/l/<id> menulis kartunya sendiri (api/lihat.js) -->
+<meta name="description" content="Denah 2D jadi rumah 3D — tata furnitur lalu jalan-jalan di dalamnya, langsung di peramban.">
+<meta name="theme-color" content="#101014">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="ikon/ikon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="ikon/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Plan23D">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Plan23D"><meta property="og:title" content="Plan23D">
+<meta property="og:description" content="Floor plan → 3D home. Design it &amp; walk through it.">
+<meta property="og:image" content="ikon/sampul.jpg"><meta name="twitter:card" content="summary_large_image">
 <style>
 :root{
   --bg:#101014; --panel:#17171b; --panel2:#1e1e24; --line:#2c2c34;
@@ -301,6 +314,7 @@ body{font-size:14px}
 #sidebar{width:368px;min-width:368px}
 #sidebar header{padding:16px 18px 12px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
+#bagikanGambar{display:block;width:100%;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-top:6px}
 /* merek: ikon denah sebagai logo + nama "Plan23D" */
 #sidebar h1.merek{display:flex;align-items:center;gap:8px;font-size:1.25rem;font-weight:800;letter-spacing:.1px}
 #sidebar h1.merek .logo{width:30px;height:30px;padding:5px;border-radius:9px;background:var(--accent);color:#06201b;stroke-width:2.1;flex:none}
@@ -788,8 +802,12 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="section-title">Bagikan</div>
       <button class="btn" id="bagikanBtn"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat tautan lihat-saja</button>
       <p class="hint">Penerima bisa melihat &amp; jalan-jalan di dalam rumah, tetapi tidak bisa mengedit. Proyek ikut di dalam tautannya sendiri — tidak diunggah ke server mana pun.</p>
+      <div class="group"><label for="bagikanJudul">Judul pratinjau</label><input type="text" id="bagikanJudul" maxlength="80" placeholder="Bawaan: nama proyek"></div>
+      <div class="group"><label for="bagikanPesan">Pesan</label><input type="text" id="bagikanPesan" maxlength="200" placeholder="Mis. Yuk lihat rumah baruku!"></div>
+      <label class="chk"><input type="checkbox" id="bagikanFoto" checked><span>Gambar pratinjau dari tampilan 3D sekarang</span></label>
       <div id="bagikanHasil" class="group" hidden>
         <input type="text" id="bagikanUrl" readonly aria-label="Tautan lihat-saja">
+        <img id="bagikanGambar" alt="" hidden>
         <div class="row"><button class="btn sm" id="bagikanSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin tautan</button><button class="btn sm ghost" id="bagikanKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
         <p class="hint" id="bagikanInfo"></p>
       </div>
@@ -13536,6 +13554,22 @@ async function ambilLampiran(daftar,sisa){
   }
   const out=new Uint8Array(n); let o=0; for(const b of bag){ out.set(b,o); o+=b.length; } return out;
 }
+/* Pratinjau tautan (JEV-087): kartu WhatsApp/iMessage = judul, pesan & gambar 1200×630 dari tampilan 3D
+   sekarang, ikut di isi tautan (api/lihat.js membacanya). JPEG dikecilkan ≤ 280 KB (WhatsApp mengabaikan
+   gambar yang lebih besar); toDataURL, bukan toBlob — toBlob bisa tak pernah kembali saat adegan dirender. */
+function gambarPratinjau(){
+  renderer.render(scene,camera);
+  const s=renderer.domElement, c=document.createElement('canvas'); c.width=1200; c.height=630;
+  const k=Math.min(s.width/1200,s.height/630), w=1200*k, h=630*k;
+  c.getContext('2d').drawImage(s,(s.width-w)/2,(s.height-h)/2,w,h,0,0,1200,630);
+  let d=''; for(const q of [.82,.7,.55,.4]){ d=c.toDataURL('image/jpeg',q); if(d.length*.75<280*1024) break; }
+  return d;
+}
+async function unggahPratinjau(d){
+  try{ const u8=new Uint8Array(bufFromB64(d.split(',')[1])), h=await sidikSHA(u8);
+    const r=await fetch('api/tautan?gambar='+h,{method:'POST',headers:{'content-type':'image/jpeg'},body:u8}); return r.ok?h:''; }
+  catch(e){ return ''; }
+}
 async function buatTautanLihat(kemajuan=()=>{}){
   const rujukan={}, ditinggal=[], lampiran={aset:{}, tekstur:{}, media:{}};
   let alasanLampiran='', total=0, nLampiran=0;
@@ -13584,15 +13618,19 @@ async function buatTautanLihat(kemajuan=()=>{}){
     const b=await lampirkan(bl.nama,bl.u8);
     if(b) lampiran.langit={nama:bl.nama, bagian:b}; else langitDitinggal=true;
   }
+  const judul=$('#bagikanJudul').value.trim().slice(0,80), pesan=$('#bagikanPesan').value.trim().slice(0,200);
+  const foto=$('#bagikanFoto').checked&&alasanLampiran!=='blob'?gambarPratinjau():'', gambar=foto&&await unggahPratinjau(foto);
+  const bagikan={bahasa:BAHASA.kode, ...(judul?{judul}:{}), ...(pesan?{pesan}:{}), ...(gambar?{gambar}:{})};
   const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan, ...(bgmData()?{bgm:PROJECT.bgm}:{}),
-    ...(nLampiran?{lampiran}:{})};
+    ...(nLampiran?{lampiran}:{}), bagikan};
   // angka dibulatkan ke milimeter / 0,001 — jauh lebih ringkas setelah dipadatkan
   const bulat=(k,v)=>typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1000)/1000:v;
   const padat=await padatkan(JSON.stringify(isi,bulat));
   const dasar=location.origin+location.pathname;
   const pendek=await simpanTautanPendek(padat);
   const lap={ditinggal, fotoDitinggal, mediaDitinggal, langitDitinggal, alasanLampiran, nLampiran, mbLampiran:total/1048576};
-  if(pendek.id) return {url:dasar+'#l='+pendek.id, pendek:true, panjang:padat.length, ...lap};
+  // urlBagikan …/l/<id>: halaman kartu pratinjau (api/lihat.js) yang langsung meneruskan ke #l=<id>
+  if(pendek.id) return {url:dasar+'#l='+pendek.id, urlBagikan:location.origin+'/l/'+pendek.id, pendek:true, panjang:padat.length, gambar:gambar?foto:'', ...lap};
   const kode=b64url(padat);
   return {url:dasar+'#lihat='+kode, pendek:false, alasan:pendek.alasan, kodeGalat:pendek.kode, panjang:kode.length, ...lap};
 }
@@ -13614,10 +13652,12 @@ $('#bagikanBtn').onclick=async()=>{
   let r;
   try{ r=await buatTautanLihat(nama=>{ inf.textContent=''; inf.appendChild(el('span',null,'Mengunggah untuk tautan: '+nama)); }); }
   finally{ btn.disabled=false; }
-  $('#bagikanHasil').hidden=false; $('#bagikanUrl').value=r.url; $('#bagikanUrl').select();
+  $('#bagikanHasil').hidden=false; $('#bagikanUrl').value=r.urlBagikan||r.url; $('#bagikanUrl').select();
+  const gb=$('#bagikanGambar'); gb.hidden=!r.gambar; if(r.gambar) gb.src=r.gambar;
   const kb=Math.ceil(r.url.length/1024);
   // satu kalimat per elemen: tiap kalimat diterjemahkan sendiri oleh lapisan bahasa
   const kal=[r.pendek?'Tautan pendek siap dibagikan.':`Tautan ${kb} KB.`];
+  if(r.gambar) kal.push('Kartu pratinjau (judul, pesan & gambar) tampil saat tautan dikirim lewat chat.');
   if(!r.pendek && r.alasan==='blob') kal.push('Tautan pendek belum aktif — aktifkan Vercel Blob di proyek Vercel (Storage → Blob), lalu Redeploy.');
   if(!r.pendek && r.alasan==='server') kal.push(`Tautan pendek gagal dibuat (server: ${r.kodeGalat||'galat'}).`);
   if(!r.pendek && r.alasan==='luring') kal.push('Tautan pendek tidak bisa dihubungi (luring atau hosting tanpa fungsi server, mis. GitHub Pages).');
@@ -13664,7 +13704,8 @@ $('#bagikanSalin').onclick=async()=>{
 };
 $('#bagikanKirim').onclick=async()=>{
   const u=$('#bagikanUrl').value; if(!u) return;
-  if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Jalan-jalan di '+PROJECT.name+' (lihat saja)', url:u}); }catch(e){} }
+  const judul=$('#bagikanJudul').value.trim()||PROJECT.name, pesan=$('#bagikanPesan').value.trim();
+  if(navigator.share){ try{ await navigator.share({title:judul, text:pesan||'Jalan-jalan di '+judul+' (lihat saja)', url:u}); }catch(e){} }
   else $('#bagikanSalin').click();
 };
 /* LOBI main bareng (JEV-077): modul terpisah, dimuat hanya saat dipakai — editor biasa tidak
