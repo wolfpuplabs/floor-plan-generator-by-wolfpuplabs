@@ -484,7 +484,7 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
       const k = await kunciBaru();
       const ruang = `p23d-${mode === 'edit' ? 'e' : 'l'}${maks === 10 ? 'a' : maks}-${k.sidik}`;
       try { localStorage.setItem('lobiKunci:' + ruang, JSON.stringify(k)); } catch (e) { /* kunci hanya di memori sesi ini */ }
-      const r = await buatTautanLihat();
+      const r = await buatTautanLihat(undefined, { bagikan: o.bagikan });
       // undangan lewat halaman kartu pratinjau …/l/<id>?r=<ruang> bila tautan pendek aktif (JEV-087)
       const url = r.urlBagikan ? r.urlBagikan + '?r=' + ruang : r.url + '&r=' + ruang;
       await masukRuang(ruang, nama, url);
@@ -492,6 +492,7 @@ body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px
       sistem(`Ruang dibuka (${mode === 'edit' ? 'bangun bareng' : 'lihat saja'}, maks. ${maks} orang). Bagikan undangan.`);
       sistem('Undangan tetap berlaku walau kamu keluar.');
       if (!r.pendek) toast('Undangan memakai tautan panjang — aktifkan Vercel Blob agar lebih pendek');
+      return r;
     } finally { if (tombol) tombol.disabled = false; }
   };
 
