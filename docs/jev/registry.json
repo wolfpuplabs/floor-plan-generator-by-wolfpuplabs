@@ -3098,7 +3098,7 @@
    "J": {
     "masalah": "Tautan lihat-saja hanya bisa dijelajahi sendirian; pemilik tidak bisa menemani klien/teman berkeliling rumah, berbicara tentang ruangan, atau merancang bersama dari jarak jauh.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-09 (\"dibikin jadi kaya lobby multiplayer online game, yg ngeshare jadi host lobby … tulis nama, jadi icon karakter user, jalan2 di dalem bareng, bisa chat … toggle pilihan view only atau bisa edit/build bareng … batasan max user per invitation session biar ga traffic (misal 10 orang)\"); melanjutkan JEV-047 (DEFER karena penyimpanan cloud) dengan desain tanpa penyimpanan server",
+    "sumberBukti": "pesan pengguna 2026-10-09 (\"dibikin jadi kaya lobby multiplayer online game, yg ngeshare jadi host lobby … tulis nama, jadi icon karakter user, jalan2 di dalem bareng, bisa chat … toggle pilihan view only atau bisa edit/build bareng … batasan max user per invitation session biar ga traffic (misal 10 orang)\"); melanjutkan JEV-047 (DEFER karena penyimpanan cloud) dengan desain tanpa penyimpanan server; susulan 2026-10-11 (contoh tangkapan layar iPhone: foto bulat bernama + gelembung \"Hello everyone! Welcome to the space\"): \"bisa dibikin gini ngga?\" — avatar kini foto profil bulat + nama, obrolan tampil sebagai gelembung di atas kepala",
     "alternatif": [
      "server WebSocket sendiri (biaya & data lewat server pemilik situs)",
      "layanan realtime berbayar (Firebase/Ably: akun, kuota, data di pihak ketiga)",

@@ -314,6 +314,9 @@ body{font-size:14px}
 #sidebar{width:368px;min-width:368px}
 #sidebar header{padding:16px 18px 12px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
+/* foto profil main bareng: pratinjau bulat */
+.lobi-foto{align-items:center}
+.lobi-foto-lihat{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #fff;flex:none}
 #bagikanGambar,#lobiGambar{display:block;width:100%;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-top:6px}
 /* merek: ikon denah sebagai logo + nama "Plan23D" */
 #sidebar h1.merek{display:flex;align-items:center;gap:8px;font-size:1.25rem;font-weight:800;letter-spacing:.1px}
@@ -816,6 +819,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <p class="hint">Undang teman masuk ke rumah ini: tiap orang menulis nama, tampil sebagai karakter, jalan-jalan bersama &amp; mengobrol. Koneksi langsung antar-peramban — rumah tidak disimpan di server.</p>
         <p class="hint">Undangan tetap berlaku walau kamu offline: siapa pun yang masuk duluan otomatis jadi pusat koneksi, dan perannya pindah ke orang lain saat ia keluar.</p>
         <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Pemilik"></div>
+        <div class="group"><label>Foto profil (opsional)</label><div class="row lobi-foto"><img class="lobi-foto-lihat" alt="" hidden><button class="btn sm ghost lobi-foto-pilih">Pilih foto</button><button class="btn sm ghost lobi-foto-hapus" hidden>Hapus</button></div></div>
         <div class="group"><label>Izin tamu</label>
           <div class="row lobi-mode" role="group" aria-label="Izin tamu"><button class="btn sm ghost active" data-lobi-mode="lihat" aria-pressed="true">Lihat saja</button><button class="btn sm ghost" data-lobi-mode="edit" aria-pressed="false">Bangun bareng</button></div>
           <p class="hint">Lihat saja: tamu jalan-jalan, mengobrol &amp; menyalakan lampu dsb.; hanya kamu yang mengubah rumah &amp; suasana. Bangun bareng: semua ikut mengubah rumah.</p>
@@ -13720,12 +13724,38 @@ const MODUL={};
 function muatModul(nama){
   if(!/^[a-z]+$/.test(nama)) return Promise.reject(new Error('modul tidak dikenal'));
   return MODUL[nama]||(MODUL[nama]=new Promise((ok,no)=>{
-    const s=document.createElement('script'); s.src='modul/'+nama+'.js?v=1';
+    const s=document.createElement('script'); s.src='modul/'+nama+'.js?v=2';
     s.onload=()=>ok(); s.onerror=()=>{ delete MODUL[nama]; no(new Error('modul '+nama+' tidak bisa dimuat — periksa koneksi')); };
     document.head.appendChild(s);
   }));
 }
 const LOBI_UI={mode:'lihat'};
+/* Foto profil main bareng (opsional): dipotong kotak di tengah, 128 px, JPEG ≤ 24 KB — tampil sebagai avatar bulat
+   di layar peserta lain (modul/lobi.js menyaringnya lagi di tiap penerima). Diingat di perangkat ini saja. */
+const FOTO_LOBI={d:''};
+try{ const v=localStorage.getItem('lobiFotoProfil')||''; if(/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(v)&&v.length<=24000) FOTO_LOBI.d=v; }catch(e){ /* mode privat */ }
+async function fotoProfil(file){
+  const u=URL.createObjectURL(file);
+  try{
+    const im=new Image(); im.src=u; await im.decode();
+    const w=im.naturalWidth, h=im.naturalHeight, n=Math.min(w,h); if(!n) throw new Error('bukan gambar');
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    c.getContext('2d').drawImage(im,(w-n)/2,(h-n)/2,n,n,0,0,128,128);
+    for(const q of [.82,.68,.5]){ const d=c.toDataURL('image/jpeg',q); if(d.length<=24000) return d; }
+    throw new Error('foto terlalu besar');
+  }catch(e){ throw new Error(e.message==='foto terlalu besar'?e.message:'foto tidak bisa dibaca'); }
+  finally{ URL.revokeObjectURL(u); }
+}
+// pengatur foto: dipakai panel Main bareng & kartu undangan (modul/lobi.js)
+function pasangPilihFoto(akar){
+  const lihat=akar.querySelector('.lobi-foto-lihat'), hapus=akar.querySelector('.lobi-foto-hapus');
+  const isi=()=>{ lihat.hidden=hapus.hidden=!FOTO_LOBI.d; if(FOTO_LOBI.d) lihat.src=FOTO_LOBI.d; };
+  akar.querySelector('.lobi-foto-pilih').onclick=()=>pilihBerkasUmum('image/*',async f=>{
+    FOTO_LOBI.d=await fotoProfil(f); try{ localStorage.setItem('lobiFotoProfil',FOTO_LOBI.d); }catch(e){ /* mode privat */ } isi(); });
+  hapus.onclick=()=>{ FOTO_LOBI.d=''; try{ localStorage.removeItem('lobiFotoProfil'); }catch(e){ /* mode privat */ } isi(); };
+  isi();
+}
+pasangPilihFoto($('#lobiSiap .lobi-foto'));
 try{ $('#lobiNamaHost').value=localStorage.getItem('lobiNama')||''; }catch(e){}
 for(const b of $$('[data-lobi-mode]')) b.onclick=()=>{
   LOBI_UI.mode=b.dataset.lobiMode;

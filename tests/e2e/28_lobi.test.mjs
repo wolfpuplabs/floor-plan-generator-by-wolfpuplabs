@@ -67,6 +67,12 @@ export const tes = {
       assert.match(undangan, /#lihat=.+&r=p23d-e3-[0-9a-f]{16}$/, 'undangan = tautan lihat + kode ruang (aturan ikut kode)');
       assert.equal(await peran(H), 'pusat', 'pembuat yang pertama di ruang jadi pusat koneksi');
       const G = await L.buka(undangan);
+      // foto profil tamu: dipotong kotak 128 px, JPEG kecil — dipilih di kartu undangan
+      const foto = await G.evaluate(async () => { const c = document.createElement('canvas'); c.width = 900; c.height = 600; const x = c.getContext('2d');
+        x.fillStyle = '#c33'; x.fillRect(0, 0, 900, 600); x.fillStyle = '#3c3'; x.fillRect(300, 0, 300, 600);
+        const b = await new Promise(r => c.toBlob(r, 'image/png')); FOTO_LOBI.d = await fotoProfil(new File([b], 'saya.png', { type: 'image/png' }));
+        const im = new Image(); im.src = FOTO_LOBI.d; await im.decode(); return { d: FOTO_LOBI.d.slice(0, 23), n: FOTO_LOBI.d.length, w: im.naturalWidth, h: im.naturalHeight }; });
+      assert.deepEqual([foto.d, foto.w, foto.h, foto.n <= 24000], ['data:image/jpeg;base64,', 128, 128, true]);
       await masuk(G, 'Sari');
       await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 150000 });
       await H.waitForFunction(() => LOBI.peserta.size === 2, undefined, { timeout: 25000 });
@@ -92,9 +98,18 @@ export const tes = {
         for (const key of 'wasd') i.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); });
       assert.equal(await G.evaluate(() => FPS.keys.size), 0, 'tombol obrolan tidak bocor ke kontrol jalan');
       await H.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible && a.tuju), undefined, { timeout: 25000 });
-      const av = await H.evaluate(() => { const a = [...LOBI.avatar.values()][0]; return { x: a.tuju.x, z: a.tuju.z, yaw: a.tuju.yaw, label: !!a.g.children.find(c => c.isSprite) }; });
+      const av = await H.evaluate(() => { const a = [...LOBI.avatar.values()][0]; return { x: a.tuju.x, z: a.tuju.z, yaw: a.tuju.yaw, label: a.d.querySelector('.lb-nm').textContent }; });
       assert.ok(Math.abs(av.x - posG.x) < 0.5 && Math.abs(av.z - posG.z) < 0.5, 'avatar di posisi tamu: ' + JSON.stringify([av, posG]));
-      assert.ok(av.label, 'avatar berlabel nama');
+      assert.equal(av.label, 'Sari', 'avatar berlabel nama');
+      // avatar = foto profil bulat + label nama; obrolan tampil sebagai gelembung di atas kepala
+      const fv = await H.evaluate(() => { const p = [...LOBI.peserta.values()].find(x => x.nama === 'Sari'), a = LOBI.avatar.get(p.id);
+        const img = a.d.querySelector('img.lb-foto');
+        return { foto: (p.foto || '').slice(0, 23), img: img && img.getAttribute('src') === p.foto, lapisan: a.d.parentElement.id, mesh: a.g.children.length }; });
+      assert.deepEqual(fv, { foto: 'data:image/jpeg;base64,', img: true, lapisan: 'lobiAvatar', mesh: 0 });
+      await G.evaluate(() => { const i = document.querySelector('#lobiObrolan form input'); i.value = 'Hello everyone! Welcome to the space'; i.form.requestSubmit(); });
+      await H.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.gel), undefined, { timeout: 25000 });
+      assert.deepEqual(await H.evaluate(() => { const a = [...LOBI.avatar.values()].find(a => a.gel); return [a.gel.textContent, a.d.contains(a.gel), a.gel.children.length]; }),
+        ['Hello everyone! Welcome to the space', true, 0], 'gelembung di atas kepala, teks polos');
       // host juga berjalan → tamu melihat avatar host
       await H.evaluate(() => { enterFPS(); camera.position.set(5, 1.6, 2); FPS.feet = 0; });
       await G.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible), undefined, { timeout: 25000 });
