@@ -1951,7 +1951,7 @@
    "J": {
     "masalah": "Untuk menunjukkan desain ke klien, pengguna harus mengirim berkas .json dan klien harus memasang/membuka aplikasi lalu bisa tak sengaja mengubahnya. Tidak ada cara mengirim \"rumah untuk dijelajahi\".",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-03: \"bisa share link ke orang biar bisa nyoba jalan2 tapi ngga bisa ngedit\"; susulan 2026-10-11: \"pas user open shared link bisa ga defaultnya udah walk\" — tautan lihat kini langsung terbuka di mode jalan-jalan",
+    "sumberBukti": "pesan pengguna 2026-10-03: \"bisa share link ke orang biar bisa nyoba jalan2 tapi ngga bisa ngedit\"; susulan 2026-10-11: \"pas user open shared link bisa ga defaultnya udah walk\" — tautan lihat kini langsung terbuka di mode jalan-jalan; susulan 2026-10-11 (tangkapan layar iPad, muncul menghadap dinding di dalam): \"bisa ga pas pertama join walk room spawningnya di depan\" — penerima tautan / undangan kini muncul di luar pintu depan, menghadapnya",
     "alternatif": [
      "server penyimpanan proyek + akun (biaya hosting, data klien di server, privasi)",
      "ekspor video/gambar (tidak bisa dijelajahi)"
