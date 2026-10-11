@@ -39,6 +39,17 @@ export const tes = {
       out.atasCiut = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bilah-atas')) === Math.ceil(bar.getBoundingClientRect().bottom);
       d.hidden = true; ciutkanFps(false); exitFPS(); return out;
     });
-    assert.deepEqual(r, { awal: 'fpsExit', akhir: 'fpsCiut', tengah: true, bawah: true, atas: true, ciut: ['fpsExit', 'fpsCiut'], atasCiut: true });
+    assert.deepEqual(r, { awal: 'fpsExit', akhir: 'fpsCiut', tengah: true, bawah: true, atas: true, ciut: ['fpsExit', 'fpsFoto', 'fpsCiut'], atasCiut: true });
+  },
+  'foto mode jalan: tombol kamera menyimpan JPEG tampilan sekarang (diunduh di desktop), kilat & nama berwaktu': async (page) => {
+    await page.evaluate(() => { PROJECT.levels[0].walls = [[0, 0, 5, 0], [5, 0, 5, 4], [5, 4, 0, 4], [0, 4, 0, 0]].map(([a, b, c, d]) => ({ id: uid('w'), x1: a, z1: b, x2: c, z2: d, thickness: 0.15, openings: [] })); rebuildScene(); enterFPS(); });
+    await page.waitForTimeout(500);
+    const [unduh] = await Promise.all([page.waitForEvent('download'), page.click('#fpsFoto')]);
+    assert.match(unduh.suggestedFilename(), /^Plan23D-\d{8}-\d{6}\.jpg$/);
+    const buf = Buffer.from(await (await unduh.createReadStream()).toArray().then(b => Buffer.concat(b)));
+    assert.deepEqual([buf[0], buf[1], buf.length > 5000], [0xff, 0xd8, true]);
+    assert.equal(await page.evaluate(() => !!document.getElementById('kilat')), true, 'efek kilat');
+    const r = await page.evaluate(() => { const r = fotoJalan(); exitFPS(); return [r.lebar === renderer.domElement.width, r.tinggi === renderer.domElement.height, r.bagikan]; });
+    assert.deepEqual(r, [true, true, false]);
   },
 };

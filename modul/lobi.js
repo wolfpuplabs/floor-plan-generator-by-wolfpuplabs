@@ -13,9 +13,9 @@
    data WebRTC terenkripsi DTLS. TURN opsional dari api/ice (env Vercel).
    Semua pesan dari peer lain = masukan tak tepercaya: jenis, ukuran & lajunya disaring,
    teks hanya lewat textContent, rumah lewat sanitasiProyek(). */
-/* global PROJECT, scene, camera, FPS, LIHAT, SEL, ATAP_TUTUP:writable, gizmo, $, el, toast, clamp,
+/* global PROJECT, scene, camera, renderer, worldRoot, FPS, LIHAT, SEL, ATAP_TUTUP:writable, gizmo, $, el, toast, clamp,
    sanitasiProyek, selData, renderLevels, renderSitusUI, renderFinishUI, renderAtapUI, renderInspector, rebuildScene,
-   buatTautanLihat, proyekKosong, setTool */
+   buatTautanLihat, proyekKosong, setTool, FOTO_LOBI, pasangPilihFoto */
 (function () {
   'use strict';
   const PEERJS = { src: 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js', sri: 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu' };
@@ -27,7 +27,8 @@
   const EC = { name: 'ECDSA', namedCurve: 'P-256' }, TTD = { name: 'ECDSA', hash: 'SHA-256' };
   const L = { aktif: false, peran: null, peer: null, ruang: null, aturan: null, mode: 'lihat', maks: MAKS, saya: null, nama: '', kunci: null, pemilik: false,
     peserta: new Map(), kon: new Map(), pusat: null, urut: 0, sesi: 0, pindah: false, dengar: 0, undangan: '',
-    terakhir: '', tunda: 0, antri: null, avatar: new Map(), grup: null, obrBuka: true, belumBaca: 0, laju: new Map(), kuota: new Map(), posLama: '', jeda: 0 };
+    terakhir: '', tunda: 0, antri: null, avatar: new Map(), grup: null, obrBuka: true, belumBaca: 0, laju: new Map(), kuota: new Map(), posLama: '', jeda: 0,
+    mic: null, suara: new Map(), keluar: new Map(), tundaSuara: false };
   window.LOBI = L;
   const { terapkanAksiLuar, keadaanAksi, pasangKeadaanAksi, adeganKini, pasangAdegan, bunyiPianoLuar } = window.JEMBATAN_LOBI;
 
@@ -40,7 +41,9 @@
   const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b)));
   const dariB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
   const warnaBebas = () => { const pakai = new Set([...L.peserta.values()].map(p => p.warna)); return WARNA.find(w => !pakai.has(w)) || WARNA[L.peserta.size % WARNA.length]; };
-  const publik = p => ({ id: p.id, nama: p.nama, warna: p.warna, pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0 });
+  // foto profil (opsional): JPEG kotak kecil buatan peramban pemiliknya — disaring lagi di setiap penerima
+  const fotoAman = v => (typeof v === 'string' && v.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(v) ? v : '');
+  const publik = p => ({ id: p.id, nama: p.nama, warna: p.warna, pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, ...(p.foto ? { foto: p.foto } : {}) });
   const daftar = () => [...L.peserta.values()].map(publik);
   // ruang "lihat saja": hanya pemilik yang mengubah rumah & suasana
   const boleh = p => L.mode === 'edit' || !!(p && p.pemilik);
@@ -162,7 +165,17 @@
 #lobiMasuk h3{font-size:1.05rem}
 body.lihat #lobiObrolan{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 62px)}
 body.jalan #lobiObrolan,body.lihat #lobiObrolan{top:calc(var(--bilah-atas,64px) + 8px);bottom:auto}
-body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:min(180px,30vh)}`;
+body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:min(180px,30vh)}
+#lobiAvatar{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:20}
+.lb-av{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform}
+.lb-av[hidden]{display:none}
+.lb-av .lb-foto{position:absolute;left:-48px;top:-48px;width:96px;height:96px;box-sizing:border-box;border-radius:50%;border:4px solid #fff;object-fit:cover;display:grid;place-items:center;color:#fff;font:700 44px/1 system-ui,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.35)}
+.lb-av .lb-nm{position:absolute;top:58px;left:0;transform:translateX(-50%);background:rgba(16,18,22,.72);color:#fff;font:700 17px/1.2 system-ui,sans-serif;padding:5px 14px;border-radius:999px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.lb-av .lb-gel{position:absolute;bottom:62px;left:0;transform:translateX(-50%);width:max-content;max-width:300px;background:rgba(16,18,22,.78);color:#fff;font:500 17px/1.35 system-ui,sans-serif;padding:9px 16px;border-radius:16px;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.lb-av.lb-bicara .lb-foto{border-color:#4ec9b0;box-shadow:0 0 0 4px rgba(78,201,176,.45),0 6px 22px rgba(0,0,0,.35)}
+#lobiObrolan .lb-mic{margin-left:auto;display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 10px}
+#lobiObrolan .lb-mic.on{background:var(--accent);color:#06201b}
+.lb-av .lb-gel::after{content:'';position:absolute;left:50%;top:100%;margin-left:-9px;border:9px solid transparent;border-top-color:rgba(16,18,22,.78)}`;
     document.head.appendChild(s);
   }
   function panelObrolan() {
@@ -172,6 +185,12 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const kepala = el('div', 'lb-kepala'); kepala.appendChild(el('span', 'lb-judul', 'Obrolan'));
     const badge = el('span', 'lb-badge'); badge.hidden = true; kepala.appendChild(badge);
     kepala.appendChild(el('span', 'lb-jumlah'));
+    const mic = el('button', 'btn sm ghost lb-mic'); mic.type = 'button';
+    const ik = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ik.setAttribute('class', 'ik'); ik.setAttribute('aria-hidden', 'true');
+    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-mic'); ik.appendChild(u);
+    mic.appendChild(ik); mic.appendChild(el('span', 'lb-mic-t', 'Mic'));
+    mic.onclick = e => { e.stopPropagation(); micNyala(!L.mic); };
+    kepala.appendChild(mic);
     kepala.onclick = () => { L.obrBuka = !L.obrBuka; p.classList.toggle('ciut', !L.obrBuka); if (L.obrBuka) { L.belumBaca = 0; badge.hidden = true; } };
     const isi = el('div', 'lb-isi'), ps = el('div', 'lb-peserta'), pesan = el('div', 'lb-pesan');
     const f = document.createElement('form'), inp = document.createElement('input');
@@ -218,31 +237,63 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const u = $('#lobiUrl'); if (u && on) u.value = L.undangan;
   }
 
-  /* ---------- avatar peserta lain ---------- */
-  function labelNama(nama, warna) {
-    const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
-    x.font = '600 30px system-ui, sans-serif'; const w = Math.min(244, x.measureText(nama).width + 28);
-    x.fillStyle = 'rgba(16,18,22,.78)'; x.beginPath(); x.roundRect ? x.roundRect((256 - w) / 2, 8, w, 48, 24) : x.rect((256 - w) / 2, 8, w, 48); x.fill();
-    x.fillStyle = warna; x.fillRect((256 - w) / 2 + 12, 28, 8, 8);
-    x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(nama, 128 + 6, 33, 216);
-    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthWrite: false, transparent: true })); s.scale.set(1.1, 0.275, 1); s.position.y = 2.02; s.renderOrder = 4;
-    return s;
+  /* ---------- avatar peserta lain: foto profil bulat + nama, gelembung obrolan di atas kepala ----------
+     Lapisan HTML yang diproyeksikan ke posisi kepala tiap peserta (bukan sprite 3D): warnanya tidak ikut
+     eksposur/vinyet adegan dan teksnya tajam. Ukurannya mengikuti jarak seperti benda 3D (±0,62 m), dan
+     disembunyikan bila tertutup dinding (raycast ke bangunan 5×/detik). Semua teks lewat textContent. */
+  const KEPALA = 1.5, BULAT = 0.62, PX = 96;
+  function lapisan() {
+    let o = document.getElementById('lobiAvatar'); if (o) return o;
+    o = el('div'); o.id = 'lobiAvatar'; o.setAttribute('aria-hidden', 'true');
+    (renderer.domElement.parentElement || document.body).appendChild(o); return o;
   }
   function buatAvatar(p) {
     if (!L.grup) { L.grup = new THREE.Group(); L.grup.userData.noExport = true; scene.add(L.grup); }
-    const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color: p.warna, roughness: 0.55 });
-    const badan = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.24, 1.05, 16), m); badan.position.y = 0.72;
-    const kepala = new THREE.Mesh(new THREE.SphereGeometry(0.17, 20, 14), m); kepala.position.y = 1.47;
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.07, 0.06), new THREE.MeshStandardMaterial({ color: 0x111316, roughness: 0.3 })); visor.position.set(0, 1.5, 0.15);
-    for (const x of [badan, kepala]) x.castShadow = true;
-    g.add(badan, kepala, visor, labelNama(p.nama, p.warna)); g.visible = false; g.userData.noExport = true;
-    L.grup.add(g); return g;
+    const g = new THREE.Group(); g.visible = false; g.userData.noExport = true; L.grup.add(g);
+    const d = el('div', 'lb-av'); d.hidden = true;
+    let f;
+    if (p.foto) { f = el('img', 'lb-foto'); f.alt = ''; f.src = p.foto; }
+    else { f = el('div', 'lb-foto', ([...p.nama][0] || '?').toUpperCase()); f.style.background = p.warna; }
+    d.appendChild(f); d.appendChild(el('div', 'lb-nm', p.nama));
+    d.classList.toggle('lb-bicara', L.suara.has(p.id));
+    lapisan().appendChild(d);
+    return { g, d };
+  }
+  // gelembung obrolan: ≤ 3 baris (CSS), hilang sendiri setelah 6 detik
+  function gelembung(id, teks) {
+    const a = L.avatar.get(id); if (!a || !teks) return;
+    if (a.gel) a.gel.remove();
+    const b = el('div', 'lb-gel', teks); a.d.appendChild(b); a.gel = b;
+    clearTimeout(a.gelT); a.gelT = setTimeout(() => { if (a.gel === b) { b.remove(); a.gel = null; } }, 6000);
+  }
+  const vKepala = new THREE.Vector3(), vLayar = new THREE.Vector3(), sinarTutup = new THREE.Raycaster();
+  let tTutup = 0;
+  function letakAvatar() {
+    const kanvas = renderer.domElement, W = kanvas.clientWidth, H = kanvas.clientHeight, cekTutup = performance.now() - tTutup > 200;
+    if (cekTutup) tTutup = performance.now();
+    for (const a of L.avatar.values()) {
+      const sr = L.suara.get(a.id);
+      if (!a.g.visible) { a.d.hidden = true; if (sr) sr.a.volume = 0.8; continue; }
+      vKepala.set(a.g.position.x, a.g.position.y + KEPALA, a.g.position.z);
+      vLayar.copy(vKepala).project(camera);
+      const jarak = camera.position.distanceTo(vKepala);
+      if (sr) sr.a.volume = clamp(2.5 / Math.max(jarak, 0.1), 0.12, 1);   // makin jauh makin pelan (iOS mengabaikan volume)
+      if (vLayar.z > 1 || vLayar.z < -1 || jarak < 0.3) { a.d.hidden = true; continue; }
+      if (cekTutup) {
+        sinarTutup.set(camera.position, vKepala.clone().sub(camera.position).normalize()); sinarTutup.far = jarak - 0.35;
+        a.tutup = sinarTutup.far > 0 && sinarTutup.intersectObject(worldRoot, true).some(h => h.object.visible && !h.object.userData.halo);
+      }
+      if (a.tutup) { a.d.hidden = true; continue; }
+      const sk = camera.isPerspectiveCamera ? clamp(BULAT * H / (2 * jarak * Math.tan(camera.fov * Math.PI / 360)) / PX, 0.22, 1.3) : 0.8;
+      a.d.hidden = false;
+      a.d.style.transform = `translate3d(${((vLayar.x + 1) / 2 * W).toFixed(1)}px,${((1 - vLayar.y) / 2 * H).toFixed(1)}px,0) scale(${sk.toFixed(3)})`;
+      a.d.style.zIndex = String(1000 - Math.round(jarak * 10));
+    }
   }
   function hapusAvatar(id) {
-    const a = L.avatar.get(id); if (!a) return; L.avatar.delete(id);
+    const a = L.avatar.get(id); if (!a) return; L.avatar.delete(id); clearTimeout(a.gelT);
     if (a.g.parent) a.g.parent.remove(a.g);
-    a.g.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) { if (n.material.map) n.material.map.dispose(); n.material.dispose(); } });
+    a.d.remove();
   }
   const hapusSemuaAvatar = () => { for (const id of [...L.avatar.keys()]) hapusAvatar(id); };
   function posAman(d) {
@@ -252,7 +303,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function perbaruiPos(id, pos) {
     if (L.saya && id === L.saya.id) return;
     const p = L.peserta.get(id); if (!p) return;
-    let a = L.avatar.get(id); if (!a) { a = { g: buatAvatar(p), tuju: null }; L.avatar.set(id, a); }
+    let a = L.avatar.get(id); if (!a) { a = { ...buatAvatar(p), id, tuju: null }; L.avatar.set(id, a); }
     a.tuju = pos;
     if (pos && !a.g.visible) { a.g.position.set(pos.x, pos.y, pos.z); a.g.rotation.y = pos.yaw; }
     a.g.visible = !!pos;
@@ -268,6 +319,70 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (!FPS.on) return { jalan: 0 };
     return { jalan: 1, x: +camera.position.x.toFixed(2), y: +FPS.feet.toFixed(2), z: +camera.position.z.toFixed(2), yaw: +FPS.yaw.toFixed(3) };
   }
+
+  /* ---------- obrolan suara (opsional) ----------
+     Peserta yang menyalakan mic memanggil setiap peserta lain lewat panggilan audio PeerJS (langsung
+     antar-peramban, DTLS-SRTP); penerima menjawab tanpa mic-nya sendiri — satu arah per pembicara.
+     Hanya panggilan dari peserta ruang ini yang dijawab, trek video dibuang. Volume mengikuti jarak avatar. */
+  function tandaiBicara(id, on) { const a = L.avatar.get(id); if (a) a.d.classList.toggle('lb-bicara', on); }
+  function pasangPenerimaSuara(P) {
+    P.on('call', c => {
+      const terima = () => {
+        if (L.peer !== P || !L.peserta.has(c.peer) || (L.saya && c.peer === L.saya.id)) { try { c.close(); } catch (e) { /* abaikan */ } return; }
+        c.answer();
+        c.on('stream', st => putarSuara(c.peer, c, st));
+        c.on('close', () => hentiSuara(c.peer, c)); c.on('error', () => hentiSuara(c.peer, c));
+      };
+      // pemanggil baru bisa tiba sedikit sebelum kabar "masuk"-nya
+      if (L.peserta.has(c.peer)) terima(); else setTimeout(terima, 2500);
+    });
+  }
+  function putarSuara(id, c, st) {
+    hentiSuara(id);
+    const trek = st.getAudioTracks(); if (!trek.length) return;
+    const a = document.createElement('audio'); a.autoplay = true; a.setAttribute('playsinline', ''); a.hidden = true;
+    a.srcObject = new MediaStream(trek); document.body.appendChild(a);
+    L.suara.set(id, { c, a }); tandaiBicara(id, true);
+    a.play().catch(() => {
+      if (L.tundaSuara) return; L.tundaSuara = true; sistem('Ketuk layar untuk mendengar suara peserta');
+      addEventListener('pointerdown', () => { L.tundaSuara = false; for (const x of L.suara.values()) x.a.play().catch(() => { /* coba lagi nanti */ }); }, { once: true, capture: true });
+    });
+  }
+  function hentiSuara(id, c) {
+    const x = L.suara.get(id); if (!x || (c && x.c !== c)) return;
+    L.suara.delete(id); try { x.c.close(); } catch (e) { /* abaikan */ }
+    x.a.srcObject = null; x.a.remove(); tandaiBicara(id, false);
+  }
+  const hentiSemuaSuara = () => { for (const id of [...L.suara.keys()]) hentiSuara(id); for (const c of L.keluar.values()) { try { c.close(); } catch (e) { /* abaikan */ } } L.keluar.clear(); };
+  function panggil(id) {
+    if (!L.mic || !L.peer || !L.saya || id === L.saya.id || L.keluar.has(id)) return;
+    let c = null; try { c = L.peer.call(id, L.mic); } catch (e) { c = null; } if (!c) return;
+    L.keluar.set(id, c);
+    const lepas = () => { if (L.keluar.get(id) === c) L.keluar.delete(id); };
+    c.on('close', lepas); c.on('error', lepas);
+  }
+  const panggilSemua = () => { if (L.mic) for (const id of L.peserta.keys()) panggil(id); };
+  function tombolMic() {
+    const b = document.querySelector('#lobiObrolan .lb-mic'); if (!b) return;
+    b.classList.toggle('on', !!L.mic); b.setAttribute('aria-pressed', String(!!L.mic));
+    b.title = L.mic ? 'Matikan mikrofon' : 'Nyalakan mikrofon — bicara dengan semua orang di ruang'; b.setAttribute('aria-label', b.title);
+    b.querySelector('.lb-mic-t').textContent = L.mic ? 'Mic nyala' : 'Mic';
+  }
+  async function micNyala(on) {
+    if (on && !L.mic) {
+      if (!L.aktif) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Peramban ini tidak mendukung mikrofon'); return; }
+      try { L.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }); }
+      catch (e) { toast('Mikrofon tidak diizinkan — izinkan di pengaturan peramban'); return; }
+      if (!L.aktif) { for (const t of L.mic.getTracks()) t.stop(); L.mic = null; return; }
+      panggilSemua(); sistem('Mikrofon menyala — semua orang di ruang bisa mendengarmu');
+    } else if (!on && L.mic) {
+      for (const c of L.keluar.values()) { try { c.close(); } catch (e) { /* abaikan */ } }
+      L.keluar.clear(); for (const t of L.mic.getTracks()) t.stop(); L.mic = null;
+    }
+    tombolMic();
+  }
+  L.mikrofon = micNyala;
 
   /* ---------- sinkron rumah ---------- */
   const subsetProyek = () => ({ levels: PROJECT.levels, site: PROJECT.site, finish: PROJECT.finish, atap: PROJECT.atap });
@@ -303,11 +418,11 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function siarkan(m, kecuali) { for (const [id, k] of L.kon) if (id !== kecuali && k.open) { try { k.send(m); } catch (e) { /* koneksi putus */ } } }
   function jadiPusat(P) {
     L.peer = P; L.peran = 'pusat'; L.pusat = null;
-    P.on('connection', terimaTamu);
+    P.on('connection', terimaTamu); pasangPenerimaSuara(P);
     P.on('error', e => { if (e && e.type === 'peer-unavailable') return; console.warn('lobi', e); });
     P.on('disconnected', () => { if (L.peer === P && L.aktif) { try { P.reconnect(); } catch (e) { /* abaikan */ } } });
-    hapusSemuaAvatar(); L.kon.clear(); L.peserta.clear();
-    L.saya = { id: P.id, nama: L.nama, warna: (L.saya && L.saya.warna) || WARNA[0], pemilik: L.pemilik, pusat: true, urut: 0 };
+    hapusSemuaAvatar(); hentiSemuaSuara(); L.kon.clear(); L.peserta.clear();
+    L.saya = { id: P.id, nama: L.nama, warna: (L.saya && L.saya.warna) || WARNA[0], pemilik: L.pemilik, pusat: true, urut: 0, foto: L.foto };
     L.peserta.set(P.id, L.saya); L.urut = 1;
     renderPeserta();
   }
@@ -326,17 +441,17 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       if (L.peran !== 'pusat' || !k.open) { L.kon.delete(id); return; }
       if (L.peserta.size >= L.maks) { L.kon.delete(id); k.send({ t: 'penuh', maks: L.maks }); setTimeout(() => k.close(), 600); return; }
       const pakai = new Set([...L.peserta.values()].map(p => p.warna));
-      const p = { id, nama: teksAman(d.nama, 24) || 'Tamu', warna: WARNA.includes(d.warna) && !pakai.has(d.warna) ? d.warna : warnaBebas(), pemilik, pusat: false, urut: L.urut++ };
+      const p = { id, nama: teksAman(d.nama, 24) || 'Tamu', warna: WARNA.includes(d.warna) && !pakai.has(d.warna) ? d.warna : warnaBebas(), pemilik, pusat: false, urut: L.urut++, foto: fotoAman(d.foto) };
       L.peserta.set(id, p);
       k.send({ t: 'selamat', id, peserta: daftar(), s: JSON.stringify(subsetProyek()), a: adeganKini(), k: keadaanAksi() });
-      siarkan({ t: 'masuk', p: publik(p) }, id); sistem(p.nama + ' masuk ruang'); renderPeserta();
+      siarkan({ t: 'masuk', p: publik(p) }, id); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(id);
       return;
     }
     const p = L.peserta.get(id); if (!p || p.pusat) return;     // belum menyapa
     if (d.t === 'pos') { p.pos = posAman(d); perbaruiPos(id, p.pos); return; }
     if (d.t === 'chat') {
       if (!lajuOk(id)) return; const teks = teksAman(d.teks, 300); if (!teks) return;
-      const m = { t: 'chat', id, nama: p.nama, warna: p.warna, teks }; tampilPesan(m); siarkan(m);
+      const m = { t: 'chat', id, nama: p.nama, warna: p.warna, teks }; tampilPesan(m); gelembung(id, teks); siarkan(m);
       return;
     }
     // interaksi (lampu, pintu, TV, gorden, musik) boleh di kedua mode — bukan mengubah rumah.
@@ -367,7 +482,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function keluarTamu(id) {
     L.kon.delete(id);
     const p = L.peserta.get(id); if (!p || p.pusat) return;
-    L.peserta.delete(id); hapusAvatar(id);
+    L.peserta.delete(id); hapusAvatar(id); hentiSuara(id); L.keluar.delete(id);
     siarkan({ t: 'keluar', id }); sistem(p.nama + ' keluar dari ruang'); renderPeserta();
   }
 
@@ -378,7 +493,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const akhir = (f, v) => { if (s) return; s = true; clearTimeout(t); f(v); };
       t = setTimeout(() => { try { k.close(); } catch (e) { /* abaikan */ } akhir(no, new Error('pusat tidak menjawab')); }, 25000);
       P.on('error', e => { if (e && e.type === 'peer-unavailable') akhir(no, new Error('kosong')); });
-      k.on('open', async () => { k.send({ t: 'halo', nama: L.nama, warna: L.saya && L.saya.warna, bukti: await buktiPemilik(P.id) }); });
+      k.on('open', async () => { k.send({ t: 'halo', nama: L.nama, warna: L.saya && L.saya.warna, foto: L.foto || undefined, bukti: await buktiPemilik(P.id) }); });
       k.on('data', d => {
         if (!s) {
           if (d && d.t === 'selamat') akhir(ok, { k, d });
@@ -391,30 +506,32 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     });
   }
   function jadiTamu(P, k, d) {
-    L.peer = P; L.peran = 'tamu'; L.pusat = k; L.dengar = performance.now(); L.kon.clear();
+    L.peer = P; L.peran = 'tamu'; L.pusat = k; L.dengar = performance.now(); L.kon.clear(); pasangPenerimaSuara(P);
     P.on('disconnected', () => { if (L.peer === P && L.aktif) { try { P.reconnect(); } catch (e) { /* abaikan */ } } });
-    hapusSemuaAvatar(); L.peserta.clear();
+    hapusSemuaAvatar(); hentiSemuaSuara(); L.peserta.clear();
     for (const p of (Array.isArray(d.peserta) ? d.peserta : []).slice(0, MAKS)) {
       if (!p || typeof p.id !== 'string') continue;
-      L.peserta.set(p.id.slice(0, 64), { id: p.id.slice(0, 64), nama: teksAman(p.nama, 24) || 'Tamu', warna: WARNA.includes(p.warna) ? p.warna : WARNA[9], pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0 });
+      L.peserta.set(p.id.slice(0, 64), { id: p.id.slice(0, 64), nama: teksAman(p.nama, 24) || 'Tamu', warna: WARNA.includes(p.warna) ? p.warna : WARNA[9], pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, foto: fotoAman(p.foto) });
     }
     L.saya = L.peserta.get(d.id) || { id: String(d.id), nama: L.nama, warna: WARNA[1], urut: 99 };
+    L.saya.foto = L.foto;
     L.pemilik = !!L.saya.pemilik;                              // diakui pusat setelah tanda tangan diperiksa
     if (typeof d.s === 'string') terapkanProyek(d.s, null);
     // suasana, langit & keadaan interaksi saat ini (lampu, pintu, TV, musik) — masuk ke dunia yang sama
     try { const a = adeganAman(d.a); if (a) pasangAdegan(a); pasangKeadaanAksi(d.k); } catch (e) { console.warn('lobi', e); }
     if (L.mode === 'edit' && LIHAT.on) bukaEdit();
-    renderPeserta();
+    renderPeserta(); panggilSemua();
   }
   function pesanDariPusat(d) {
     if (!d || typeof d !== 'object' || typeof d.t !== 'string') return;
     if (d.t === 'pos' && Array.isArray(d.d)) { for (const x of d.d.slice(0, MAKS)) if (x && typeof x.id === 'string') perbaruiPos(x.id, posAman(x)); return; }
-    if (d.t === 'chat') { const p = L.peserta.get(d.id); tampilPesan({ nama: p ? p.nama : teksAman(d.nama, 24), warna: p ? p.warna : '#ccc', teks: teksAman(d.teks, 300) }); return; }
+    if (d.t === 'chat') { const p = L.peserta.get(d.id), teks = teksAman(d.teks, 300); tampilPesan({ nama: p ? p.nama : teksAman(d.nama, 24), warna: p ? p.warna : '#ccc', teks });
+      if (p && !(L.saya && p.id === L.saya.id)) gelembung(p.id, teks); return; }
     if (d.t === 'masuk' && d.p && typeof d.p.id === 'string') {
-      const p = { id: d.p.id.slice(0, 64), nama: teksAman(d.p.nama, 24) || 'Tamu', warna: WARNA.includes(d.p.warna) ? d.p.warna : WARNA[9], pemilik: !!d.p.pemilik, pusat: false, urut: d.p.urut | 0 };
-      L.peserta.set(p.id, p); sistem(p.nama + ' masuk ruang'); renderPeserta(); return;
+      const p = { id: d.p.id.slice(0, 64), nama: teksAman(d.p.nama, 24) || 'Tamu', warna: WARNA.includes(d.p.warna) ? d.p.warna : WARNA[9], pemilik: !!d.p.pemilik, pusat: false, urut: d.p.urut | 0, foto: fotoAman(d.p.foto) };
+      L.peserta.set(p.id, p); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(p.id); return;
     }
-    if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
+    if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); hentiSuara(d.id); L.keluar.delete(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
     if (d.t === 'proyek') { terapkanProyek(d.s, teksAman(d.dari, 24)); return; }
     if (d.t === 'aksi') { if (idAman(d.id)) terapkanAksiLuar(d.j, d.id, !!d.on); return; }
     if (d.t === 'nada') { const n = nadaAman(d); if (n) bunyiPianoLuar(n.id, n.m, n.dt, n.d, n.v); return; }
@@ -428,7 +545,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const urutan = [...L.peserta.values()].filter(p => !p.pusat).sort((a, b) => (a.urut | 0) - (b.urut | 0)).findIndex(p => L.saya && p.id === L.saya.id);
     const lama = L.peer; L.peer = null; L.pusat = null; L.peran = null;
     setTimeout(() => { try { if (lama) lama.destroy(); } catch (e) { /* abaikan */ } }, 0);
-    hapusSemuaAvatar(); L.peserta.clear(); if (L.saya) L.peserta.set(L.saya.id, L.saya);
+    hapusSemuaAvatar(); hentiSemuaSuara(); L.peserta.clear(); if (L.saya) L.peserta.set(L.saya.id, L.saya);
     renderPeserta(); sistem('Pusat koneksi keluar — menyambung ulang…');
     const sesi = L.sesi;
     setTimeout(async () => {
@@ -451,7 +568,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       let P = null;
       try { P = await bukaPeer(opsi, L.ruang); }
       catch (e) { if (!e.terpakai) throw e; }
-      if (P) { if (sesi !== L.sesi) { P.destroy(); return null; } jadiPusat(P); return 'pusat'; }
+      if (P) { if (sesi !== L.sesi) { P.destroy(); return null; } jadiPusat(P); setTimeout(panggilSemua, 1500); return 'pusat'; }
       const Q = await bukaPeer(opsi, null);
       try { const { k, d } = await cobaTamu(Q); if (sesi !== L.sesi) { Q.destroy(); return null; } jadiTamu(Q, k, d); return 'tamu'; }
       catch (e) { try { Q.destroy(); } catch (x) { /* abaikan */ } if (e.penuh) throw e; }
@@ -464,7 +581,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (L.aktif) tutup();
     await muatPeerJS();
     const sesi = ++L.sesi;
-    Object.assign(L, { ruang, aturan: a, mode: a.mode, maks: a.maks, nama, undangan, terakhir: '', peran: null });
+    Object.assign(L, { ruang, aturan: a, mode: a.mode, maks: a.maks, nama, undangan, terakhir: '', peran: null, foto: fotoAman(FOTO_LOBI.d) });
     L.kunci = a.sidik ? kunciTersimpan(ruang) : null;
     L.pemilik = !!(L.kunci && L.kunci.sidik === a.sidik);
     try { localStorage.setItem('lobiNama', nama); } catch (e) { /* abaikan */ }
@@ -507,10 +624,14 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     k.appendChild(el('p', 'hint', 'Tulis namamu, lalu masuk untuk jalan-jalan & mengobrol bersama siapa pun yang ada di dalam.'));
     const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 24; inp.placeholder = 'Namamu'; inp.setAttribute('aria-label', 'Namamu');
     try { inp.value = localStorage.getItem('lobiNama') || ''; } catch (e) { /* abaikan */ }
+    // foto profil (opsional) — sama dengan pengatur di panel Main bareng
+    const foto = el('div', 'row lobi-foto'), fl = el('img', 'lobi-foto-lihat'); fl.alt = ''; fl.hidden = true;
+    foto.appendChild(fl); foto.appendChild(el('button', 'btn sm ghost lobi-foto-pilih', 'Foto profil (opsional)')); foto.appendChild(el('button', 'btn sm ghost lobi-foto-hapus', 'Hapus'));
+    pasangPilihFoto(foto);
     const info = el('p', 'hint'); const row = el('div', 'row');
     const masuk = el('button', 'btn', 'Masuk'), nanti = el('button', 'btn ghost', 'Lihat sendiri saja');
     row.appendChild(masuk); row.appendChild(nanti);
-    k.appendChild(inp); k.appendChild(row); k.appendChild(info);
+    k.appendChild(inp); k.appendChild(foto); k.appendChild(row); k.appendChild(info);
     document.getElementById('viewport').appendChild(k);
     nanti.onclick = () => k.remove();
     const pergi = async () => {
@@ -559,17 +680,18 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       }
       if (L.antri && !gizmo.dragging) { const a = L.antri; L.antri = null; terapkanProyek(a.s, a.dari); }
     }, 100);
-    const lari = t => { if (!detak) return; stepAvatar(Math.min(0.1, (t - (tLalu || t)) / 1000)); tLalu = t; requestAnimationFrame(lari); };
+    const lari = t => { if (!detak) return; stepAvatar(Math.min(0.1, (t - (tLalu || t)) / 1000)); letakAvatar(); tLalu = t; requestAnimationFrame(lari); };
     requestAnimationFrame(lari);
   }
   // keluar: ruang tetap hidup untuk peserta lain (pusat pamit dulu agar penerus langsung mengambil alih)
   function tutup() {
     if (L.peran === 'pusat') siarkan({ t: 'pergi' });
     L.sesi++; L.aktif = false; L.pindah = false; clearInterval(detak); detak = null;
-    hapusSemuaAvatar();
+    hapusSemuaAvatar(); hentiSemuaSuara(); if (L.mic) { for (const t of L.mic.getTracks()) t.stop(); L.mic = null; }
     const k = L.peer; L.peer = null; L.kon.clear(); L.peserta.clear(); L.pusat = null; L.peran = null;
     setTimeout(() => { try { if (k) k.destroy(); } catch (e) { /* abaikan */ } }, 300);
     const o = document.getElementById('lobiObrolan'); if (o) o.remove();
+    const la = document.getElementById('lobiAvatar'); if (la) la.remove();
     tampilAktif(false);
   }
   L.tutup = tutup;

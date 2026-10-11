@@ -1480,6 +1480,19 @@ window.KAMUS_EN={
   "Pesan undangan":"Invite message",
   "Mis. Main bareng yuk, jalan-jalan di rumah baruku!":"E.g. Come hang out with me in our new house!",
   "Berinteraksi":"Interact",
+  "Foto profil (opsional)":"Profile photo (optional)",
+  "Pilih foto":"Choose photo",
+  "foto tidak bisa dibaca":"photo could not be read",
+  "foto terlalu besar":"photo is too large",
+  "Ambil foto":"Take photo",
+  "Foto dibagikan / disimpan":"Photo shared / saved",
+  "Mic nyala":"Mic on",
+  "Matikan mikrofon":"Turn off microphone",
+  "Nyalakan mikrofon — bicara dengan semua orang di ruang":"Turn on microphone — talk to everyone in the room",
+  "Ketuk layar untuk mendengar suara peserta":"Tap the screen to hear the other participants",
+  "Peramban ini tidak mendukung mikrofon":"This browser does not support a microphone",
+  "Mikrofon tidak diizinkan — izinkan di pengaturan peramban":"Microphone not allowed — allow it in the browser settings",
+  "Mikrofon menyala — semua orang di ruang bisa mendengarmu":"Microphone on — everyone in the room can hear you",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1781,7 +1794,8 @@ window.KAMUS_EN={
   ["▶ (.+) — diputar di pemutar bawah saat objek diketuk; ketuk lagi untuk berhenti\\.","▶ $1 — plays in the bottom player when the object is tapped; tap again to stop."],
   ["Audio atau video, maks\\. (\\d+) MB — diputar di pemutar bawah \\(bisa disembunyikan\\) saat objek diketuk\\.","Audio or video, max. $1 MB — plays in the bottom player (can be hidden) when the object is tapped."],
   ["▶ (.+) — diputar saat objek diketuk; ketuk lagi untuk berhenti\\.","▶ $1 — plays when the object is tapped; tap again to stop."],
-  ["Audio atau video, maks\\. (\\d+) MB — video tampil di tengah layar, audio di pojok bawah; keduanya bisa dikecilkan\\.","Audio or video, max. $1 MB — video shows in the middle of the screen, audio in the bottom corner; both can be minimised."]
+  ["Audio atau video, maks\\. (\\d+) MB — video tampil di tengah layar, audio di pojok bawah; keduanya bisa dikecilkan\\.","Audio or video, max. $1 MB — video shows in the middle of the screen, audio in the bottom corner; both can be minimised."],
+  ["Foto diunduh: (.+)","Photo downloaded: $1"]
  ],
  // frasaPola
  "frasaPola":[

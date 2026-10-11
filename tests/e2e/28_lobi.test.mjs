@@ -17,7 +17,8 @@ async function lingkungan() {
   await new Promise(ok => srv.listen(0, '127.0.0.1', ok));
   const port = srv.address().port, url = `http://127.0.0.1:${port}/index.html`;
   const opsi = { host: '127.0.0.1', port, path: '/sinyal', secure: false, debug: 0, config: { iceServers: [] } };
-  const browser = await luncurkan(['--disable-features=WebRtcHideLocalIpsWithMdns']);
+  // mic palsu Chromium (nada uji) tanpa dialog izin — untuk obrolan suara (JEV-088)
+  const browser = await luncurkan(['--disable-features=WebRtcHideLocalIpsWithMdns', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required']);
   const halaman = [];
   // simpan: [kunci, nilai] localStorage yang dipasang sebelum halaman dimuat (mis. kunci pemilik ruang)
   const buka = async (u, simpan) => {
@@ -67,6 +68,12 @@ export const tes = {
       assert.match(undangan, /#lihat=.+&r=p23d-e3-[0-9a-f]{16}$/, 'undangan = tautan lihat + kode ruang (aturan ikut kode)');
       assert.equal(await peran(H), 'pusat', 'pembuat yang pertama di ruang jadi pusat koneksi');
       const G = await L.buka(undangan);
+      // foto profil tamu: dipotong kotak 128 px, JPEG kecil — dipilih di kartu undangan
+      const foto = await G.evaluate(async () => { const c = document.createElement('canvas'); c.width = 900; c.height = 600; const x = c.getContext('2d');
+        x.fillStyle = '#c33'; x.fillRect(0, 0, 900, 600); x.fillStyle = '#3c3'; x.fillRect(300, 0, 300, 600);
+        const b = await new Promise(r => c.toBlob(r, 'image/png')); FOTO_LOBI.d = await fotoProfil(new File([b], 'saya.png', { type: 'image/png' }));
+        const im = new Image(); im.src = FOTO_LOBI.d; await im.decode(); return { d: FOTO_LOBI.d.slice(0, 23), n: FOTO_LOBI.d.length, w: im.naturalWidth, h: im.naturalHeight }; });
+      assert.deepEqual([foto.d, foto.w, foto.h, foto.n <= 24000], ['data:image/jpeg;base64,', 128, 128, true]);
       await masuk(G, 'Sari');
       await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 150000 });
       await H.waitForFunction(() => LOBI.peserta.size === 2, undefined, { timeout: 25000 });
@@ -92,9 +99,18 @@ export const tes = {
         for (const key of 'wasd') i.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); });
       assert.equal(await G.evaluate(() => FPS.keys.size), 0, 'tombol obrolan tidak bocor ke kontrol jalan');
       await H.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible && a.tuju), undefined, { timeout: 25000 });
-      const av = await H.evaluate(() => { const a = [...LOBI.avatar.values()][0]; return { x: a.tuju.x, z: a.tuju.z, yaw: a.tuju.yaw, label: !!a.g.children.find(c => c.isSprite) }; });
+      const av = await H.evaluate(() => { const a = [...LOBI.avatar.values()][0]; return { x: a.tuju.x, z: a.tuju.z, yaw: a.tuju.yaw, label: a.d.querySelector('.lb-nm').textContent }; });
       assert.ok(Math.abs(av.x - posG.x) < 0.5 && Math.abs(av.z - posG.z) < 0.5, 'avatar di posisi tamu: ' + JSON.stringify([av, posG]));
-      assert.ok(av.label, 'avatar berlabel nama');
+      assert.equal(av.label, 'Sari', 'avatar berlabel nama');
+      // avatar = foto profil bulat + label nama; obrolan tampil sebagai gelembung di atas kepala
+      const fv = await H.evaluate(() => { const p = [...LOBI.peserta.values()].find(x => x.nama === 'Sari'), a = LOBI.avatar.get(p.id);
+        const img = a.d.querySelector('img.lb-foto');
+        return { foto: (p.foto || '').slice(0, 23), img: img && img.getAttribute('src') === p.foto, lapisan: a.d.parentElement.id, mesh: a.g.children.length }; });
+      assert.deepEqual(fv, { foto: 'data:image/jpeg;base64,', img: true, lapisan: 'lobiAvatar', mesh: 0 });
+      await G.evaluate(() => { const i = document.querySelector('#lobiObrolan form input'); i.value = 'Hello everyone! Welcome to the space'; i.form.requestSubmit(); });
+      await H.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.gel), undefined, { timeout: 25000 });
+      assert.deepEqual(await H.evaluate(() => { const a = [...LOBI.avatar.values()].find(a => a.gel); return [a.gel.textContent, a.d.contains(a.gel), a.gel.children.length]; }),
+        ['Hello everyone! Welcome to the space', true, 0], 'gelembung di atas kepala, teks polos');
       // host juga berjalan → tamu melihat avatar host
       await H.evaluate(() => { enterFPS(); camera.position.set(5, 1.6, 2); FPS.feet = 0; });
       await G.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible), undefined, { timeout: 25000 });
@@ -191,6 +207,34 @@ export const tes = {
       await G.evaluate(() => { LOBI.pusat.send({ t: 'aksi', j: 'hapus', id: 'x' }); LOBI.pusat.send({ t: 'aksi', j: 'lampu', id: '../../x' }); LOBI.pusat.send({ t: 'nada', m: 1e9 }); LOBI.pusat.send({ t: 'adegan', a: { mood: 'siang' } }); });
       await H.waitForTimeout(2000);
       assert.equal(await H.evaluate(() => MOOD), 'malam', 'tamu tidak bisa mengganti suasana host');
+    } finally { await L.tutup(); }
+  },
+  'obrolan suara: mic menyala → peserta lain menerima audio & tanda bicara; mati → berhenti': async (page) => {
+    await page.goto('about:blank');
+    const L = await lingkungan();
+    try {
+      const H = await L.buka(L.url); await rumah(H);
+      const undangan = await bukaRuang(H, 'Budi', 'lihat', 3);
+      const G = await L.buka(undangan); await masuk(G, 'Sari');
+      await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 150000 });
+      await H.waitForFunction(() => LOBI.peserta.size === 2, undefined, { timeout: 25000 });
+      // host berjalan → avatar host terlihat di tamu (tanda bicara ditempel di avatar)
+      await H.evaluate(() => { enterFPS(); camera.position.set(4, 1.6, 3); FPS.feet = 0; });
+      await G.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible), undefined, { timeout: 25000 });
+      // mic mati secara bawaan
+      assert.deepEqual(await H.evaluate(() => [!!LOBI.mic, document.querySelector('#lobiObrolan .lb-mic').getAttribute('aria-pressed')]), [false, null]);
+      await H.evaluate(() => document.querySelector('#lobiObrolan .lb-mic').click());
+      await H.waitForFunction(() => !!LOBI.mic && LOBI.keluar.size === 1, undefined, { timeout: 25000 });
+      await G.waitForFunction(() => LOBI.suara.size === 1, undefined, { timeout: 30000 });
+      const g = await G.evaluate(() => { const [id, x] = [...LOBI.suara.entries()][0], t = x.a.srcObject.getAudioTracks();
+        return { dariPusat: id === LOBI.ruang, trek: t.length, hidup: t[0].readyState, video: x.a.srcObject.getVideoTracks().length, tanda: LOBI.avatar.get(id).d.classList.contains('lb-bicara'), mic: !!LOBI.mic }; });
+      assert.deepEqual(g, { dariPusat: true, trek: 1, hidup: 'live', video: 0, tanda: true, mic: false }, 'tamu mendengar host tanpa menyalakan mic sendiri');
+      assert.deepEqual(await H.evaluate(() => [document.querySelector('#lobiObrolan .lb-mic').getAttribute('aria-pressed'), LOBI.suara.size]), ['true', 0]);
+      // mic dimatikan → panggilan ditutup, audio & tanda bicara hilang di tamu
+      await H.evaluate(() => document.querySelector('#lobiObrolan .lb-mic').click());
+      assert.equal(await H.evaluate(() => [!!LOBI.mic, LOBI.keluar.size].join()), 'false,0');
+      await G.waitForFunction(() => LOBI.suara.size === 0 && !document.querySelector('.lb-av.lb-bicara'), undefined, { timeout: 30000 });
+      await H.evaluate(() => exitFPS());
     } finally { await L.tutup(); }
   },
   'api/ice: TURN hanya dari env, alamat disaring; tanpa env daftar kosong (200)': async () => {
