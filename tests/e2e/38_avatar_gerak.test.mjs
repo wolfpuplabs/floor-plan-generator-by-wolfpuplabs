@@ -39,4 +39,33 @@ export const tes = {
     assert.ok(r.langkah.tangan < r.langkah.tanganLawan - 0.08, 'tangan kiri di belakang saat kaki kiri di depan, dan sebaliknya: ' + JSON.stringify(r.langkah));
     assert.ok(r.diam.w < 0.01 && Math.abs(r.diam.kiri - r.z0) < 0.03, 'diam: kaki kembali lurus ' + JSON.stringify(r.diam));
   },
+  'avatar 3D diam: kepala menoleh/mengangguk pelan & mata berkedip (morph blink / Fcl_EYE_Close)': async (page) => {
+    const r = await page.evaluate(async () => {
+      await muatModul('lobi');
+      const tulang = n => { const b = new THREE.Bone(); b.name = n; return b; };
+      const hips = tulang('Hips'), spine = tulang('Spine'), neck = tulang('Neck'), head = tulang('Head');
+      hips.add(spine); spine.add(neck); neck.add(head); spine.position.y = 0.3; neck.position.y = 0.4; head.position.y = 0.1;
+      // wajah dengan morph "Fcl_EYE_Close" (seperti VRoid) — dikenali dari namanya
+      const geo = new THREE.BoxGeometry(0.2, 0.25, 0.2), mt = geo.attributes.position.clone(); mt.name = 'Fcl_EYE_Close';
+      geo.morphAttributes.position = [mt];
+      const wajah = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ morphTargets: true })); head.add(wajah);
+      const m = new THREE.Group(); m.add(hips);
+      const rig = {}; LOBI.gerak.tebakRig(m, rig);
+      const urut = []; m.traverse(n => urut.push(n));
+      m.userData.rigIdx = Object.fromEntries(Object.entries(rig).map(([k, n]) => [k, urut.indexOf(n)]));
+      m.userData.kedipIdx = LOBI.gerak.cariKedip(m).map(([o, i, b]) => [urut.indexOf(o), i, b]);
+      const g = new THREE.Group(); g.add(m); scene.add(g);
+      const a = { g }; LOBI.gerak.siapkanGerak(a, m);
+      const yaw = [], mata = [];
+      for (let i = 0; i < 240; i++) { LOBI.gerak.gerakAvatar(a, 1 / 20, 0); mata.push(wajah.morphTargetInfluences[0]);
+        const q = a.rig.head.b.getWorldQuaternion(new THREE.Quaternion()); yaw.push(new THREE.Euler().setFromQuaternion(q, 'YXZ').y); }
+      scene.remove(g);
+      const kedip = mata.filter((v, i) => v > 0.9 && !(mata[i - 1] > 0.9)).length;
+      return { kunci: Object.keys(rig).sort(), kedip, terbukaAkhir: mata.filter(v => v === 0).length > 200, rentangYaw: Math.max(...yaw) - Math.min(...yaw) };
+    });
+    assert.deepEqual(r.kunci, ['head', 'hips', 'neck', 'spine']);
+    assert.ok(r.kedip >= 2 && r.kedip <= 9, 'berkedip beberapa kali dalam 12 detik: ' + r.kedip);
+    assert.ok(r.terbukaAkhir, 'mata sebagian besar waktu terbuka');
+    assert.ok(r.rentangYaw > 0.05 && r.rentangYaw < 1.2, 'kepala menoleh pelan: ' + r.rentangYaw);
+  },
 };

@@ -283,9 +283,19 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       }
     });
   }
+  // morph kedip berdasarkan nama (GLB tanpa data ekspresi VRM): blink / eye_close / EYE_Close (VRoid "Fcl_EYE_Close")
+  function cariKedip(root) {
+    const hasil = [];
+    root.traverse(m => { const d = m.morphTargetDictionary; if (!d || !m.morphTargetInfluences) return;
+      const k = Object.keys(d).find(n => /(^|[_\s.])(blink|eyes?_?close[d]?)$/i.test(n)); if (k != null) hasil.push([m, d[k], 1]); });
+    return hasil.slice(0, 4);
+  }
   const qSem = new THREE.Quaternion(), qB = new THREE.Quaternion(), qG = new THREE.Quaternion();
   function siapkanGerak(a, m) {
     a.model = m; a.dasarY = m.position.y; a.fase = 0; a.t = Math.random() * 10; a.w = 0; a.v = 0;
+    a.tk = 1 + Math.random() * 3; a.fk = null; a.lt = 0; a.ly = a.lp = a.lr = a.cy = a.cp = a.cr = 0;
+    { const urut = []; m.traverse(n => urut.push(n));
+      a.kedip = (m.userData.kedipIdx || []).map(([u, i, b]) => [urut[u], i, b]).filter(([n, i]) => n && n.morphTargetInfluences && i < n.morphTargetInfluences.length); }
     const klip = m.userData.klip || [];
     if (klip.length) {
       a.mixer = new THREE.AnimationMixer(m);
@@ -317,7 +327,20 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   /* siklus jalan: fase maju menurut jarak tempuh (±0,62 m per langkah) agar kaki tidak meluncur; pinggul berputar &
      turun di sisi kaki yang mengayun, dada berputar berlawanan, kepala tetap menghadap depan, telapak menapak datar,
      badan naik saat kaki berpapasan. Diam: napas, sesekali memindah berat badan & menoleh pelan. */
+  // kedip: tutup 70 ms, tahan 40 ms, buka 130 ms; jeda acak 2–6 dtk, sesekali kedip ganda
+  function kedipkan(a, dt) {
+    if (!a.kedip || !a.kedip.length) return;
+    let v = 0;
+    if (a.fk == null) { a.tk -= dt; if (a.tk <= 0) a.fk = 0; }
+    if (a.fk != null) {
+      const f = (a.fk += dt);
+      v = f < 0.07 ? f / 0.07 : f < 0.11 ? 1 : f < 0.24 ? 1 - (f - 0.11) / 0.13 : 0;
+      if (f >= 0.24) { a.fk = null; a.tk = Math.random() < 0.15 ? 0.15 : 2 + Math.random() * 4; }
+    }
+    for (const [m, i, b] of a.kedip) m.morphTargetInfluences[i] = v * b;
+  }
   function gerakAvatar(a, dt, laju) {
+    kedipkan(a, dt);
     a.v += (laju - a.v) * Math.min(1, dt * 5); a.t += dt;
     a.w += (clamp(a.v / 1.1, 0, 1) - a.w) * Math.min(1, dt * 4);
     const w = a.w, d = 1 - w;
@@ -328,7 +351,12 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     }
     if (!a.rig) return;
     a.fase += dt * Math.PI * Math.max(a.v, 0) / 0.62;
-    const s = Math.sin(a.fase), c = Math.cos(a.fase), t = a.t, napas = Math.sin(t * 1.7), geser = Math.sin(t * 0.45), tengok = Math.sin(t * 0.23);
+    const s = Math.sin(a.fase), c = Math.cos(a.fase), t = a.t, napas = Math.sin(t * 1.7), geser = Math.sin(t * 0.45);
+    // diam: sesekali menoleh/melirik ke arah acak, mengangguk & memiringkan kepala sedikit — dihaluskan
+    a.lt -= dt;
+    if (a.lt <= 0) { a.lt = 2.2 + Math.random() * 4; const jauh = Math.random() < 0.35;
+      a.ly = (Math.random() * 2 - 1) * (jauh ? 0.55 : 0.2); a.lp = (Math.random() * 2 - 1) * 0.1 - 0.03; a.lr = (Math.random() * 2 - 1) * 0.07; }
+    const kh = Math.min(1, dt * 2.4); a.cy += (a.ly - a.cy) * kh; a.cp += (a.lp - a.cp) * kh; a.cr += (a.lr - a.cr) * kh;
     // kaki
     const pahaL = 0.42 * w * s, pahaR = -0.42 * w * s;
     const lututL = -w * (0.08 + 0.62 * Math.max(0, c)), lututR = -w * (0.08 + 0.62 * Math.max(0, -c));
@@ -340,14 +368,14 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     putarTulang(a, 'hips', 0, pinggulY, pinggulZ);
     putarTulang(a, 'spine', 0.04 * w + 0.01 * d * napas, 0.05 * w * s, -0.6 * pinggulZ);
     putarTulang(a, 'chest', 0.018 * d * napas, 0.07 * w * s, 0);
-    putarTulang(a, 'neck', -0.03 * w, -0.5 * (pinggulY + 0.12 * w * s) + 0.06 * d * tengok, 0);
-    putarTulang(a, 'head', -0.02 * w, -0.4 * (pinggulY + 0.12 * w * s) + 0.08 * d * tengok, 0);
+    putarTulang(a, 'neck', -0.03 * w + 0.4 * d * a.cp, -0.5 * (pinggulY + 0.12 * w * s) + 0.4 * d * a.cy, 0.4 * d * a.cr);
+    putarTulang(a, 'head', -0.02 * w + 0.6 * d * a.cp + 0.012 * d * napas, -0.4 * (pinggulY + 0.12 * w * s) + 0.6 * d * a.cy, 0.6 * d * a.cr);
     // lengan: ayun berlawanan dengan kaki, sedikit ke depan; siku selalu sedikit menekuk
     putarTulang(a, 'leftUpperArm', -0.28 * w * s + 0.05 * w + 0.015 * d * napas); putarTulang(a, 'rightUpperArm', 0.28 * w * s + 0.05 * w + 0.015 * d * napas);
     putarTulang(a, 'leftLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, -s))); putarTulang(a, 'rightLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, s)));
     a.model.position.y = a.dasarY + 0.035 * w * (Math.abs(c) - 0.6);
   }
-  L.gerak = { siapkanGerak, gerakAvatar, tebakRig };
+  L.gerak = { siapkanGerak, gerakAvatar, tebakRig, cariKedip };
   function bacaAvatar3D(buf) {
     return new Promise((ok, no) => {
       if (uriLuarGLTF(buf)) return no(new Error('avatar merujuk berkas di luar dirinya'));
@@ -373,6 +401,19 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
           const rig = {};
           for (const kunci of RIG) if (Number.isInteger(tulang[kunci])) { try { const n = await gltf.parser.getDependency('node', tulang[kunci]); if (n) rig[kunci] = n; } catch (e) { /* abaikan */ } }
           if (!Object.keys(rig).length) tebakRig(root, rig);
+          // kedip: ekspresi "blink" VRM (1.0: node+morph, 0.x: mesh+morph, bobot 0–100), atau morph bernama blink/eye close
+          const kedip = [], tugas = [], json = gltf.parser.json;
+          const tambahKedip = async (iNode, morf, bobot) => { try { const n = await gltf.parser.getDependency('node', iNode);
+            if (n) n.traverse(m => { if (m.morphTargetInfluences && morf < m.morphTargetInfluences.length) kedip.push([m, morf, clamp(+bobot || 0, 0, 1)]); }); } catch (e) { /* abaikan */ } };
+          if (vrm0) {
+            const grup = ((ext.VRM.blendShapeMaster || {}).blendShapeGroups || []).find(x => /^blink$/i.test(x.presetName || ''));
+            for (const b of (grup && grup.binds) || []) (json.nodes || []).forEach((nd, i) => { if (nd.mesh === b.mesh) tugas.push(tambahKedip(i, b.index, (b.weight ?? 100) / 100)); });
+          } else {
+            const e = ext.VRMC_vrm && ext.VRMC_vrm.expressions && ext.VRMC_vrm.expressions.preset && ext.VRMC_vrm.expressions.preset.blink;
+            for (const b of (e && e.morphTargetBinds) || []) tugas.push(tambahKedip(b.node, b.index, b.weight ?? 1));
+          }
+          await Promise.all(tugas);
+          if (!kedip.length) kedip.push(...cariKedip(root));
           root.updateMatrixWorld(true);
           const kotak = new THREE.Box3().setFromObject(root), uk = kotak.getSize(new THREE.Vector3());
           if (!(uk.y > 1e-4)) throw new Error('avatar kosong');
@@ -385,6 +426,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
           // posisi tulang dalam urutan traverse — dipakai ulang pada tiap klon
           const urut = []; bungkus.traverse(n => urut.push(n));
           bungkus.userData.rigIdx = Object.fromEntries(Object.entries(rig).map(([k, n]) => [k, urut.indexOf(n)]).filter(([, i]) => i >= 0));
+          bungkus.userData.kedipIdx = kedip.map(([m, i, b]) => [urut.indexOf(m), i, b]).filter(([u]) => u >= 0).slice(0, 8);
           bungkus.userData.klip = (gltf.animations || []).filter(c => c && c.duration > 0 && c.tracks.length).slice(0, 8);
           ok(bungkus);
         } catch (e) { no(e); }
@@ -402,7 +444,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (!p.av) return;
     muatAvatar3D(p.av).then(tpl => {
       if (L.avatar.get(p.id) !== a) return;              // peserta sudah keluar
-      const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx;
+      const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx;
       a.g.add(m); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d'); siapkanGerak(a, m); bayangKotor();
     }).catch(e => console.warn('avatar 3D', p.nama, e.message));
   }
