@@ -80,18 +80,20 @@ export const tes = {
       const urut = []; m.traverse(n => urut.push(n)); m.userData.rigIdx = Object.fromEntries(Object.entries(rig).map(([k, n]) => [k, urut.indexOf(n)]));
       const g = new THREE.Group(); g.rotation.y = -1.1; scene.add(g); g.add(m);
       const a = { g }; LOBI.gerak.siapkanGerak(a, m);
-      const y = o => { g.updateMatrixWorld(true); return g.worldToLocal(o.getWorldPosition(new THREE.Vector3())).y; };
+      const loc = o => { g.updateMatrixWorld(true); return g.worldToLocal(o.getWorldPosition(new THREE.Vector3())); }, y = o => loc(o).y;
       const bahu = y(up), awal = y(hand);
       LOBI.gerak.mulaiLambai(a);
       const jejak = [];
-      for (let i = 0; i < 60; i++) { LOBI.gerak.gerakAvatar(a, 1 / 20, 0); jejak.push([y(hand), new THREE.Euler().setFromQuaternion(low.quaternion).z]); }
+      for (let i = 0; i < 60; i++) { LOBI.gerak.gerakAvatar(a, 1 / 20, 0); const p = loc(hand); jejak.push([p.y, p.x, p.z]); }
       const tengah = jejak.slice(15, 40), akhir = y(hand);
       scene.remove(g);
-      return { bahu, awal, naik: Math.min(...tengah.map(j => j[0])), goyang: Math.max(...tengah.map(j => j[1])) - Math.min(...tengah.map(j => j[1])), akhir, selesai: a.lambai == null };
+      return { bahu, awal, naik: Math.min(...tengah.map(j => j[0])), goyang: Math.max(...tengah.map(j => j[1])) - Math.min(...tengah.map(j => j[1])), depan: Math.min(...tengah.map(j => j[2])), akhir, selesai: a.lambai == null };
     });
     assert.ok(r.awal < r.bahu - 0.3, 'awal: tangan di bawah bahu ' + JSON.stringify(r));
     assert.ok(r.naik > r.bahu, 'melambai: tangan di atas bahu ' + JSON.stringify(r));
-    assert.ok(r.goyang > 0.3, 'tangan bergoyang kiri-kanan');
+    // goyang diukur di ruang avatar: telapak bergeser kiri-kanan (berporos di siku), tetap sedikit di depan badan
+    assert.ok(r.goyang > 0.08 && r.goyang < 0.4, 'tangan bergoyang kiri-kanan ' + JSON.stringify(r));
+    assert.ok(r.depan > 0, 'tangan di depan bidang badan ' + JSON.stringify(r));
     assert.ok(r.selesai && r.akhir < r.bahu - 0.3, 'setelah ±2,4 dtk tangan turun lagi');
   },
 };
