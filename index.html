@@ -13750,6 +13750,8 @@ async function bukaTautanLihat(kode,bytes){
     gagalTautanLihat(e);
   }
   LIHAT.siap=true;
+  // tautan yang dibagikan langsung terbuka di mode jalan-jalan; "Keluar" kembali ke tampilan lihat (AR, putar)
+  if(!FPS.on && !$('#lihatNama').classList.contains('galat') && !proyekKosong()) enterFPS();
   if(bgmData()?.otomatis) mulaiBGM();                                 // diblokir peramban? mulai di ketukan pertama
 }
 // lampiran tautan: diunduh per potongan (sidik diperiksa), lalu disaring seperti berkas proyek
@@ -15295,8 +15297,9 @@ function enterFPS(){
   FPS.info='';
   $('#levelbar').hidden=true;
   viewport.style.cursor='none';
-  if(renderer.domElement.requestPointerLock && !('ontouchstart' in window))
-    renderer.domElement.requestPointerLock();
+  // kunci kursor hanya boleh diminta dari ketukan/klik (tautan yang langsung terbuka di mode jalan: belum ada)
+  if(renderer.domElement.requestPointerLock && !('ontouchstart' in window) && (!navigator.userActivation || navigator.userActivation.isActive)){
+    try{ const p=renderer.domElement.requestPointerLock(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
   toast('Mode jalan-jalan — Esc untuk keluar');
 }
 function exitFPS(){

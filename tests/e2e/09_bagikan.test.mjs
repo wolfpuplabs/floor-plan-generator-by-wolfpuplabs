@@ -53,6 +53,9 @@ export const tes = {
     const p = b.page;
     try {
       await p.waitForFunction(() => LIHAT.siap, undefined, { timeout: 60000 });
+      // tautan lihat langsung terbuka di mode jalan; keluar dulu untuk memeriksa tampilan lihat
+      assert.equal(await p.evaluate(() => FPS.on), true, 'tautan lihat langsung di mode jalan');
+      await p.evaluate(() => exitFPS());
       const r = await p.evaluate(() => ({ lihat: document.body.classList.contains('lihat'), nama: document.getElementById('lihatNama').textContent,
         dinding: L().walls.length, objek: L().objects.length, model: L().objects.filter(o => o.kind === 'model').map(o => o.id),
         dimuat: Object.values(PROJECT.assets).filter(a => ASSET_OBJ.size).map(a => a.sumber),

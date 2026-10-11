@@ -28,6 +28,8 @@ async function bukaTautanRumah(page) {
   await page.goto('about:blank');               // hanya ganti hash = tidak memuat ulang
   await page.goto(dasar + url.slice(url.indexOf('#')), { timeout: 90000 });
   await page.waitForFunction(() => window.__siap && LIHAT.siap, undefined, { timeout: 90000 });
+  assert.equal(await page.evaluate(() => FPS.on), true, 'tautan lihat langsung di mode jalan');
+  await page.evaluate(() => exitFPS());
 }
 
 export const tes = {
