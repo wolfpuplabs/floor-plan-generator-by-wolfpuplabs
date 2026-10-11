@@ -3772,6 +3772,69 @@
     "target": "≥ 50%",
     "tinjau": "2027-01-11"
    }
+  },
+  {
+   "id": "JEV-088",
+   "judul": "Obrolan suara di lobi main bareng & tombol foto di mode jalan (simpan ke galeri / unduh)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Main bareng hanya bisa mengetik — tidak bisa mengobrol lewat suara; momen di dalam rumah tidak bisa diabadikan tanpa tangkapan layar yang ikut menangkap menu.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-11: \"bisa voice chat sama take picture save di local storage / photo gallery\"; susulan yang sama: \"bisa integrasi ke ready player me buat custom avatarnya?\" — Ready Player Me sudah berhenti beroperasi 31 Januari 2026 (diakuisisi Netflix), tidak diintegrasikan",
+    "alternatif": [
+     "server suara (SFU) terpusat — butuh server & biaya",
+     "tangkapan layar bawaan perangkat (ikut menangkap menu)",
+     "Ready Player Me (layanan sudah ditutup)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 10,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "hanya panggilan dari peserta ruang yang dijawab, trek video dibuang, penerima tidak mengirim mic-nya; foto dibuat dari kanvas sendiri, nama & teks avatar lewat textContent"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "mic mati secara bawaan, menyala hanya lewat tombol & izin peramban, mati saat keluar ruang; suara langsung antar-peramban (DTLS-SRTP), tidak lewat server; foto tidak diunggah ke mana pun"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru (PeerJS yang sudah ada)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "audio satu arah per pembicara (≤ 9 panggilan keluar), tanpa dekode tambahan; foto satu kali toDataURL"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Mic & Ambil foto berlabel, aria-pressed; tanda bicara di avatar"
+    }
+   },
+   "metrik": {
+    "nama": "ruang main bareng dengan mic menyala",
+    "target": "≥ 30%",
+    "tinjau": "2027-01-11"
+   }
   }
  ]
 }

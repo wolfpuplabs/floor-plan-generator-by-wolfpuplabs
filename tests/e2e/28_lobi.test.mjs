@@ -17,7 +17,8 @@ async function lingkungan() {
   await new Promise(ok => srv.listen(0, '127.0.0.1', ok));
   const port = srv.address().port, url = `http://127.0.0.1:${port}/index.html`;
   const opsi = { host: '127.0.0.1', port, path: '/sinyal', secure: false, debug: 0, config: { iceServers: [] } };
-  const browser = await luncurkan(['--disable-features=WebRtcHideLocalIpsWithMdns']);
+  // mic palsu Chromium (nada uji) tanpa dialog izin — untuk obrolan suara (JEV-088)
+  const browser = await luncurkan(['--disable-features=WebRtcHideLocalIpsWithMdns', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required']);
   const halaman = [];
   // simpan: [kunci, nilai] localStorage yang dipasang sebelum halaman dimuat (mis. kunci pemilik ruang)
   const buka = async (u, simpan) => {
@@ -206,6 +207,34 @@ export const tes = {
       await G.evaluate(() => { LOBI.pusat.send({ t: 'aksi', j: 'hapus', id: 'x' }); LOBI.pusat.send({ t: 'aksi', j: 'lampu', id: '../../x' }); LOBI.pusat.send({ t: 'nada', m: 1e9 }); LOBI.pusat.send({ t: 'adegan', a: { mood: 'siang' } }); });
       await H.waitForTimeout(2000);
       assert.equal(await H.evaluate(() => MOOD), 'malam', 'tamu tidak bisa mengganti suasana host');
+    } finally { await L.tutup(); }
+  },
+  'obrolan suara: mic menyala → peserta lain menerima audio & tanda bicara; mati → berhenti': async (page) => {
+    await page.goto('about:blank');
+    const L = await lingkungan();
+    try {
+      const H = await L.buka(L.url); await rumah(H);
+      const undangan = await bukaRuang(H, 'Budi', 'lihat', 3);
+      const G = await L.buka(undangan); await masuk(G, 'Sari');
+      await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 150000 });
+      await H.waitForFunction(() => LOBI.peserta.size === 2, undefined, { timeout: 25000 });
+      // host berjalan → avatar host terlihat di tamu (tanda bicara ditempel di avatar)
+      await H.evaluate(() => { enterFPS(); camera.position.set(4, 1.6, 3); FPS.feet = 0; });
+      await G.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible), undefined, { timeout: 25000 });
+      // mic mati secara bawaan
+      assert.deepEqual(await H.evaluate(() => [!!LOBI.mic, document.querySelector('#lobiObrolan .lb-mic').getAttribute('aria-pressed')]), [false, null]);
+      await H.evaluate(() => document.querySelector('#lobiObrolan .lb-mic').click());
+      await H.waitForFunction(() => !!LOBI.mic && LOBI.keluar.size === 1, undefined, { timeout: 25000 });
+      await G.waitForFunction(() => LOBI.suara.size === 1, undefined, { timeout: 30000 });
+      const g = await G.evaluate(() => { const [id, x] = [...LOBI.suara.entries()][0], t = x.a.srcObject.getAudioTracks();
+        return { dariPusat: id === LOBI.ruang, trek: t.length, hidup: t[0].readyState, video: x.a.srcObject.getVideoTracks().length, tanda: LOBI.avatar.get(id).d.classList.contains('lb-bicara'), mic: !!LOBI.mic }; });
+      assert.deepEqual(g, { dariPusat: true, trek: 1, hidup: 'live', video: 0, tanda: true, mic: false }, 'tamu mendengar host tanpa menyalakan mic sendiri');
+      assert.deepEqual(await H.evaluate(() => [document.querySelector('#lobiObrolan .lb-mic').getAttribute('aria-pressed'), LOBI.suara.size]), ['true', 0]);
+      // mic dimatikan → panggilan ditutup, audio & tanda bicara hilang di tamu
+      await H.evaluate(() => document.querySelector('#lobiObrolan .lb-mic').click());
+      assert.equal(await H.evaluate(() => [!!LOBI.mic, LOBI.keluar.size].join()), 'false,0');
+      await G.waitForFunction(() => LOBI.suara.size === 0 && !document.querySelector('.lb-av.lb-bicara'), undefined, { timeout: 30000 });
+      await H.evaluate(() => exitFPS());
     } finally { await L.tutup(); }
   },
   'api/ice: TURN hanya dari env, alamat disaring; tanpa env daftar kosong (200)': async () => {

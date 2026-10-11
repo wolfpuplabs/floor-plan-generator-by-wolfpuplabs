@@ -27,7 +27,8 @@
   const EC = { name: 'ECDSA', namedCurve: 'P-256' }, TTD = { name: 'ECDSA', hash: 'SHA-256' };
   const L = { aktif: false, peran: null, peer: null, ruang: null, aturan: null, mode: 'lihat', maks: MAKS, saya: null, nama: '', kunci: null, pemilik: false,
     peserta: new Map(), kon: new Map(), pusat: null, urut: 0, sesi: 0, pindah: false, dengar: 0, undangan: '',
-    terakhir: '', tunda: 0, antri: null, avatar: new Map(), grup: null, obrBuka: true, belumBaca: 0, laju: new Map(), kuota: new Map(), posLama: '', jeda: 0 };
+    terakhir: '', tunda: 0, antri: null, avatar: new Map(), grup: null, obrBuka: true, belumBaca: 0, laju: new Map(), kuota: new Map(), posLama: '', jeda: 0,
+    mic: null, suara: new Map(), keluar: new Map(), tundaSuara: false };
   window.LOBI = L;
   const { terapkanAksiLuar, keadaanAksi, pasangKeadaanAksi, adeganKini, pasangAdegan, bunyiPianoLuar } = window.JEMBATAN_LOBI;
 
@@ -171,6 +172,9 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
 .lb-av .lb-foto{position:absolute;left:-48px;top:-48px;width:96px;height:96px;box-sizing:border-box;border-radius:50%;border:4px solid #fff;object-fit:cover;display:grid;place-items:center;color:#fff;font:700 44px/1 system-ui,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.35)}
 .lb-av .lb-nm{position:absolute;top:58px;left:0;transform:translateX(-50%);background:rgba(16,18,22,.72);color:#fff;font:700 17px/1.2 system-ui,sans-serif;padding:5px 14px;border-radius:999px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .lb-av .lb-gel{position:absolute;bottom:62px;left:0;transform:translateX(-50%);width:max-content;max-width:300px;background:rgba(16,18,22,.78);color:#fff;font:500 17px/1.35 system-ui,sans-serif;padding:9px 16px;border-radius:16px;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.lb-av.lb-bicara .lb-foto{border-color:#4ec9b0;box-shadow:0 0 0 4px rgba(78,201,176,.45),0 6px 22px rgba(0,0,0,.35)}
+#lobiObrolan .lb-mic{margin-left:auto;display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 10px}
+#lobiObrolan .lb-mic.on{background:var(--accent);color:#06201b}
 .lb-av .lb-gel::after{content:'';position:absolute;left:50%;top:100%;margin-left:-9px;border:9px solid transparent;border-top-color:rgba(16,18,22,.78)}`;
     document.head.appendChild(s);
   }
@@ -181,6 +185,12 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const kepala = el('div', 'lb-kepala'); kepala.appendChild(el('span', 'lb-judul', 'Obrolan'));
     const badge = el('span', 'lb-badge'); badge.hidden = true; kepala.appendChild(badge);
     kepala.appendChild(el('span', 'lb-jumlah'));
+    const mic = el('button', 'btn sm ghost lb-mic'); mic.type = 'button';
+    const ik = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ik.setAttribute('class', 'ik'); ik.setAttribute('aria-hidden', 'true');
+    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-mic'); ik.appendChild(u);
+    mic.appendChild(ik); mic.appendChild(el('span', 'lb-mic-t', 'Mic'));
+    mic.onclick = e => { e.stopPropagation(); micNyala(!L.mic); };
+    kepala.appendChild(mic);
     kepala.onclick = () => { L.obrBuka = !L.obrBuka; p.classList.toggle('ciut', !L.obrBuka); if (L.obrBuka) { L.belumBaca = 0; badge.hidden = true; } };
     const isi = el('div', 'lb-isi'), ps = el('div', 'lb-peserta'), pesan = el('div', 'lb-pesan');
     const f = document.createElement('form'), inp = document.createElement('input');
@@ -245,6 +255,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (p.foto) { f = el('img', 'lb-foto'); f.alt = ''; f.src = p.foto; }
     else { f = el('div', 'lb-foto', ([...p.nama][0] || '?').toUpperCase()); f.style.background = p.warna; }
     d.appendChild(f); d.appendChild(el('div', 'lb-nm', p.nama));
+    d.classList.toggle('lb-bicara', L.suara.has(p.id));
     lapisan().appendChild(d);
     return { g, d };
   }
@@ -261,10 +272,12 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const kanvas = renderer.domElement, W = kanvas.clientWidth, H = kanvas.clientHeight, cekTutup = performance.now() - tTutup > 200;
     if (cekTutup) tTutup = performance.now();
     for (const a of L.avatar.values()) {
-      if (!a.g.visible) { a.d.hidden = true; continue; }
+      const sr = L.suara.get(a.id);
+      if (!a.g.visible) { a.d.hidden = true; if (sr) sr.a.volume = 0.8; continue; }
       vKepala.set(a.g.position.x, a.g.position.y + KEPALA, a.g.position.z);
       vLayar.copy(vKepala).project(camera);
       const jarak = camera.position.distanceTo(vKepala);
+      if (sr) sr.a.volume = clamp(2.5 / Math.max(jarak, 0.1), 0.12, 1);   // makin jauh makin pelan (iOS mengabaikan volume)
       if (vLayar.z > 1 || vLayar.z < -1 || jarak < 0.3) { a.d.hidden = true; continue; }
       if (cekTutup) {
         sinarTutup.set(camera.position, vKepala.clone().sub(camera.position).normalize()); sinarTutup.far = jarak - 0.35;
@@ -290,7 +303,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function perbaruiPos(id, pos) {
     if (L.saya && id === L.saya.id) return;
     const p = L.peserta.get(id); if (!p) return;
-    let a = L.avatar.get(id); if (!a) { a = { ...buatAvatar(p), tuju: null }; L.avatar.set(id, a); }
+    let a = L.avatar.get(id); if (!a) { a = { ...buatAvatar(p), id, tuju: null }; L.avatar.set(id, a); }
     a.tuju = pos;
     if (pos && !a.g.visible) { a.g.position.set(pos.x, pos.y, pos.z); a.g.rotation.y = pos.yaw; }
     a.g.visible = !!pos;
@@ -306,6 +319,70 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (!FPS.on) return { jalan: 0 };
     return { jalan: 1, x: +camera.position.x.toFixed(2), y: +FPS.feet.toFixed(2), z: +camera.position.z.toFixed(2), yaw: +FPS.yaw.toFixed(3) };
   }
+
+  /* ---------- obrolan suara (opsional) ----------
+     Peserta yang menyalakan mic memanggil setiap peserta lain lewat panggilan audio PeerJS (langsung
+     antar-peramban, DTLS-SRTP); penerima menjawab tanpa mic-nya sendiri — satu arah per pembicara.
+     Hanya panggilan dari peserta ruang ini yang dijawab, trek video dibuang. Volume mengikuti jarak avatar. */
+  function tandaiBicara(id, on) { const a = L.avatar.get(id); if (a) a.d.classList.toggle('lb-bicara', on); }
+  function pasangPenerimaSuara(P) {
+    P.on('call', c => {
+      const terima = () => {
+        if (L.peer !== P || !L.peserta.has(c.peer) || (L.saya && c.peer === L.saya.id)) { try { c.close(); } catch (e) { /* abaikan */ } return; }
+        c.answer();
+        c.on('stream', st => putarSuara(c.peer, c, st));
+        c.on('close', () => hentiSuara(c.peer, c)); c.on('error', () => hentiSuara(c.peer, c));
+      };
+      // pemanggil baru bisa tiba sedikit sebelum kabar "masuk"-nya
+      if (L.peserta.has(c.peer)) terima(); else setTimeout(terima, 2500);
+    });
+  }
+  function putarSuara(id, c, st) {
+    hentiSuara(id);
+    const trek = st.getAudioTracks(); if (!trek.length) return;
+    const a = document.createElement('audio'); a.autoplay = true; a.setAttribute('playsinline', ''); a.hidden = true;
+    a.srcObject = new MediaStream(trek); document.body.appendChild(a);
+    L.suara.set(id, { c, a }); tandaiBicara(id, true);
+    a.play().catch(() => {
+      if (L.tundaSuara) return; L.tundaSuara = true; sistem('Ketuk layar untuk mendengar suara peserta');
+      addEventListener('pointerdown', () => { L.tundaSuara = false; for (const x of L.suara.values()) x.a.play().catch(() => { /* coba lagi nanti */ }); }, { once: true, capture: true });
+    });
+  }
+  function hentiSuara(id, c) {
+    const x = L.suara.get(id); if (!x || (c && x.c !== c)) return;
+    L.suara.delete(id); try { x.c.close(); } catch (e) { /* abaikan */ }
+    x.a.srcObject = null; x.a.remove(); tandaiBicara(id, false);
+  }
+  const hentiSemuaSuara = () => { for (const id of [...L.suara.keys()]) hentiSuara(id); for (const c of L.keluar.values()) { try { c.close(); } catch (e) { /* abaikan */ } } L.keluar.clear(); };
+  function panggil(id) {
+    if (!L.mic || !L.peer || !L.saya || id === L.saya.id || L.keluar.has(id)) return;
+    let c = null; try { c = L.peer.call(id, L.mic); } catch (e) { c = null; } if (!c) return;
+    L.keluar.set(id, c);
+    const lepas = () => { if (L.keluar.get(id) === c) L.keluar.delete(id); };
+    c.on('close', lepas); c.on('error', lepas);
+  }
+  const panggilSemua = () => { if (L.mic) for (const id of L.peserta.keys()) panggil(id); };
+  function tombolMic() {
+    const b = document.querySelector('#lobiObrolan .lb-mic'); if (!b) return;
+    b.classList.toggle('on', !!L.mic); b.setAttribute('aria-pressed', String(!!L.mic));
+    b.title = L.mic ? 'Matikan mikrofon' : 'Nyalakan mikrofon — bicara dengan semua orang di ruang'; b.setAttribute('aria-label', b.title);
+    b.querySelector('.lb-mic-t').textContent = L.mic ? 'Mic nyala' : 'Mic';
+  }
+  async function micNyala(on) {
+    if (on && !L.mic) {
+      if (!L.aktif) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Peramban ini tidak mendukung mikrofon'); return; }
+      try { L.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }); }
+      catch (e) { toast('Mikrofon tidak diizinkan — izinkan di pengaturan peramban'); return; }
+      if (!L.aktif) { for (const t of L.mic.getTracks()) t.stop(); L.mic = null; return; }
+      panggilSemua(); sistem('Mikrofon menyala — semua orang di ruang bisa mendengarmu');
+    } else if (!on && L.mic) {
+      for (const c of L.keluar.values()) { try { c.close(); } catch (e) { /* abaikan */ } }
+      L.keluar.clear(); for (const t of L.mic.getTracks()) t.stop(); L.mic = null;
+    }
+    tombolMic();
+  }
+  L.mikrofon = micNyala;
 
   /* ---------- sinkron rumah ---------- */
   const subsetProyek = () => ({ levels: PROJECT.levels, site: PROJECT.site, finish: PROJECT.finish, atap: PROJECT.atap });
@@ -341,10 +418,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function siarkan(m, kecuali) { for (const [id, k] of L.kon) if (id !== kecuali && k.open) { try { k.send(m); } catch (e) { /* koneksi putus */ } } }
   function jadiPusat(P) {
     L.peer = P; L.peran = 'pusat'; L.pusat = null;
-    P.on('connection', terimaTamu);
+    P.on('connection', terimaTamu); pasangPenerimaSuara(P);
     P.on('error', e => { if (e && e.type === 'peer-unavailable') return; console.warn('lobi', e); });
     P.on('disconnected', () => { if (L.peer === P && L.aktif) { try { P.reconnect(); } catch (e) { /* abaikan */ } } });
-    hapusSemuaAvatar(); L.kon.clear(); L.peserta.clear();
+    hapusSemuaAvatar(); hentiSemuaSuara(); L.kon.clear(); L.peserta.clear();
     L.saya = { id: P.id, nama: L.nama, warna: (L.saya && L.saya.warna) || WARNA[0], pemilik: L.pemilik, pusat: true, urut: 0, foto: L.foto };
     L.peserta.set(P.id, L.saya); L.urut = 1;
     renderPeserta();
@@ -367,7 +444,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const p = { id, nama: teksAman(d.nama, 24) || 'Tamu', warna: WARNA.includes(d.warna) && !pakai.has(d.warna) ? d.warna : warnaBebas(), pemilik, pusat: false, urut: L.urut++, foto: fotoAman(d.foto) };
       L.peserta.set(id, p);
       k.send({ t: 'selamat', id, peserta: daftar(), s: JSON.stringify(subsetProyek()), a: adeganKini(), k: keadaanAksi() });
-      siarkan({ t: 'masuk', p: publik(p) }, id); sistem(p.nama + ' masuk ruang'); renderPeserta();
+      siarkan({ t: 'masuk', p: publik(p) }, id); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(id);
       return;
     }
     const p = L.peserta.get(id); if (!p || p.pusat) return;     // belum menyapa
@@ -405,7 +482,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function keluarTamu(id) {
     L.kon.delete(id);
     const p = L.peserta.get(id); if (!p || p.pusat) return;
-    L.peserta.delete(id); hapusAvatar(id);
+    L.peserta.delete(id); hapusAvatar(id); hentiSuara(id); L.keluar.delete(id);
     siarkan({ t: 'keluar', id }); sistem(p.nama + ' keluar dari ruang'); renderPeserta();
   }
 
@@ -429,9 +506,9 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     });
   }
   function jadiTamu(P, k, d) {
-    L.peer = P; L.peran = 'tamu'; L.pusat = k; L.dengar = performance.now(); L.kon.clear();
+    L.peer = P; L.peran = 'tamu'; L.pusat = k; L.dengar = performance.now(); L.kon.clear(); pasangPenerimaSuara(P);
     P.on('disconnected', () => { if (L.peer === P && L.aktif) { try { P.reconnect(); } catch (e) { /* abaikan */ } } });
-    hapusSemuaAvatar(); L.peserta.clear();
+    hapusSemuaAvatar(); hentiSemuaSuara(); L.peserta.clear();
     for (const p of (Array.isArray(d.peserta) ? d.peserta : []).slice(0, MAKS)) {
       if (!p || typeof p.id !== 'string') continue;
       L.peserta.set(p.id.slice(0, 64), { id: p.id.slice(0, 64), nama: teksAman(p.nama, 24) || 'Tamu', warna: WARNA.includes(p.warna) ? p.warna : WARNA[9], pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, foto: fotoAman(p.foto) });
@@ -443,7 +520,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     // suasana, langit & keadaan interaksi saat ini (lampu, pintu, TV, musik) — masuk ke dunia yang sama
     try { const a = adeganAman(d.a); if (a) pasangAdegan(a); pasangKeadaanAksi(d.k); } catch (e) { console.warn('lobi', e); }
     if (L.mode === 'edit' && LIHAT.on) bukaEdit();
-    renderPeserta();
+    renderPeserta(); panggilSemua();
   }
   function pesanDariPusat(d) {
     if (!d || typeof d !== 'object' || typeof d.t !== 'string') return;
@@ -452,9 +529,9 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       if (p && !(L.saya && p.id === L.saya.id)) gelembung(p.id, teks); return; }
     if (d.t === 'masuk' && d.p && typeof d.p.id === 'string') {
       const p = { id: d.p.id.slice(0, 64), nama: teksAman(d.p.nama, 24) || 'Tamu', warna: WARNA.includes(d.p.warna) ? d.p.warna : WARNA[9], pemilik: !!d.p.pemilik, pusat: false, urut: d.p.urut | 0, foto: fotoAman(d.p.foto) };
-      L.peserta.set(p.id, p); sistem(p.nama + ' masuk ruang'); renderPeserta(); return;
+      L.peserta.set(p.id, p); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(p.id); return;
     }
-    if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
+    if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); hentiSuara(d.id); L.keluar.delete(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
     if (d.t === 'proyek') { terapkanProyek(d.s, teksAman(d.dari, 24)); return; }
     if (d.t === 'aksi') { if (idAman(d.id)) terapkanAksiLuar(d.j, d.id, !!d.on); return; }
     if (d.t === 'nada') { const n = nadaAman(d); if (n) bunyiPianoLuar(n.id, n.m, n.dt, n.d, n.v); return; }
@@ -468,7 +545,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const urutan = [...L.peserta.values()].filter(p => !p.pusat).sort((a, b) => (a.urut | 0) - (b.urut | 0)).findIndex(p => L.saya && p.id === L.saya.id);
     const lama = L.peer; L.peer = null; L.pusat = null; L.peran = null;
     setTimeout(() => { try { if (lama) lama.destroy(); } catch (e) { /* abaikan */ } }, 0);
-    hapusSemuaAvatar(); L.peserta.clear(); if (L.saya) L.peserta.set(L.saya.id, L.saya);
+    hapusSemuaAvatar(); hentiSemuaSuara(); L.peserta.clear(); if (L.saya) L.peserta.set(L.saya.id, L.saya);
     renderPeserta(); sistem('Pusat koneksi keluar — menyambung ulang…');
     const sesi = L.sesi;
     setTimeout(async () => {
@@ -491,7 +568,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       let P = null;
       try { P = await bukaPeer(opsi, L.ruang); }
       catch (e) { if (!e.terpakai) throw e; }
-      if (P) { if (sesi !== L.sesi) { P.destroy(); return null; } jadiPusat(P); return 'pusat'; }
+      if (P) { if (sesi !== L.sesi) { P.destroy(); return null; } jadiPusat(P); setTimeout(panggilSemua, 1500); return 'pusat'; }
       const Q = await bukaPeer(opsi, null);
       try { const { k, d } = await cobaTamu(Q); if (sesi !== L.sesi) { Q.destroy(); return null; } jadiTamu(Q, k, d); return 'tamu'; }
       catch (e) { try { Q.destroy(); } catch (x) { /* abaikan */ } if (e.penuh) throw e; }
@@ -610,7 +687,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function tutup() {
     if (L.peran === 'pusat') siarkan({ t: 'pergi' });
     L.sesi++; L.aktif = false; L.pindah = false; clearInterval(detak); detak = null;
-    hapusSemuaAvatar();
+    hapusSemuaAvatar(); hentiSemuaSuara(); if (L.mic) { for (const t of L.mic.getTracks()) t.stop(); L.mic = null; }
     const k = L.peer; L.peer = null; L.kon.clear(); L.peserta.clear(); L.pusat = null; L.peran = null;
     setTimeout(() => { try { if (k) k.destroy(); } catch (e) { /* abaikan */ } }, 300);
     const o = document.getElementById('lobiObrolan'); if (o) o.remove();
