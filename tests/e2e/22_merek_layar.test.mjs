@@ -27,4 +27,18 @@ export const tes = {
     await page.evaluate(() => { delete document.fullscreenElement; document.dispatchEvent(new Event('fullscreenchange')); exitFPS(); });
     assert.equal(await page.evaluate(() => document.body.classList.contains('layar-penuh')), false);
   },
+  'tata letak mode jalan: Keluar di kiri bilah, tombol sembunyikan di kanan; pemutar media di tengah bawah; --bilah-atas = tepi bawah bilah': async (page) => {
+    const r = await page.evaluate(async () => {
+      enterFPS(); ciutkanFps(false); const d = $('#mediaDock'); d.hidden = false; $('#mediaAudio').hidden = false;
+      await new Promise(r => setTimeout(r, 300));
+      const bar = $('#fpsbar'), anak = [...bar.children].filter(e => e.offsetParent), m = d.getBoundingClientRect(), b = bar.getBoundingClientRect();
+      const out = { awal: anak[0].id, akhir: anak[anak.length - 1].id, tengah: Math.abs(m.left + m.width / 2 - innerWidth / 2) < 2, bawah: m.bottom > innerHeight * 0.7,
+        atas: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bilah-atas')) === Math.ceil(b.bottom) };
+      ciutkanFps(true); await new Promise(r => setTimeout(r, 300));
+      out.ciut = [...bar.children].filter(e => e.offsetParent).map(e => e.id);
+      out.atasCiut = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bilah-atas')) === Math.ceil(bar.getBoundingClientRect().bottom);
+      d.hidden = true; ciutkanFps(false); exitFPS(); return out;
+    });
+    assert.deepEqual(r, { awal: 'fpsExit', akhir: 'fpsCiut', tengah: true, bawah: true, atas: true, ciut: ['fpsExit', 'fpsCiut'], atasCiut: true });
+  },
 };
