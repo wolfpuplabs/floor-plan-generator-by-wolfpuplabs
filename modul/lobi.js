@@ -16,7 +16,7 @@
 /* global PROJECT, scene, camera, renderer, worldRoot, FPS, LIHAT, SEL, ATAP_TUTUP:writable, gizmo, $, el, toast, clamp,
    sanitasiProyek, selData, renderLevels, renderSitusUI, renderFinishUI, renderAtapUI, renderInspector, rebuildScene,
    buatTautanLihat, proyekKosong, setTool, FOTO_LOBI, pasangPilihFoto, AVATAR_LOBI, pasangPilihAvatar3D,
-   ambilLampiran, uriLuarGLTF, klonModel */
+   ambilLampiran, uriLuarGLTF, klonModel, bayangKotor, BAYANG_KOTOR:writable */
 (function () {
   'use strict';
   const PEERJS = { src: 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js', sri: 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu' };
@@ -403,7 +403,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     muatAvatar3D(p.av).then(tpl => {
       if (L.avatar.get(p.id) !== a) return;              // peserta sudah keluar
       const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx;
-      a.g.add(m); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d'); siapkanGerak(a, m);
+      a.g.add(m); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d'); siapkanGerak(a, m); bayangKotor();
     }).catch(e => console.warn('avatar 3D', p.nama, e.message));
   }
   function buatAvatar(p) {
@@ -467,13 +467,23 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (pos && !a.g.visible) { a.g.position.set(pos.x, pos.y, pos.z); a.g.rotation.y = pos.yaw; }
     a.g.visible = !!pos;
   }
+  // peta bayangan adegan hanya digambar ulang bila ditandai kotor: avatar yang bergerak menandainya ±10×/detik
+  // (tanpa ini bayangan lengan pose T / langkah lama tertinggal di dinding & lantai)
+  let tBayang = 0;
   function stepAvatar(dt) {
+    let gerak = false;
     for (const a of L.avatar.values()) {
       if (!a.tuju) continue; const g = a.g, k = Math.min(1, dt * 10), x0 = g.position.x, z0 = g.position.z;
       g.position.x += (a.tuju.x - g.position.x) * k; g.position.y += (a.tuju.y - g.position.y) * k; g.position.z += (a.tuju.z - g.position.z) * k;
       const d = Math.atan2(Math.sin(a.tuju.yaw - g.rotation.y), Math.cos(a.tuju.yaw - g.rotation.y)); g.rotation.y += d * k;
-      if (a.model && g.visible && dt > 0) gerakAvatar(a, dt, Math.hypot(g.position.x - x0, g.position.z - z0) / dt);
+      if (a.model && g.visible && dt > 0) {
+        const laju = Math.hypot(g.position.x - x0, g.position.z - z0) / dt;
+        gerakAvatar(a, dt, laju);
+        if (laju > 0.02 || a.w > 0.02 || Math.abs(d) > 0.002) gerak = true;
+      }
     }
+    tBayang -= dt;
+    if (gerak && tBayang <= 0) { BAYANG_KOTOR = Math.max(BAYANG_KOTOR, 1); tBayang = 0.1; }   // peta bayangan saja, bukan probe pantulan
   }
   function posSaya() {
     if (!FPS.on) return { jalan: 0 };
