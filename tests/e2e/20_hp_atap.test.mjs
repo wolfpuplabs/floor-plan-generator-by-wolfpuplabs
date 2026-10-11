@@ -46,6 +46,8 @@ export const tes = {
     const { page: b, log } = await bukaApp(page.context().browser(), url, { viewport: { width: 390, height: 664 }, bahasa: 'en' });
     try {
       await b.waitForFunction(() => LIHAT.siap, undefined, { timeout: 60000 });
+      assert.equal(await b.evaluate(() => FPS.on), true, 'tautan lihat langsung di mode jalan');
+      await b.evaluate(() => exitFPS());
       assert.equal(await b.evaluate(() => ATAP_TUTUP), true, 'penerima mendapat atap tertutup');
       // petunjuk hilang sendiri setelah 9 detik (WebGL CI lambat) — tampilkan lagi untuk diukur
       await b.evaluate(() => { document.getElementById('hint').hidden = false; }); await b.waitForTimeout(300);

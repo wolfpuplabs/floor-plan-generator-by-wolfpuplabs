@@ -104,6 +104,7 @@ export const tes = {
     try {
       try { await b.waitForFunction(() => LIHAT.siap && FOTO.id === 'unggah' && !!FOTO.tex, undefined, { timeout: 90000 }); }
       catch (e) { throw new Error('langit tidak terpasang: ' + JSON.stringify(await b.evaluate(() => ({ siap: LIHAT.siap, id: FOTO.id, tex: !!FOTO.tex, mode: langitP().mode, toast: document.getElementById('toast').textContent, info: (document.getElementById('langitInfo') || {}).textContent }))) + ' ' + log.galat.join('|')); }
+      await b.evaluate(() => { if (FPS.on) exitFPS(); });               // tautan lihat langsung di mode jalan
       assert.equal(await b.evaluate(() => FOTO.nama), 'pantai senja');
       assert.equal(await b.isVisible('#lihatAR'), true, 'tombol AR di bilah lihat');
       assert.deepEqual(log.galat, []);

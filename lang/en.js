@@ -1808,8 +1808,7 @@ window.KAMUS_EN={
   [" kandidat ditolak karena tidak menempel di dinding"," candidates rejected for not touching a wall"],
   ["Bangunan <b>","Building <b>"],
   [", tinggi <b>",", height <b>"],
-  ["→ maket 1 : ","→ 1 : "],
-  [" = <b>"," model = <b>"],
+  ["→ maket (1 : \\d+) = <b>","→ $1 model = <b>"],
   ["Browser iOS selain Safari hanya mau membuka Quick Look bila berkas USDZ-nya disediakan, dan itu sudah disiapkan\\. Kalau tombol AR tetap diam, buka halaman ini di <b>Safari</b>, atau unduh \\.usdz lalu buka dari Files\\.","iOS browsers other than Safari only open Quick Look when the USDZ file is provided, and it has been prepared. If the AR button still does nothing, open this page in <b>Safari</b>, or download the .usdz and open it from Files."],
   ["Di browser iOS selain Safari, AR menuntut berkas USDZ dan pembuatannya gagal di sini\\. Buka halaman ini lewat <b>Safari</b>\\.","In iOS browsers other than Safari, AR requires a USDZ file and creating it failed here. Open this page in <b>Safari</b>."],
   ["Tekan <b>Lihat di ruanganmu</b> — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis\\.","Press <b>View in your room</b> — iOS opens it with AR Quick Look; the model is converted to USDZ automatically."],
@@ -1819,6 +1818,7 @@ window.KAMUS_EN={
   ["Tekan <b>Lihat di ruanganmu</b> — model dibuka di Google Scene Viewer \\(butuh Google Play Services for AR\\)\\.","Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR)."],
   ["Menyiapkan model untuk AR \\(Google Scene Viewer\\)…","Preparing the model for AR (Google Scene Viewer)…"],
   ["Model lebih dari 4 MB — terlalu besar untuk Google Scene Viewer\\. Unduh \\.glb lalu buka di aplikasi AR\\.","The model is over 4 MB — too large for Google Scene Viewer. Download the .glb and open it in an AR app."],
-  ["AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal\\. Unduh \\.glb lalu buka di aplikasi AR\\.","AR on this device goes through Google Scene Viewer, which needs the model on a server — not available on this hosting or the connection failed. Download the .glb and open it in an AR app."]
+  ["AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal\\. Unduh \\.glb lalu buka di aplikasi AR\\.","AR on this device goes through Google Scene Viewer, which needs the model on a server — not available on this hosting or the connection failed. Download the .glb and open it in an AR app."],
+  ["Menyiapkan berkas AR \\(USDZ\\) untuk browser ini… tombol <b>Lihat di ruanganmu</b> muncul setelah siap\\.","Preparing the AR file (USDZ) for this browser… the <b>View in your room</b> button appears when it is ready."]
  ]
 };
