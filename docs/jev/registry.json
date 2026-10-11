@@ -3835,6 +3835,68 @@
     "target": "≥ 30%",
     "tinjau": "2027-01-11"
    }
+  },
+  {
+   "id": "JEV-089",
+   "judul": "Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengguna ingin avatar 3D yang bisa dikustomisasi seperti Ready Player Me; layanan itu sudah tutup (31 Januari 2026), jadi avatar perlu datang dari berkas milik pengguna sendiri.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-11: \"bisa integrasi ke ready player me buat custom avatarnya?\"; setelah dijelaskan RPM sudah tutup & ditawari dua pilihan: \"avatar pilih 1\" (unggah avatar 3D sendiri .glb / .vrm)",
+    "alternatif": [
+     "Ready Player Me (layanan ditutup)",
+     "penyedia avatar lain lewat API berbayar (Avatar SDK, Genies) — butuh akun & bisa tutup juga"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 2.5,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 8,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "model dari peserta lain hanya lewat daftar sidik SHA-256 (≤ 3 potongan) yang diperiksa ulang saat diunduh, ≤ 8 MB, glTF mandiri (G3 — tanpa berkas luar), dibaca GLTFLoader; tanpa skrip/VRM runtime"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "avatar disimpan beralamat isi di Blob pemilik situs seperti lampiran tautan; tidak ada host baru"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru; avatar milik/berlisensi pengguna (VRoid/Avaturn mengizinkan pemakaian pribadi)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tekstur dirampingkan ≤ 512 px sebelum diunggah, model yang sama diunduh & dibaca sekali lalu diklon"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pemilih berlabel; tanpa avatar 3D tetap foto bulat + nama"
+    }
+   },
+   "metrik": {
+    "nama": "peserta lobi dengan avatar 3D",
+    "target": "≥ 20%",
+    "tinjau": "2027-01-11"
+   }
   }
  ]
 }

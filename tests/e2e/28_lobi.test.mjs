@@ -4,6 +4,20 @@ import { createRequire } from 'node:module';
 import { luncurkan, bukaApp, sajikan, butuh } from './harness.mjs';
 
 const require = createRequire(import.meta.url);
+const crypto = require('node:crypto');
+
+// GLB terkecil yang sah: satu segitiga setinggi 2 m (untuk avatar 3D, JEV-089)
+function glbSegitiga() {
+  const pos = Buffer.alloc(36); [[-0.5, 0, 0], [0.5, 0, 0], [0, 2, 0]].flat().forEach((v, i) => pos.writeFloatLE(v, i * 4));
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }], buffers: [{ byteLength: 36 }], bufferViews: [{ buffer: 0, byteLength: 36 }],
+    accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [-0.5, 0, 0], max: [0.5, 2, 0] }] }));
+  const jp = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+  const h = Buffer.alloc(12); h.write('glTF', 0); h.writeUInt32LE(2, 4); h.writeUInt32LE(12 + 8 + jp.length + 8 + 36, 8);
+  const c1 = Buffer.alloc(8); c1.writeUInt32LE(jp.length, 0); c1.writeUInt32LE(0x4E4F534A, 4);
+  const c2 = Buffer.alloc(8); c2.writeUInt32LE(36, 0); c2.writeUInt32LE(0x004E4942, 4);
+  return Buffer.concat([h, c1, jp, c2, pos]);
+}
 
 // JEV-077: LOBI MAIN BARENG — host membuat ruang (lihat saja / bangun bareng, maks. orang),
 // tamu masuk lewat undangan dengan nama, tampil sebagai avatar, mengobrol, dan (bila boleh)
@@ -13,6 +27,15 @@ async function lingkungan() {
   const express = butuh('express'), { ExpressPeerServer } = butuh('peer');
   const app = express(), srv = http.createServer(app);
   app.use('/sinyal', ExpressPeerServer(srv, { path: '/' }));
+  // tiruan api/tautan?bagian (beralamat isi) untuk avatar 3D
+  const toko = new Map();
+  app.use('/api/tautan', (q, r) => {
+    const h = String(q.query.bagian || '');
+    if (!/^[0-9a-f]{64}$/.test(h)) { r.status(400).json({}); return; }
+    if (q.method === 'GET') { if (q.query.cek) r.json({ ada: toko.has(h) }); else if (toko.has(h)) r.type('application/octet-stream').send(toko.get(h)); else r.status(404).json({}); return; }
+    const bag = []; q.on('data', c => bag.push(c)); q.on('end', () => { const b = Buffer.concat(bag);
+      if (crypto.createHash('sha256').update(b).digest('hex') !== h) { r.status(400).json({}); return; } toko.set(h, b); r.json({ ok: true }); });
+  });
   app.use(sajikan);
   await new Promise(ok => srv.listen(0, '127.0.0.1', ok));
   const port = srv.address().port, url = `http://127.0.0.1:${port}/index.html`;
@@ -214,6 +237,11 @@ export const tes = {
     const L = await lingkungan();
     try {
       const H = await L.buka(L.url); await rumah(H);
+      // host memasang avatar 3D sendiri (segitiga 2 m) — diunggah beralamat isi, tinggi disamakan 1,7 m di peserta lain
+      const av = await H.evaluate(async b64 => { const u8 = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        await avatar3DBaru(new File([u8], 'saya.glb')); return { nama: AVATAR_LOBI.d.nama, n: AVATAR_LOBI.d.bagian.length, simpan: JSON.parse(localStorage.getItem('lobiAvatar3D')).bagian.length }; }, glbSegitiga().toString('base64'));
+      assert.deepEqual(av, { nama: 'saya.glb', n: 1, simpan: 1 });
+      assert.match(await H.evaluate(async () => { try { await avatar3DBaru(new File([new Uint8Array(64)], 'bukan.glb')); return 'lolos'; } catch (e) { return e.message; } }), /\.glb atau \.vrm/);
       const undangan = await bukaRuang(H, 'Budi', 'lihat', 3);
       const G = await L.buka(undangan); await masuk(G, 'Sari');
       await G.waitForFunction(() => window.LOBI && LOBI.aktif && LOBI.peserta.size === 2, undefined, { timeout: 150000 });
@@ -221,6 +249,11 @@ export const tes = {
       // host berjalan → avatar host terlihat di tamu (tanda bicara ditempel di avatar)
       await H.evaluate(() => { enterFPS(); camera.position.set(4, 1.6, 3); FPS.feet = 0; });
       await G.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.g.visible), undefined, { timeout: 25000 });
+      // avatar 3D host tampil di tamu: model setinggi 1,7 m berdiri di lantai, foto bulat diganti nama di atas kepala
+      await G.waitForFunction(() => [...LOBI.avatar.values()].some(a => a.d.classList.contains('lb-3d')), undefined, { timeout: 30000 });
+      const a3 = await G.evaluate(() => { const a = [...LOBI.avatar.values()][0], k = new THREE.Box3().setFromObject(a.g.children[0]);
+        return { tinggi: +(k.max.y - k.min.y).toFixed(2), kaki: +(k.min.y - a.g.position.y).toFixed(2), kepala: +a.kepala.toFixed(2) }; });
+      assert.deepEqual(a3, { tinggi: 1.7, kaki: 0, kepala: 1.98 });
       // mic mati secara bawaan
       assert.deepEqual(await H.evaluate(() => [!!LOBI.mic, document.querySelector('#lobiObrolan .lb-mic').getAttribute('aria-pressed')]), [false, null]);
       await H.evaluate(() => document.querySelector('#lobiObrolan .lb-mic').click());

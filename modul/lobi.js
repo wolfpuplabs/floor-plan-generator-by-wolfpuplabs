@@ -15,7 +15,8 @@
    teks hanya lewat textContent, rumah lewat sanitasiProyek(). */
 /* global PROJECT, scene, camera, renderer, worldRoot, FPS, LIHAT, SEL, ATAP_TUTUP:writable, gizmo, $, el, toast, clamp,
    sanitasiProyek, selData, renderLevels, renderSitusUI, renderFinishUI, renderAtapUI, renderInspector, rebuildScene,
-   buatTautanLihat, proyekKosong, setTool, FOTO_LOBI, pasangPilihFoto */
+   buatTautanLihat, proyekKosong, setTool, FOTO_LOBI, pasangPilihFoto, AVATAR_LOBI, pasangPilihAvatar3D,
+   ambilLampiran, uriLuarGLTF, klonModel */
 (function () {
   'use strict';
   const PEERJS = { src: 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js', sri: 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu' };
@@ -43,7 +44,10 @@
   const warnaBebas = () => { const pakai = new Set([...L.peserta.values()].map(p => p.warna)); return WARNA.find(w => !pakai.has(w)) || WARNA[L.peserta.size % WARNA.length]; };
   // foto profil (opsional): JPEG kotak kecil buatan peramban pemiliknya — disaring lagi di setiap penerima
   const fotoAman = v => (typeof v === 'string' && v.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(v) ? v : '');
-  const publik = p => ({ id: p.id, nama: p.nama, warna: p.warna, pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, ...(p.foto ? { foto: p.foto } : {}) });
+  // avatar 3D sendiri (JEV-089): hanya daftar sidik potongan di api/tautan — berkasnya diunduh & diperiksa penerima
+  const avAman = v => (v && typeof v === 'object' && Array.isArray(v.bagian) && v.bagian.length >= 1 && v.bagian.length <= 3 &&
+    v.bagian.every(h => typeof h === 'string' && /^[0-9a-f]{64}$/.test(h)) ? { bagian: v.bagian.slice() } : null);
+  const publik = p => ({ id: p.id, nama: p.nama, warna: p.warna, pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, ...(p.foto ? { foto: p.foto } : {}), ...(p.av ? { av: p.av } : {}) });
   const daftar = () => [...L.peserta.values()].map(publik);
   // ruang "lihat saja": hanya pemilik yang mengubah rumah & suasana
   const boleh = p => L.mode === 'edit' || !!(p && p.pemilik);
@@ -172,6 +176,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
 .lb-av .lb-foto{position:absolute;left:-48px;top:-48px;width:96px;height:96px;box-sizing:border-box;border-radius:50%;border:4px solid #fff;object-fit:cover;display:grid;place-items:center;color:#fff;font:700 44px/1 system-ui,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.35)}
 .lb-av .lb-nm{position:absolute;top:58px;left:0;transform:translateX(-50%);background:rgba(16,18,22,.72);color:#fff;font:700 17px/1.2 system-ui,sans-serif;padding:5px 14px;border-radius:999px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .lb-av .lb-gel{position:absolute;bottom:62px;left:0;transform:translateX(-50%);width:max-content;max-width:300px;background:rgba(16,18,22,.78);color:#fff;font:500 17px/1.35 system-ui,sans-serif;padding:9px 16px;border-radius:16px;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.lb-av.lb-3d .lb-foto{display:none}
+.lb-av.lb-3d .lb-nm{top:-16px}
+.lb-av.lb-3d .lb-gel{bottom:26px}
+.lb-av.lb-3d.lb-bicara .lb-nm{box-shadow:0 0 0 3px #4ec9b0}
 .lb-av.lb-bicara .lb-foto{border-color:#4ec9b0;box-shadow:0 0 0 4px rgba(78,201,176,.45),0 6px 22px rgba(0,0,0,.35)}
 #lobiObrolan .lb-mic{margin-left:auto;display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 10px}
 #lobiObrolan .lb-mic.on{background:var(--accent);color:#06201b}
@@ -247,6 +255,49 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     o = el('div'); o.id = 'lobiAvatar'; o.setAttribute('aria-hidden', 'true');
     (renderer.domElement.parentElement || document.body).appendChild(o); return o;
   }
+  /* avatar 3D: glTF/VRM mandiri (G3 — tanpa berkas luar), tinggi disamakan 1,7 m, kaki di lantai, menghadap +Z
+     (VRM 0.x menghadap −Z → diputar). Lengan kerangka VRM diturunkan dari pose T. Model yang sama dipakai ulang. */
+  const AV_MAKS = 8 * 1048576, AV_TINGGI = 1.7, AV_MODEL = new Map();
+  function bacaAvatar3D(buf) {
+    return new Promise((ok, no) => {
+      if (uriLuarGLTF(buf)) return no(new Error('avatar merujuk berkas di luar dirinya'));
+      new THREE.GLTFLoader().parse(buf, '', async gltf => {
+        try {
+          const root = gltf.scene || (gltf.scenes && gltf.scenes[0]); if (!root) throw new Error('avatar kosong');
+          const ext = (gltf.parser && gltf.parser.json && gltf.parser.json.extensions) || {}, vrm0 = !!ext.VRM;
+          const tulang = vrm0 ? Object.fromEntries(((ext.VRM.humanoid && ext.VRM.humanoid.humanBones) || []).map(b => [b.bone, b.node]))
+            : Object.fromEntries(Object.entries((ext.VRMC_vrm && ext.VRMC_vrm.humanoid && ext.VRMC_vrm.humanoid.humanBones) || {}).map(([k, b]) => [k, b && b.node]));
+          for (const [nama, arah] of [['leftUpperArm', vrm0 ? 1 : -1], ['rightUpperArm', vrm0 ? -1 : 1]]) {
+            if (!Number.isInteger(tulang[nama])) continue;
+            try { const n = await gltf.parser.getDependency('node', tulang[nama]); if (n) n.rotation.z += arah * 1.2; } catch (e) { /* tanpa kerangka */ }
+          }
+          root.updateMatrixWorld(true);
+          const kotak = new THREE.Box3().setFromObject(root), uk = kotak.getSize(new THREE.Vector3());
+          if (!(uk.y > 1e-4)) throw new Error('avatar kosong');
+          const k = AV_TINGGI / uk.y, c = kotak.getCenter(new THREE.Vector3());
+          root.scale.multiplyScalar(k); root.position.set(-c.x * k, -kotak.min.y * k, -c.z * k);
+          const bungkus = new THREE.Group(); bungkus.add(root); if (vrm0) bungkus.rotation.y = Math.PI;
+          let kulit = false;
+          bungkus.traverse(n => { if (n.isMesh) { n.castShadow = true; n.userData.noExport = true; } if (n.isSkinnedMesh) { kulit = true; n.frustumCulled = false; } });
+          bungkus.userData.berkulit = kulit; ok(bungkus);
+        } catch (e) { no(e); }
+      }, e => no(new Error((e && e.message) || 'avatar tidak terbaca')));
+    });
+  }
+  L.cobaAvatar3D = buf => bacaAvatar3D(buf);
+  function muatAvatar3D(av) {
+    const k = av.bagian.join();
+    if (!AV_MODEL.has(k)) AV_MODEL.set(k, ambilLampiran(av.bagian, AV_MAKS).then(u8 => bacaAvatar3D(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)))
+      .catch(e => { AV_MODEL.delete(k); throw e; }));
+    return AV_MODEL.get(k);
+  }
+  function pasang3D(a, p) {
+    if (!p.av) return;
+    muatAvatar3D(p.av).then(tpl => {
+      if (L.avatar.get(p.id) !== a) return;              // peserta sudah keluar
+      a.g.add(klonModel(tpl)); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d');
+    }).catch(e => console.warn('avatar 3D', p.nama, e.message));
+  }
   function buatAvatar(p) {
     if (!L.grup) { L.grup = new THREE.Group(); L.grup.userData.noExport = true; scene.add(L.grup); }
     const g = new THREE.Group(); g.visible = false; g.userData.noExport = true; L.grup.add(g);
@@ -274,7 +325,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     for (const a of L.avatar.values()) {
       const sr = L.suara.get(a.id);
       if (!a.g.visible) { a.d.hidden = true; if (sr) sr.a.volume = 0.8; continue; }
-      vKepala.set(a.g.position.x, a.g.position.y + KEPALA, a.g.position.z);
+      vKepala.set(a.g.position.x, a.g.position.y + (a.kepala || KEPALA), a.g.position.z);
       vLayar.copy(vKepala).project(camera);
       const jarak = camera.position.distanceTo(vKepala);
       if (sr) sr.a.volume = clamp(2.5 / Math.max(jarak, 0.1), 0.12, 1);   // makin jauh makin pelan (iOS mengabaikan volume)
@@ -303,7 +354,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function perbaruiPos(id, pos) {
     if (L.saya && id === L.saya.id) return;
     const p = L.peserta.get(id); if (!p) return;
-    let a = L.avatar.get(id); if (!a) { a = { ...buatAvatar(p), id, tuju: null }; L.avatar.set(id, a); }
+    let a = L.avatar.get(id); if (!a) { a = { ...buatAvatar(p), id, tuju: null }; L.avatar.set(id, a); pasang3D(a, p); }
     a.tuju = pos;
     if (pos && !a.g.visible) { a.g.position.set(pos.x, pos.y, pos.z); a.g.rotation.y = pos.yaw; }
     a.g.visible = !!pos;
@@ -379,6 +430,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     } else if (!on && L.mic) {
       for (const c of L.keluar.values()) { try { c.close(); } catch (e) { /* abaikan */ } }
       L.keluar.clear(); for (const t of L.mic.getTracks()) t.stop(); L.mic = null;
+      // penutupan panggilan media tidak selalu sampai ke seberang (PeerJS) — kabari lewat kanal data juga
+      if (L.peran === 'pusat') siarkan({ t: 'mic', id: L.saya.id, on: false }); else kirim({ t: 'mic', on: false });
     }
     tombolMic();
   }
@@ -422,7 +475,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     P.on('error', e => { if (e && e.type === 'peer-unavailable') return; console.warn('lobi', e); });
     P.on('disconnected', () => { if (L.peer === P && L.aktif) { try { P.reconnect(); } catch (e) { /* abaikan */ } } });
     hapusSemuaAvatar(); hentiSemuaSuara(); L.kon.clear(); L.peserta.clear();
-    L.saya = { id: P.id, nama: L.nama, warna: (L.saya && L.saya.warna) || WARNA[0], pemilik: L.pemilik, pusat: true, urut: 0, foto: L.foto };
+    L.saya = { id: P.id, nama: L.nama, warna: (L.saya && L.saya.warna) || WARNA[0], pemilik: L.pemilik, pusat: true, urut: 0, foto: L.foto, av: L.av };
     L.peserta.set(P.id, L.saya); L.urut = 1;
     renderPeserta();
   }
@@ -441,7 +494,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       if (L.peran !== 'pusat' || !k.open) { L.kon.delete(id); return; }
       if (L.peserta.size >= L.maks) { L.kon.delete(id); k.send({ t: 'penuh', maks: L.maks }); setTimeout(() => k.close(), 600); return; }
       const pakai = new Set([...L.peserta.values()].map(p => p.warna));
-      const p = { id, nama: teksAman(d.nama, 24) || 'Tamu', warna: WARNA.includes(d.warna) && !pakai.has(d.warna) ? d.warna : warnaBebas(), pemilik, pusat: false, urut: L.urut++, foto: fotoAman(d.foto) };
+      const p = { id, nama: teksAman(d.nama, 24) || 'Tamu', warna: WARNA.includes(d.warna) && !pakai.has(d.warna) ? d.warna : warnaBebas(), pemilik, pusat: false, urut: L.urut++, foto: fotoAman(d.foto), av: avAman(d.av) };
       L.peserta.set(id, p);
       k.send({ t: 'selamat', id, peserta: daftar(), s: JSON.stringify(subsetProyek()), a: adeganKini(), k: keadaanAksi() });
       siarkan({ t: 'masuk', p: publik(p) }, id); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(id);
@@ -449,6 +502,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     }
     const p = L.peserta.get(id); if (!p || p.pusat) return;     // belum menyapa
     if (d.t === 'pos') { p.pos = posAman(d); perbaruiPos(id, p.pos); return; }
+    if (d.t === 'mic') { if (!kuotaOk(id, 'm', 6)) return; if (!d.on) hentiSuara(id); siarkan({ t: 'mic', id, on: !!d.on }, id); return; }
     if (d.t === 'chat') {
       if (!lajuOk(id)) return; const teks = teksAman(d.teks, 300); if (!teks) return;
       const m = { t: 'chat', id, nama: p.nama, warna: p.warna, teks }; tampilPesan(m); gelembung(id, teks); siarkan(m);
@@ -493,7 +547,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const akhir = (f, v) => { if (s) return; s = true; clearTimeout(t); f(v); };
       t = setTimeout(() => { try { k.close(); } catch (e) { /* abaikan */ } akhir(no, new Error('pusat tidak menjawab')); }, 25000);
       P.on('error', e => { if (e && e.type === 'peer-unavailable') akhir(no, new Error('kosong')); });
-      k.on('open', async () => { k.send({ t: 'halo', nama: L.nama, warna: L.saya && L.saya.warna, foto: L.foto || undefined, bukti: await buktiPemilik(P.id) }); });
+      k.on('open', async () => { k.send({ t: 'halo', nama: L.nama, warna: L.saya && L.saya.warna, foto: L.foto || undefined, av: L.av || undefined, bukti: await buktiPemilik(P.id) }); });
       k.on('data', d => {
         if (!s) {
           if (d && d.t === 'selamat') akhir(ok, { k, d });
@@ -511,10 +565,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     hapusSemuaAvatar(); hentiSemuaSuara(); L.peserta.clear();
     for (const p of (Array.isArray(d.peserta) ? d.peserta : []).slice(0, MAKS)) {
       if (!p || typeof p.id !== 'string') continue;
-      L.peserta.set(p.id.slice(0, 64), { id: p.id.slice(0, 64), nama: teksAman(p.nama, 24) || 'Tamu', warna: WARNA.includes(p.warna) ? p.warna : WARNA[9], pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, foto: fotoAman(p.foto) });
+      L.peserta.set(p.id.slice(0, 64), { id: p.id.slice(0, 64), nama: teksAman(p.nama, 24) || 'Tamu', warna: WARNA.includes(p.warna) ? p.warna : WARNA[9], pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, foto: fotoAman(p.foto), av: avAman(p.av) });
     }
     L.saya = L.peserta.get(d.id) || { id: String(d.id), nama: L.nama, warna: WARNA[1], urut: 99 };
-    L.saya.foto = L.foto;
+    L.saya.foto = L.foto; L.saya.av = L.av;
     L.pemilik = !!L.saya.pemilik;                              // diakui pusat setelah tanda tangan diperiksa
     if (typeof d.s === 'string') terapkanProyek(d.s, null);
     // suasana, langit & keadaan interaksi saat ini (lampu, pintu, TV, musik) — masuk ke dunia yang sama
@@ -528,9 +582,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (d.t === 'chat') { const p = L.peserta.get(d.id), teks = teksAman(d.teks, 300); tampilPesan({ nama: p ? p.nama : teksAman(d.nama, 24), warna: p ? p.warna : '#ccc', teks });
       if (p && !(L.saya && p.id === L.saya.id)) gelembung(p.id, teks); return; }
     if (d.t === 'masuk' && d.p && typeof d.p.id === 'string') {
-      const p = { id: d.p.id.slice(0, 64), nama: teksAman(d.p.nama, 24) || 'Tamu', warna: WARNA.includes(d.p.warna) ? d.p.warna : WARNA[9], pemilik: !!d.p.pemilik, pusat: false, urut: d.p.urut | 0, foto: fotoAman(d.p.foto) };
+      const p = { id: d.p.id.slice(0, 64), nama: teksAman(d.p.nama, 24) || 'Tamu', warna: WARNA.includes(d.p.warna) ? d.p.warna : WARNA[9], pemilik: !!d.p.pemilik, pusat: false, urut: d.p.urut | 0, foto: fotoAman(d.p.foto), av: avAman(d.p.av) };
       L.peserta.set(p.id, p); sistem(p.nama + ' masuk ruang'); renderPeserta(); panggil(p.id); return;
     }
+    if (d.t === 'mic') { if (typeof d.id === 'string' && !d.on) hentiSuara(d.id); return; }
     if (d.t === 'keluar') { const p = L.peserta.get(d.id); if (p) { L.peserta.delete(d.id); hapusAvatar(d.id); hentiSuara(d.id); L.keluar.delete(d.id); sistem(p.nama + ' keluar dari ruang'); renderPeserta(); } return; }
     if (d.t === 'proyek') { terapkanProyek(d.s, teksAman(d.dari, 24)); return; }
     if (d.t === 'aksi') { if (idAman(d.id)) terapkanAksiLuar(d.j, d.id, !!d.on); return; }
@@ -581,7 +636,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (L.aktif) tutup();
     await muatPeerJS();
     const sesi = ++L.sesi;
-    Object.assign(L, { ruang, aturan: a, mode: a.mode, maks: a.maks, nama, undangan, terakhir: '', peran: null, foto: fotoAman(FOTO_LOBI.d) });
+    Object.assign(L, { ruang, aturan: a, mode: a.mode, maks: a.maks, nama, undangan, terakhir: '', peran: null, foto: fotoAman(FOTO_LOBI.d), av: avAman(AVATAR_LOBI.d) });
     L.kunci = a.sidik ? kunciTersimpan(ruang) : null;
     L.pemilik = !!(L.kunci && L.kunci.sidik === a.sidik);
     try { localStorage.setItem('lobiNama', nama); } catch (e) { /* abaikan */ }
@@ -628,10 +683,13 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const foto = el('div', 'row lobi-foto'), fl = el('img', 'lobi-foto-lihat'); fl.alt = ''; fl.hidden = true;
     foto.appendChild(fl); foto.appendChild(el('button', 'btn sm ghost lobi-foto-pilih', 'Foto profil (opsional)')); foto.appendChild(el('button', 'btn sm ghost lobi-foto-hapus', 'Hapus'));
     pasangPilihFoto(foto);
+    const av3 = el('div', 'row lobi-av3d');
+    av3.appendChild(el('span', 'lobi-av3d-nama')); av3.appendChild(el('button', 'btn sm ghost lobi-av3d-pilih', 'Avatar 3D (.glb / .vrm)')); av3.appendChild(el('button', 'btn sm ghost lobi-av3d-hapus', 'Hapus'));
+    pasangPilihAvatar3D(av3);
     const info = el('p', 'hint'); const row = el('div', 'row');
     const masuk = el('button', 'btn', 'Masuk'), nanti = el('button', 'btn ghost', 'Lihat sendiri saja');
     row.appendChild(masuk); row.appendChild(nanti);
-    k.appendChild(inp); k.appendChild(foto); k.appendChild(row); k.appendChild(info);
+    k.appendChild(inp); k.appendChild(foto); k.appendChild(av3); k.appendChild(row); k.appendChild(info);
     document.getElementById('viewport').appendChild(k);
     nanti.onclick = () => k.remove();
     const pergi = async () => {

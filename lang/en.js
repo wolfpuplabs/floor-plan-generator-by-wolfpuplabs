@@ -1493,6 +1493,16 @@ window.KAMUS_EN={
   "Peramban ini tidak mendukung mikrofon":"This browser does not support a microphone",
   "Mikrofon tidak diizinkan — izinkan di pengaturan peramban":"Microphone not allowed — allow it in the browser settings",
   "Mikrofon menyala — semua orang di ruang bisa mendengarmu":"Microphone on — everyone in the room can hear you",
+  "Avatar 3D (opsional)":"3D avatar (optional)",
+  "Pilih .glb / .vrm":"Choose .glb / .vrm",
+  "Avatar 3D (.glb / .vrm)":"3D avatar (.glb / .vrm)",
+  "Buat gratis di VRoid Studio atau Avaturn, lalu ekspor .vrm / .glb. Tanpa avatar 3D: foto bulat.":"Make one for free in VRoid Studio or Avaturn, then export .vrm / .glb. Without a 3D avatar: round photo.",
+  "Menyiapkan avatar…":"Preparing avatar…",
+  "Avatar 3D siap":"3D avatar ready",
+  "berkas terlalu besar (maks. 40 MB)":"file too large (max. 40 MB)",
+  "pilih berkas .glb atau .vrm":"choose a .glb or .vrm file",
+  "avatar 3D butuh Vercel Blob (Storage → Blob)":"a 3D avatar needs Vercel Blob (Storage → Blob)",
+  "unggah avatar gagal — periksa koneksi":"avatar upload failed — check your connection",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1795,7 +1805,8 @@ window.KAMUS_EN={
   ["Audio atau video, maks\\. (\\d+) MB — diputar di pemutar bawah \\(bisa disembunyikan\\) saat objek diketuk\\.","Audio or video, max. $1 MB — plays in the bottom player (can be hidden) when the object is tapped."],
   ["▶ (.+) — diputar saat objek diketuk; ketuk lagi untuk berhenti\\.","▶ $1 — plays when the object is tapped; tap again to stop."],
   ["Audio atau video, maks\\. (\\d+) MB — video tampil di tengah layar, audio di pojok bawah; keduanya bisa dikecilkan\\.","Audio or video, max. $1 MB — video shows in the middle of the screen, audio in the bottom corner; both can be minimised."],
-  ["Foto diunduh: (.+)","Photo downloaded: $1"]
+  ["Foto diunduh: (.+)","Photo downloaded: $1"],
+  ["avatar ([\\d.,]+) MB — maks\\. 8 MB setelah dirampingkan","avatar $1 MB — max. 8 MB after slimming"]
  ],
  // frasaPola
  "frasaPola":[
