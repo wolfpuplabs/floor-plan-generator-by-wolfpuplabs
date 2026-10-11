@@ -315,6 +315,12 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const sb = v => new THREE.Vector3(...v).applyQuaternion(qp).normalize();
       a.rig[k] = { b, rest: b.quaternion.clone(), ax: sb([-1, 0, 0]), ay: sb([0, 1, 0]), az: sb([0, 0, 1]) };
     }
+    // lengan kanan untuk melambai: orientasi diam & arah tulang (ke anak) dalam ruang avatar
+    for (const k of ['rightUpperArm', 'rightLowerArm']) {
+      const r = a.rig[k], anak = r && r.b.children.find(n => n.isBone); if (!anak) continue;
+      r.restG = qG.clone().multiply(r.b.getWorldQuaternion(new THREE.Quaternion()));
+      r.arahG = anak.getWorldPosition(new THREE.Vector3()).sub(r.b.getWorldPosition(new THREE.Vector3())).applyQuaternion(qG).normalize();
+    }
   }
   // x: ayun maju(+)/mundur, y: putar (+ = ke kiri avatar), z: miring (+ = sisi kiri naik)
   function putarTulang(a, k, x, y = 0, z = 0) {
@@ -350,6 +356,11 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       a.mixer.update(dt); return;
     }
     if (!a.rig) return;
+    let eL = 0;
+    if (a.lambai != null) {
+      const tl = (a.lambai += dt), D = 2.6, e0 = tl < 0.4 ? tl / 0.4 : tl > D - 0.5 ? Math.max(0, (D - tl) / 0.5) : 1;
+      eL = e0 * e0 * (3 - 2 * e0); if (tl >= D) a.lambai = null;
+    }
     a.fase += dt * Math.PI * Math.max(a.v, 0) / 0.62;
     const s = Math.sin(a.fase), c = Math.cos(a.fase), t = a.t, napas = Math.sin(t * 1.7), geser = Math.sin(t * 0.45);
     // diam: sesekali menoleh/melirik ke arah acak, mengangguk & memiringkan kepala sedikit — dihaluskan
@@ -367,24 +378,42 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const pinggulY = -0.1 * w * s, pinggulZ = -0.045 * w * c + 0.022 * d * geser;
     putarTulang(a, 'hips', 0, pinggulY, pinggulZ);
     putarTulang(a, 'spine', 0.04 * w + 0.01 * d * napas, 0.05 * w * s, -0.6 * pinggulZ);
-    putarTulang(a, 'chest', 0.018 * d * napas, 0.07 * w * s, 0);
+    putarTulang(a, 'chest', 0.018 * d * napas, 0.07 * w * s, 0.035 * eL);   // condong sedikit menjauhi tangan yang melambai
     putarTulang(a, 'neck', -0.03 * w + 0.4 * d * a.cp, -0.5 * (pinggulY + 0.12 * w * s) + 0.4 * d * a.cy, 0.4 * d * a.cr);
-    putarTulang(a, 'head', -0.02 * w + 0.6 * d * a.cp + 0.012 * d * napas, -0.4 * (pinggulY + 0.12 * w * s) + 0.6 * d * a.cy, 0.6 * d * a.cr);
+    putarTulang(a, 'head', -0.02 * w + 0.6 * d * a.cp + 0.012 * d * napas + 0.05 * eL, -0.4 * (pinggulY + 0.12 * w * s) + 0.6 * d * a.cy * (1 - eL), 0.6 * d * a.cr + 0.09 * eL);
     // lengan: ayun berlawanan dengan kaki, sedikit ke depan; siku selalu sedikit menekuk
     putarTulang(a, 'leftUpperArm', -0.28 * w * s + 0.05 * w + 0.015 * d * napas); putarTulang(a, 'rightUpperArm', 0.28 * w * s + 0.05 * w + 0.015 * d * napas);
     putarTulang(a, 'leftLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, -s))); putarTulang(a, 'rightLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, s)));
-    // melambai (saat pesan obrolan dari peserta ini tiba): lengan kanan naik ke samping, lengan bawah tegak,
-    // tangan bergoyang kiri-kanan ±2 Hz; masuk 0,35 dtk, keluar 0,45 dtk, dicampur dengan ayunan jalan
-    if (a.lambai != null) {
-      const tl = (a.lambai += dt), D = 2.4, e0 = tl < 0.35 ? tl / 0.35 : tl > D - 0.45 ? Math.max(0, (D - tl) / 0.45) : 1, e = e0 * e0 * (3 - 2 * e0);
-      const goyang = 0.38 * Math.sin((tl - 0.35) * 2 * Math.PI * 2.1) * Math.min(1, Math.max(0, (tl - 0.25) / 0.3));
-      putarTulang(a, 'rightUpperArm', (1 - e) * (0.28 * w * s + 0.05 * w + 0.015 * d * napas) + e * 0.22, 0, -1.25 * e);
-      putarTulang(a, 'rightLowerArm', (1 - e) * (0.16 + w * (0.1 + 0.12 * Math.max(0, s))), 0, e * (-1.35 + goyang));
-      if (tl >= D) a.lambai = null;
-    }
+    if (eL > 0) lambaikan(a, eL);
     a.model.position.y = a.dasarY + 0.035 * w * (Math.abs(c) - 0.6);
   }
-  const mulaiLambai = a => { if (a && a.rig && (a.rig.rightUpperArm || a.rig.rightLowerArm)) a.lambai = a.lambai != null && a.lambai < 1.8 ? 0.35 : 0; };
+  /* melambai (saat pesan obrolan peserta ini tiba): dihitung dalam ruang avatar — lengan atas ke samping-depan
+     (siku ±setinggi bahu), lengan bawah tegak berayun kiri-kanan dari siku ±1,8 Hz, telapak diputar menghadap
+     depan; dicampur (slerp) dengan pose jalan/diam menurut bobot masuk-keluar yang dihaluskan */
+  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3(), qA = new THREE.Quaternion(), qC = new THREE.Quaternion(), qGi = new THREE.Quaternion();
+  const keG = (b, out) => out.copy(qGi).multiply(b.getWorldQuaternion(qC));
+  function pasangG(b, qDuniaG, e) {
+    const kini = keG(b, new THREE.Quaternion()), tuju = kini.clone().slerp(qDuniaG, e);
+    b.quaternion.copy(keG(b.parent, new THREE.Quaternion()).invert().multiply(tuju)); b.updateMatrixWorld(true);
+  }
+  function lambaikan(a, e) {
+    const up = a.rig.rightUpperArm, low = a.rig.rightLowerArm; if (!up || !up.restG) return;
+    a.g.updateMatrixWorld(true); qGi.copy(a.g.getWorldQuaternion(qA)).invert();
+    const tl = a.lambai == null ? 0 : a.lambai, amp = Math.min(1, Math.max(0, (tl - 0.3) / 0.35)), ayun = Math.sin((tl - 0.3) * 2 * Math.PI * 1.8) * amp;
+    // lengan atas: ke kanan avatar (−X), sedikit naik & ke depan
+    vA.set(-0.8 - 0.04 * ayun, 0.32, 0.42).normalize();
+    pasangG(up.b, new THREE.Quaternion().setFromUnitVectors(up.arahG, vA).multiply(up.restG), e);
+    if (!low || !low.restG) return;
+    // lengan bawah: tegak, condong sedikit ke luar & depan, berayun dari siku
+    vB.set(-0.12 + 0.36 * ayun, 1, 0.22).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(low.arahG, vB);
+    // telapak: pada pose T telapak menghadap bawah; arahkan ke depan (+Z) dengan memutar di sumbu lengan bawah
+    const telapak = new THREE.Vector3(0, -1, 0).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(vC.set(-1, 0, 0), low.arahG)).applyQuaternion(q);
+    const p1 = telapak.sub(vB.clone().multiplyScalar(telapak.dot(vB))), p2 = new THREE.Vector3(0, 0, 1).sub(vB.clone().multiplyScalar(vB.z));
+    if (p1.lengthSq() > 1e-6 && p2.lengthSq() > 1e-6) q.premultiply(new THREE.Quaternion().setFromUnitVectors(p1.normalize(), p2.normalize()));
+    pasangG(low.b, q.multiply(low.restG), e);
+  }
+  const mulaiLambai = a => { if (a && a.rig && a.rig.rightUpperArm && a.rig.rightUpperArm.restG) a.lambai = a.lambai != null && a.lambai < 2 ? 0.4 : 0; };
   L.gerak = { siapkanGerak, gerakAvatar, tebakRig, cariKedip, mulaiLambai };
   function bacaAvatar3D(buf) {
     return new Promise((ok, no) => {
