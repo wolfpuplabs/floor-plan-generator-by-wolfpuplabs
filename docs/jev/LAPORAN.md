@@ -5,12 +5,13 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 63 GO · 3 DEFER · 5 NO-GO dari 71 item.
+**Ringkasan:** 64 GO · 3 DEFER · 5 NO-GO dari 72 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-087 | Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app | terkirim | 0.65 | 124,9 jt | 0,6 jt | 415.3× | 207.1× | 0.0 bln | 3 | **GO** |
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
+| JEV-089 | Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me | terkirim | 0.65 | 83,9 jt | 0,7 jt | 247.4× | 123.2× | 0.1 bln | 5 | **GO** |
 | JEV-069 | Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan | terkirim | 0.80 | 72 jt | 0,6 jt | 239.0× | 119.0× | 0.1 bln | 5 | **GO** |
 | JEV-088 | Obrolan suara di lobi main bareng & tombol foto di mode jalan (simpan ke galeri / unduh) | terkirim | 0.65 | 107,3 jt | 1 jt | 219.0× | 109.0× | 0.1 bln | 5 | **GO** |
 | JEV-074 | Perbaikan cepat: salin tautan andal, atap tidak ditutup otomatis saat jalan, ketukan ganda tidak memperbesar, gizmo ikut rotasi, langit 360 unggahan & AR di tautan lihat | terkirim | 0.80 | 73,8 jt | 0,8 jt | 195.8× | 97.4× | 0.1 bln | 6 | **GO** |
@@ -87,6 +88,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 
 - **JEV-087 Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app — GO.** ROI 415.3× ≥ 1, payback 0.0 bln.
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
+- **JEV-089 Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me — GO.** ROI 247.4× ≥ 1, payback 0.1 bln.
 - **JEV-069 Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan — GO.** ROI 239.0× ≥ 1, payback 0.1 bln.
 - **JEV-088 Obrolan suara di lobi main bareng & tombol foto di mode jalan (simpan ke galeri / unduh) — GO.** ROI 219.0× ≥ 1, payback 0.1 bln.
 - **JEV-074 Perbaikan cepat: salin tautan andal, atap tidak ditutup otomatis saat jalan, ketukan ganda tidak memperbesar, gizmo ikut rotasi, langit 360 unggahan & AR di tautan lihat — GO.** ROI 195.8× ≥ 1, payback 0.1 bln.

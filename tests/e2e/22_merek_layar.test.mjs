@@ -44,7 +44,7 @@ export const tes = {
   'foto mode jalan: tombol kamera menyimpan JPEG tampilan sekarang (diunduh di desktop), kilat & nama berwaktu': async (page) => {
     await page.evaluate(() => { PROJECT.levels[0].walls = [[0, 0, 5, 0], [5, 0, 5, 4], [5, 4, 0, 4], [0, 4, 0, 0]].map(([a, b, c, d]) => ({ id: uid('w'), x1: a, z1: b, x2: c, z2: d, thickness: 0.15, openings: [] })); rebuildScene(); enterFPS(); });
     await page.waitForTimeout(500);
-    const [unduh] = await Promise.all([page.waitForEvent('download'), page.click('#fpsFoto')]);
+    const [unduh] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => document.getElementById('fpsFoto').click())]);
     assert.match(unduh.suggestedFilename(), /^Plan23D-\d{8}-\d{6}\.jpg$/);
     const buf = Buffer.from(await (await unduh.createReadStream()).toArray().then(b => Buffer.concat(b)));
     assert.deepEqual([buf[0], buf[1], buf.length > 5000], [0xff, 0xd8, true]);
