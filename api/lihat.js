@@ -14,6 +14,11 @@ const TEKS = {
   id: { judul: 'Rumah 3D', pesan: 'Jalan-jalan di dalam rumah ini — denah 3D interaktif, langsung di peramban HP.', buka: 'Buka di Plan23D' },
   en: { judul: '3D house', pesan: 'Take a walk inside this house — an interactive 3D floor plan that opens right in your phone browser.', buka: 'Open in Plan23D' },
 };
+// undangan main bareng (?r=<ruang>): kalimat bawaan sendiri bila pengirim tidak menulis pesan
+const UNDANGAN = {
+  id: 'Ayo main bareng! Masuk ke rumah 3D ini, jalan-jalan & ngobrol bersama — langsung dari peramban HP.',
+  en: 'Come play together! Join me inside this 3D house — walk around and chat, right from your phone browser.',
+};
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // teks dari isi tautan: satu baris, tanpa karakter kendali, dipotong
 const teks = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n) : '');
@@ -63,9 +68,9 @@ function buatHandler(ambilBlob, siap = () => !!process.env.BLOB_READ_WRITE_TOKEN
       } catch (e) { console.error('api/lihat', e); isi = null; }
     }
     const b = (isi && isi.bagikan && typeof isi.bagikan === 'object') ? isi.bagikan : {};
-    const T = TEKS[b.bahasa === 'id' ? 'id' : 'en'];
+    const bhs = b.bahasa === 'id' ? 'id' : 'en', T = TEKS[bhs], lobi = RUANG.test(r);
     const judul = teks(b.judul, 80) || teks(isi && isi.name, 80) || T.judul;
-    const pesan = teks(b.pesan, 200) || T.pesan;
+    const pesan = teks(b.pesan, 200) || (lobi ? UNDANGAN[bhs] : T.pesan);
     res.statusCode = 200;
     res.setHeader('content-type', 'text/html; charset=utf-8');
     res.setHeader('content-security-policy', "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");

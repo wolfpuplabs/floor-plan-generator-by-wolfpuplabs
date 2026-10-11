@@ -314,7 +314,7 @@ body{font-size:14px}
 #sidebar{width:368px;min-width:368px}
 #sidebar header{padding:16px 18px 12px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
-#bagikanGambar{display:block;width:100%;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-top:6px}
+#bagikanGambar,#lobiGambar{display:block;width:100%;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-top:6px}
 /* merek: ikon denah sebagai logo + nama "Plan23D" */
 #sidebar h1.merek{display:flex;align-items:center;gap:8px;font-size:1.25rem;font-weight:800;letter-spacing:.1px}
 #sidebar h1.merek .logo{width:30px;height:30px;padding:5px;border-radius:9px;background:var(--accent);color:#06201b;stroke-width:2.1;flex:none}
@@ -821,11 +821,15 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
           <p class="hint">Lihat saja: tamu jalan-jalan, mengobrol &amp; menyalakan lampu dsb.; hanya kamu yang mengubah rumah &amp; suasana. Bangun bareng: semua ikut mengubah rumah.</p>
         </div>
         <div class="group"><label for="lobiMaks">Maks. orang per ruang (termasuk kamu)</label><select id="lobiMaks"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option selected>10</option></select></div>
+        <div class="group"><label for="lobiJudul">Judul undangan</label><input type="text" id="lobiJudul" maxlength="80" placeholder="Bawaan: nama proyek"></div>
+        <div class="group"><label for="lobiPesan">Pesan undangan</label><input type="text" id="lobiPesan" maxlength="200" placeholder="Mis. Main bareng yuk, jalan-jalan di rumah baruku!"></div>
+        <label class="chk"><input type="checkbox" id="lobiFoto" checked><span>Gambar pratinjau dari tampilan 3D sekarang</span></label>
         <button class="btn" id="lobiBuat"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat ruang &amp; undangan</button>
       </div>
       <div id="lobiAktif" class="group" hidden>
         <p class="hint" id="lobiInfo"></p>
         <input type="text" id="lobiUrl" readonly aria-label="Tautan undangan">
+        <img id="lobiGambar" alt="" hidden>
         <div class="row"><button class="btn sm" id="lobiSalin"><svg class="ik" aria-hidden="true"><use href="#i-duplikat"/></svg> Salin undangan</button><button class="btn sm ghost" id="lobiKirim"><svg class="ik" aria-hidden="true"><use href="#i-kirim"/></svg> Kirim…</button></div>
         <ul id="lobiDaftar"></ul>
         <button class="btn ghost" id="lobiTutup">Keluar dari ruang</button>
@@ -13570,7 +13574,8 @@ async function unggahPratinjau(d){
     const r=await fetch('api/tautan?gambar='+h,{method:'POST',headers:{'content-type':'image/jpeg'},body:u8}); return r.ok?h:''; }
   catch(e){ return ''; }
 }
-async function buatTautanLihat(kemajuan=()=>{}){
+// opsi.bagikan {judul, pesan, foto}: kartu pratinjau sendiri (undangan lobi); bawaan = kolom bagian Bagikan
+async function buatTautanLihat(kemajuan=()=>{}, opsi={}){
   const rujukan={}, ditinggal=[], lampiran={aset:{}, tekstur:{}, media:{}};
   let alasanLampiran='', total=0, nLampiran=0;
   // berhenti pada kegagalan pertama (Blob belum aktif / luring) — sisanya tidak dicoba
@@ -13618,8 +13623,9 @@ async function buatTautanLihat(kemajuan=()=>{}){
     const b=await lampirkan(bl.nama,bl.u8);
     if(b) lampiran.langit={nama:bl.nama, bagian:b}; else langitDitinggal=true;
   }
-  const judul=$('#bagikanJudul').value.trim().slice(0,80), pesan=$('#bagikanPesan').value.trim().slice(0,200);
-  const foto=$('#bagikanFoto').checked&&alasanLampiran!=='blob'?gambarPratinjau():'', gambar=foto&&await unggahPratinjau(foto);
+  const bo=opsi.bagikan||{judul:$('#bagikanJudul').value, pesan:$('#bagikanPesan').value, foto:$('#bagikanFoto').checked};
+  const judul=String(bo.judul||'').trim().slice(0,80), pesan=String(bo.pesan||'').trim().slice(0,200);
+  const foto=bo.foto&&alasanLampiran!=='blob'?gambarPratinjau():'', gambar=foto&&await unggahPratinjau(foto);
   const bagikan={bahasa:BAHASA.kode, ...(judul?{judul}:{}), ...(pesan?{pesan}:{}), ...(gambar?{gambar}:{})};
   const isi={v:1, name:PROJECT.name, levels, active:PROJECT.active, tekstur, finish:PROJECT.finish, atap:PROJECT.atap, site:PROJECT.site, langit:PROJECT.langit, rujukan, ...(bgmData()?{bgm:PROJECT.bgm}:{}),
     ...(nLampiran?{lampiran}:{}), bagikan};
@@ -13732,7 +13738,9 @@ $('#lobiBuat').onclick=async()=>{
   const btn=$('#lobiBuat'); btn.disabled=true;
   try{
     await muatModul('lobi');
-    await window.LOBI.buka({nama:$('#lobiNamaHost').value, mode:LOBI_UI.mode, maks:+$('#lobiMaks').value});
+    const r=await window.LOBI.buka({nama:$('#lobiNamaHost').value, mode:LOBI_UI.mode, maks:+$('#lobiMaks').value,
+      bagikan:{judul:$('#lobiJudul').value, pesan:$('#lobiPesan').value, foto:$('#lobiFoto').checked}});
+    const g=$('#lobiGambar'); g.hidden=!(r&&r.gambar); if(r&&r.gambar) g.src=r.gambar;
   }catch(e){ toast('Ruang gagal dibuka: '+(e.message||e)); }
   finally{ btn.disabled=false; }
 };
@@ -13743,7 +13751,8 @@ $('#lobiSalin').onclick=async()=>{
 };
 $('#lobiKirim').onclick=async()=>{
   const u=$('#lobiUrl').value; if(!u) return;
-  if(navigator.share){ try{ await navigator.share({title:PROJECT.name, text:'Ayo masuk ke '+PROJECT.name+' bareng', url:u}); }catch(e){} }
+  const judul=$('#lobiJudul').value.trim()||PROJECT.name, pesan=$('#lobiPesan').value.trim();
+  if(navigator.share){ try{ await navigator.share({title:judul, text:pesan||'Ayo masuk ke '+judul+' bareng', url:u}); }catch(e){} }
   else $('#lobiSalin').click();
 };
 $('#lobiTutup').onclick=()=>{ if(window.LOBI) window.LOBI.tutup(); toast('Kamu keluar dari ruang — undangan tetap berlaku'); };

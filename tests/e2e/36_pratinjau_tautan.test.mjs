@@ -64,6 +64,13 @@ export const tes = {
       assert.equal(meta(r2.isi, 'og:title'), 'Villa'); assert.match(meta(r2.isi, 'og:description'), /^Take a walk inside this house/);
       assert.equal(meta(r2.isi, 'og:image'), 'https://plan23d.contoh.app/ikon/sampul.jpg');
       assert.ok(r2.isi.includes(`content="0;url=/#l=${id2}"`));
+      // undangan main bareng tanpa pesan: kalimat ajakan bawaan (bahasa pengirim); pesan sendiri tetap menang
+      const isi3 = zlib.deflateRawSync(Buffer.from(JSON.stringify({ v: 1, name: 'Villa', levels: [], bagikan: { bahasa: 'id', judul: 'Main di Villa' } })));
+      const id3 = JSON.parse((await panggil(ht, 'POST', '/api/tautan', isi3)).isi).id;
+      const r5 = await panggil(hl, 'GET', `/api/lihat?id=${id3}&r=p23d-e3-0123456789abcdef`);
+      assert.equal(meta(r5.isi, 'og:title'), 'Main di Villa'); assert.match(meta(r5.isi, 'og:description'), /^Ayo main bareng!/);
+      assert.match(meta((await panggil(hl, 'GET', `/api/lihat?id=${id3}`)).isi, 'og:description'), /^Jalan-jalan di dalam rumah ini/);
+      assert.equal(meta((await panggil(hl, 'GET', `/api/lihat?id=${id}&r=p23d-e3-0123456789abcdef`)).isi, 'og:description'), 'Yuk mampir! &lt;script&gt;alert(1)&lt;/script&gt;');
       // id tak sah → beranda; id tak ada → kartu bawaan, tetap diteruskan (aplikasi yang memberi tahu galatnya)
       const r3 = await panggil(hl, 'GET', '/api/lihat?id=../../etc');
       assert.deepEqual([r3.status, r3.h.location], [302, '/']);
@@ -106,6 +113,14 @@ export const tes = {
     const r = await page.evaluate(async () => { const r = await buatTautanLihat(); return { url: r.url, gambar: r.gambar }; });
     assert.equal(simpan.gambar, null); assert.equal(r.gambar, ''); assert.match(r.url, /#l=Pr3vXwQz9k$/);
     assert.equal(JSON.parse(zlib.inflateRawSync(simpan.isi).toString()).bagikan.gambar, undefined);
+    // undangan main bareng: kolom judul/pesan/gambar sendiri di bagian lobi, diteruskan ke tautannya
+    const lobi = await page.evaluate(() => ({ judul: !!document.getElementById('lobiJudul'), pesan: !!document.getElementById('lobiPesan'),
+      foto: document.getElementById('lobiFoto').checked, gambar: !!document.getElementById('lobiGambar') }));
+    assert.deepEqual(lobi, { judul: true, pesan: true, foto: true, gambar: true });
+    simpan.gambar = null;
+    const u = await page.evaluate(async () => { const r = await buatTautanLihat(undefined, { bagikan: { judul: 'Main bareng di rumahku', pesan: 'Gabung yuk!', foto: true } }); return { url: r.urlBagikan, gambar: r.gambar.slice(0, 11) }; });
+    assert.deepEqual(u, { url: new URL(page.url()).origin + '/l/Pr3vXwQz9k', gambar: 'data:image/' });
+    assert.deepEqual(JSON.parse(zlib.inflateRawSync(simpan.isi).toString()).bagikan, { bahasa: 'id', judul: 'Main bareng di rumahku', pesan: 'Gabung yuk!', gambar: simpan.gambar.sha });
   },
   'ikon layar utama: manifest, ikon PNG sesuai ukuran, tag kepala halaman': async (page) => {
     const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8'));

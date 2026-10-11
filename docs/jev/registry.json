@@ -3713,13 +3713,13 @@
   },
   {
    "id": "JEV-087",
-   "judul": "Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>; ikon layar utama & manifest web app",
+   "judul": "Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app",
    "status": "terkirim",
    "kelas": "fitur",
    "J": {
     "masalah": "Tautan lihat yang dikirim lewat WhatsApp/iMessage tampil sebagai teks polos tanpa gambar atau keterangan (id ada di fragmen #l= yang tidak sampai ke server); saat ditambahkan ke layar utama, aplikasi tidak punya ikon.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-11 (tangkapan layar pratinjau tautan di WhatsApp sebagai contoh): \"bisa ngga tampilan sharing linknya ada thumbnail sama custom message, sama tolong bikinin web app iconnya kalo di add di homescreen\"",
+    "sumberBukti": "pesan pengguna 2026-10-11 (tangkapan layar pratinjau tautan di WhatsApp sebagai contoh): \"bisa ngga tampilan sharing linknya ada thumbnail sama custom message, sama tolong bikinin web app iconnya kalo di add di homescreen\"; susulan 2026-10-11: \"invitation buat play together juga sama make custom message\"",
     "alternatif": [
      "gambar pratinjau dirender di server (butuh WebGL/headless — berat & mahal)",
      "kartu bawaan yang sama untuk semua tautan (tanpa judul/pesan/gambar pengirim)"
