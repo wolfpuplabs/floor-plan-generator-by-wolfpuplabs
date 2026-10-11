@@ -1819,6 +1819,7 @@ window.KAMUS_EN={
   ["Tekan <b>Lihat di ruanganmu</b> — model dibuka di Google Scene Viewer \\(butuh Google Play Services for AR\\)\\.","Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR)."],
   ["Menyiapkan model untuk AR \\(Google Scene Viewer\\)…","Preparing the model for AR (Google Scene Viewer)…"],
   ["Model lebih dari 4 MB — terlalu besar untuk Google Scene Viewer\\. Unduh \\.glb lalu buka di aplikasi AR\\.","The model is over 4 MB — too large for Google Scene Viewer. Download the .glb and open it in an AR app."],
-  ["AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal\\. Unduh \\.glb lalu buka di aplikasi AR\\.","AR on this device goes through Google Scene Viewer, which needs the model on a server — not available on this hosting or the connection failed. Download the .glb and open it in an AR app."]
+  ["AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal\\. Unduh \\.glb lalu buka di aplikasi AR\\.","AR on this device goes through Google Scene Viewer, which needs the model on a server — not available on this hosting or the connection failed. Download the .glb and open it in an AR app."],
+  ["Menyiapkan berkas AR \\(USDZ\\) untuk browser ini… tombol <b>Lihat di ruanganmu</b> muncul setelah siap\\.","Preparing the AR file (USDZ) for this browser… the <b>View in your room</b> button appears when it is ready."]
  ]
 };

@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const api = require('../../api/tautan.js');
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+const IOS_CHROME = 'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0.6478.54 Mobile/15E148 Safari/604.1';
 const IOS_IG = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 330.0.0.0';
 const HP = { width: 390, height: 844 };
 
@@ -127,7 +128,20 @@ export const tes = {
     });
     assert.deepEqual(r, { lepas: [null, null, null], tetap: true, asli: [true, true, true], klon: true, sama: true, glb: true });
   },
+  'Chrome di iPad: bukan "browser dalam aplikasi" — USDZ disiapkan di latar lalu dipasang sebagai ios-src (tombol AR model-viewer muncul); teks panel AR berbahasa Inggris': async (page) => {
+    await bukaTautanRumah(page);
+    await page.click('#lihatAR');
+    await page.waitForFunction(() => AR.open, undefined, { timeout: 90000 });
+    assert.equal(await page.evaluate(() => AR_QL), true);
+    assert.doesNotMatch(await page.textContent('#arInfo'), /in-app browser/);
+    await page.waitForFunction(() => AR.usdzStatus === 'siap' || AR.usdzStatus === 'gagal', undefined, { timeout: 120000 });
+    const r = await page.evaluate(() => ({ status: AR.usdzStatus, src: /^blob:/.test(document.getElementById('arViewer').getAttribute('ios-src') || ''), info: document.getElementById('arInfo').textContent }));
+    assert.deepEqual([r.status, r.src], ['siap', true], r.info);
+    assert.match(r.info, /USDZ file is provided, and it has been prepared/);
+    assert.doesNotMatch(r.info, /Bangunan|Browser iOS selain/);
+  },
 };
+tes['Chrome di iPad: bukan "browser dalam aplikasi" — USDZ disiapkan di latar lalu dipasang sebagai ios-src (tombol AR model-viewer muncul); teks panel AR berbahasa Inggris'].opsi = { ua: IOS_CHROME, viewport: { width: 1024, height: 768 }, bahasa: 'en' };
 tes['iOS: panel AR tidak menunggu USDZ; penyusunan model yang menggantung dibatasi waktu, panel tetap terbuka dengan pesan'].opsi = { ua: IOS_IG, viewport: HP };
 tes['Android tanpa WebXR: tautan lihat → AR menyiapkan Scene Viewer dengan model di server'].opsi = { ua: ANDROID, viewport: HP };
 tes['browser di dalam aplikasi iOS: AR diarahkan ke Safari + tombol salin tautan'].opsi = { ua: IOS_IG, viewport: HP };

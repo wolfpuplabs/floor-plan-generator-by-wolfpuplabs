@@ -15524,7 +15524,9 @@ const IS_IOS_THIRDPARTY = IS_IOS &&
 /* Tautan yang dibagikan sering dibuka di browser DALAM aplikasi chat (Instagram, LINE,
    Facebook…). Di iOS browser itu tidak mengenal rel="ar", jadi AR Quick Look tidak bisa
    dibuka sama sekali — pemakai perlu diarahkan ke Safari (JEV-083). */
-const AR_QL = (()=>{ try{ return document.createElement('a').relList.supports('ar'); }catch(e){ return false; } })();
+// sama dengan model-viewer: Chrome/Edge/Firefox di iOS (WKWebView) tidak mengenal rel="ar" tetapi tetap bisa
+// membuka Quick Look asalkan berkas USDZ disediakan lewat ios-src
+const AR_QL = IS_IOS_THIRDPARTY || (()=>{ try{ return document.createElement('a').relList.supports('ar'); }catch(e){ return false; } })();
 const IS_ANDROID = /Android/i.test(navigator.userAgent);
 /* Scene Viewer (AR Android tanpa WebXR) berjalan di aplikasi Google, bukan di peramban, jadi
    tidak bisa membaca model blob: buatan halaman. Modelnya diunggah dulu ke api/tautan?ar
@@ -15690,6 +15692,8 @@ function arNote(){
   if(IS_IOS){
     if(!IS_IOS_THIRDPARTY)
       return 'Tekan <b>Lihat di ruanganmu</b> — iOS membukanya lewat AR Quick Look; modelnya diubah ke USDZ otomatis.';
+    if(!AR.usdzUrl && AR.usdzStatus==='proses')
+      return 'Menyiapkan berkas AR (USDZ) untuk browser ini… tombol <b>Lihat di ruanganmu</b> muncul setelah siap.';
     if(AR.usdzUrl)
       return 'Browser iOS selain Safari hanya mau membuka Quick Look bila berkas USDZ-nya disediakan, dan itu sudah disiapkan. Kalau tombol AR tetap diam, buka halaman ini di <b>Safari</b>, atau unduh .usdz lalu buka dari Files.';
     return 'Di browser iOS selain Safari, AR menuntut berkas USDZ dan pembuatannya gagal di sini. Buka halaman ini lewat <b>Safari</b>.';
@@ -15708,7 +15712,8 @@ function arInfo(){
     const cm=v=>(v/AR.denom*100).toFixed(1);
     t=`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
   }
-  $('#arInfo').innerHTML=t+arNote();
+  // teks dibungkus <span>: tombol di sebelahnya membuat lapisan terjemahan tidak mengenali kalimatnya
+  $('#arInfo').innerHTML='<span>'+t+arNote()+'</span>';
   if(IS_IOS && !AR_QL){
     const b=el('button','btn ghost sm','Salin tautan');
     b.onclick=async()=>toast(await salinTeks(location.href)?'Tautan disalin — tempel di Safari':'Tautan tidak bisa disalin — salin dari bilah alamat');
@@ -15793,10 +15798,11 @@ const batasWaktu=(p,ms,pesan)=>Promise.race([p,new Promise((_,no)=>setTimeout(()
    Kini disiapkan di latar setelah panel terbuka, dengan batas waktu. */
 async function siapkanUsdzLatar(){
   const mv=$('#arViewer'), m=arBuildModel(); if(!m) return;
-  try{ const u=await batasWaktu(arUSDZ(m.wrap),AR.batasMs,'USDZ terlalu lama');
+  AR.usdzStatus='proses'; arInfo();
+  try{ const u=await batasWaktu(arUSDZ(m.wrap),AR.batasMs*2,'USDZ terlalu lama');
     if(AR.usdzUrl) URL.revokeObjectURL(AR.usdzUrl);
-    AR.usdz=u; AR.usdzUrl=URL.createObjectURL(u); mv.setAttribute('ios-src',AR.usdzUrl); }
-  catch(err){ console.warn('USDZ gagal dibuat:',err); }
+    AR.usdz=u; AR.usdzUrl=URL.createObjectURL(u); mv.setAttribute('ios-src',AR.usdzUrl); AR.usdzStatus='siap'; }
+  catch(err){ console.warn('USDZ gagal dibuat:',err); AR.usdzStatus='gagal'; }
   finally{ disposeTree(m.wrap); arInfo(); }
 }
 async function arRefresh(){
@@ -15806,7 +15812,7 @@ async function arRefresh(){
     if(AR.url) URL.revokeObjectURL(AR.url);
     AR.blob=glb; AR.url=URL.createObjectURL(glb);
     if(AR.usdzUrl){ URL.revokeObjectURL(AR.usdzUrl); AR.usdzUrl=null; }
-    AR.usdz=null; mv.removeAttribute('ios-src');
+    AR.usdz=null; AR.usdzStatus=''; mv.removeAttribute('ios-src');
     if(IS_IOS_THIRDPARTY && AR_QL) siapkanUsdzLatar();
     try{ await arLibReady(); }
     catch(e){ arFallback('Pustaka model-viewer gagal dimuat (butuh koneksi ke CDN). Model tetap bisa diunduh sebagai .glb lalu dibuka di aplikasi AR mana pun.'); arInfo(); return; }
