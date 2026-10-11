@@ -68,4 +68,30 @@ export const tes = {
     assert.ok(r.terbukaAkhir, 'mata sebagian besar waktu terbuka');
     assert.ok(r.rentangYaw > 0.05 && r.rentangYaw < 1.2, 'kepala menoleh pelan: ' + r.rentangYaw);
   },
+  'avatar 3D melambai saat mengirim pesan: tangan kanan naik di atas bahu & bergoyang, lalu turun lagi': async (page) => {
+    const r = await page.evaluate(async () => {
+      await muatModul('lobi');
+      const tulang = n => { const b = new THREE.Bone(); b.name = n; return b; };
+      const hips = tulang('mixamorig:Hips'), spine = tulang('mixamorig:Spine'); hips.position.y = 1; spine.position.y = 0.3; hips.add(spine);
+      const up = tulang('mixamorig:RightArm'), low = tulang('mixamorig:RightForeArm'), hand = tulang('mixamorig:RightHand');
+      up.position.set(-0.2, 0.2, 0); low.position.y = -0.28; hand.position.y = -0.25; up.add(low); low.add(hand); spine.add(up);
+      const m = new THREE.Group(); m.add(hips);
+      const rig = {}; LOBI.gerak.tebakRig(m, rig);
+      const urut = []; m.traverse(n => urut.push(n)); m.userData.rigIdx = Object.fromEntries(Object.entries(rig).map(([k, n]) => [k, urut.indexOf(n)]));
+      const g = new THREE.Group(); g.rotation.y = -1.1; scene.add(g); g.add(m);
+      const a = { g }; LOBI.gerak.siapkanGerak(a, m);
+      const y = o => { g.updateMatrixWorld(true); return g.worldToLocal(o.getWorldPosition(new THREE.Vector3())).y; };
+      const bahu = y(up), awal = y(hand);
+      LOBI.gerak.mulaiLambai(a);
+      const jejak = [];
+      for (let i = 0; i < 60; i++) { LOBI.gerak.gerakAvatar(a, 1 / 20, 0); jejak.push([y(hand), new THREE.Euler().setFromQuaternion(low.quaternion).z]); }
+      const tengah = jejak.slice(15, 40), akhir = y(hand);
+      scene.remove(g);
+      return { bahu, awal, naik: Math.min(...tengah.map(j => j[0])), goyang: Math.max(...tengah.map(j => j[1])) - Math.min(...tengah.map(j => j[1])), akhir, selesai: a.lambai == null };
+    });
+    assert.ok(r.awal < r.bahu - 0.3, 'awal: tangan di bawah bahu ' + JSON.stringify(r));
+    assert.ok(r.naik > r.bahu, 'melambai: tangan di atas bahu ' + JSON.stringify(r));
+    assert.ok(r.goyang > 0.3, 'tangan bergoyang kiri-kanan');
+    assert.ok(r.selesai && r.akhir < r.bahu - 0.3, 'setelah ±2,4 dtk tangan turun lagi');
+  },
 };

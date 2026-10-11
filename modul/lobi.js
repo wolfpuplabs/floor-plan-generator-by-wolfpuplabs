@@ -373,9 +373,19 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     // lengan: ayun berlawanan dengan kaki, sedikit ke depan; siku selalu sedikit menekuk
     putarTulang(a, 'leftUpperArm', -0.28 * w * s + 0.05 * w + 0.015 * d * napas); putarTulang(a, 'rightUpperArm', 0.28 * w * s + 0.05 * w + 0.015 * d * napas);
     putarTulang(a, 'leftLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, -s))); putarTulang(a, 'rightLowerArm', 0.16 + w * (0.1 + 0.12 * Math.max(0, s)));
+    // melambai (saat pesan obrolan dari peserta ini tiba): lengan kanan naik ke samping, lengan bawah tegak,
+    // tangan bergoyang kiri-kanan ±2 Hz; masuk 0,35 dtk, keluar 0,45 dtk, dicampur dengan ayunan jalan
+    if (a.lambai != null) {
+      const tl = (a.lambai += dt), D = 2.4, e0 = tl < 0.35 ? tl / 0.35 : tl > D - 0.45 ? Math.max(0, (D - tl) / 0.45) : 1, e = e0 * e0 * (3 - 2 * e0);
+      const goyang = 0.38 * Math.sin((tl - 0.35) * 2 * Math.PI * 2.1) * Math.min(1, Math.max(0, (tl - 0.25) / 0.3));
+      putarTulang(a, 'rightUpperArm', (1 - e) * (0.28 * w * s + 0.05 * w + 0.015 * d * napas) + e * 0.22, 0, -1.25 * e);
+      putarTulang(a, 'rightLowerArm', (1 - e) * (0.16 + w * (0.1 + 0.12 * Math.max(0, s))), 0, e * (-1.35 + goyang));
+      if (tl >= D) a.lambai = null;
+    }
     a.model.position.y = a.dasarY + 0.035 * w * (Math.abs(c) - 0.6);
   }
-  L.gerak = { siapkanGerak, gerakAvatar, tebakRig, cariKedip };
+  const mulaiLambai = a => { if (a && a.rig && (a.rig.rightUpperArm || a.rig.rightLowerArm)) a.lambai = a.lambai != null && a.lambai < 1.8 ? 0.35 : 0; };
+  L.gerak = { siapkanGerak, gerakAvatar, tebakRig, cariKedip, mulaiLambai };
   function bacaAvatar3D(buf) {
     return new Promise((ok, no) => {
       if (uriLuarGLTF(buf)) return no(new Error('avatar merujuk berkas di luar dirinya'));
@@ -464,7 +474,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   function gelembung(id, teks) {
     const a = L.avatar.get(id); if (!a || !teks) return;
     if (a.gel) a.gel.remove();
-    const b = el('div', 'lb-gel', teks); a.d.appendChild(b); a.gel = b;
+    const b = el('div', 'lb-gel', teks); a.d.appendChild(b); a.gel = b; mulaiLambai(a);
     clearTimeout(a.gelT); a.gelT = setTimeout(() => { if (a.gel === b) { b.remove(); a.gel = null; } }, 6000);
   }
   const vKepala = new THREE.Vector3(), vLayar = new THREE.Vector3(), sinarTutup = new THREE.Raycaster();
