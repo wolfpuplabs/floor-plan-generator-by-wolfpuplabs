@@ -1578,7 +1578,9 @@ function fxSiapkan(){
   FX.rtD=new THREE.WebGLRenderTarget(2,2,{minFilter:THREE.NearestFilter, magFilter:THREE.NearestFilter, depthBuffer:true, stencilBuffer:false});
   FX.rtD.depthTexture=new THREE.DepthTexture(2,2); FX.rtD.depthTexture.type=THREE.UnsignedIntType;
   FX.rtA=new THREE.WebGLRenderTarget(2,2,rtOpt); FX.rtB=new THREE.WebGLRenderTarget(2,2,rtOpt);
-  FX.matD=new THREE.MeshBasicMaterial({colorWrite:false});
+  // skinning: model berkerangka (avatar lobi, model beranimasi) digambar dalam posenya saat ini — tanpa itu
+  // lintasan kedalaman memakai pose diam (pose T) dan AO menggambar "bayangan" lengan terbentang di dinding
+  FX.matD=new THREE.MeshBasicMaterial({colorWrite:false, skinning:true});
   FX.cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
   const vs='varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }';
   const posFn=`
@@ -1649,7 +1651,10 @@ function fxHitungAO(W,H){
     const cc=renderer.getClearColor(new THREE.Color()), ca=renderer.getClearAlpha();
     renderer.setClearColor(0xffffff,1); renderer.setRenderTarget(FX.rtB); renderer.clear(); renderer.setClearColor(cc,ca); return; }
   FX_SEMBUNYI.length=0;
-  scene.traverseVisible(o=>{ if(o.isSprite||o.isLine||o.isLineSegments||(o.isMesh&&o.material&&!Array.isArray(o.material)&&o.material.transparent)) FX_SEMBUNYI.push(o); });
+  // transparan & alpha-cutout (helai rambut/kerah avatar, daun) tidak ikut: material pengganti tak membaca
+  // teksturnya, jadi bidang tembus pandang ikut menulis kedalaman dan AO menggambar noda gelap di belakangnya
+  const tembus=m=>m&&(m.transparent||m.alphaTest>0);
+  scene.traverseVisible(o=>{ if(o.isSprite||o.isLine||o.isLineSegments||(o.isMesh&&(Array.isArray(o.material)?o.material.some(tembus):tembus(o.material)))) FX_SEMBUNYI.push(o); });
   for(const o of FX_SEMBUNYI) o.visible=false;
   const giz=gizmo.visible; gizmo.visible=false;
   const bg=scene.background, perlu=renderer.shadowMap.needsUpdate;
