@@ -39,14 +39,14 @@ export const tes = {
       const lain = [...document.querySelectorAll('#fpsAksiLain button')].map(b => b.textContent);
       document.querySelector('#fpsAksiLain button').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
       await new Promise(r => setTimeout(r, 300));
-      const out = { jenis: AIM && AIM.jenis, ekstra: AIM && AIM.ekstra, utama: document.getElementById('fpsAct').textContent, lain,
+      const out = { jenis: AIM && AIM.jenis, ekstra: AIM && AIM.ekstra, utama: document.getElementById('fpsAct').textContent, aria: document.getElementById('fpsAct').getAttribute('aria-label'), lain,
         panel: !document.getElementById('detailPanel').hidden, judul: document.getElementById('detailJudul').textContent,
         teks: document.getElementById('detailTeks').textContent, host: document.getElementById('detailHost').textContent, gambar: !document.getElementById('detailGambar').hidden };
       document.getElementById('detailBuka').click(); out.buka = window.__buka;
       exitFPS(); out.tutup = document.getElementById('detailPanel').hidden; return out;
     }, id);
     assert.equal(r.jenis, 'duduk'); assert.deepEqual(r.ekstra, ['detail']);
-    assert.match(r.utama, /Duduk/); assert.deepEqual(r.lain.map(t => t.replace(/^2/, '')), ['Lihat detail']);
+    assert.match(r.utama, /Berinteraksi$/); assert.equal(r.aria, 'Duduk'); assert.deepEqual(r.lain.map(t => t.replace(/^2/, '')), ['Lihat detail']);
     assert.deepEqual([r.panel, r.judul, r.teks, r.host, r.gambar], [true, 'Sofa Linen Abu', 'Rp 8.900.000 · 3 dudukan', 'contoh.example', true]);
     assert.deepEqual(r.buka, [['https://contoh.example/sofa-linen', '_blank', 'noopener,noreferrer']]);
     assert.equal(r.tutup, true, 'panel ditutup saat keluar mode jalan');
