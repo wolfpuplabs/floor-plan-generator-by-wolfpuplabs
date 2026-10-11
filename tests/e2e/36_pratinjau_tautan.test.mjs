@@ -131,7 +131,11 @@ export const tes = {
     const kepala = await page.evaluate(() => ({ manifest: document.querySelector('link[rel=manifest]')?.getAttribute('href'),
       apple: document.querySelector('link[rel=apple-touch-icon]')?.getAttribute('href'), judul: document.querySelector('meta[name=apple-mobile-web-app-title]')?.content,
       og: document.querySelector('meta[property="og:image"]')?.content }));
-    assert.deepEqual(kepala, { manifest: 'manifest.webmanifest', apple: 'ikon/apple-touch-icon.png', judul: 'Plan23D', og: 'ikon/sampul.jpg' });
+    assert.deepEqual(kepala, { manifest: 'manifest.webmanifest', apple: 'apple-touch-icon.png', judul: 'Plan23D', og: 'ikon/sampul.jpg' });
+    // iOS mencari ikon di akar situs (Chrome iPad/iPhone tidak selalu membaca tag kepala); manifest tanpa SVG (WebKit bisa memilihnya lalu gagal)
+    for (const f of ['apple-touch-icon.png', 'apple-touch-icon-precomposed.png']) assert.equal(ukuranPNG(f), '180x180');
+    assert.ok(fs.readFileSync(path.join(ROOT, 'favicon.ico')).readUInt16LE(2) === 1, 'favicon.ico');
+    assert.ok(!m.icons.some(i => /svg/.test(i.type)), 'manifest tanpa ikon SVG');
     assert.equal(ukuranPNG(kepala.apple), '180x180');
     const sampul = fs.readFileSync(path.join(ROOT, kepala.og)); assert.ok(sampul[0] === 0xff && sampul[1] === 0xd8 && sampul.length < 280 * 1024);
     // vercel.json meneruskan /l/<id> ke fungsi kartu pratinjau

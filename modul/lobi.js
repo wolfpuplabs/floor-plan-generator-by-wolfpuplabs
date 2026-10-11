@@ -315,8 +315,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const s = Math.sin(a.fase), c = Math.cos(a.fase), napas = Math.sin(a.t * 1.7);
     putarTulang(a, 'leftUpperLeg', 0.5 * w * s); putarTulang(a, 'rightUpperLeg', -0.5 * w * s);
     putarTulang(a, 'leftLowerLeg', -0.75 * w * Math.max(0, c)); putarTulang(a, 'rightLowerLeg', -0.75 * w * Math.max(0, -c));
-    putarTulang(a, 'leftUpperArm', -0.4 * w * s + 0.025 * (1 - w) * napas); putarTulang(a, 'rightUpperArm', 0.4 * w * s + 0.025 * (1 - w) * napas);
-    putarTulang(a, 'leftLowerArm', 0.25 * w + 0.05); putarTulang(a, 'rightLowerArm', 0.25 * w + 0.05);
+    // lengan: ayun berlawanan dengan kaki, lebih jauh ke depan daripada ke belakang; siku menekuk lebih saat lengan di depan
+    const ayun = t => 0.32 * w * t + 0.06 * w;
+    putarTulang(a, 'leftUpperArm', ayun(-s) + 0.02 * (1 - w) * napas); putarTulang(a, 'rightUpperArm', ayun(s) + 0.02 * (1 - w) * napas);
+    putarTulang(a, 'leftLowerArm', 0.1 + w * (0.1 + 0.14 * Math.max(0, -s))); putarTulang(a, 'rightLowerArm', 0.1 + w * (0.1 + 0.14 * Math.max(0, s)));
     putarTulang(a, 'spine', 0.06 * w + 0.015 * napas * (1 - w)); putarTulang(a, 'chest', 0.012 * napas * (1 - w));
     a.model.position.y = a.dasarY + 0.03 * w * Math.abs(c);
   }
@@ -332,7 +334,15 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
             : Object.fromEntries(Object.entries((ext.VRMC_vrm && ext.VRMC_vrm.humanoid && ext.VRMC_vrm.humanoid.humanBones) || {}).map(([k, b]) => [k, b && b.node]));
           for (const [nama, arah] of [['leftUpperArm', vrm0 ? 1 : -1], ['rightUpperArm', vrm0 ? -1 : 1]]) {
             if (!Number.isInteger(tulang[nama])) continue;
-            try { const n = await gltf.parser.getDependency('node', tulang[nama]); if (n) n.rotation.z += arah * 1.2; } catch (e) { /* tanpa kerangka */ }
+            try { const n = await gltf.parser.getDependency('node', tulang[nama]); if (n) n.rotation.z += arah * 1.32; } catch (e) { /* tanpa kerangka */ }
+          }
+          // jari pose rileks (sedikit menekuk ke telapak) — jari lurus terentang terlihat seperti cakar saat berjalan
+          for (const sisi of ['left', 'right']) {
+            const arah = (sisi === 'left' ? -1 : 1) * (vrm0 ? -1 : 1);
+            for (const jari of ['Index', 'Middle', 'Ring', 'Little']) for (const [ruas, sd] of [['Proximal', 0.3], ['Intermediate', 0.45], ['Distal', 0.35]]) {
+              const i = tulang[sisi + jari + ruas]; if (!Number.isInteger(i)) continue;
+              try { const n = await gltf.parser.getDependency('node', i); if (n) n.rotation.z += arah * sd * (jari === 'Index' ? 0.7 : 1); } catch (e) { /* abaikan */ }
+            }
           }
           // tulang untuk animasi prosedural: pemetaan humanoid VRM, atau tebakan nama (Mixamo/Avaturn/Blender)
           const rig = {};
