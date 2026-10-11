@@ -20,6 +20,24 @@ const teksTerlihat = (page, sel, tab) => page.evaluate(([s, tab]) => {
 const sisaIndonesia = arr => arr.filter(t => KATA_ID.test(t) && !/Rumah contoh|Denah 3D/.test(t));
 
 export const tes = {
+  'kamus: aturan potongan (ganti) idempoten — hasilnya tidak cocok lagi dengan aturan mana pun (panel AR pernah membeku)': Object.assign(async (page) => {
+    const r = await page.evaluate(() => {
+      const G = window.KAMUS_EN.ganti.map(([r, t]) => [new RegExp(r, 'g'), t]), salah = [];
+      const terap = h => { let u = h; for (const [r, t] of G) u = u.replace(r, t); return u; };
+      for (const [r, t] of window.KAMUS_EN.ganti) { const contoh = t.replace(/\$\d/g, '1 : 50'); const a = terap(contoh); if (terap(a) !== a || a !== contoh) salah.push(r); }
+      // kalimat panel AR utuh: diterjemahkan sekali lalu stabil
+      const info = 'Bangunan <b>7.67 × 10.02 m</b>, tinggi <b>3.40 m</b> → maket 1 : 50 = <b>15.3 × 20.0 cm</b>, tinggi <b>6.8 cm</b>. ';
+      const sekali = terap(info);
+      return { salah, stabil: terap(sekali) === sekali, inggris: /^Building .* → 1 : 50 model = /.test(sekali) };
+    });
+    assert.deepEqual(r, { salah: [], stabil: true, inggris: true });
+    // elemen yang terus berubah tidak membuat halaman membeku: penulisan ulang dibatasi
+    const beku = await page.evaluate(async () => { const s = document.createElement('span'); document.body.appendChild(s);
+      s.innerHTML = 'Bangunan <b>7.67 × 10.02 m</b>, tinggi <b>3.40 m</b> → maket 1 : 50 = <b>15.3 × 20.0 cm</b>, tinggi <b>6.8 cm</b>. Menyiapkan berkas AR (USDZ) untuk browser ini… tombol <b>Lihat di ruanganmu</b> muncul setelah siap.';
+      const t0 = performance.now(); await new Promise(r => setTimeout(r, 300)); const ms = performance.now() - t0; const teks = s.textContent; s.remove(); return { ms, teks }; });
+    assert.ok(beku.ms < 2000, 'halaman membeku ' + beku.ms);
+    assert.match(beku.teks, /^Building .* 1 : 50 model = .*Preparing the AR file \(USDZ\)/);
+  }, { opsi: EN }),
   'bawaan: tanpa pilihan tersimpan, UI tampil dalam bahasa Inggris': Object.assign(async (page) => {
     assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');
     const tab = await page.$$eval('.tabs button', bs => bs.map(b => b.textContent.replace(/\s+/g, ' ').trim()));

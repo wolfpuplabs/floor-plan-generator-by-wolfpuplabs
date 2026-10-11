@@ -1094,6 +1094,15 @@ function terjemahFrasa(e){
   let u=h; for(const [r,t] of K._ganti) u=u.replace(r,t);
   return u!==h?u:null;
 }
+/* Pengaman: hasil terjemahan yang ditulis ke elemen memicu MutationObserver lagi. Bila sebuah aturan tidak
+   idempoten (hasilnya cocok lagi dengan aturannya sendiri), elemen itu ditulis ulang tanpa henti dan
+   halaman membeku (terjadi di panel AR). Satu elemen paling banyak ditulis ulang 4× per detik. */
+const TULIS_ULANG=new WeakMap();
+function bolehTulisUlang(e){
+  const now=performance.now(), c=TULIS_ULANG.get(e);
+  if(!c || now-c.t>1000){ TULIS_ULANG.set(e,{t:now,n:1}); return true; }
+  return ++c.n<=4;
+}
 function pasangBahasa(){
   document.documentElement.lang=BAHASA.kode;
   const K=window.KAMUS_EN; if(BAHASA.kode!=='en'||!K) return;
@@ -1109,7 +1118,7 @@ function pasangBahasa(){
     if(r.nodeType!==1||lewati(r)) return;
     atribut(r);
     if(frasaan(r)){
-      const f=terjemahFrasa(r); if(f!=null){ if(f!==r.innerHTML) r.innerHTML=f; return; }
+      const f=terjemahFrasa(r); if(f!=null){ if(f!==r.innerHTML && bolehTulisUlang(r)) r.innerHTML=f; return; }
     }
     for(const c of [...r.childNodes]) proses(c);
   };
@@ -1773,8 +1782,10 @@ function setFX(on){
 }
 
 const clock=new THREE.Clock();
+var JEDA_RENDER=0;                  // panel AR terbuka: adegan utama tertutup — tidak digambar (JEV-083)
 (function animate(){
   requestAnimationFrame(animate);
+  if(JEDA_RENDER) return;
   const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
   if(FPS.on) fpsStep(dt); else orbit.update();
   stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt);
@@ -15784,7 +15795,7 @@ async function arDownloadUsdz(){
       toast('Membuat USDZ…');
       const m=arBuildModel();
       if(!m) return toast('Belum ada model untuk diekspor.');
-      try{ AR.usdz=await arUSDZ(m.wrap); }finally{ disposeTree(m.wrap); }
+      try{ AR.usdz=await denganToBlobLangsung(()=>arUSDZ(m.wrap)); }finally{ disposeTree(m.wrap); }
     }
     download(AR.usdz,(PROJECT.name||'model')+'.usdz');
     toast('Model .usdz diunduh — buka dari Files untuk AR Quick Look');
@@ -15792,6 +15803,23 @@ async function arDownloadUsdz(){
 }
 
 const batasWaktu=(p,ms,pesan)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error(pesan)),ms))]);
+/* GLTFExporter & USDZExporter mengubah tiap tekstur lewat canvas.toBlob. Peramban mengodekannya di waktu
+   luang — selama adegan 3D terus digambar 60×/detik waktu luang itu bisa tidak pernah datang, sehingga
+   callback-nya tidak pernah dipanggil dan ekspor menggantung (terukur di Chromium; gejala sama di iPad/iPhone).
+   Selama ekspor AR, toBlob diganti versi langsung (toDataURL → Blob). */
+let EKSPOR_AR=0;
+const TOBLOB_ASLI=HTMLCanvasElement.prototype.toBlob;
+function toBlobLangsung(cb,type,q){
+  let blob=null;
+  try{ const d=this.toDataURL(type,q), i=d.indexOf(','), mime=d.slice(5,d.indexOf(';')), b=atob(d.slice(i+1)), u=new Uint8Array(b.length);
+    for(let k=0;k<b.length;k++) u[k]=b.charCodeAt(k); blob=new Blob([u],{type:mime||type||'image/png'}); }catch(e){ blob=null; }
+  setTimeout(()=>cb(blob),0);
+}
+async function denganToBlobLangsung(fn){
+  if(EKSPOR_AR++===0) HTMLCanvasElement.prototype.toBlob=toBlobLangsung;
+  try{ return await fn(); }
+  finally{ if(--EKSPOR_AR===0) HTMLCanvasElement.prototype.toBlob=TOBLOB_ASLI; }
+}
 /* USDZ hanya dibutuhkan browser iOS pihak ketiga yang punya AR Quick Look (Safari membuatnya sendiri lewat
    model-viewer; browser di dalam aplikasi tidak bisa AR sama sekali). Dulu dibuat SETIAP kali panel AR
    dibuka di iOS sebelum panel tampil — berat dan bisa menggantung ("Menyiapkan model AR…" selamanya).
@@ -15799,7 +15827,7 @@ const batasWaktu=(p,ms,pesan)=>Promise.race([p,new Promise((_,no)=>setTimeout(()
 async function siapkanUsdzLatar(){
   const mv=$('#arViewer'), m=arBuildModel(); if(!m) return;
   AR.usdzStatus='proses'; arInfo();
-  try{ const u=await batasWaktu(arUSDZ(m.wrap),AR.batasMs*2,'USDZ terlalu lama');
+  try{ const u=await batasWaktu(denganToBlobLangsung(()=>arUSDZ(m.wrap)),AR.batasMs*2,'USDZ terlalu lama');
     if(AR.usdzUrl) URL.revokeObjectURL(AR.usdzUrl);
     AR.usdz=u; AR.usdzUrl=URL.createObjectURL(u); mv.setAttribute('ios-src',AR.usdzUrl); AR.usdzStatus='siap'; }
   catch(err){ console.warn('USDZ gagal dibuat:',err); AR.usdzStatus='gagal'; }
@@ -15808,7 +15836,7 @@ async function siapkanUsdzLatar(){
 async function arRefresh(){
   const mv=$('#arViewer');
   try{
-    const {glb}=await batasWaktu(arExport(false),AR.batasMs,'Model terlalu berat untuk disusun di perangkat ini. Coba buka di Safari / Chrome, atau unduh .glb dari editor.');
+    const {glb}=await batasWaktu(denganToBlobLangsung(()=>arExport(false)),AR.batasMs,'Model terlalu berat untuk disusun di perangkat ini. Coba buka di Safari / Chrome, atau unduh .glb dari editor.');
     if(AR.url) URL.revokeObjectURL(AR.url);
     AR.blob=glb; AR.url=URL.createObjectURL(glb);
     if(AR.usdzUrl){ URL.revokeObjectURL(AR.usdzUrl); AR.usdzUrl=null; }
@@ -15826,6 +15854,7 @@ async function arRefresh(){
 }
 
 async function openAR(){
+  JEDA_RENDER=1;                              // waktu & memori untuk menyusun model AR, bukan untuk adegan yang tertutup panel
   $('#loader-txt').textContent='Menyiapkan model AR…';
   $('#loader').classList.add('on');
   try{
@@ -15838,6 +15867,7 @@ async function openAR(){
   }
 }
 function closeAR(){
+  JEDA_RENDER=0;
   AR.open=false; AR.svUrl=null; AR.sv='';
   $('#arPanel').hidden=true; $('#arSV').hidden=true;
   const mv=$('#arViewer');
@@ -15876,7 +15906,7 @@ $('#arScale').onchange=e=>{ AR.denom=parseFloat(e.target.value)||50; if(AR.open)
 $('#arViewer').addEventListener('load',()=>{ arInfo(); arSiapkanSV(); });
 $('#arSV').onclick=arBukaSV;
 $('#exportGlbBtn').onclick=async()=>{
-  try{ const {glb}=await arExport(false); AR.blob=glb; arDownload(); }
+  try{ const {glb}=await denganToBlobLangsung(()=>arExport(false)); AR.blob=glb; arDownload(); }
   catch(err){ toast(err.message); }
 };
 
