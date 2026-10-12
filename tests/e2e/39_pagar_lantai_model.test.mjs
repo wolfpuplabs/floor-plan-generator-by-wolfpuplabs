@@ -101,4 +101,14 @@ export const tes = {
   'ikon layar utama di iPad: diambil sekali lalu dipasang sebagai data: URL': Object.assign(async (page) => {
     await page.waitForFunction(() => /^data:image\/png;base64,/.test(document.querySelector('link[rel="apple-touch-icon"]').href), undefined, { timeout: 10000 });
   }, { opsi: { ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15' } }),
+
+  // iPad dengan memori grafis penuh: konteks WebGL gagal dibuat → dulu viewport hitam + "Script error"
+  'tanpa WebGL: pesan jelas + tombol muat ulang, bukan layar hitam': Object.assign(async (page) => {
+    await page.waitForSelector('#tanpaGL', { timeout: 20000 });
+    const r = await page.evaluate(() => ({ teks: $('#tanpaGL').textContent, tombol: !!$('#tanpaGL button'), toast: $('#toast').classList.contains('show') }));
+    assert.match(r.teks, /The 3D view could not start/);
+    assert.match(r.teks, /Close other tabs that use 3D or games/);
+    assert.deepEqual([r.tombol, r.toast], [true, false]);
+  }, { izinGalat: true, opsi: { tanpaSiap: true, bahasa: 'en',
+    init: () => { const asli = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (t, ...a) { return /webgl/.test(t) ? null : asli.call(this, t, ...a); }; } } }),
 };

@@ -1274,7 +1274,22 @@ function pakaiKamera(orto){
 }
 camera.position.set(14,14,18);
 
-const renderer=new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+/* Konteks WebGL bisa gagal dibuat — memori grafis peramban penuh (iPad dengan banyak tab game / 3D terbuka).
+   Dulu skrip berhenti di sini: viewport hitam & hanya "Script error". Kini dicoba lagi dengan setelan lebih ringan,
+   dan bila tetap gagal muncul pesan yang jelas dengan tombol muat ulang. */
+function buatRenderer(){
+  for(const o of [{antialias:true, preserveDrawingBuffer:true},{antialias:false, preserveDrawingBuffer:true},{antialias:false, powerPreference:'low-power'}]){
+    try{ return new THREE.WebGLRenderer(o); }catch(e){ console.warn('WebGL gagal',o,e); }
+  }
+  catatGalat.sudah=true;                          // bukan toast galat umum: pesannya ditampilkan sendiri
+  const d=document.createElement('div'); d.id='tanpaGL'; d.setAttribute('role','alert');
+  d.style.cssText='position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(16,16,20,.94);color:#e8e8ec;text-align:center;font-size:15px';
+  d.innerHTML='<div style="max-width:420px"><b style="font-size:18px">Tampilan 3D tidak bisa dimulai</b><p>Memori grafis peramban sedang penuh. Tutup tab lain yang memakai 3D atau game, lalu muat ulang halaman ini.</p><button class="btn">Muat ulang</button></div>';
+  d.querySelector('button').onclick=()=>location.reload();
+  document.body.appendChild(d);
+  throw new Error('WebGL tidak tersedia');
+}
+const renderer=buatRenderer();
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(viewport.clientWidth, viewport.clientHeight);
 renderer.shadowMap.enabled=true;
