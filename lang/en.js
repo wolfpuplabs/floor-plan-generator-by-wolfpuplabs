@@ -1625,6 +1625,33 @@ window.KAMUS_EN={
   "Buka halaman aslinya":"Open the original page",
   "⚠ sumber ini tidak mengizinkan unduhan langsung":"⚠ this source doesn't allow direct download",
   "objek sudah dihapus":"object was deleted",
+  "Gitar Akustik":"Acoustic Guitar",
+  "Mainkan gitar":"Play guitar",
+  "Tutup gitar":"Close guitar",
+  "bermain gitar":"play the guitar",
+  "🎸 Gitar — mainkan":"🎸 Guitar — play",
+  "🎸 Gitar":"🎸 Guitar",
+  "Gitar":"Guitar",
+  "Senar — ketuk untuk memetik, sapu untuk menggenjreng":"Strings — tap to pluck, swipe to strum",
+  "Genjreng ↓":"Strum ↓",
+  "Genjreng ↑":"Strum ↑",
+  "Pola genjreng":"Strum pattern",
+  "Balada ↓ ↓ ↓↑":"Ballad  ↓ ↓ ↓↑",
+  "Progresi C–G–Am–F":"Progression C–G–Am–F",
+  "Iringan":"Accompany",
+  "Pilih akor lalu sapu senarnya — keyboard: 1–9 akor · Spasi genjreng ↓ · B ↑ · Q W E R T Y petik senar":"Pick a chord, then swipe the strings — keyboard: 1–9 chords · Space strum ↓ · B ↑ · Q W E R T Y pluck strings",
+  "Putar otomatis dari objek — suara 3D di mode jalan & lihat":"Play automatically from the object — 3D sound in walk & view mode",
+  "Jangkauan suara":"Sound range",
+  "4 m — pelan, dekat saja":"4 m — quiet, close by only",
+  "10 m — satu ruangan":"10 m — one room",
+  "20 m — rumah & halaman":"20 m — house & yard",
+  "40 m — seluruh situs":"40 m — whole site",
+  "Matikan suara":"Turn sound off",
+  "Nyalakan suara":"Turn sound on",
+  "Interaksi: sumber suara otomatis":"Interaction: automatic sound source",
+  "Interaksi: jangkauan suara":"Interaction: sound range",
+  "Hasilnya berformat lain (FLAC / AIFF) yang tidak bisa diputar di semua perangkat — coba kata lain.":"Results are in other formats (FLAC / AIFF) that don't play on every device — try another word.",
+  "Tampilkan semua lisensi CC":"Show all CC licences",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1670,7 +1697,8 @@ window.KAMUS_EN={
   "Sketchfab butuh token API untuk mengunduh — isi tokennya di atas galeri.":"Sketchfab needs an API token to download — enter it above the gallery.",
   "Tambah":"Add",
   "Ditambahkan":"Added",
-  "sumber ini tidak mengizinkan unduhan langsung":"this source doesn't allow direct download"
+  "sumber ini tidak mengizinkan unduhan langsung":"this source doesn't allow direct download",
+  "Gitar — mainkan":"Guitar — play"
  },
  // frasa
  "frasa":{
@@ -1958,7 +1986,8 @@ window.KAMUS_EN={
   ["Jelajahi suara — Suara saat diketuk — (.+)","Browse sounds — Sound when tapped — $1"],
   ["Suara: (.+)","Sound: $1"],
   ["Pustaka musik tidak bisa dihubungi \\((.+)\\)\\. Periksa koneksi, atau unggah berkas sendiri\\.","Music library can't be reached ($1). Check the connection, or upload your own file."],
-  ["⚠ berkas tidak tersedia \\(HTTP (\\d+)\\)","⚠ file not available (HTTP $1)"]
+  ["⚠ berkas tidak tersedia \\(HTTP (\\d+)\\)","⚠ file not available (HTTP $1)"],
+  ["Akor (.+) \\((\\d)\\)","Chord $1 ($2)"]
  ],
  // frasaPola
  "frasaPola":[
