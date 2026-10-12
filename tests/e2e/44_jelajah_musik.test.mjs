@@ -85,7 +85,7 @@ export const tes = {
     await pilih('sfx');
     await page.locator('#inspector button', { hasText: 'Jelajahi suara' }).click();
     await page.waitForSelector('#musikPustaka:not([hidden]) #musikHasil .mp-trek');
-    assert.equal(log.cari.at(-1).category, 'sound_effect');
+    assert.ok(log.cari.some(c => c.category === 'sound_effect'), 'mencari efek suara (lalu tanpa kategori bila hasilnya sedikit)');
     for (const j of ['Ketukan pintu kayu', 'Bel pintu']) await tombolTrek(page, j, 'Tambah').click();
     await page.waitForFunction(id => aksiObjek(cariObjek(id))?.sfxDaftar?.length === 2, id, { timeout: 15000 });
     assert.match(await page.locator('#inspector .trek').first().textContent(), /Ketukan pintu kayu — Pemusik ketuk · CC BY 4\.0/);

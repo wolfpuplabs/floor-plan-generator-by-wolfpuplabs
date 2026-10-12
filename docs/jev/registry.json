@@ -4518,6 +4518,68 @@
     "target": "dipakai pada proyek bergitar",
     "tinjau": "2027-01-13"
    }
+  },
+  {
+   "id": "JEV-100",
+   "judul": "Waktu yang berganti halus (siang → senja → malam), siklus waktu & cuaca hujan / badai",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Suasana hanya bisa dipilih dan langsung meloncat; tidak ada pergantian waktu yang terasa hidup dan tidak ada cuaca.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"tambahin interaksi time of day yang berubah dari day>dusk>night sama weather system (rain)\"",
+    "alternatif": [
+     "video / panorama hujan statis (tidak menyatu dengan adegan 3D)",
+     "partikel hujan per tetes di CPU (berat di iPad)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa host / pustaka baru; pengaturan cuaca disaring (jenis & siklus daftar tetap)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri; suara hujan & guruh disintesis"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/cuaca.js dimuat saat dipakai; tetes dihitung di GPU (≤ 5.000 di iPad), masker atap dihitung ulang hanya bila dinding berubah; editor tanpa hujan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Waktu berlabel; kilat singkat (≤ 0,35 dtk, jarang) hanya pada pilihan Badai petir"
+    }
+   },
+   "metrik": {
+    "nama": "tautan lihat dengan cuaca / siklus waktu",
+    "target": "dipakai pada presentasi rumah",
+    "tinjau": "2027-01-13"
+   }
   }
  ]
 }

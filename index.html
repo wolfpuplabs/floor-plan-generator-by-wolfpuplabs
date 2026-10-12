@@ -680,6 +680,8 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <option value="malam">Malam — lampu menyala</option>
         <option value="gelap">Malam — lampu padam</option>
       </select></div>
+      <div class="f-row"><label>Cuaca</label><select id="cuaca"><option value="cerah">Cerah</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select></div>
+      <div class="f-row"><label>Siklus waktu</label><select id="siklus"><option value="0">Tetap — tidak berganti</option><option value="2">Siang → senja → malam · 2 menit</option><option value="6">Siang → senja → malam · 6 menit</option><option value="12">Siang → senja → malam · 12 menit</option></select></div>
       <div class="f-row"><label>Langit</label><select id="langitMode">
         <option value="prosedural">Prosedural — ringan, offline</option>
         <option value="foto">Foto 360° asli (HDRI)</option>
@@ -967,6 +969,8 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <button class="btn sm" id="fpsExit"><svg class="ik" aria-hidden="true"><use href="#i-keluar"/></svg> Keluar (Esc)</button>
       <span id="fpsinfo"></span>
       <span class="fps-alat">
+      <button class="btn ghost sm" id="fpsWaktu" title="Majukan waktu: siang → senja → malam (berganti halus)"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Waktu ▸</button>
+      <select id="fpsCuaca" title="Cuaca"><option value="cerah">Cerah</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select>
       <select id="fpsMood" title="Suasana cahaya">
         <option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option><option value="gelap">Malam gelap</option>
       </select>
@@ -1873,7 +1877,7 @@ function aturResolusi(t){
   const mentah=clock.getDelta(), dt=Math.min(mentah,0.1);   // lompatan waktu dibatasi
   aturResolusi(mentah);
   if(FPS.on) fpsStep(dt); else orbit.update();
-  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt);
+  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -7354,7 +7358,7 @@ function rebuildScene(){
   // kayu perabot / pintu / kusen dari foto Poly Haven saat daring (JEV-094, modul/tanahfoto.js)
   if(window.TANAHFOTO&&window.TANAHFOTO.kayuSiap()) window.TANAHFOTO.uv(worldRoot);
   else if(!rebuildScene.kayu&&PROJECT.levels.some(l=>l.walls.length||l.objects.some(o=>o.kind==='furn'))){ rebuildScene.kayu=true; muatModul('tanahfoto').then(()=>window.TANAHFOTO.kayu(),()=>{}); }
-  kumpulkanLampu(); kumpulkanHadap(); kumpulkanGerak(); renderBgmUI();
+  kumpulkanLampu(); kumpulkanHadap(); kumpulkanGerak(); renderBgmUI(); segarkanCuaca();
   kumpulkanAudio();
   if(window.__siap) terapkanPantulan();       // MOOD & finishing sudah terdefinisi
   rebuildDims();
@@ -13231,6 +13235,10 @@ function reliefAman(R){
   return {relief:{c, x0, z0, nx, nz, h:R.h.map(v=>Math.round(clamp(+v||0,-1000,3000))), ...(ct&&cb?{cat:{t:ct,b:cb}}:{})}};
 }
 // musik latar: id media + pilihan; medianya sendiri disaring bersama media lain
+// cuaca & siklus waktu (JEV-100)
+function cuacaAman(c){ if(!c||typeof c!=='object') return {};
+  const j=['gerimis','hujan','badai'].includes(c.jenis)?c.jenis:'cerah', s=[2,6,12].includes(+c.siklus)?+c.siklus:0;
+  return j==='cerah'&&!s?{}:{cuaca:{jenis:j,siklus:s}}; }
 function bgmAman(b){
   if(!b||typeof b!=='object'||typeof b.media!=='string'||!ID_AMAN.test(b.media)) return {};
   const lain=Array.isArray(b.lain)?b.lain.filter(x=>typeof x==='string'&&ID_AMAN.test(x)).slice(0,TREK_MAKS-1):[];
@@ -13293,7 +13301,7 @@ function sanitasiProyek(j){
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
     atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12), ...(j.atap&&j.atap.tutup===true?{tutup:true}:{})},
     site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6), ...(j.site&&j.site.sembunyi===true?{sembunyi:true}:{}), ...reliefAman(j.site&&j.site.relief)},
-    ...bgmAman(j.bgm),
+    ...bgmAman(j.bgm), ...cuacaAman(j.cuaca),
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
 }
@@ -14242,6 +14250,7 @@ function terapkanLangit(){
   else if(tampil){ const s=SUASANA[MOOD]; isiLangit(kubahLangit.material.uniforms,MOOD,false); kubahLangit.visible=true;
     scene.background=new THREE.Color(s.langit[1]); scene.fog=new THREE.Fog(s.kabut[0],s.kabut[1],s.kabut[2]); }
   else { kubahLangit.visible=false; scene.background=new THREE.Color(0x0e0e11); scene.fog=camera.isOrthographicCamera?null:new THREE.Fog(0x0e0e11,70,190); }
+  if(window.CUACA) window.CUACA.setelahLangit();
 }
 function setSuasana(k){
   const s=SUASANA[k]||SUASANA.siang; MOOD=SUASANA[k]?k:'siang';
@@ -14259,6 +14268,7 @@ function setSuasana(k){
   terapkanLangit(); LAMPU_T=0;
   sun.userData.arah.set(...s.sunPos).normalize(); pasBayangMatahari();
   if(fotoAktif()){ terapkanCahayaFoto(); langitIkutSuasana(); }
+  if(window.CUACA) window.CUACA.setelahSuasana();
   laporAdegan();
 }
 /* ======================================================================
@@ -15513,7 +15523,7 @@ function pasangKeadaanAksi(k){
   bayangKotor();
 }
 // suasana & langit host — tamu mengikuti
-function adeganKini(){ const lp=langitP(); return {mood:MOOD, langit:{mode:lp.mode, jenis:lp.jenis, id:lp.id, nama:lp.nama, putar:+lp.putar||0}}; }
+function adeganKini(){ const lp=langitP(); return {mood:MOOD, cuaca:PROJECT.cuaca||{}, langit:{mode:lp.mode, jenis:lp.jenis, id:lp.id, nama:lp.nama, putar:+lp.putar||0}}; }
 function pasangAdegan(a){
   ADEGAN_LUAR++;
   try{ pasangAdegan0(a); } finally { ADEGAN_LUAR--; }
@@ -15523,6 +15533,7 @@ function pasangAdegan0(a){
   const lp=langitP(), g=a.langit&&typeof a.langit==='object'?a.langit:{};
   lp.pilih='manual';                       // tamu tidak mengacak panorama sendiri saat suasana berganti
   if(SUASANA[a.mood] && a.mood!==MOOD) setSuasana(a.mood);
+  if(a.cuaca&&typeof a.cuaca==='object'){ const c=cuacaAman(a.cuaca).cuaca; if(c) PROJECT.cuaca=c; else delete PROJECT.cuaca; segarkanCuaca(); }
   if(LANGIT_JENIS[g.jenis]) lp.jenis=g.jenis;
   if(g.mode==='prosedural'){ if(lp.mode==='foto') matikanLangitFoto(); }
   else if(g.mode==='foto' && typeof g.id==='string' && ID_AMAN.test(g.id) && g.id!=='unggah' && g.id!==(FOTO.target||FOTO.id)){
@@ -15556,7 +15567,15 @@ function stepBidik(dt){
 }
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
-$('#fpsMood').onchange=e=>{ setSuasana(e.target.value); e.target.blur(); };
+$('#fpsMood').onchange=e=>{ const v=e.target.value; e.target.blur(); if(window.CUACA) window.CUACA.transisi(v,3); else setSuasana(v); };
+// cuaca & siklus waktu (JEV-100): modul/cuaca.js dimuat begitu dipakai
+function segarkanCuaca(){ const c=PROJECT.cuaca||{};
+  for(const id of ['#cuaca','#fpsCuaca']){ const e=$(id); if(e) e.value=c.jenis||'cerah'; } if($('#siklus')) $('#siklus').value=String(c.siklus||0);
+  if(c.jenis||window.CUACA) muatModul('cuaca').then(()=>window.CUACA.pasang(PROJECT.cuaca),()=>{}); }
+function aturCuaca(u){ const c=cuacaAman(Object.assign({},PROJECT.cuaca,u)).cuaca; if(c) PROJECT.cuaca=c; else delete PROJECT.cuaca; HIST.label='Cuaca & waktu'; rebuildScene(); laporAdegan(); }
+for(const id of ['#cuaca','#fpsCuaca']) $(id).onchange=e=>{ aturCuaca({jenis:e.target.value}); e.target.blur(); };
+$('#siklus').onchange=e=>aturCuaca({siklus:+e.target.value});
+$('#fpsWaktu').onclick=e=>{ e.currentTarget.blur(); muatModul('cuaca').then(()=>window.CUACA.berikut(),err=>toast(err.message)); };
 /* langit foto 360° */
 $('#langitJenis').innerHTML=Object.entries(LANGIT_JENIS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
 $('#langitMode').onchange=e=>{ if(e.target.value==='foto') mulaiLangitFoto(); else matikanLangitFoto(); };
