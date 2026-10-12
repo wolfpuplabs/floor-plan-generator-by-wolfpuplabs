@@ -1503,6 +1503,38 @@ window.KAMUS_EN={
   "pilih berkas .glb atau .vrm":"choose a .glb or .vrm file",
   "avatar 3D butuh Vercel Blob (Storage → Blob)":"a 3D avatar needs Vercel Blob (Storage → Blob)",
   "unggah avatar gagal — periksa koneksi":"avatar upload failed — check your connection",
+  "Pagar dari model":"Fence from model",
+  "Lantai dari model":"Floor from model",
+  "pagar dari model":"fence from model",
+  "lantai dari model":"floor from model",
+  "Pagar & lantai dari model sendiri":"Fences & floors from your own model",
+  "Unggah model (.glb, .gltf, ZIP, .obj, .fbx)":"Upload model (.glb, .gltf, ZIP, .obj, .fbx)",
+  "Pagar (tracing)":"Fence (tracing)",
+  "Lantai (tracing)":"Floor (tracing)",
+  "— unggah model dulu —":"— upload a model first —",
+  "Unggah model dulu":"Upload a model first",
+  "Unggah model dulu (tab Taman › Pagar & lantai dari model sendiri)":"Upload a model first (Garden tab › Fences & floors from your own model)",
+  "Berkas model ini gagal diurai":"This model file could not be parsed",
+  "Pakai sebagai pagar / lantai":"Use as fence / floor",
+  "Gambar jalur pagar atau keliling lantai; model ini diulang sepanjang jalur / disusun berpetak di dalamnya.":"Draw a fence path or a floor outline; this model is repeated along the path / laid out as tiles inside it.",
+  "⚠ Modelnya tidak ada di pustaka — unggah lagi lalu pilih di atas.":"⚠ The model is not in the library — upload it again, then pick it above.",
+  "Sisi panjang potongan":"Long side of the piece",
+  "Arah ubin":"Tile direction",
+  "Sumbu X model":"Model X axis",
+  "Sumbu Z model":"Model Z axis",
+  "Seperti model":"As modelled",
+  "Diputar 90°":"Rotated 90°",
+  "Rentang pas dari titik ke titik":"Stretch to fit point to point",
+  "Lebar ubin (m)":"Tile width (m)",
+  "Panjang ubin (m)":"Tile length (m)",
+  "Ubin disusun berpetak mengisi keliling; yang titik tengahnya di luar keliling tidak dipasang.":"Tiles are laid in a grid filling the outline; tiles whose centre falls outside it are left out.",
+  "🪑 Bisa diduduki":"🪑 Can be sat on",
+  "Tidak":"No",
+  "Depan (+Z)":"Front (+Z)",
+  "Di mode jalan, bidik perabot ini lalu tekan E / ketuk Berinteraksi untuk duduk.":"In walk mode, aim at this piece and press E / tap Interact to sit down.",
+  "Tampilan 3D tidak bisa dimulai":"The 3D view could not start",
+  "Memori grafis peramban sedang penuh. Tutup tab lain yang memakai 3D atau game, lalu muat ulang halaman ini.":"The browser's graphics memory is full. Close other tabs that use 3D or games, then reload this page.",
+  "Muat ulang":"Reload",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1541,7 +1573,10 @@ window.KAMUS_EN={
   "Model berat untuk iPad — beberapa model seperti ini bisa menghabiskan memori grafis.":"Heavy model for iPad — a few models like this can use up the graphics memory.",
   "Hanya scan 3D & fotogrametri":"3D scans & photogrammetry only",
   "ketuk untuk mengunduh & memasang":"tap to download & place",
-  "masukkan token API untuk mengunduh":"enter an API token to download"
+  "masukkan token API untuk mengunduh":"enter an API token to download",
+  "unggah model dulu —":"upload a model first —",
+  "Modelnya tidak ada di pustaka — unggah lagi lalu pilih di atas.":"The model is not in the library — upload it again, then pick it above.",
+  "Bisa diduduki":"Can be sat on"
  },
  // frasa
  "frasa":{
@@ -1577,7 +1612,8 @@ window.KAMUS_EN={
   "Area, kolam, jalan setapak, dan pagar digambar dengan tracing: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.":"Areas, pools, paths and fences are drawn by <b>tracing</b>: tap their points on the floor (the plan image shows underneath). Pools cut into the site ground automatically.",
   "Browser di dalam aplikasi ini (mis. Instagram, LINE, Facebook) tidak bisa membuka AR. Buka tautan ini di Safari — ketuk ⋯ lalu Buka di Safari, atau salin tautannya.":"This in-app browser (e.g. Instagram, LINE, Facebook) cannot open AR. Open this link in <b>Safari</b> — tap ⋯ then <b>Open in Safari</b>, or copy the link.",
   "Tekan Lihat di ruanganmu — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).":"Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR).",
-  "Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian Material di panel kanan.":"Used by every floor that doesn't pick its own material. Wall materials are set per wall: select a wall, then see the <b>Material</b> section in the right panel."
+  "Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian Material di panel kanan.":"Used by every floor that doesn't pick its own material. Wall materials are set per wall: select a wall, then see the <b>Material</b> section in the right panel.",
+  "Pagar: model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Lantai: model ubin, papan dek, atau paving disusun berpetak mengisi keliling yang digambar. Ukuran potongan & arahnya bisa diubah di inspector.":"<b>Fence</b>: a model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. <b>Floor</b>: a tile, deck board or paver model is laid in a grid filling the drawn outline. Piece size & direction can be changed in the inspector."
  },
  // pola
  "pola":[
@@ -1806,7 +1842,11 @@ window.KAMUS_EN={
   ["▶ (.+) — diputar saat objek diketuk; ketuk lagi untuk berhenti\\.","▶ $1 — plays when the object is tapped; tap again to stop."],
   ["Audio atau video, maks\\. (\\d+) MB — video tampil di tengah layar, audio di pojok bawah; keduanya bisa dikecilkan\\.","Audio or video, max. $1 MB — video shows in the middle of the screen, audio in the bottom corner; both can be minimised."],
   ["Foto diunduh: (.+)","Photo downloaded: $1"],
-  ["avatar ([\\d.,]+) MB — maks\\. 8 MB setelah dirampingkan","avatar $1 MB — max. 8 MB after slimming"]
+  ["avatar ([\\d.,]+) MB — maks\\. 8 MB setelah dirampingkan","avatar $1 MB — max. 8 MB after slimming"],
+  ["Satu potong ([\\d.,]+) m \\(tebal ([\\d.,]+) m\\) diulang sepanjang jalur\\. Kalau potongannya melintang jalur, ganti Sisi panjang\\.","One $1 m piece ($2 m thick) is repeated along the path. If the pieces sit across the path, change Long side."],
+  ["Ubin disusun berpetak mengisi keliling; yang titik tengahnya di luar keliling tidak dipasang\\. Lebih dari (\\d+) ubin — perbesar ukuran ubin\\.","Tiles are laid in a grid filling the outline; tiles whose centre falls outside it are left out. More than $1 tiles — make the tiles larger."],
+  ["Lantai dari model — luas ([\\d.,]+) m²","Floor from model — area $1 m²"],
+  ["Pagar dari model — panjang ([\\d.,]+) m","Fence from model — length $1 m"]
  ],
  // frasaPola
  "frasaPola":[

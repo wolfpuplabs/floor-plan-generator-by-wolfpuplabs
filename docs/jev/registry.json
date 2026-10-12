@@ -3719,7 +3719,7 @@
    "J": {
     "masalah": "Tautan lihat yang dikirim lewat WhatsApp/iMessage tampil sebagai teks polos tanpa gambar atau keterangan (id ada di fragmen #l= yang tidak sampai ke server); saat ditambahkan ke layar utama, aplikasi tidak punya ikon.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-11 (tangkapan layar pratinjau tautan di WhatsApp sebagai contoh): \"bisa ngga tampilan sharing linknya ada thumbnail sama custom message, sama tolong bikinin web app iconnya kalo di add di homescreen\"; susulan 2026-10-11: \"invitation buat play together juga sama make custom message\"; susulan 2026-10-11 (tangkapan layar Add to Home Screen di Chrome iPad, ikon huruf \"P\"): \"buat icon web app di ipad masih ga bisa\" — /apple-touch-icon.png (+ -precomposed, favicon.ico) di akar situs, manifest tanpa ikon SVG",
+    "sumberBukti": "pesan pengguna 2026-10-11 (tangkapan layar pratinjau tautan di WhatsApp sebagai contoh): \"bisa ngga tampilan sharing linknya ada thumbnail sama custom message, sama tolong bikinin web app iconnya kalo di add di homescreen\"; susulan 2026-10-11: \"invitation buat play together juga sama make custom message\"; susulan 2026-10-11 (tangkapan layar Add to Home Screen di Chrome iPad, ikon huruf \"P\"): \"buat icon web app di ipad masih ga bisa\" — /apple-touch-icon.png (+ -precomposed, favicon.ico) di akar situs, manifest tanpa ikon SVG; susulan 2026-10-12: \"icon web app (PWA) buat ipad masih ga bisa\" — iOS bisa gagal mengambil ikon lewat permintaan terpisah (deployment pratinjau Vercel berlogin, tembolok ikon lama) lalu memakai huruf \"P\"; di Safari iPhone/iPad ikonnya kini diambil sekali lewat sesi halaman & dipasang sebagai data: URL pada tag apple-touch-icon; susulan 2026-10-12 (tangkapan layar Chrome iPad, viewport hitam + \"Script error\"): \"jadi ga bisa buka\" — konteks WebGL gagal dibuat (memori grafis penuh, banyak tab game/3D) sehingga skrip berhenti; renderer kini dicoba ulang dengan setelan lebih ringan dan bila tetap gagal tampil pesan jelas + tombol muat ulang",
     "alternatif": [
      "gambar pratinjau dirender di server (butuh WebGL/headless — berat & mahal)",
      "kartu bawaan yang sama untuk semua tautan (tanpa judul/pesan/gambar pengirim)"
@@ -3896,6 +3896,68 @@
     "nama": "peserta lobi dengan avatar 3D",
     "target": "≥ 20%",
     "tinjau": "2027-01-11"
+   }
+  },
+  {
+   "id": "JEV-090",
+   "judul": "Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pagar & permukaan taman hanya dari beberapa jenis bawaan; pengguna ingin memakai model sendiri (panel pagar, ubin, papan dek) yang dibangun memanjang/mengisi seperti dinding & lantai. Interaksi duduk hanya ada di kursi/sofa bawaan dan model unggahan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-12: \"bisa upload object buat environment yang kalo didefine jadi fence bisa build di tracing kaya wall/fence, buat floor juga, sama asset2 library bisa dikasih interaksi kaya sit\"",
+    "alternatif": [
+     "menaruh salinan model satu per satu dengan tangan (lambat, sambungan tidak pas)",
+     "menambah lebih banyak jenis pagar/lantai prosedural bawaan (tidak bisa memakai model milik pengguna)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.35,
+      "pakaiPerTahun": 10,
+      "menitHemat": 10
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "model tetap lewat jalur unggah yang sama (G3: glTF mandiri, GLTFLoader); parameter pagar/lantai hanya angka & id aset yang dicek ke pustaka; nama model hanya lewat textContent"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada host baru; model ikut proyek/tautan bagikan seperti model biasa"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru (InstancedMesh three r128)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "potongan digambar sebagai InstancedMesh (satu panggilan gambar per bagian model), maks. 2500 potong; pembangun & inspector di modul/potong.js yang dimuat saat dipakai"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kontrol berlabel di tab Taman & inspector; pagar menahan badan di mode jalan seperti dinding"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan pagar/lantai dari model",
+    "target": "≥ 10% proyek berpagar",
+    "tinjau": "2027-01-12"
    }
   }
  ]

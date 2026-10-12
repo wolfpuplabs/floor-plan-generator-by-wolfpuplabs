@@ -57,8 +57,10 @@ export async function bukaApp(browser, url, opsi = {}) {
   // opsi.bahasa: 'en' / 'id' (bawaan 'id'), null = tanpa pilihan tersimpan (bawaan aplikasi)
   if (opsi.bahasa !== null) await page.addInitScript(b => { try { if (!localStorage.getItem('bahasa')) localStorage.setItem('bahasa', b); } catch (e) { /* abaikan */ } }, opsi.bahasa || 'id');
   if (opsi.rute) await opsi.rute(page);
+  if (opsi.init) await page.addInitScript(opsi.init);
   await page.goto(url, { waitUntil: 'load', timeout: opsi.waktuBuka || 30000 });
-  await page.waitForFunction(() => window.__siap, undefined, { timeout: 120000 });
+  // opsi.tanpaSiap: halaman yang memang tidak selesai dimulai (mis. tanpa WebGL)
+  if (!opsi.tanpaSiap) await page.waitForFunction(() => window.__siap, undefined, { timeout: 120000 });
   return { page, log };
 }
 

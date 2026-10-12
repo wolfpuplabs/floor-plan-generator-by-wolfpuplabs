@@ -781,6 +781,11 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="section-title">Area &amp; jalur (tracing)</div>
       <div class="cat-grid" id="cat-situs"></div>
       <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.</p>
+      <div class="section-title">Pagar &amp; lantai dari model sendiri</div>
+      <div class="group"><label for="glbTaman">Unggah model (.glb, .gltf, ZIP, .obj, .fbx)</label><input type="file" id="glbTaman" multiple></div>
+      <div class="group"><label for="modelPotong">Model</label><select id="modelPotong"></select></div>
+      <div class="row"><button class="btn sm" id="pagarModelBtn">Pagar (tracing)</button><button class="btn sm" id="lantaiModelBtn">Lantai (tracing)</button></div>
+      <p class="hint"><b>Pagar</b>: model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. <b>Lantai</b>: model ubin, papan dek, atau paving disusun berpetak mengisi keliling yang digambar. Ukuran potongan & arahnya bisa diubah di inspector.</p>
       <div class="section-title">Bentuk tanah</div>
       <div class="row tanah-alat" role="group" aria-label="Kuas tanah">
         <button class="btn sm ghost" data-tanah="naik">Naikkan</button><button class="btn sm ghost" data-tanah="turun">Turunkan</button>
@@ -1269,7 +1274,22 @@ function pakaiKamera(orto){
 }
 camera.position.set(14,14,18);
 
-const renderer=new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+/* Konteks WebGL bisa gagal dibuat — memori grafis peramban penuh (iPad dengan banyak tab game / 3D terbuka).
+   Dulu skrip berhenti di sini: viewport hitam & hanya "Script error". Kini dicoba lagi dengan setelan lebih ringan,
+   dan bila tetap gagal muncul pesan yang jelas dengan tombol muat ulang. */
+function buatRenderer(){
+  for(const o of [{antialias:true, preserveDrawingBuffer:true},{antialias:false, preserveDrawingBuffer:true},{antialias:false, powerPreference:'low-power'}]){
+    try{ return new THREE.WebGLRenderer(o); }catch(e){ console.warn('WebGL gagal',o,e); }
+  }
+  catatGalat.sudah=true;                          // bukan toast galat umum: pesannya ditampilkan sendiri
+  const d=document.createElement('div'); d.id='tanpaGL'; d.setAttribute('role','alert');
+  d.style.cssText='position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(16,16,20,.94);color:#e8e8ec;text-align:center;font-size:15px';
+  d.innerHTML='<div style="max-width:420px"><b style="font-size:18px">Tampilan 3D tidak bisa dimulai</b><p>Memori grafis peramban sedang penuh. Tutup tab lain yang memakai 3D atau game, lalu muat ulang halaman ini.</p><button class="btn">Muat ulang</button></div>';
+  d.querySelector('button').onclick=()=>location.reload();
+  document.body.appendChild(d);
+  throw new Error('WebGL tidak tersedia');
+}
+const renderer=buatRenderer();
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(viewport.clientWidth, viewport.clientHeight);
 renderer.shadowMap.enabled=true;
@@ -1380,7 +1400,7 @@ function pasangGIShader(sh){
   Object.assign(sh.uniforms,GI_U);
   sh.vertexShader=sh.vertexShader
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos;')
-    .replace('#include <project_vertex>','#include <project_vertex>\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    .replace('#include <project_vertex>','#include <project_vertex>\n#ifdef USE_INSTANCING\n vGIPos=(modelMatrix*instanceMatrix*vec4(transformed,1.0)).xyz;\n#else\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;\n#endif');   // ubin/pagar dari model = InstancedMesh
   sh.fragmentShader=sh.fragmentShader
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo['+GI_MAKS+']; uniform vec3 giBatas['+GI_MAKS+']; uniform vec2 giLantai['+GI_MAKS+']; uniform float giSkala; uniform vec3 luarPos['+LUAR_MAKS+'], luarWarna['+LUAR_MAKS+']; uniform float luarN; uniform vec3 pbMin, pbMax, pbPos;')
     .replace('#include <envmap_physical_pars_fragment>',THREE.ShaderChunk.envmap_physical_pars_fragment.replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
@@ -4951,9 +4971,9 @@ function woodStove(){ const g=new THREE.Group(), H=ceilH();
    terhadap pusat objek, skala gizmo dilebur ke titik-titiknya.
    ====================================================================== */
 const JENIS_AREA={lantai:'Lantai (pelat)', rumput:'Rumput', kerikil:'Kerikil', tanah:'Tanah / bedeng', paving:'Paving batu', dek:'Dek kayu',
-                  kolam_renang:'Kolam renang', kolam_ikan:'Kolam ikan'};
+                  kolam_renang:'Kolam renang', kolam_ikan:'Kolam ikan', lantai_model:'Lantai dari model'};
 const JENIS_GARIS={setapak_batu:'Setapak batu pijakan', setapak_kerikil:'Setapak kerikil', setapak_paving:'Setapak paving',
-                   pagar_picket:'Pagar kayu picket', pagar_kayu:'Pagar kayu horizontal', pagar_besi:'Pagar besi', pagar_tanaman:'Pagar tanaman (semak)'};
+                   pagar_picket:'Pagar kayu picket', pagar_kayu:'Pagar kayu horizontal', pagar_besi:'Pagar besi', pagar_tanaman:'Pagar tanaman (semak)', pagar_model:'Pagar dari model'};
 function teksturSitus(jenis){
   return decoTex('situs_'+jenis,512,(c,S,R)=>{
     const noda=(n,warna,r0,r1)=>{ for(let i=0;i<n;i++){ c.fillStyle=warna[(R()*warna.length)|0]; const r=r0+R()*(r1-r0); c.beginPath(); c.arc(R()*S,R()*S,r,0,7); c.fill(); } };
@@ -5080,6 +5100,7 @@ function buildArea(o){
   const g=new THREE.Group(), P=areaPoli(o), j=o.params.jenis||'rumput';
   if(P.length<3) return g;
   const R=acak(o.id.split('').reduce((a,c)=>a*31+c.charCodeAt(0),3));
+  if(j==='lantai_model') return potongModel('lantai',o,P,g);
   if(j==='lantai'){                               // pelat lantai bebas: permukaan di elevasi lantainya (y = 0)
     const lv=PROJECT.levels.find(l=>l.objects.includes(o)), t=clamp(+o.params.tebal||0.15,0.05,0.6);
     const ml=matLantai(lv), m=new THREE.Mesh(ekstrusiXZ(P,t,0),[ml,matTepiPelat()]); m.castShadow=true; m.receiveShadow=true; m.userData.lantaiBebas=true; g.add(m);
@@ -5133,6 +5154,7 @@ function sepanjang(P,jarak,fn){                                   // titik-titik
 function buildGaris(o){
   const g=new THREE.Group(), P=garisPoli(o), j=o.params.jenis||'setapak_batu';
   if(P.length<2) return g;
+  if(j==='pagar_model') return potongModel('pagar',o,P,g);
   const R=acak(o.id.split('').reduce((a,c)=>a*31+c.charCodeAt(0),5));
   const lebar=clamp(o.params.lebar||0.8,0.3,3), tinggi=clamp(o.params.tinggi||1.2,0.4,2.5);
   const segmen=(fn)=>{ for(let i=0;i<P.length-1;i++){ const a=P[i], b=P[i+1], dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz); if(len<1e-6) continue; fn(a,b,len,-Math.atan2(dz,dx),dx/len,dz/len); } };
@@ -5170,6 +5192,11 @@ function buildGaris(o){
     });
   }
   return g;
+}
+/* pagar & lantai dari model unggahan (JEV-090): dibangun modul/potong.js, dimuat sekali saat pertama dipakai */
+function potongModel(jenis,o,P,g){
+  if(window.POTONG) return window.POTONG[jenis](o,P)||g;
+  muatModul('potong').then(()=>rebuildScene(),e=>toast(e.message)); return g;
 }
 /* ---------- TANAH SITUS BERELIEF (JEV-075) ----------
    Tanah = peta ketinggian (PROJECT.site.relief: sel ≥ 0,5 m, tinggi dalam cm) yang dibentuk
@@ -5213,7 +5240,7 @@ function buildSitus(opsi={}){
   const lv=PROJECT.levels[0]; if(!lv) return null;
   if(!opsi.cepat){ TANAH.masker = lv.walls.some(w=>!w.rail) ? tapakAtap(lv,0.6) : null;
     // pelat lantai bebas, dek & paving di lantai dasar: bukit di bawahnya ditekan, lantai selalu di atas tanah
-    TANAH.lantai = lv.objects.filter(o=>o.kind==='area'&&/^(lantai|dek|paving)$/.test(o.params.jenis||'')).map(areaDunia); }
+    TANAH.lantai = lv.objects.filter(o=>o.kind==='area'&&/^(lantai|dek|paving|lantai_model)$/.test(o.params.jenis||'')).map(areaDunia); }
   const [x0,x1,z0,z1]=luasSitus(), W=x1-x0, D=z1-z0;
   const r=clamp(Math.max(W,D)/150,0.25,1), nx=Math.max(2,Math.ceil(W/r)+1), nz=Math.max(2,Math.ceil(D/r)+1);
   const pos=new Float32Array(nx*nz*3);
@@ -5748,11 +5775,16 @@ const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table
    (sandaran di −z), jadi orang yang duduk memandang ke +z. */
 const DUDUK={sofa2:{h:0.42,n:2,z:0.06}, sofa3:{h:0.42,n:3,z:0.06}, armchair:{h:0.42,z:0.06}, sofa_l:{h:0.42,n:3,z:-0.36},
   chair:{h:0.47}, office_chair:{h:0.5}, bar_stool:{h:0.75}, bench:{h:0.5,n:2}, rattan_chair:{h:0.47,z:0.04},
-  bangku_taman:{h:0.45,n:2}, ayunan:{h:0.5,n:2}, kursi_jemur:{h:0.38}};
+  bangku_taman:{h:0.45,n:2}, ayunan:{h:0.5,n:2}, kursi_jemur:{h:0.38},
+  ottoman:{h:0.42}, bed_single:{h:0.55,z:0.7}, bed_double:{h:0.55,n:2,z:0.7}, bed_king:{h:0.55,n:2,z:0.75}};   // ranjang: duduk di tepi kakinya
 for(const k of Object.keys(DUDUK)) NYALA_JENIS[k]='duduk';
 /* model unggahan memilih sendiri perannya di mode jalan (inspector → Interaksi) */
 const INTERAKSI_MODEL={duduk:'🪑 Duduk — kursi/sofa', lampu:'💡 Lampu — nyala/padam (cahaya dibangkitkan)', audio:'🔊 Audio — putar musik', piano:'🎹 Piano — mainkan'};
-function jenisNyala(o){ if(o.kind==='model'){ const v=o.params&&o.params.interaksi; return INTERAKSI_MODEL[v]?v:null; } return NYALA_JENIS[o.type]; }
+function jenisNyala(o){ const v=o.params&&o.params.interaksi; if(o.kind==='model') return INTERAKSI_MODEL[v]?v:null;
+  // perabot pustaka tanpa peran bawaan (meja, lemari, bentuk dasar, …) bisa dijadikan tempat duduk (JEV-090); 'tidak' mematikan duduk bawaan
+  if(o.kind==='furn' && bisaDiduduki(o)) return v==='duduk'?'duduk':v==='tidak'?null:NYALA_JENIS[o.type];
+  return NYALA_JENIS[o.type]; }
+function bisaDiduduki(o){ const j=NYALA_JENIS[o.type]; return !!FURN[o.type] && (!j||j==='duduk'); }
 const KUAT_LAMPU={chandelier:1.6,pendant:1.1,pendant_trio:1.4,table_lamp:0.6,night_lamp:0.6,arc_lamp:0.9,wall_sconce:0.55,
   floor_lamp:0.8,kitchen_line:0.8,kitchen_l2:0.8,kitchen_u:0.8,kitchen_par:0.8,kitchen_isl:0.9,fire_modern:1.3,fire_classic:1.3,wood_stove:0.9};
 /* TERANG LAMPU DALAM LUMEN — nilai bawaan = lampu LED rumahan yang umum dijual
@@ -5858,7 +5890,10 @@ const HALO={
 function hiasNyala(g,o){
   const jenis=jenisNyala(o); if(!jenis) return;
   g.userData.nyalaJenis=jenis;
-  if(jenis==='duduk'){ const D=DUDUK[o.type]; g.userData.duduk={h:D.h, n:D.n||1, z:D.z||0, w:(FURN[o.type]&&FURN[o.type].f[0])||0.5}; return; }
+  if(jenis==='duduk'){ const D=DUDUK[o.type], p=o.params||{};
+    // perabot tanpa titik duduk bawaan, atau arahnya diatur sendiri: dihitung dari kotak batasnya seperti model
+    if(!D || p.arahDuduk){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||(D&&D.h)||0.45,0.15,1.2), arah:+p.arahDuduk||0}; return; }
+    g.userData.duduk={h:p.tinggiDuduk!=null?clamp(+p.tinggiDuduk,0.15,1.2):D.h, n:D.n||1, z:D.z||0, w:(FURN[o.type]&&FURN[o.type].f[0])||0.5}; return; }
   if(jenis==='lampu'||jenis==='api'){
     if(!HALO.lampu.map){ HALO.lampu.map=haloTex('rgba(255,255,255,1)'); HALO.api.map=HALO.lampu.map; }
     const api=fireMat(), bulbs=[];
@@ -7404,6 +7439,20 @@ function commitGizmo(){
    ====================================================================== */
 /* terang lampu: lumen manual, atau dihitung dari luas & jenis ruang (SNI 6197) */
 /* model unggahan: peran di mode jalan — duduk, lampu, audio, atau piano */
+/* perabot pustaka (JEV-090): bisa diduduki di mode jalan — bawaan untuk kursi/sofa/ranjang, pilihan untuk sisanya */
+function inspektorDuduk(ins,d){
+  d.params=d.params||{};
+  const bawaan=NYALA_JENIS[d.type]==='duduk', ubah=(lbl,fn)=>{ fn(); HIST.label=lbl; rebuildScene(); renderInspector(); };
+  ins.appendChild(el('div','section-title','Interaksi (mode jalan)'));
+  fRow(ins,'Duduk',selInput(bawaan?[['','🪑 Bisa diduduki'],['tidak','Tidak']]:[['','Tidak ada'],['duduk','🪑 Bisa diduduki']],
+    d.params.interaksi==='duduk'||d.params.interaksi==='tidak'?(bawaan?(d.params.interaksi==='tidak'?'tidak':''):d.params.interaksi):'',
+    v=>ubah('Interaksi duduk',()=>{ if(v) d.params.interaksi=v; else delete d.params.interaksi; })));
+  if(jenisNyala(d)!=='duduk') return;
+  const D=DUDUK[d.type];
+  fRow(ins,'Tinggi dudukan (m)',numInput(+d.params.tinggiDuduk||(D&&D.h)||0.45,0.01,v=>ubah('Tinggi dudukan',()=>{ d.params.tinggiDuduk=clamp(v,0.15,1.2); }),0.15,1.2));
+  fRow(ins,'Arah hadap',selInput([['0','Depan (+Z)'],['90','Kanan (+X)'],['180','Belakang (−Z)'],['270','Kiri (−X)']],String(+d.params.arahDuduk||0),v=>ubah('Arah duduk',()=>{ if(+v) d.params.arahDuduk=+v; else delete d.params.arahDuduk; })));
+  ins.appendChild(el('p','hint','Di mode jalan, bidik perabot ini lalu tekan E / ketuk Berinteraksi untuk duduk.'));
+}
 function inspektorInteraksi(ins,d){
   d.params=d.params||{};
   ins.appendChild(el('div','section-title','Interaksi (mode jalan)'));
@@ -7692,8 +7741,12 @@ function renderInspector(){
     const h=el('h3',null,isArea?'Area':'Jalur'); h.appendChild(el('span','tag',daftar[j]||j)); ins.appendChild(h);
     // jenis hanya bisa diganti dalam kelompoknya (kolam tetap kolam, pagar tetap pagar)
     const klp=k=>/^kolam/.test(k)?'kolam':/^pagar/.test(k)?'pagar':/^setapak/.test(k)?'setapak':k==='lantai'?'lantai':'permukaan';
-    fRow(ins,'Jenis',selInput(Object.entries(daftar).filter(([k])=>klp(k)===klp(j)),j,v=>{ d.params.jenis=v; d.type=v;
+    fRow(ins,'Jenis',selInput(Object.entries(daftar).filter(([k])=>klp(k)===klp(j)),j,v=>{
+      if(/_model$/.test(v) && !(d.params.model&&PROJECT.assets[d.params.model])){ const id=Object.keys(PROJECT.assets||{})[0];
+        if(!id){ toast('Unggah model dulu (tab Taman › Pagar & lantai dari model sendiri)'); renderInspector(); return; } d.params.model=id; }
+      d.params.jenis=v; d.type=v;
       if(/^kolam/.test(v)) d.params.kedalaman=v==='kolam_renang'?1.4:0.6; rebuildScene(); renderInspector(); }));
+    if(/_model$/.test(j)){ if(window.POTONG) window.POTONG.inspektor(ins,d,j); else muatModul('potong').then(renderInspector,e=>toast(e.message)); }
     const P=isArea?areaPoli(d):garisPoli(d);
     if(isArea) ins.appendChild(el('p','hint',`${P.length} titik sudut · luas ${fmt(Math.abs(luasPoli(P)),2)} m²`));
     else { let pj=0; for(let i=0;i<P.length-1;i++) pj+=Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1]); ins.appendChild(el('p','hint',`${P.length} titik · panjang ${fmt(pj,2)} m`)); }
@@ -7706,9 +7759,9 @@ function renderInspector(){
     if(j==='lantai') fRow(ins,'Tebal pelat (m)',numInput(+d.params.tebal||0.15,0.01,v=>{ d.params.tebal=clamp(v,0.05,0.6); HIST.label='Tebal pelat'; rebuildScene(); },0.05,0.6));
     if(/^kolam/.test(j)) fRow(ins,'Kedalaman (m)',numInput(d.params.kedalaman||1.4,0.1,v=>{ d.params.kedalaman=clamp(v,0.2,3); rebuildScene(); },0.2,3));
     if(/^setapak_(kerikil|paving)/.test(j)) fRow(ins,'Lebar (m)',numInput(d.params.lebar||0.8,0.05,v=>{ d.params.lebar=clamp(v,0.3,3); rebuildScene(); },0.3,3));
-    if(/^pagar/.test(j)) fRow(ins,'Tinggi (m)',numInput(d.params.tinggi||1.2,0.05,v=>{ d.params.tinggi=clamp(v,0.4,2.5); rebuildScene(); },0.4,2.5));
+    if(/^pagar/.test(j) && j!=='pagar_model') fRow(ins,'Tinggi (m)',numInput(d.params.tinggi||1.2,0.05,v=>{ d.params.tinggi=clamp(v,0.4,2.5); rebuildScene(); },0.4,2.5));
     if(j==='kolam_renang' && (d.params.kedalaman||1.4)>1.5) ins.appendChild(el('div','badge warn','⚠ Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.'));
-    const bt=tombolIkon('btn sm ghost','pensil','Gambar ulang (tracing)'); bt.onclick=()=>mulaiTrace({kind:d.kind,type:j},d.id); ins.appendChild(bt);
+    const bt=tombolIkon('btn sm ghost','pensil','Gambar ulang (tracing)'); bt.onclick=()=>mulaiTrace({kind:d.kind,type:j,model:d.params.model},d.id); ins.appendChild(bt);
     fRow(ins,'X (m)',numInput(d.x,0.05,v=>{ d.x=v; rebuildScene(); }));
     fRow(ins,'Z (m)',numInput(d.z,0.05,v=>{ d.z=v; rebuildScene(); }));
     fRow(ins,'Rotasi (°)',numInput((d.rotY||0)*R2D,15,v=>{ d.rotY=v*D2R; rebuildScene(); }));
@@ -7723,6 +7776,12 @@ function renderInspector(){
     tombolFlip(ins,d);
     addTransformFields(ins,d,true);
     if(a) inspektorInteraksi(ins,d);
+    if(a && tplAset(d.type)){                  // model ini sebagai potongan pagar / ubin lantai (JEV-090)
+      ins.appendChild(el('div','section-title','Pakai sebagai pagar / lantai'));
+      const r=el('div','row'), bp=el('button','btn sm','Pagar (tracing)'), bl=el('button','btn sm','Lantai (tracing)');
+      bp.onclick=()=>traceModel('garis',d.type); bl.onclick=()=>traceModel('area',d.type); r.append(bp,bl); ins.appendChild(r);
+      ins.appendChild(el('p','hint','Gambar jalur pagar atau keliling lantai; model ini diulang sepanjang jalur / disusun berpetak di dalamnya.'));
+    }
     if(a) inspektorTekstur(ins,d);
     if(a){
       const sz=(d.sx||1)*a.dims[0], sy=(d.sy||1)*a.dims[1], szz=(d.sz||1)*a.dims[2];
@@ -7783,6 +7842,7 @@ function renderInspector(){
     if(rb.children.length) ins.appendChild(rb);
     ins.appendChild(el('p','hint',BENTUK_POTONG.test(d.type)?'Potong: gambar keliling lubang dari atas — bagian di dalamnya terpotong tegak setinggi bentuk. Di mode jalan bentuk padat & bisa dipijak.':'Bola & kerucut tidak bisa dipotong; di mode jalan tetap padat & bisa dipijak.'));
   }
+  if(SEL.kind==='obj' && d.kind==='furn' && bisaDiduduki(d)) inspektorDuduk(ins,d);
   if(SEL.kind==='obj' && (d.kind==='furn'||d.kind==='model')) inspektorAksi(ins,d);
   ins.appendChild(el('div','section-title','Aksi'));
   const row=el('div','row');
@@ -7878,6 +7938,7 @@ const ZIP_MAKS=200*1048576;          // isi ZIP sesudah dibuka (model unduhan si
 const RAMPING_MAKS=100*1048576;      // GLB mentah yang masih boleh dirampingkan; sesudahnya tetap ≤ ASSET_MAX
 const TEKS_MAKS=1024;                // sisi terpanjang tekstur model (lihat RAMPINGKAN MODEL)
 const ASSET_ANIM=new Map();          // id -> klip animasi glTF (JEV-084)
+function tplAset(id){ return ASSET_OBJ.get(id); }   // dipakai pembangun pagar/lantai yang letaknya di atas deklarasi ini
 const ASSET_BUF=new Map();           // id -> GLB yang sedang dipakai (untuk pemulihan konteks WebGL)
 
 function b64FromBuf(buf){
@@ -8003,15 +8064,17 @@ async function importAssetFile(file){
   if(!kind) throw new Error('isinya bukan glTF — perlu .glb, .gltf, ZIP, .obj, atau .fbx');
   return daftarkanAset(file.name.replace(/\.glb$/i,''),buf,file.size);
 }
+// aset yang dipakai objek: model biasa, atau pagar / lantai dari model (JEV-090)
+const asetObjek=o=>o.kind==='model'?o.type:(o.kind==='garis'||o.kind==='area')&&o.params&&typeof o.params.model==='string'?o.params.model:null;
 function assetInUse(id){
   let n=0;
-  for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.kind==='model'&&o.type===id) n++;
+  for(const lv of PROJECT.levels) for(const o of lv.objects) if(asetObjek(o)===id) n++;
   return n;
 }
 function deleteAsset(id){
   const n=assetInUse(id), nm=PROJECT.assets[id]?.name||id;
   if(n && !confirm(`Model "${nm}" masih dipakai ${n} objek. Hapus juga objeknya?`)) return;
-  for(const lv of PROJECT.levels) lv.objects=lv.objects.filter(o=>!(o.kind==='model'&&o.type===id));
+  for(const lv of PROJECT.levels) lv.objects=lv.objects.filter(o=>asetObjek(o)!==id);
   delete PROJECT.assets[id]; ASSET_OBJ.delete(id);
   if(SEL) SEL=null;
   HIST.label='Hapus model '+nm;
@@ -8130,6 +8193,7 @@ function paramsAwal(kind,type){
   if(kind==='area' && type==='lantai') return { jenis:'lantai', tebal:0.15, pts:[[-2,-1.5],[2,-1.5],[2,1.5],[-2,1.5]] };
   if(kind==='area') return { jenis:type, kedalaman:type==='kolam_renang'?1.4:type==='kolam_ikan'?0.6:undefined,
       pts:type==='kolam_ikan'?[[-1.2,-0.6],[0.2,-0.9],[1.3,-0.3],[1.0,0.7],[-0.4,0.9],[-1.3,0.3]]:[[-1.5,-1],[1.5,-1],[1.5,1],[-1.5,1]] };
+  if(kind==='garis' && type==='pagar_model') return { jenis:type, regang:true, pts:[[-1.5,0],[1.5,0]] };   // tinggi asli model
   if(kind==='garis') return { jenis:type, lebar:0.8, tinggi:/^pagar_tanaman/.test(type)?1.0:1.2,
       pts:/^pagar/.test(type)?[[-1.5,0.5],[0,0.5],[0,-0.5],[1.5,-0.5]]:[[-1.6,0.6],[-0.5,-0.2],[0.6,0.3],[1.6,-0.4]] };
   if(kind==='void' && type==='poly') return { shape:'poly', w:3.0, d:2.4, railing:true, railH:STD.guardH, openSides:[],
@@ -8600,7 +8664,7 @@ function selesaiTrace(){
   else { o={id:uid('ob'), kind:'void', type:'poly', x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal('void','poly'),{pts,w,d})};
     lv.objects.push(o); HIST.label='Gambar void (tracing)'; }
   const n=P.length;
-  setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
   toast(`Void ${n} sudut, luas ${fmt(Math.abs(luas)/2,2)} m² — pelat ${lv.name} dilubangi`);
 }
 function selesaiTraceGaris(){
@@ -8616,10 +8680,10 @@ function simpanTraceObjek(kind,type,P,ket){
   const pts=P.map(([x,z])=>[+(x-cx).toFixed(4),+(z-cz).toFixed(4)]);
   const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
   if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:1,sy:1,sz:1}); o.params.pts=pts; delete o.params.bentuk; HIST.label='Gambar ulang '+VT_NAMA(VT.mode); }
-  else { o={id:uid('ob'), kind, type, x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal(kind,type),{pts})};
+  else { o={id:uid('ob'), kind, type, x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal(kind,type),{pts},VT.mode.model?{model:VT.mode.model}:{})};
     lv.objects.push(o); HIST.label='Gambar '+VT_NAMA(VT.mode); }
   const nama=VT_NAMA(VT.mode);
-  setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
   toast(`${nama[0].toUpperCase()+nama.slice(1)} — ${ket}`);
 }
 /* prisma bebas: alas hasil tracing, disimpan ternormalisasi (−0,5…0,5) + skala = ukuran kotaknya */
@@ -8630,7 +8694,7 @@ function simpanPrisma(P){
   const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
   if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:w,sz:d}); o.params.pts=pts; delete o.params.potong; HIST.label='Gambar ulang prisma'; }
   else { o={id:uid('ob'), kind:'furn', type:'bentuk_prisma', x:cx, y:0, z:cz, rotY:0, sx:w, sy:1, sz:d, params:{pts}}; lv.objects.push(o); HIST.label='Prisma bebas (tracing)'; }
-  setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
   toast(`Prisma ${fmt(w)} × ${fmt(d)} m — tinggi diatur lewat skala Y`);
 }
 /* potong bentuk: keliling tracing (dunia) → koordinat lokal 1 m bentuk itu, jadi lubang tegak */
@@ -8640,7 +8704,7 @@ function selesaiPotong(){
   const a=o.rotY||0, ca=Math.cos(a), sa=Math.sin(a), sx=o.sx||1, sz=o.sz||1;
   const lok=VT.pts.map(({x,z})=>{ const dx=x-o.x, dz=z-o.z; let u=(dx*ca-dz*sa)/sx; const v=(dx*sa+dz*ca)/sz; if(o.flip) u=-u; return [+u.toFixed(4),+v.toFixed(4)]; });
   o.params=o.params||{}; o.params.potong=potonganAman(o.params.potong).concat([lok]).slice(-8);
-  HIST.label='Potong bentuk'; setTool('select'); select('obj',o.id); rebuildScene(); renderInspector();
+  HIST.label='Potong bentuk'; setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
   toast(`Bentuk dipotong (${o.params.potong.length} potongan)`);
 }
 $('#traceDone').onclick=()=>selesaiTrace();
@@ -12143,6 +12207,12 @@ function renderCatalogs(){
     row.appendChild(badd); row.appendChild(bdel);
     ml.appendChild(row);
   }
+  // tab Taman: model untuk pagar / lantai (JEV-090) — pilihan terakhir dipertahankan
+  const mp=$('#modelPotong'), pilih=mp.value; mp.innerHTML='';
+  if(!ids.length){ const op=document.createElement('option'); op.value=''; op.textContent='— unggah model dulu —'; mp.appendChild(op); }
+  for(const id of ids){ const op=document.createElement('option'); op.value=id; op.textContent=PROJECT.assets[id].name; mp.appendChild(op); }
+  if(ids.includes(pilih)) mp.value=pilih;
+  $('#pagarModelBtn').disabled=$('#lantaiModelBtn').disabled=!ids.length;
 
   const cf=$('#cat-furn'); cf.innerHTML='';
   requestAnimationFrame(isiThumbAntri);
@@ -12985,6 +13055,21 @@ $('#glbInput').addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';
   await importModelFiles(files);
 });
+// tab Taman (JEV-090): unggah model untuk pagar / lantai — model yang baru masuk langsung terpilih
+$('#glbTaman').addEventListener('change',async e=>{
+  const files=[...e.target.files]; e.target.value='';
+  const lama=new Set(Object.keys(PROJECT.assets||{}));
+  await importModelFiles(files);
+  const baru=Object.keys(PROJECT.assets||{}).filter(id=>!lama.has(id));
+  if(baru.length) $('#modelPotong').value=baru[baru.length-1];
+});
+function traceModel(kind,id){
+  if(!id||!PROJECT.assets[id]) return toast('Unggah model dulu');
+  if(!ASSET_OBJ.has(id)) return toast('Berkas model ini gagal diurai');
+  mulaiTrace({kind,type:kind==='garis'?'pagar_model':'lantai_model',model:id},null);
+}
+$('#pagarModelBtn').onclick=()=>traceModel('garis',$('#modelPotong').value);
+$('#lantaiModelBtn').onclick=()=>traceModel('area',$('#modelPotong').value);
 /* berkas yang dijatuhkan ke viewport: model masuk pustaka, gambar jadi denah */
 ['dragenter','dragover'].forEach(ev=>viewport.addEventListener(ev,e=>{
   if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
@@ -13601,7 +13686,7 @@ async function buatTautanLihat(kemajuan=()=>{}, opsi={}){
     try{ kemajuan(nama); const b=await unggahLampiran(u8); total+=u8.length; nLampiran++; return b; }
     catch(e){ console.warn('lampiran',nama,e); alasanLampiran=e.status===501?'blob':e.status?'server':'luring'; return null; }
   };
-  const pakai=new Set(); for(const lv of PROJECT.levels) for(const o of lv.objects) if(o.kind==='model') pakai.add(o.type);
+  const pakai=new Set(); for(const lv of PROJECT.levels) for(const o of lv.objects){ const a=asetObjek(o); if(a) pakai.add(a); }
   for(const [id,a] of Object.entries(PROJECT.assets||{})){
     if(rujukanAset(a)){ rujukan[id]={name:a.name, sumber:a.sumber, lisensi:a.lisensi, res:/\(foto 2K\)/.test(a.name)?'2k':'1k'}; continue; }
     if(!pakai.has(id)) continue;                         // model pustaka yang tidak dipasang tidak perlu ikut
@@ -14624,6 +14709,7 @@ function fpsResolveWalls(px,pz,feetY){
       }
       for(const o of lv.objects){
         if(punyaCollider(o)){ const r=dorongCollider(o,lv,px,pz,feetY); if(r){ px=r[0]; pz=r[1]; moved=true; } continue; }
+        if(o.kind==='garis' && /^pagar/.test(o.params.jenis||'')){ const r=dorongPagar(o,px,pz); if(r){ px=r[0]; pz=r[1]; moved=true; } continue; }
         if(o.kind!=='column') continue;
         const rad=Math.max(o.params.w||0.3,o.params.d||0.3)/2+FPS.r, d=Math.hypot(px-o.x,pz-o.z);
         if(d>=rad) continue;
@@ -14647,6 +14733,20 @@ function fpsResolveWalls(px,pz,feetY){
     if(!moved) break;
   }
   return [px,pz];
+}
+/* pagar taman (bawaan maupun dari model, JEV-090) menahan badan seperti dinding tipis */
+function dorongPagar(o,px,pz){
+  const a=o.rotY||0, c=Math.cos(a), s=Math.sin(a), P=garisPoli(o).map(([x,z])=>[o.x+x*c+z*s, o.z-x*s+z*c]);
+  const t=o.params.jenis==='pagar_model'?(window.POTONG&&window.POTONG.adaModel(o)?clamp(window.POTONG.ukuranPotong(o)[2],0.04,0.6)/2:0.05):o.params.jenis==='pagar_tanaman'?0.27:0.05, rad=t+FPS.r;
+  let geser=false;
+  for(let i=0;i<P.length-1;i++){
+    const [x1,z1]=P[i], [x2,z2]=P[i+1], dx=x2-x1, dz=z2-z1, L2=dx*dx+dz*dz; if(L2<1e-6) continue;
+    const u=clamp(((px-x1)*dx+(pz-z1)*dz)/L2,0,1), cx=x1+u*dx, cz=z1+u*dz, d=Math.hypot(px-cx,pz-cz);
+    if(d>=rad) continue;
+    const nx=d>1e-6?(px-cx)/d:-dz/Math.sqrt(L2), nz=d>1e-6?(pz-cz)/d:dx/Math.sqrt(L2);
+    px=cx+nx*rad; pz=cz+nz*rad; geser=true;
+  }
+  return geser?[px,pz]:null;
 }
 /* ---------- COLLIDER OTOMATIS untuk model yang diunggah ----------
    Geometri model di-raster sekali ke peta sel 8 cm: tiap sel mencatat tinggi
@@ -16241,6 +16341,13 @@ try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
   if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false,
       pilih:pr.pilih==='acak'?'acak':'manual', id:typeof pr.id==='string'&&ID_AMAN.test(pr.id)?pr.id:null, nama:typeof pr.nama==='string'?pr.nama.slice(0,120):''});
     if(pr.mode==='foto') mulaiLangitFoto(); } }catch(e){}
+/* Ikon layar utama iPhone/iPad (JEV-087): iOS mengambil ikon lewat permintaan terpisah yang bisa gagal
+   (deployment pratinjau Vercel berlogin, tembolok ikon lama) lalu memakai huruf "P". Ikonnya diambil sekali
+   lewat sesi halaman ini dan dipasang sebagai data: URL — "Tambahkan ke Layar Utama" membaca tag di halaman. */
+addEventListener('load',()=>{ const l=document.querySelector('link[rel="apple-touch-icon"]');
+  if(!l||!/iP(ad|hone|od)|Macintosh/.test(navigator.userAgent)) return;
+  fetch(l.href,{credentials:'same-origin'}).then(r=>r.ok&&/^image\/png/.test(r.headers.get('content-type')||'')?r.blob():null).then(b=>{ if(!b) return;
+    const f=new FileReader(); f.onload=()=>{ if(/^data:image\/png;base64,/.test(f.result)) l.href=f.result; }; f.readAsDataURL(b); }).catch(()=>{}); },{once:true});
 renderLangitUI();
 renderSitusUI();                                      // tanah bawaan (rumput) tampil benar di tab Taman
 renderLevels();
