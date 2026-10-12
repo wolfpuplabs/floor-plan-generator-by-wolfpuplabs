@@ -260,7 +260,7 @@ body.jalan #mediaDock{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 96px)}
 .gl-modal .gl-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
 .fps-langit{display:inline-flex;gap:2px}
 .fps-langit #fpsLangitPrev,.fps-langit #fpsLangitNext{min-width:40px;padding-left:8px;padding-right:8px}
-#fpsLangit.aktif{color:var(--accent);border-color:var(--accent)}
+#fpsLangit.aktif,#fpsOto.on{color:var(--accent);border-color:var(--accent)}
 .spinner{width:38px;height:38px;border:3px solid #222;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{100%{transform:rotate(360deg)}}
 #toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f1f26;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:6px;font-size:.76rem;opacity:0;transition:.25s;pointer-events:none;z-index:40}
@@ -681,7 +681,8 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <option value="gelap">Malam — lampu padam</option>
       </select></div>
       <div class="f-row"><label>Cuaca</label><select id="cuaca"><option value="cerah">Cerah</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select></div>
-      <div class="f-row"><label>Siklus waktu</label><select id="siklus"><option value="0">Tetap — tidak berganti</option><option value="2">Siang → senja → malam · 2 menit</option><option value="6">Siang → senja → malam · 6 menit</option><option value="12">Siang → senja → malam · 12 menit</option></select></div>
+      <div class="f-row"><label>Otomatis</label><select id="siklus"><option value="0">Mati — waktu & cuaca tetap</option><option value="2">Nyala · 1 hari = 2 menit</option><option value="6">Nyala · 1 hari = 6 menit</option><option value="12">Nyala · 1 hari = 12 menit</option></select></div>
+      <p class="hint">Otomatis: di mode jalan & tautan lihat, waktu berjalan sendiri (siang → senja → malam → fajar) dan cuaca berganti sendiri — kebanyakan cerah, kadang hujan tiba-tiba. Mati: suasana & cuaca di atas tetap.</p>
       <div class="f-row"><label>Langit</label><select id="langitMode">
         <option value="prosedural">Prosedural — ringan, offline</option>
         <option value="foto">Foto 360° asli (HDRI)</option>
@@ -969,7 +970,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <button class="btn sm" id="fpsExit"><svg class="ik" aria-hidden="true"><use href="#i-keluar"/></svg> Keluar (Esc)</button>
       <span id="fpsinfo"></span>
       <span class="fps-alat">
-      <button class="btn ghost sm" id="fpsWaktu" title="Majukan waktu: siang → senja → malam (berganti halus)"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Waktu ▸</button>
+      <button class="btn ghost sm" id="fpsOto" aria-pressed="false" title="Otomatis: waktu berjalan sendiri (siang → senja → malam) & cuaca berganti sendiri, kadang hujan"><svg class="ik" aria-hidden="true"><use href="#i-ulang"/></svg> Otomatis</button>
       <select id="fpsCuaca" title="Cuaca"><option value="cerah">Cerah</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select>
       <select id="fpsMood" title="Suasana cahaya">
         <option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option><option value="gelap">Malam gelap</option>
@@ -15567,15 +15568,22 @@ function stepBidik(dt){
 }
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
-$('#fpsMood').onchange=e=>{ const v=e.target.value; e.target.blur(); if(window.CUACA) window.CUACA.transisi(v,3); else setSuasana(v); };
+$('#fpsMood').onchange=e=>{ const v=e.target.value; e.target.blur(); if(window.CUACA) window.CUACA.pilihWaktu(v); else setSuasana(v); };
 // cuaca & siklus waktu (JEV-100): modul/cuaca.js dimuat begitu dipakai
 function segarkanCuaca(){ const c=PROJECT.cuaca||{};
-  for(const id of ['#cuaca','#fpsCuaca']){ const e=$(id); if(e) e.value=c.jenis||'cerah'; } if($('#siklus')) $('#siklus').value=String(c.siklus||0);
-  if(c.jenis||window.CUACA) muatModul('cuaca').then(()=>window.CUACA.pasang(PROJECT.cuaca),()=>{}); }
+  if($('#cuaca')) $('#cuaca').value=c.jenis||'cerah'; if($('#siklus')) $('#siklus').value=String(c.siklus||0);
+  if(c.jenis||window.CUACA) muatModul('cuaca').then(()=>{ window.CUACA.pasang(PROJECT.cuaca); cuacaBerubah(); },()=>{}); else cuacaBerubah(); }
+// bilah mode jalan selalu menunjukkan keadaan sekarang (cuaca acak saat otomatis)
+function cuacaBerubah(){ const c=PROJECT.cuaca||{}, b=$('#fpsOto'), e=$('#fpsCuaca');
+  if(b){ b.setAttribute('aria-pressed',c.siklus?'true':'false'); b.classList.toggle('on',!!c.siklus); }
+  if(e) e.value=window.CUACA?window.CUACA.keadaan().efektif:(c.jenis||'cerah'); }
+window.cuacaBerubah=cuacaBerubah;
 function aturCuaca(u){ const c=cuacaAman(Object.assign({},PROJECT.cuaca,u)).cuaca; if(c) PROJECT.cuaca=c; else delete PROJECT.cuaca; HIST.label='Cuaca & waktu'; rebuildScene(); laporAdegan(); }
-for(const id of ['#cuaca','#fpsCuaca']) $(id).onchange=e=>{ aturCuaca({jenis:e.target.value}); e.target.blur(); };
+$('#cuaca').onchange=e=>aturCuaca({jenis:e.target.value});
+$('#fpsCuaca').onchange=e=>{ const v=e.target.value; e.target.blur(); if(!(window.CUACA&&window.CUACA.pilihCuaca(v))) aturCuaca({jenis:v}); };
 $('#siklus').onchange=e=>aturCuaca({siklus:+e.target.value});
-$('#fpsWaktu').onclick=e=>{ e.currentTarget.blur(); muatModul('cuaca').then(()=>window.CUACA.berikut(),err=>toast(err.message)); };
+$('#fpsOto').onclick=e=>{ e.currentTarget.blur(); const c=PROJECT.cuaca||{}; if(c.siklus) aturCuaca.lalu=c.siklus;
+  aturCuaca({siklus:c.siklus?0:(aturCuaca.lalu||6)}); toast(c.siklus?'Otomatis mati — waktu & cuaca tetap':'Otomatis — waktu berjalan & cuaca berganti sendiri'); };
 /* langit foto 360° */
 $('#langitJenis').innerHTML=Object.entries(LANGIT_JENIS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
 $('#langitMode').onchange=e=>{ if(e.target.value==='foto') mulaiLangitFoto(); else matikanLangitFoto(); };
