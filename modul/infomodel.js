@@ -64,7 +64,7 @@
       const r = $('#galeriRes').value === '1k' ? '1k' : '2k'; ukuran = r === '1k' ? x.u1 : x.u2;
       baris(dl, 'Ukuran unduhan', x.u2 || x.u1 ? `2K: ${mb(x.u2)} · 1K: ${mb(x.u1)}` : 'dicek…');
     } else baris(dl, 'Ukuran unduhan', ukuran ? mb(ukuran) : sumber === 'gso' ? 'tidak diketahui' : '—');
-    baris(dl, 'Segitiga', sumber === 'skf' || sumber === 'ph' ? ribu(m.tri || x.tri) : '—');
+    if (sumber === 'skf' || sumber === 'ph') baris(dl, 'Segitiga', ribu(m.tri || x.tri));   // sumber lain tidak menyediakan
     if (sumber === 'skf') baris(dl, 'Tekstur', m.teks ? `${m.teks} gambar${m.teksRes ? ` · maks. ${m.teksRes} px` : ''}` : '—');
     baris(dl, 'Format', sumber === 'gso' ? 'ZIP (OBJ + tekstur) → GLB' : sumber === 'ph' ? 'glTF + tekstur foto → GLB' : 'GLB');
     if (sumber === 'khr') baris(dl, 'Keamanan', 'SHA-256 diverifikasi setelah diunduh');

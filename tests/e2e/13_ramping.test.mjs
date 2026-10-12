@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-// JEV-062: model dari situs luar dirampingkan sebelum masuk pustaka (tekstur 4K → 1024 px,
+// JEV-062: model dari situs luar dirampingkan sebelum masuk pustaka (tekstur warna 4K → 2048 px — JEV-091 —,
 // PNG tanpa alfa → JPEG, data lain utuh) dan aplikasi pulih bila konteks WebGL hilang
 // (memori grafis iPad habis) — pantulan & tekstur model tidak boleh menjadi hitam.
 
@@ -38,7 +38,7 @@ const ukurTerang = (page, id) => page.evaluate(id => {
 }, id);
 
 export const tes = {
-  'rampingkan: tekstur 4K → 1024 px JPEG, mesh & ekstensi utuh, laporan model di inspector': async (page) => {
+  'rampingkan: tekstur warna 4K → 2048 px JPEG, mesh & ekstensi utuh, laporan model di inspector': async (page) => {
     const asal = await buatGLB(page);
     assert.ok(asal.ukuran > 3 * 1048576, 'GLB uji harus besar: ' + asal.ukuran);
     const id = await impor(page);
@@ -51,17 +51,17 @@ export const tes = {
         disimpan: bufFromB64(a.data).byteLength };
     }, id);
     assert.equal(r.mime, 'image/jpeg');
-    assert.deepEqual(r.dim, [1024, 512]);
+    assert.deepEqual(r.dim, [2048, 1024]);
     assert.deepEqual(r.ext, { KHR_materials_emissive_strength: { emissiveStrength: 2 } }, 'ekstensi material harus utuh');
     assert.equal(r.posisi, asal.posisi, 'mesh tidak boleh berubah');
     assert.ok(r.size < asal.ukuran / 4 && r.disimpan === r.size, JSON.stringify(r));
     assert.equal(r.asli, asal.ukuran);
-    assert.equal(r.lap.maks, 1024); assert.equal(r.lap.tri, 12);
-    assert.ok(r.lap.gpuMB < 8, 'memori GPU model ±' + r.lap.gpuMB + ' MB');
+    assert.equal(r.lap.maks, 2048); assert.equal(r.lap.tri, 12);
+    assert.ok(r.lap.gpuMB < 14, 'memori GPU model ±' + r.lap.gpuMB + ' MB');
     // inspector: laporan + perkecil lagi ke 512 px
     await page.evaluate(id => { addObject('model', id); }, id);
     await page.waitForSelector('#inspector:not([hidden])');
-    assert.match(await page.textContent('#inspector'), /Laporan model[\s\S]*12 segitiga · 1 tekstur ≤ 1024 px/);
+    assert.match(await page.textContent('#inspector'), /Laporan model[\s\S]*12 segitiga · 1 tekstur ≤ 2048 px/);
     await page.click('#inspector button:has-text("Perkecil tekstur ke 512 px")');
     await page.waitForFunction(id => laporanModel(id) && laporanModel(id).maks === 512, id, { timeout: 60000 });
     // berkas proyek yang disimpan → dibuka lagi: tetap kecil, tidak dirampingkan dua kali
@@ -76,7 +76,7 @@ export const tes = {
       PROJECT.assets = { aslama: { name: 'Mobil lama', size: window.__glbUji.byteLength, dims: [1, 1, 1], fit: 1, data: b64FromBuf(window.__glbUji) } };
       const r = await loadProjectAssets(); return { r, a: PROJECT.assets.aslama, maks: laporanModel('aslama').maks };
     });
-    assert.equal(r.r.ramping, 1); assert.equal(r.maks, 1024);
+    assert.equal(r.r.ramping, 1); assert.equal(r.maks, 2048);
     assert.ok(r.a.size < r.a.asli / 4, JSON.stringify({ size: r.a.size, asli: r.a.asli }));
   },
   'konteks WebGL hilang → pulih: pantulan & tekstur model tidak hitam': async (page) => {
