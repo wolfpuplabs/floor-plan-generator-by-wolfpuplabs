@@ -22,9 +22,11 @@ const pilihDiInspector = (page, label, nilai) => page.evaluate(([l, v]) => {
   const r = [...document.querySelectorAll('#inspector .f-row')].find(x => x.querySelector('label') && x.querySelector('label').textContent.trim() === l);
   const s = r.querySelector('select,input'); s.value = v; s.dispatchEvent(new Event('change'));
 }, [label, nilai]);
+// ketukan sungguhan pada tombol (pointerdown → click) — input sementara harus muncul di atas tombol itu
 async function unggahLewatTombol(page, teksTombol, berkas) {
-  const [pilih] = await Promise.all([page.waitForEvent('filechooser'),
-    page.evaluate(t => [...document.querySelectorAll('#inspector button')].find(b => b.textContent.includes(t)).click(), teksTombol)]);
+  const tombol = page.locator('#inspector button', { hasText: teksTombol }).first();
+  await tombol.scrollIntoViewIfNeeded();
+  const [pilih] = await Promise.all([page.waitForEvent('filechooser'), tombol.click()]);
   await pilih.setFiles(berkas);
 }
 
@@ -79,12 +81,16 @@ export const tes = {
       select('obj', o.id); renderInspector();
       // input berkas harus menempel di dokumen saat diklik (iOS Safari)
       window.__terpasang = []; const asli = HTMLInputElement.prototype.click;
-      HTMLInputElement.prototype.click = function () { if (this.type === 'file') window.__terpasang.push(this.isConnected); return asli.call(this); };
+      // …dan berada di layar, di atas tombol yang diketuk: popover pemilih iPad menunjuk ke input itu (JEV-095)
+      HTMLInputElement.prototype.click = function () {
+        if (this.type === 'file') { const r = this.getBoundingClientRect(), t = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find(e => e.tagName === 'BUTTON');
+          window.__terpasang.push(this.isConnected && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && !!t && t.closest('#inspector') !== null); }
+        return asli.call(this); };
       window.__sfx = []; const sfxAsli = window.sfx; window.sfx = (j, t) => { window.__sfx.push(j); return sfxAsli(j, t); };
       return o.id;
     });
     // objek tanpa aksi lain + suara swoosh → di mode jalan aksinya "Bunyikan"
-    await pilihDiInspector(page, 'Suara saat diketuk', 'swoosh');
+    await pilihDiInspector(page, 'Saat diketuk', 'swoosh');
     assert.equal(await page.evaluate(id => aksiObjek(cariObjek(id)).sfx, id), 'swoosh');
     const aksi = await page.evaluate(id => {
       enterFPS(); FPS.feet = 0; camera.position.set(0, 1.6, 4.2); FPS.yaw = Math.PI; FPS.pitch = -0.35; for (let i = 0; i < 3; i++) fpsStep(0);
@@ -94,24 +100,25 @@ export const tes = {
     assert.ok((await page.evaluate(() => window.__sfx)).includes('swoosh'), 'swoosh berbunyi');
     // audio sendiri: pilih "Audio sendiri" lalu unggah WAV → diputar dari objek
     await page.evaluate(id => { select('obj', id); renderInspector(); }, id);
-    await pilihDiInspector(page, 'Suara saat diketuk', 'unggah');
+    await pilihDiInspector(page, 'Saat diketuk', 'sfx');
     await unggahLewatTombol(page, 'Pilih audio', { name: 'ketuk.wav', mimeType: 'audio/wav', buffer: wav() });
     await page.waitForFunction(id => aksiObjek(cariObjek(id))?.sfxMedia, id, { timeout: 15000 });
     const main = await page.evaluate(async id => { let n = 0; document.getElementById('toast').textContent = ''; const s = AudioBufferSourceNode.prototype.start; AudioBufferSourceNode.prototype.start = function (...a) { n++; return s.apply(this, a); };
       audioSiap(); await sfxObjek(id); return [n, SFX.on, document.getElementById('toast').textContent, PROJECT.media[aksiObjek(cariObjek(id)).sfxMedia].mime]; }, id);
     assert.ok(main[0] >= 1 && !/tidak bisa diputar/.test(main[2]), 'audio sendiri diputar: ' + JSON.stringify(main));
-    // musik sendiri berupa M4A berlabel "mp42" diterima sebagai audio (dulu ditolak sebagai video)
-    await unggahLewatTombol(page, 'Musik sendiri', { name: 'lagu.m4a', mimeType: 'audio/mp4', buffer: m4a() });
-    await page.waitForFunction(id => aksiObjek(cariObjek(id))?.musik, id, { timeout: 15000 });
-    assert.equal(await page.evaluate(id => PROJECT.media[aksiObjek(cariObjek(id)).musik].mime, id), 'audio/mp4');
+    // media berupa M4A berlabel "mp42" diterima sebagai audio (dulu ditolak sebagai video)
+    await pilihDiInspector(page, 'Saat diketuk', 'media');
+    await unggahLewatTombol(page, 'Pilih audio / video', { name: 'lagu.m4a', mimeType: 'audio/mp4', buffer: m4a() });
+    await page.waitForFunction(id => aksiObjek(cariObjek(id))?.media, id, { timeout: 15000 });
+    assert.equal(await page.evaluate(id => PROJECT.media[aksiObjek(cariObjek(id)).media].mime, id), 'audio/mp4');
     // gambar detail berformat lain (BMP; HEIC di iPhone) dikonversi ke JPEG
     await page.evaluate(() => { const l = [...document.querySelectorAll('#inspector label.cek')].find(x => x.textContent.includes('Detail')); l.querySelector('input').click(); });
     await unggahLewatTombol(page, 'Gambar sendiri', { name: 'foto.bmp', mimeType: 'image/bmp', buffer: bmp() });
     await page.waitForFunction(id => aksiObjek(cariObjek(id))?.detail?.gambar, id, { timeout: 15000 });
     assert.equal(await page.evaluate(id => PROJECT.media[aksiObjek(cariObjek(id)).detail.gambar].mime, id), 'image/jpeg');
-    assert.ok((await page.evaluate(() => window.__terpasang)).every(Boolean), 'semua input berkas terpasang di dokumen saat diklik');
-    // media ikut disaring: suara sendiri bertahan setelah simpan → muat
-    const ulang = await page.evaluate(() => { const B = sanitasiProyek(JSON.parse(JSON.stringify(PROJECT))); const o = B.levels[0].objects[0]; return [o.params.aksi.sfx, !!B.media[o.params.aksi.sfxMedia]]; });
-    assert.deepEqual(ulang, ['unggah', true]);
+    assert.ok((await page.evaluate(() => window.__terpasang)).every(Boolean), 'semua input berkas terpasang di dokumen, di layar, di atas tombolnya saat diklik');
+    // media ikut disaring: media & gambar detail bertahan setelah simpan → muat
+    const ulang = await page.evaluate(() => { const B = sanitasiProyek(JSON.parse(JSON.stringify(PROJECT))); const a = B.levels[0].objects[0].params.aksi; return [!!B.media[a.media], !!B.media[a.detail.gambar], a.sfxMedia]; });
+    assert.deepEqual(ulang, [true, true, undefined], 'satu pilihan "Saat diketuk": media menggantikan suara sendiri');
   },
 };

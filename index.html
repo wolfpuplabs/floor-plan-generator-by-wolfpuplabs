@@ -13471,8 +13471,16 @@ function inspektorMaterialDinding(ins,d){
   ins.appendChild(det);
 }
 // input berkas ditempel ke dokumen: iOS Safari tidak memicu 'change' untuk input yang tidak terpasang
+/* iPad menampilkan menu pemilih (Perpustakaan Foto / Ambil Video / Pilih Berkas) sebagai popover yang
+   menunjuk ke elemen input — input di luar layar (left:-9999px) membuat popover tak terlihat, jadi
+   "tidak bisa unggah". Input sementara diletakkan tepat di atas tombol yang baru diketuk. */
+let ketukTerakhir=null;
+addEventListener('pointerdown',e=>{ ketukTerakhir=e.target; },{capture:true,passive:true});
 function pilihBerkasUmum(accept,cb){ const i=document.createElement('input'); i.type='file'; i.accept=accept;
-  i.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(i);
+  const t=ketukTerakhir&&ketukTerakhir.closest&&ketukTerakhir.closest('button,label,a,[role=button]'), r=t&&t.isConnected?t.getBoundingClientRect():null;
+  const [x,y,w,h]=r&&r.width?[r.left,r.top,r.width,r.height]:[innerWidth/2,innerHeight/2,1,1];
+  i.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:0;pointer-events:none`;
+  document.querySelectorAll('input.berkas-sementara').forEach(s=>s.remove()); i.className='berkas-sementara'; document.body.appendChild(i);   // sisa pemilih yang ditutup tanpa event cancel (iOS lama)
   i.addEventListener('cancel',()=>i.remove());
   i.onchange=async()=>{ const f=i.files&&i.files[0]; i.remove(); if(!f) return;
     try{ await cb(f); }catch(err){ toast('Gagal: '+(err.message||err)); } };

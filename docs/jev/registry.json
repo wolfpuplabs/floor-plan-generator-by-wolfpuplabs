@@ -4207,6 +4207,68 @@
     "target": "semua saat daring",
     "tinjau": "2027-01-12"
    }
+  },
+  {
+   "id": "JEV-095",
+   "judul": "Pemilih berkas di iPad: input sementara di atas tombol yang diketuk",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di iPad, tombol Pilih audio… / Pilih audio / video… / Gambar sendiri… (dan BGM, foto & avatar lobi) tidak membuka apa pun: iPadOS menampilkan menu pemilih sebagai popover yang menunjuk ke input, sedangkan input sementara diletakkan di luar layar (left:-9999px).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar pengguna 2026-10-12 (iPad Chrome): \"ga bisa upload\"",
+    "alternatif": [
+     "input tetap tersembunyi (display:none) — posisi popover tidak terkendali",
+     "label <label for> statis di tiap tombol — perlu mengubah semua pemanggil"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 20,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "berkas tetap lewat penyaring media yang sama"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "satu pendengar pointerdown pasif"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "input tak terlihat & tidak menangkap ketukan; tombol aslinya tetap fokus"
+    }
+   },
+   "metrik": {
+    "nama": "unggah media dari inspector di iPad",
+    "target": "pemilih selalu terbuka",
+    "tinjau": "2027-01-12"
+   }
   }
  ]
 }

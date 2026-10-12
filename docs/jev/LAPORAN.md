@@ -5,10 +5,11 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 69 GO · 3 DEFER · 5 NO-GO dari 77 item.
+**Ringkasan:** 70 GO · 3 DEFER · 5 NO-GO dari 78 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
+| JEV-095 | Pemilih berkas di iPad: input sementara di atas tombol yang diketuk | terkirim | 0.65 | 96,5 jt | 0,2 jt | 1071.5× | 535.3× | 0.0 bln | 1 | **GO** |
 | JEV-092 | Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) | terkirim | 0.65 | 125,8 jt | 0,4 jt | 644.0× | 321.5× | 0.0 bln | 2 | **GO** |
 | JEV-094 | Kayu perabot, pintu & kusen katalog dari foto Poly Haven | terkirim | 0.65 | 107,3 jt | 0,4 jt | 549.0× | 274.0× | 0.0 bln | 2 | **GO** |
 | JEV-093 | Mode jalan lancar dengan model berat: raycast BVH, resolusi adaptif, batas tekstur per model | terkirim | 0.65 | 107,3 jt | 0,5 jt | 460.3× | 229.6× | 0.0 bln | 3 | **GO** |
@@ -91,6 +92,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 
 ## Alasan per item
 
+- **JEV-095 Pemilih berkas di iPad: input sementara di atas tombol yang diketuk — GO.** ROI 1071.5× ≥ 1, payback 0.0 bln.
 - **JEV-092 Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) — GO.** ROI 644.0× ≥ 1, payback 0.0 bln.
 - **JEV-094 Kayu perabot, pintu & kusen katalog dari foto Poly Haven — GO.** ROI 549.0× ≥ 1, payback 0.0 bln.
 - **JEV-093 Mode jalan lancar dengan model berat: raycast BVH, resolusi adaptif, batas tekstur per model — GO.** ROI 460.3× ≥ 1, payback 0.0 bln.
