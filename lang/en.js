@@ -1535,6 +1535,15 @@ window.KAMUS_EN={
   "Tampilan 3D tidak bisa dimulai":"The 3D view could not start",
   "Memori grafis peramban sedang penuh. Tutup tab lain yang memakai 3D atau game, lalu muat ulang halaman ini.":"The browser's graphics memory is full. Close other tabs that use 3D or games, then reload this page.",
   "Muat ulang":"Reload",
+  "Pagar dari model sendiri":"Fences from your own model",
+  "Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab Lantai.":"A model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. Piece size & direction can be changed in the inspector. Floors from a model are in the Floors tab.",
+  "Pembuat lantai (tracing)":"Floor builder (tracing)",
+  "Lantai pelat (tracing)":"Floor slab (tracing)",
+  "Gambar keliling lantai titik demi titik di lantai aktif — jadi pelat lantai denah (teras, mezanin, lantai tambahan) bermaterial lantai ini.":"Draw the floor outline point by point on the active floor — it becomes a plan floor slab (terrace, mezzanine, extra floor) in this floor's material.",
+  "Lantai berlapis ubin dari model — unggah model (.glb, .gltf, ZIP, .obj, .fbx)":"Floor tiled with a model — upload a model (.glb, .gltf, ZIP, .obj, .fbx)",
+  "Model ubin":"Tile model",
+  "Lantai dari model (tracing)":"Floor from model (tracing)",
+  "Pelat lantai yang permukaannya disusun dari model ubin, papan dek, atau paving secara berpetak. Ukuran & arah ubin serta tebal pelat bisa diubah di inspector.":"A floor slab whose surface is laid in a grid from a tile, deck board or paver model. Tile size & direction and slab thickness can be changed in the inspector.",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1613,7 +1622,8 @@ window.KAMUS_EN={
   "Browser di dalam aplikasi ini (mis. Instagram, LINE, Facebook) tidak bisa membuka AR. Buka tautan ini di Safari — ketuk ⋯ lalu Buka di Safari, atau salin tautannya.":"This in-app browser (e.g. Instagram, LINE, Facebook) cannot open AR. Open this link in <b>Safari</b> — tap ⋯ then <b>Open in Safari</b>, or copy the link.",
   "Tekan Lihat di ruanganmu — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).":"Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR).",
   "Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian Material di panel kanan.":"Used by every floor that doesn't pick its own material. Wall materials are set per wall: select a wall, then see the <b>Material</b> section in the right panel.",
-  "Pagar: model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Lantai: model ubin, papan dek, atau paving disusun berpetak mengisi keliling yang digambar. Ukuran potongan & arahnya bisa diubah di inspector.":"<b>Fence</b>: a model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. <b>Floor</b>: a tile, deck board or paver model is laid in a grid filling the drawn outline. Piece size & direction can be changed in the inspector."
+  "Pagar: model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Lantai: model ubin, papan dek, atau paving disusun berpetak mengisi keliling yang digambar. Ukuran potongan & arahnya bisa diubah di inspector.":"<b>Fence</b>: a model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. <b>Floor</b>: a tile, deck board or paver model is laid in a grid filling the drawn outline. Piece size & direction can be changed in the inspector.",
+  "Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab Lantai.":"A model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. Piece size & direction can be changed in the inspector. Floors from a model are in the <b>Floors</b> tab."
  },
  // pola
  "pola":[
