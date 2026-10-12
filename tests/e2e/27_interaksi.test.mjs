@@ -65,7 +65,7 @@ export const tes = {
     assert.deepEqual(main, [true, true, true]);
     // berkas bukan audio
     await page.evaluate(() => { document.getElementById('toast').textContent = ''; select('obj', L().objects[0].id); renderInspector(); });
-    const [fc2] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => [...document.querySelectorAll('#inspector button')].find(b => /Ganti media/.test(b.textContent)).click())]);
+    const [fc2] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => [...document.querySelectorAll('#inspector button')].find(b => /Tambah track/.test(b.textContent)).click())]);
     await fc2.setFiles({ name: 'virus.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('<script>alert(1)</script>') });
     await page.waitForFunction(() => /Gagal/.test(document.getElementById('toast').textContent));
     // ikut tautan pendek sebagai lampiran
