@@ -3781,7 +3781,7 @@
    "J": {
     "masalah": "Main bareng hanya bisa mengetik — tidak bisa mengobrol lewat suara; momen di dalam rumah tidak bisa diabadikan tanpa tangkapan layar yang ikut menangkap menu.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-11: \"bisa voice chat sama take picture save di local storage / photo gallery\"; susulan yang sama: \"bisa integrasi ke ready player me buat custom avatarnya?\" — Ready Player Me sudah berhenti beroperasi 31 Januari 2026 (diakuisisi Netflix), tidak diintegrasikan",
+    "sumberBukti": "pesan pengguna 2026-10-11: \"bisa voice chat sama take picture save di local storage / photo gallery\"; susulan yang sama: \"bisa integrasi ke ready player me buat custom avatarnya?\" — Ready Player Me sudah berhenti beroperasi 31 Januari 2026 (diakuisisi Netflix), tidak diintegrasikan; susulan 2026-10-12 (tangkapan layar iPad mode jalan): \"bisa pindahin icon foto jadi di bottom center?\" — tombol foto kini lingkaran rana di tengah bawah, bukan di bilah atas",
     "alternatif": [
      "server suara (SFU) terpusat — butuh server & biaya",
      "tangkapan layar bawaan perangkat (ikut menangkap menu)",
