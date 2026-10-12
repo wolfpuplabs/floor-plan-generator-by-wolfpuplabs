@@ -649,7 +649,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <p class="hint">Gambar keliling lantai titik demi titik di lantai aktif — jadi pelat lantai denah (teras, mezanin, lantai tambahan) bermaterial lantai ini.</p>
       <div class="group"><label for="glbLantai">Lantai berlapis ubin dari model — unggah model (.glb, .gltf, ZIP, .obj, .fbx)</label><input type="file" id="glbLantai" multiple data-pilih="#modelLantai"></div>
       <div class="group"><label for="modelLantai">Model ubin</label><select id="modelLantai" class="pilih-model"></select></div>
-      <button class="btn sm" id="lantaiModelBtn">Lantai dari model (tracing)</button>
+      <div class="row"><button class="btn sm ghost" id="galeriLantai"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi library model</button><button class="btn sm" id="lantaiModelBtn">Lantai dari model (tracing)</button></div>
       <p class="hint">Pelat lantai yang permukaannya disusun dari model ubin, papan dek, atau paving secara berpetak. Ukuran & arah ubin serta tebal pelat bisa diubah di inspector.</p>
     </div>
 
@@ -797,7 +797,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="section-title">Pagar dari model sendiri</div>
       <div class="group"><label for="glbTaman">Unggah model (.glb, .gltf, ZIP, .obj, .fbx)</label><input type="file" id="glbTaman" multiple data-pilih="#modelPotong"></div>
       <div class="group"><label for="modelPotong">Model</label><select id="modelPotong" class="pilih-model"></select></div>
-      <div class="row"><button class="btn sm" id="pagarModelBtn">Pagar (tracing)</button></div>
+      <div class="row"><button class="btn sm ghost" id="galeriPagar"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi library model</button><button class="btn sm" id="pagarModelBtn">Pagar (tracing)</button></div>
       <p class="hint">Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab <b>Lantai</b>.</p>
       <div class="section-title">Bentuk tanah</div>
       <div class="row tanah-alat" role="group" aria-label="Kuas tanah">
@@ -12398,7 +12398,7 @@ async function importModelFiles(files){
    (tanpa kompres ulang tekstur), lalu masuk pustaka model seperti unggahan
    sendiri — ikut tersimpan di proyek, dapat collider otomatis.
    ====================================================================== */
-const GALERI={daftar:null, kat:'semua', cari:'', sibuk:false, sumber:'ph', ruang:''};
+const GALERI={daftar:null, kat:'semua', cari:'', sibuk:false, sumber:'ph', ruang:'', tujuan:null};   // tujuan: {kind, pilih} = memilih model untuk pagar / lantai
 /* PRODUK NYATA — model furnitur dari pabrikan (Wayfair, DGG, …) di Khronos glTF
    Sample Assets. Katalog TERKURASI: tiap berkas dikunci ke satu commit dan
    diverifikasi SHA-256 setelah diunduh — yang dipasang pasti sama dengan yang
@@ -12442,7 +12442,7 @@ async function pasangModelProduk(a){
     info.textContent='Menyusun '+a.nama+'…';
     const r=await daftarkanAset(a.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/'+KHR_COMMIT+'/Models/'+a.id, lisensi:a.lisensi});
-    renderCatalogs(); HIST.label='Model '+a.nama; addObject('model',r.id);
+    if(!pakaiDariGaleri(r.id,a.nama)) return;
     const o=L().objects[L().objects.length-1];
     if(a.p && o && o.type===r.id){ o.params=Object.assign({},o.params,a.p); rebuildScene(); }
     info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · ${a.lisensi}`;
@@ -12841,7 +12841,7 @@ async function pasangModelSketchfab(m){
     const buf=await unduhSketchfab(m,(n,t)=>{ info.textContent=`Mengunduh ${m.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
     const r=await daftarkanAset(m.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:m.lis+(m.pembuat?' — '+m.pembuat:'')+' (Sketchfab)'});
-    renderCatalogs(); HIST.label='Model '+m.nama; addObject('model',r.id);
+    if(!pakaiDariGaleri(r.id,m.nama)) return;
     info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${r.ramping?`dirampingkan ${fmt(r.asal/1048576,1)} → ${fmt(r.ukuran/1048576,1)} MB · `:''}${m.lis}${m.pembuat?' — '+m.pembuat:''}`;
   }catch(e){ console.warn('sketchfab',e); info.textContent='Gagal: '+(e.message||e); }
   finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
@@ -12899,7 +12899,7 @@ async function pasangModelGSO(m){
     const buf=await glbGSO(m.id,(n,t)=>{ info.textContent=`Mengunduh ${m.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
     const r=await daftarkanAset(m.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:'CC-BY 4.0 — Google Research (Google Scanned Objects)'});
-    renderCatalogs(); HIST.label='Model '+m.nama; addObject('model',r.id);
+    if(!pakaiDariGaleri(r.id,m.nama)) return;
     info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · CC-BY 4.0 Google`;
   }catch(e){
     console.warn('google scanned objects',e);
@@ -12954,7 +12954,7 @@ async function pasangModelPH(a){
     info.textContent='Menyusun '+a.nama+'…';
     const r=await daftarkanAset(a.nama+' (foto '+res.toUpperCase()+')',buf);
     PROJECT.assets[r.id].sumber='https://polyhaven.com/a/'+a.id;
-    renderCatalogs(); HIST.label='Model '+a.nama; addObject('model',r.id);
+    if(!pakaiDariGaleri(r.id,a.nama)) return;
     info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · Poly Haven (CC0)`;
     toast(a.nama+' dipasang di tengah tampilan — geser dengan W');
   }catch(e){
@@ -13043,6 +13043,16 @@ function isiKategoriGaleri(){
   $('#galeriCari').placeholder=GALERI.sumber==='skf'?'Cari di Sketchfab (bahasa Inggris): sofa, bed, toilet, kitchen…'
     :GALERI.sumber==='gso'?'Cari benda hasil scan (bahasa Inggris): mug, shoe, pillow, toy…':'Cari: chair, sofa, plant, lamp…';
 }
+/* model dari galeri: dipasang di denah, atau — bila galeri dibuka dari pembuat pagar / lantai (JEV-090) —
+   dipilih sebagai potongan pagar / ubin lalu tracing langsung dimulai */
+function pakaiDariGaleri(id,nama){
+  renderCatalogs();
+  const t=GALERI.tujuan;
+  if(t){ GALERI.tujuan=null; $(t.pilih).value=id; $('#galeri').hidden=true; traceModel(t.kind,id);
+    toast(nama+' dipilih — '+(t.kind==='garis'?'gambar jalur pagarnya':'gambar keliling lantainya')); return false; }
+  HIST.label='Model '+nama; addObject('model',id); return true;
+}
+function galeriUntuk(kind,pilih){ GALERI.tujuan={kind,pilih}; bukaGaleri(); }
 async function bukaGaleri(){
   $('#galeri').hidden=false; renderRuangGaleri();
   if(GALERI.sumber==='khr'){ isiKategoriGaleri(); return renderGaleri(); }
@@ -13055,9 +13065,11 @@ async function bukaGaleri(){
     isiKategoriGaleri(); renderGaleri();
   }catch(e){ $('#galeriInfo').textContent='Daftar model tidak bisa dimuat ('+(e.message||e)+') — perlu koneksi internet.'; }
 }
-$('#galeriBuka').onclick=bukaGaleri;
-$('#galeriTutup').onclick=()=>{ $('#galeri').hidden=true; };
-$('#galeri').addEventListener('click',e=>{ if(e.target.id==='galeri') $('#galeri').hidden=true; });
+$('#galeriBuka').onclick=()=>{ GALERI.tujuan=null; bukaGaleri(); };
+$('#galeriPagar').onclick=()=>galeriUntuk('garis','#modelPotong');
+$('#galeriLantai').onclick=()=>galeriUntuk('area','#modelLantai');
+$('#galeriTutup').onclick=()=>{ $('#galeri').hidden=true; GALERI.tujuan=null; };
+$('#galeri').addEventListener('click',e=>{ if(e.target.id==='galeri'){ $('#galeri').hidden=true; GALERI.tujuan=null; } });
 $('#galeriKat').onchange=e=>{ GALERI.kat=e.target.value; GALERI.batas=160; renderGaleri(); };
 $('#galeriSumber').onchange=e=>{ GALERI.sumber=['khr','skf','gso'].includes(e.target.value)?e.target.value:'ph'; GALERI.cari=''; $('#galeriCari').value=''; bukaGaleri(); };
 $('#galeriCari').oninput=e=>{ GALERI.cari=e.target.value; GALERI.batas=160; clearTimeout(GALERI.t);

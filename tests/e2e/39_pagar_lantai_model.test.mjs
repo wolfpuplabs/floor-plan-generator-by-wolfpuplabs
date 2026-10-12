@@ -116,4 +116,21 @@ export const tes = {
     assert.deepEqual([r.tombol, r.toast], [true, false]);
   }, { izinGalat: true, opsi: { tanpaSiap: true, bahasa: 'en',
     init: () => { const asli = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (t, ...a) { return /webgl/.test(t) ? null : asli.call(this, t, ...a); }; } } }),
+
+  'library model untuk pagar / lantai: galeri dibuka dari pembuat, model terpilih langsung dipakai untuk tracing': async (page) => {
+    const id = await modelKotak(page, 0.5, 0.04, 0.5, 'Ubin galeri');
+    const r = await page.evaluate(id => {
+      const n0 = L().objects.length;
+      $('#galeriLantai').click();
+      const buka = !$('#galeri').hidden, tujuan = JSON.stringify(GALERI.tujuan);
+      const dipasang = pakaiDariGaleri(id, 'Ubin galeri');        // seperti selesai mengunduh dari galeri
+      const hasil = { buka, tujuan, dipasang, tutup: $('#galeri').hidden, objekBaru: L().objects.length - n0, mode: JSON.stringify(VT.mode), pilih: $('#modelLantai').value === id, alat: TOOL };
+      akhiriTrace(); setTool('select');
+      // dari tombol galeri biasa (tab Objek): model dipasang di denah seperti dulu
+      $('#galeriBuka').click(); hasil.biasa = pakaiDariGaleri(id, 'Ubin galeri'); hasil.objekBiasa = L().objects.length - n0; $('#galeriTutup').click();
+      return hasil;
+    }, id);
+    assert.deepEqual(r, { buka: true, tujuan: JSON.stringify({ kind: 'area', pilih: '#modelLantai' }), dipasang: false, tutup: true, objekBaru: 0,
+      mode: JSON.stringify({ kind: 'area', type: 'lantai_model', model: id }), pilih: true, alat: 'voidTrace', biasa: true, objekBiasa: 1 });
+  },
 };

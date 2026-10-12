@@ -1544,6 +1544,7 @@ window.KAMUS_EN={
   "Model ubin":"Tile model",
   "Lantai dari model (tracing)":"Floor from model (tracing)",
   "Pelat lantai yang permukaannya disusun dari model ubin, papan dek, atau paving secara berpetak. Ukuran & arah ubin serta tebal pelat bisa diubah di inspector.":"A floor slab whose surface is laid in a grid from a tile, deck board or paver model. Tile size & direction and slab thickness can be changed in the inspector.",
+  "Jelajahi library model":"Browse model library",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1856,7 +1857,9 @@ window.KAMUS_EN={
   ["Satu potong ([\\d.,]+) m \\(tebal ([\\d.,]+) m\\) diulang sepanjang jalur\\. Kalau potongannya melintang jalur, ganti Sisi panjang\\.","One $1 m piece ($2 m thick) is repeated along the path. If the pieces sit across the path, change Long side."],
   ["Ubin disusun berpetak mengisi keliling; yang titik tengahnya di luar keliling tidak dipasang\\. Lebih dari (\\d+) ubin — perbesar ukuran ubin\\.","Tiles are laid in a grid filling the outline; tiles whose centre falls outside it are left out. More than $1 tiles — make the tiles larger."],
   ["Lantai dari model — luas ([\\d.,]+) m²","Floor from model — area $1 m²"],
-  ["Pagar dari model — panjang ([\\d.,]+) m","Fence from model — length $1 m"]
+  ["Pagar dari model — panjang ([\\d.,]+) m","Fence from model — length $1 m"],
+  ["(.+) dipilih — gambar jalur pagarnya","$1 selected — draw the fence path"],
+  ["(.+) dipilih — gambar keliling lantainya","$1 selected — draw the floor outline"]
  ],
  // frasaPola
  "frasaPola":[
