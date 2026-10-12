@@ -12,7 +12,7 @@
     music: [['relaxing', 'Santai'], ['piano', 'Piano'], ['lofi', 'Lo-fi'], ['jazz', 'Jazz'], ['acoustic guitar', 'Akustik'], ['classical', 'Klasik'], ['ambient', 'Ambient'], ['cafe', 'Kafe']],
     sound_effect: [['door', 'Pintu'], ['doorbell', 'Bel'], ['click', 'Klik'], ['birds', 'Burung'], ['rain', 'Hujan'], ['water', 'Air'], ['fire crackling', 'Api'], ['wind chime', 'Lonceng angin']],
   };
-  const JENIS_OK = /^(mp3|mpeg|ogg|oga|wav|m4a|aac|mp4)$/i;
+  const JENIS_OK = /^(mp3|mp32|mp31|mpeg|ogg|oga|wav|m4a|aac|mp4)$/i;      // Jamendo menandai MP3-nya 'mp32' / 'mp31'
   const BERKAS = new Map();                         // id → Blob (coba dengar lalu tambah tanpa mengunduh dua kali)
   let dlg = null, opsi = null, henti = null, unduh = null, dengar = null;   // henti: pencarian; unduh: berkas (batal saat ditutup)
 
@@ -58,32 +58,48 @@
   const durasi = ms => { const s = Math.round((+ms || 0) / 1000); return s > 0 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : ''; };
   const https = u => { try { const x = new URL(String(u || '')); return x.protocol === 'https:' ? x.href : ''; } catch (e) { return ''; } };
 
-  async function muat(hal) {
+  // satu halaman pencarian; kat=false → tanpa saringan kategori
+  async function tanya(q, hal, kat, sinyal) {
+    const p = new URLSearchParams({ q, page_size: '20', page: String(hal) });
+    if (kat) p.set('category', opsi.jenis);
+    if ($('#musikLisensi').value) p.set('license_type', $('#musikLisensi').value);
+    const r = await fetch(API + '?' + p, { signal: sinyal, mode: 'cors' });
+    if (!r.ok) throw new Error(r.status === 429 ? 'terlalu banyak pencarian — coba lagi sebentar lagi' : 'HTTP ' + r.status);
+    const j = await r.json(), semua = Array.isArray(j.results) ? j.results : [];
+    return { daf: semua.filter(x => x && https(x.url) && (!x.filetype || JENIS_OK.test(x.filetype))), buang: semua.length, lagi: +j.page_count > hal };
+  }
+  async function muat(hal, kat = true) {
     const hasil = $('#musikHasil'); if (henti) henti.abort();
     henti = new AbortController(); const sinyal = henti.signal;
     const q = $('#musikQ').value.trim() || SARAN[opsi.jenis][0][0];
-    const p = new URLSearchParams({ q, category: opsi.jenis, page_size: '20', page: String(hal) });
-    if ($('#musikLisensi').value) p.set('license_type', $('#musikLisensi').value);
     hasil.textContent = ''; hasil.appendChild(el('p', 'mp-catat', 'Mencari…'));
     try {
-      const r = await fetch(API + '?' + p, { signal: sinyal, mode: 'cors' });
-      if (!r.ok) throw new Error(r.status === 429 ? 'terlalu banyak pencarian — coba lagi sebentar lagi' : 'HTTP ' + r.status);
-      const j = await r.json(); if (sinyal.aborted) return;
-      const daf = (Array.isArray(j.results) ? j.results : []).filter(x => x && https(x.url) && (!x.filetype || JENIS_OK.test(x.filetype)));
+      let h = await tanya(q, hal, kat, sinyal);
+      // banyak audio Openverse tanpa kategori (Freesound, Wikimedia, sebagian Jamendo): hasil sedikit → cari lagi tanpa saringan kategori
+      if (kat && hal === 1 && h.daf.length < 6) {
+        const h2 = await tanya(q, 1, false, sinyal);
+        h = { daf: h.daf.concat(h2.daf.filter(x => !h.daf.some(y => y.id === x.id))), buang: h.buang + h2.buang, lagi: h2.lagi }; kat = false;
+      }
+      if (sinyal.aborted) return;
       hasil.textContent = '';
-      if (!daf.length) { hasil.appendChild(el('p', 'mp-catat', 'Tidak ada hasil — coba kata lain.')); return; }
-      for (const x of daf) hasil.appendChild(baris(x));
-      if (+j.page_count > hal) { const lagi = el('button', 'btn sm ghost', 'Muat lebih banyak'); lagi.type = 'button';
-        lagi.onclick = async () => { lagi.remove(); await muatLagi(hal + 1); }; hasil.appendChild(lagi); }
+      if (!h.daf.length) {
+        hasil.appendChild(el('p', 'mp-catat', h.buang ? 'Hasilnya berformat lain (FLAC / AIFF) yang tidak bisa diputar di semua perangkat — coba kata lain.' : 'Tidak ada hasil — coba kata lain.'));
+        if ($('#musikLisensi').value) { const b = el('button', 'btn sm ghost', 'Tampilkan semua lisensi CC'); b.type = 'button';
+          b.onclick = () => { $('#musikLisensi').value = ''; muat(1); }; hasil.appendChild(b); }
+        return;
+      }
+      for (const x of h.daf) hasil.appendChild(baris(x));
+      if (h.lagi) { const lagi = el('button', 'btn sm ghost', 'Muat lebih banyak'); lagi.type = 'button';
+        lagi.onclick = async () => { lagi.remove(); await muatLagi(hal + 1, kat); }; hasil.appendChild(lagi); }
     } catch (e) {
       if (e.name === 'AbortError') return;
       hasil.textContent = ''; hasil.appendChild(el('p', 'mp-catat mp-awas', 'Pustaka musik tidak bisa dihubungi (' + (e.message || e) + '). Periksa koneksi, atau unggah berkas sendiri.'));
     }
   }
-  async function muatLagi(hal) {
+  async function muatLagi(hal, kat) {
     const hasil = $('#musikHasil'), tunggu = el('p', 'mp-catat', 'Memuat…'); hasil.appendChild(tunggu);
     const simpan = [...hasil.children].filter(c => c !== tunggu);
-    await muat(hal);
+    await muat(hal, kat);
     hasil.prepend(...simpan);
   }
 
@@ -129,7 +145,7 @@
   async function pakai(x, b, isi) {
     b.disabled = true; b.textContent = 'Mengunduh…';
     try {
-      const blob = await ambil(x), ext = (String(x.filetype || '').match(/^[a-z0-9]{2,4}$/i) || ['mp3'])[0];
+      const blob = await ambil(x), ext = /^mp3/i.test(x.filetype || 'mp3') ? 'mp3' : (String(x.filetype).match(/^[a-z0-9]{2,4}$/i) || ['mp3'])[0];
       const f = new File([blob], String(x.title || 'musik').slice(0, 100) + '.' + ext, { type: blob.type || 'audio/mpeg' });
       await opsi.pakai(f, { oleh: x.creator ? String(x.creator) : '', lisensi: lisensi(x), url: https(x.foreign_landing_url) });
       b.textContent = '✓ Ditambahkan';

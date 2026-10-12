@@ -22,9 +22,9 @@
     "api.openverse.org": "pencarian pustaka musik & suara berlisensi Creative Commons (JEV-097)"
   },
   "anggaran": {
-    "indexHtmlKB": 1035,
+    "indexHtmlKB": 1040,
     "innerHTMLInterpolasi": 36,
-    "_catatan": "900 → 950 KB (JEV-074) → 1000 KB (JEV-081) → 1010 KB (JEV-087: tag ikon/kartu pratinjau di <head> + kolom pratinjau tautan, ±3,5 KB) → 1020 KB (JEV-088: foto mode jalan, foto profil lobi, ikon mic ±6 KB; obrolan suara tetap di modul lobi) → 1030 KB (JEV-090: kaitan pagar/lantai dari model — tab Taman, tracing, tabrakan pagar — duduk di perabot pustaka, ±7 KB; JEV-087: ikon layar utama iOS ±1 KB; pembangun & inspector pagar/lantai di modul/potong.js) → 1035 KB (JEV-091/092: kaitan panel info unduhan, batal unduh, tanah sRGB + pemanggil tanah foto ±2 KB; panel & tanah foto di modul/infomodel.js & modul/tanahfoto.js): fitur yang diminta pengguna terus bertambah di index.html (tab Taman, kolam, bentuk dasar); fitur besar baru wajib modul terpisah yang dimuat saat dipakai (seperti lobi JEV-077). Terkirim ter-gzip ±310 KB."
+    "_catatan": "900 → 950 KB (JEV-074) → 1000 KB (JEV-081) → 1010 KB (JEV-087: tag ikon/kartu pratinjau di <head> + kolom pratinjau tautan, ±3,5 KB) → 1020 KB (JEV-088: foto mode jalan, foto profil lobi, ikon mic ±6 KB; obrolan suara tetap di modul lobi) → 1030 KB (JEV-090: kaitan pagar/lantai dari model — tab Taman, tracing, tabrakan pagar — duduk di perabot pustaka, ±7 KB; JEV-087: ikon layar utama iOS ±1 KB; pembangun & inspector pagar/lantai di modul/potong.js) → 1035 KB (JEV-091/092: kaitan panel info unduhan, batal unduh, tanah sRGB + pemanggil tanah foto ±2 KB; panel & tanah foto di modul/infomodel.js & modul/tanahfoto.js): fitur yang diminta pengguna terus bertambah di index.html (tab Taman, kolam, bentuk dasar); fitur besar baru wajib modul terpisah yang dimuat saat dipakai (seperti lobi JEV-077). Terkirim ter-gzip ±310 KB → 1040 KB (JEV-099: daftar putar, kredit musik, sumber suara & gitar — UI & suaranya di modul/musik.js, sumber.js, gitar.js; index hanya kaitan + model gitar)."
   },
   "identitasTakTepercaya": "\\b(name|nama|label|judul|title|kat|tag|tags|id|sumber|kredit)\\b"
 }

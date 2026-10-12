@@ -5,19 +5,22 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 72 GO · 3 DEFER · 5 NO-GO dari 80 item.
+**Ringkasan:** 75 GO · 3 DEFER · 5 NO-GO dari 83 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-095 | Pemilih berkas di iPad: input sementara di atas tombol yang diketuk | terkirim | 0.65 | 96,5 jt | 0,2 jt | 1071.5× | 535.3× | 0.0 bln | 1 | **GO** |
 | JEV-092 | Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) | terkirim | 0.65 | 125,8 jt | 0,4 jt | 644.0× | 321.5× | 0.0 bln | 2 | **GO** |
 | JEV-094 | Kayu perabot, pintu & kusen katalog dari foto Poly Haven | terkirim | 0.65 | 107,3 jt | 0,4 jt | 549.0× | 274.0× | 0.0 bln | 2 | **GO** |
+| JEV-098 | Sumber suara otomatis di objek (suara 3D berjangkauan) | terkirim | 0.65 | 85,6 jt | 0,4 jt | 474.3× | 236.7× | 0.0 bln | 3 | **GO** |
 | JEV-093 | Mode jalan lancar dengan model berat: raycast BVH, resolusi adaptif, batas tekstur per model | terkirim | 0.65 | 107,3 jt | 0,5 jt | 460.3× | 229.6× | 0.0 bln | 3 | **GO** |
+| JEV-100 | Waktu yang berganti halus (siang → senja → malam), siklus waktu & cuaca hujan / badai | terkirim | 0.65 | 160,9 jt | 0,8 jt | 428.0× | 213.5× | 0.0 bln | 3 | **GO** |
 | JEV-087 | Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app | terkirim | 0.65 | 124,9 jt | 0,6 jt | 415.3× | 207.1× | 0.0 bln | 3 | **GO** |
 | JEV-096 | Beberapa track sekaligus: daftar putar musik latar & media objek (acak), suara objek acak | terkirim | 0.65 | 91,7 jt | 0,5 jt | 338.4× | 168.7× | 0.1 bln | 3 | **GO** |
 | JEV-091 | Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres | terkirim | 0.65 | 87,8 jt | 0,5 jt | 324.0× | 161.5× | 0.1 bln | 4 | **GO** |
 | JEV-097 | Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek | terkirim | 0.65 | 96,5 jt | 0,6 jt | 320.8× | 159.9× | 0.1 bln | 4 | **GO** |
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
+| JEV-099 | Gitar yang bisa dimainkan (seperti piano) | terkirim | 0.65 | 83,9 jt | 0,6 jt | 271.9× | 135.5× | 0.1 bln | 4 | **GO** |
 | JEV-090 | Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka | terkirim | 0.65 | 96,1 jt | 0,8 jt | 255.3× | 127.2× | 0.1 bln | 4 | **GO** |
 | JEV-089 | Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me | terkirim | 0.65 | 83,9 jt | 0,7 jt | 247.4× | 123.2× | 0.1 bln | 5 | **GO** |
 | JEV-069 | Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan | terkirim | 0.80 | 72 jt | 0,6 jt | 239.0× | 119.0× | 0.1 bln | 5 | **GO** |
@@ -97,12 +100,15 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-095 Pemilih berkas di iPad: input sementara di atas tombol yang diketuk — GO.** ROI 1071.5× ≥ 1, payback 0.0 bln.
 - **JEV-092 Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) — GO.** ROI 644.0× ≥ 1, payback 0.0 bln.
 - **JEV-094 Kayu perabot, pintu & kusen katalog dari foto Poly Haven — GO.** ROI 549.0× ≥ 1, payback 0.0 bln.
+- **JEV-098 Sumber suara otomatis di objek (suara 3D berjangkauan) — GO.** ROI 474.3× ≥ 1, payback 0.0 bln.
 - **JEV-093 Mode jalan lancar dengan model berat: raycast BVH, resolusi adaptif, batas tekstur per model — GO.** ROI 460.3× ≥ 1, payback 0.0 bln.
+- **JEV-100 Waktu yang berganti halus (siang → senja → malam), siklus waktu & cuaca hujan / badai — GO.** ROI 428.0× ≥ 1, payback 0.0 bln.
 - **JEV-087 Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app — GO.** ROI 415.3× ≥ 1, payback 0.0 bln.
 - **JEV-096 Beberapa track sekaligus: daftar putar musik latar & media objek (acak), suara objek acak — GO.** ROI 338.4× ≥ 1, payback 0.1 bln.
 - **JEV-091 Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres — GO.** ROI 324.0× ≥ 1, payback 0.1 bln.
 - **JEV-097 Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek — GO.** ROI 320.8× ≥ 1, payback 0.1 bln.
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
+- **JEV-099 Gitar yang bisa dimainkan (seperti piano) — GO.** ROI 271.9× ≥ 1, payback 0.1 bln.
 - **JEV-090 Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka — GO.** ROI 255.3× ≥ 1, payback 0.1 bln.
 - **JEV-089 Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me — GO.** ROI 247.4× ≥ 1, payback 0.1 bln.
 - **JEV-069 Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan — GO.** ROI 239.0× ≥ 1, payback 0.1 bln.

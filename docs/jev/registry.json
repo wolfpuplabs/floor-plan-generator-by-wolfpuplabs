@@ -4394,6 +4394,192 @@
     "target": "≥ 30% track musik latar baru",
     "tinjau": "2027-01-13"
    }
+  },
+  {
+   "id": "JEV-098",
+   "judul": "Sumber suara otomatis di objek (suara 3D berjangkauan)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Musik / suara objek hanya berbunyi bila diketuk dan selalu lewat pemutar di layar — tidak bisa membuat radio teras, air mancur, atau speaker kafe yang terdengar sendiri saat didekati.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"ada audio source yg auto play di object\"",
+    "alternatif": [
+     "memakai musik latar (tidak berarah, terdengar di mana-mana)",
+     "media objek yang diputar otomatis lewat pemutar layar (bertabrakan dengan media lain)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 10,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "track yang sama dengan media objek (sudah tersaring); jangkauan dijepit 2–60 m"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/sumber.js hanya dimuat bila ada objek bersumber suara; buffer didekode sekali per track; mati di editor"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pengunjung bisa mematikan tiap sumber dengan mengetuknya (label Matikan / Nyalakan suara)"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan sumber suara otomatis",
+    "target": "dipakai pada proyek ber-taman / kafe",
+    "tinjau": "2027-01-13"
+   }
+  },
+  {
+   "id": "JEV-099",
+   "judul": "Gitar yang bisa dimainkan (seperti piano)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Hanya piano yang bisa dimainkan di mode jalan; pengguna ingin bermain gitar di rumahnya.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"interaksi play guitar kaya piano\"",
+    "alternatif": [
+     "sampel rekaman gitar (berkas audio besar & berlisensi)",
+     "gitar sebagai efek suara ketukan saja (tidak bisa dimainkan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 2.5,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.25,
+      "pakaiPerTahun": 10,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa host / pustaka baru; bunyi disintesis (Karplus–Strong)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri, tanpa sampel"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/gitar.js dimuat saat dimainkan; buffer senar dibuat sekali per nada; index.html +±1 KB model gitar (anggaran 1035 → 1040 KB)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol akor & genjreng berlabel, keyboard 1–9 / Spasi / B / QWERTY, Esc menutup tanpa keluar mode jalan"
+    }
+   },
+   "metrik": {
+    "nama": "sesi mode jalan yang memainkan gitar",
+    "target": "dipakai pada proyek bergitar",
+    "tinjau": "2027-01-13"
+   }
+  },
+  {
+   "id": "JEV-100",
+   "judul": "Waktu yang berganti halus (siang → senja → malam), siklus waktu & cuaca hujan / badai",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Suasana hanya bisa dipilih dan langsung meloncat; tidak ada pergantian waktu yang terasa hidup dan tidak ada cuaca.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"tambahin interaksi time of day yang berubah dari day>dusk>night sama weather system (rain)\"",
+    "alternatif": [
+     "video / panorama hujan statis (tidak menyatu dengan adegan 3D)",
+     "partikel hujan per tetes di CPU (berat di iPad)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa host / pustaka baru; pengaturan cuaca disaring (jenis & siklus daftar tetap)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri; suara hujan & guruh disintesis"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/cuaca.js dimuat saat dipakai; tetes dihitung di GPU (≤ 5.000 di iPad), masker atap dihitung ulang hanya bila dinding berubah; editor tanpa hujan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Waktu berlabel; kilat singkat (≤ 0,35 dtk, jarang) hanya pada pilihan Badai petir"
+    }
+   },
+   "metrik": {
+    "nama": "tautan lihat dengan cuaca / siklus waktu",
+    "target": "dipakai pada presentasi rumah",
+    "tinjau": "2027-01-13"
+   }
   }
  ]
 }
