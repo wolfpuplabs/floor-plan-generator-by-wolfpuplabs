@@ -644,6 +644,13 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <p class="hint">Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian <b>Material</b> di panel kanan.</p>
       <button class="btn sm ghost" id="autoVoidBtn">Lubangi Pelat dari Tangga Lantai Bawah</button>
       <p class="hint">Membuat void di pelat lantai ini tepat di tempat ruang bebas kepala tangga di bawahnya kurang dari 2,00 m.</p>
+      <div class="section-title">Pembuat lantai (tracing)</div>
+      <button class="btn sm" id="lantaiPelatBtn">Lantai pelat (tracing)</button>
+      <p class="hint">Gambar keliling lantai titik demi titik di lantai aktif — jadi pelat lantai denah (teras, mezanin, lantai tambahan) bermaterial lantai ini.</p>
+      <div class="group"><label for="glbLantai">Lantai berlapis ubin dari model — unggah model (.glb, .gltf, ZIP, .obj, .fbx)</label><input type="file" id="glbLantai" multiple data-pilih="#modelLantai"></div>
+      <div class="group"><label for="modelLantai">Model ubin</label><select id="modelLantai" class="pilih-model"></select></div>
+      <button class="btn sm" id="lantaiModelBtn">Lantai dari model (tracing)</button>
+      <p class="hint">Pelat lantai yang permukaannya disusun dari model ubin, papan dek, atau paving secara berpetak. Ukuran & arah ubin serta tebal pelat bisa diubah di inspector.</p>
     </div>
 
     <!-- ============ TAB TAMPILAN ============ -->
@@ -787,11 +794,11 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="section-title">Area &amp; jalur (tracing)</div>
       <div class="cat-grid" id="cat-situs"></div>
       <p class="hint">Area, kolam, jalan setapak, dan pagar digambar dengan <b>tracing</b>: ketuk titik-titiknya di lantai (gambar denah ikut tampil di bawahnya). Kolam otomatis melubangi tanah situs.</p>
-      <div class="section-title">Pagar &amp; lantai dari model sendiri</div>
-      <div class="group"><label for="glbTaman">Unggah model (.glb, .gltf, ZIP, .obj, .fbx)</label><input type="file" id="glbTaman" multiple></div>
-      <div class="group"><label for="modelPotong">Model</label><select id="modelPotong"></select></div>
-      <div class="row"><button class="btn sm" id="pagarModelBtn">Pagar (tracing)</button><button class="btn sm" id="lantaiModelBtn">Lantai (tracing)</button></div>
-      <p class="hint"><b>Pagar</b>: model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. <b>Lantai</b>: model ubin, papan dek, atau paving disusun berpetak mengisi keliling yang digambar. Ukuran potongan & arahnya bisa diubah di inspector.</p>
+      <div class="section-title">Pagar dari model sendiri</div>
+      <div class="group"><label for="glbTaman">Unggah model (.glb, .gltf, ZIP, .obj, .fbx)</label><input type="file" id="glbTaman" multiple data-pilih="#modelPotong"></div>
+      <div class="group"><label for="modelPotong">Model</label><select id="modelPotong" class="pilih-model"></select></div>
+      <div class="row"><button class="btn sm" id="pagarModelBtn">Pagar (tracing)</button></div>
+      <p class="hint">Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab <b>Lantai</b>.</p>
       <div class="section-title">Bentuk tanah</div>
       <div class="row tanah-alat" role="group" aria-label="Kuas tanah">
         <button class="btn sm ghost" data-tanah="naik">Naikkan</button><button class="btn sm ghost" data-tanah="turun">Turunkan</button>
@@ -5107,10 +5114,11 @@ function buildArea(o){
   const g=new THREE.Group(), P=areaPoli(o), j=o.params.jenis||'rumput';
   if(P.length<3) return g;
   const R=acak(o.id.split('').reduce((a,c)=>a*31+c.charCodeAt(0),3));
-  if(j==='lantai_model') return potongModel('lantai',o,P,g);
-  if(j==='lantai'){                               // pelat lantai bebas: permukaan di elevasi lantainya (y = 0)
+  if(j==='lantai'||j==='lantai_model'){           // pelat lantai bebas: permukaan di elevasi lantainya (y = 0)
     const lv=PROJECT.levels.find(l=>l.objects.includes(o)), t=clamp(+o.params.tebal||0.15,0.05,0.6);
     const ml=matLantai(lv), m=new THREE.Mesh(ekstrusiXZ(P,t,0),[ml,matTepiPelat()]); m.castShadow=true; m.receiveShadow=true; m.userData.lantaiBebas=true; g.add(m);
+    // lantai dari model (JEV-090): pelat denah yang permukaannya disusun dari ubin model
+    if(j==='lantai_model'){ const u=potongModel('lantai',o,P,null); if(u){ g.add(u); g.userData.lebihUbin=u.userData.lebihUbin; } }
   } else if(j==='rumput'||j==='tanah'){
     const m=new THREE.Mesh(uvDunia(bidangXZ(P,j==='rumput'?0.008:0.004),matSitus(j).userData.ukuran,o.x,o.z),matSitus(j)); m.receiveShadow=true; g.add(m);
   } else if(j==='kerikil'||j==='paving'||j==='dek'){
@@ -5201,7 +5209,7 @@ function buildGaris(o){
   return g;
 }
 /* pagar & lantai dari model unggahan (JEV-090): dibangun modul/potong.js, dimuat sekali saat pertama dipakai */
-function potongModel(jenis,o,P,g){
+function potongModel(jenis,o,P,g){   // g = pengganti selagi modul dimuat / model hilang
   if(window.POTONG) return window.POTONG[jenis](o,P)||g;
   muatModul('potong').then(()=>rebuildScene(),e=>toast(e.message)); return g;
 }
@@ -7747,7 +7755,7 @@ function renderInspector(){
     const isArea=d.kind==='area', daftar=isArea?JENIS_AREA:JENIS_GARIS, j=d.params.jenis||d.type;
     const h=el('h3',null,isArea?'Area':'Jalur'); h.appendChild(el('span','tag',daftar[j]||j)); ins.appendChild(h);
     // jenis hanya bisa diganti dalam kelompoknya (kolam tetap kolam, pagar tetap pagar)
-    const klp=k=>/^kolam/.test(k)?'kolam':/^pagar/.test(k)?'pagar':/^setapak/.test(k)?'setapak':k==='lantai'?'lantai':'permukaan';
+    const klp=k=>/^kolam/.test(k)?'kolam':/^pagar/.test(k)?'pagar':/^setapak/.test(k)?'setapak':/^lantai/.test(k)?'lantai':'permukaan';
     fRow(ins,'Jenis',selInput(Object.entries(daftar).filter(([k])=>klp(k)===klp(j)),j,v=>{
       if(/_model$/.test(v) && !(d.params.model&&PROJECT.assets[d.params.model])){ const id=Object.keys(PROJECT.assets||{})[0];
         if(!id){ toast('Unggah model dulu (tab Taman › Pagar & lantai dari model sendiri)'); renderInspector(); return; } d.params.model=id; }
@@ -7763,7 +7771,7 @@ function renderInspector(){
       fRow(ins,'Panjang (m)',numInput(d.params.d,0.1,ubah('d',0.5,60),0.5,60));
       if(d.params.bentuk==='L'){ fRow(ins,'Potongan lebar (m)',numInput(d.params.cw,0.1,ubah('cw',0.2,59),0.2,59)); fRow(ins,'Potongan panjang (m)',numInput(d.params.cd,0.1,ubah('cd',0.2,59),0.2,59)); }
     }
-    if(j==='lantai') fRow(ins,'Tebal pelat (m)',numInput(+d.params.tebal||0.15,0.01,v=>{ d.params.tebal=clamp(v,0.05,0.6); HIST.label='Tebal pelat'; rebuildScene(); },0.05,0.6));
+    if(j==='lantai'||j==='lantai_model') fRow(ins,'Tebal pelat (m)',numInput(+d.params.tebal||0.15,0.01,v=>{ d.params.tebal=clamp(v,0.05,0.6); HIST.label='Tebal pelat'; rebuildScene(); },0.05,0.6));
     if(/^kolam/.test(j)) fRow(ins,'Kedalaman (m)',numInput(d.params.kedalaman||1.4,0.1,v=>{ d.params.kedalaman=clamp(v,0.2,3); rebuildScene(); },0.2,3));
     if(/^setapak_(kerikil|paving)/.test(j)) fRow(ins,'Lebar (m)',numInput(d.params.lebar||0.8,0.05,v=>{ d.params.lebar=clamp(v,0.3,3); rebuildScene(); },0.3,3));
     if(/^pagar/.test(j) && j!=='pagar_model') fRow(ins,'Tinggi (m)',numInput(d.params.tinggi||1.2,0.05,v=>{ d.params.tinggi=clamp(v,0.4,2.5); rebuildScene(); },0.4,2.5));
@@ -12214,11 +12222,11 @@ function renderCatalogs(){
     row.appendChild(badd); row.appendChild(bdel);
     ml.appendChild(row);
   }
-  // tab Taman: model untuk pagar / lantai (JEV-090) — pilihan terakhir dipertahankan
-  const mp=$('#modelPotong'), pilih=mp.value; mp.innerHTML='';
-  if(!ids.length){ const op=document.createElement('option'); op.value=''; op.textContent='— unggah model dulu —'; mp.appendChild(op); }
-  for(const id of ids){ const op=document.createElement('option'); op.value=id; op.textContent=PROJECT.assets[id].name; mp.appendChild(op); }
-  if(ids.includes(pilih)) mp.value=pilih;
+  // pilihan model untuk pagar (tab Taman) & lantai (tab Lantai), JEV-090 — pilihan terakhir dipertahankan
+  for(const mp of $$('.pilih-model')){ const pilih=mp.value; mp.innerHTML='';
+    if(!ids.length){ const op=document.createElement('option'); op.value=''; op.textContent='— unggah model dulu —'; mp.appendChild(op); }
+    for(const id of ids){ const op=document.createElement('option'); op.value=id; op.textContent=PROJECT.assets[id].name; mp.appendChild(op); }
+    if(ids.includes(pilih)) mp.value=pilih; }
   $('#pagarModelBtn').disabled=$('#lantaiModelBtn').disabled=!ids.length;
 
   const cf=$('#cat-furn'); cf.innerHTML='';
@@ -13062,21 +13070,22 @@ $('#glbInput').addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';
   await importModelFiles(files);
 });
-// tab Taman (JEV-090): unggah model untuk pagar / lantai — model yang baru masuk langsung terpilih
-$('#glbTaman').addEventListener('change',async e=>{
+// unggah model untuk pagar (tab Taman) / lantai (tab Lantai), JEV-090 — model yang baru masuk langsung terpilih
+for(const inp of [$('#glbTaman'),$('#glbLantai')]) inp.addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';
   const lama=new Set(Object.keys(PROJECT.assets||{}));
   await importModelFiles(files);
   const baru=Object.keys(PROJECT.assets||{}).filter(id=>!lama.has(id));
-  if(baru.length) $('#modelPotong').value=baru[baru.length-1];
+  if(baru.length) $(inp.dataset.pilih).value=baru[baru.length-1];
 });
+$('#lantaiPelatBtn').onclick=()=>mulaiTrace({kind:'area',type:'lantai'},null);
 function traceModel(kind,id){
   if(!id||!PROJECT.assets[id]) return toast('Unggah model dulu');
   if(!ASSET_OBJ.has(id)) return toast('Berkas model ini gagal diurai');
   mulaiTrace({kind,type:kind==='garis'?'pagar_model':'lantai_model',model:id},null);
 }
 $('#pagarModelBtn').onclick=()=>traceModel('garis',$('#modelPotong').value);
-$('#lantaiModelBtn').onclick=()=>traceModel('area',$('#modelPotong').value);
+$('#lantaiModelBtn').onclick=()=>traceModel('area',$('#modelLantai').value);
 /* berkas yang dijatuhkan ke viewport: model masuk pustaka, gambar jadi denah */
 ['dragenter','dragover'].forEach(ev=>viewport.addEventListener(ev,e=>{
   if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;

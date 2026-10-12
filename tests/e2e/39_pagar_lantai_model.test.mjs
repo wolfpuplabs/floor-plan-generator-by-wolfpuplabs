@@ -13,7 +13,7 @@ const modelKotak = (page, w, h, d, nama) => page.evaluate(async ([w, h, d, nama]
 // potongan terpasang (koordinat dunia, x/z) dari InstancedMesh objek tracing
 const potongan = (page, id) => page.evaluate(id => {
   const g = findGroup('obj', id); if (!g) return null; g.updateMatrixWorld(true);
-  const im = g.children.find(c => c.isInstancedMesh); if (!im) return { n: 0 };
+  let im = null; g.traverse(c => { if (!im && c.isInstancedMesh) im = c; }); if (!im) return { n: 0 };
   const M = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3(), out = [];
   for (let i = 0; i < im.count; i++) {
     im.getMatrixAt(i, M); M.premultiply(im.matrixWorld).decompose(p, q, s);
@@ -21,7 +21,7 @@ const potongan = (page, id) => page.evaluate(id => {
   }
   return { n: im.count, p: out };
 }, id);
-const tunggu = (page, id) => page.waitForFunction(id => { const g = findGroup('obj', id); return !!(window.POTONG && g && g.children.some(c => c.isInstancedMesh)); }, id, { timeout: 20000 });
+const tunggu = (page, id) => page.waitForFunction(id => { const g = findGroup('obj', id); let ada = false; if (g) g.traverse(c => { if (c.isInstancedMesh) ada = true; }); return !!(window.POTONG && ada); }, id, { timeout: 20000 });
 
 export const tes = {
   'pagar dari model: tracing di tab Taman, potongan diulang & direntang pas sepanjang jalur, menahan badan': async (page) => {
@@ -57,8 +57,11 @@ export const tes = {
 
   'lantai dari model: ubin berpetak mengisi keliling tracing, bisa dipijak, ukuran ubin bisa diatur': async (page) => {
     const id = await modelKotak(page, 0.5, 0.04, 0.5, 'Ubin teraso');
+    // tab Lantai: pembuat lantai terpisah dari pagar di tab Taman
+    const ui = await page.evaluate(() => ({ lantai: [...document.querySelectorAll('#modelLantai option')].map(o => o.textContent), diTaman: !!document.querySelector('[data-panel="taman"] #lantaiModelBtn'), diLantai: !!document.querySelector('[data-panel="levels"] #lantaiModelBtn') && !!document.querySelector('[data-panel="levels"] #lantaiPelatBtn') }));
+    assert.deepEqual(ui, { lantai: ['Ubin teraso'], diTaman: false, diLantai: true });
     const oid = await page.evaluate(id => {
-      traceModel('area', id);
+      $('#modelLantai').value = id; $('#lantaiModelBtn').click();
       // bentuk L 2 × 2 m tanpa pojok kanan-bawah 1 × 1 m
       VT.pts = [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }]; selesaiTrace();
       return SEL.id;
@@ -67,6 +70,8 @@ export const tes = {
     let r = await potongan(page, oid);
     assert.equal(r.n, 12, '16 petak 0,5 m dikurangi 4 di pojok yang terpotong');
     assert.ok(r.p.every(p => !(p.x > 1 && p.z > 1)), 'tidak ada ubin di luar keliling');
+    // pelat lantai denah ada di bawah ubin
+    assert.equal(await page.evaluate(id => findGroup('obj', id).children.some(c => c.userData.lantaiBebas), oid), true, 'pelat lantai di bawah ubin');
     const pijak = await page.evaluate(() => ({ ubin: fpsGround(0.25, 0.25, 0), luar: fpsGround(1.75, 1.75, 0) }));
     assert.ok(Math.abs(pijak.ubin - 0.04) < 1e-3, 'berdiri di atas ubin: ' + JSON.stringify(pijak));
     assert.ok(pijak.luar == null || pijak.luar < 0.01, 'di luar keliling tidak ada ubin: ' + JSON.stringify(pijak));
