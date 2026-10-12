@@ -1,11 +1,11 @@
-/* Plan23D — TANAH FOTO ASLI (JEV-092)
+/* Plan23D — TANAH & KAYU FOTO ASLI (JEV-092, JEV-094)
    Tanah situs, area & cat tanah memakai tekstur foto Poly Haven (CC0): peta warna, normal &
    kekasaran 1K, dipilih otomatis dari katalog tekstur mereka menurut kata kunci (rumput, tanah,
    kerikil, paving, batu) — yang paling banyak diunduh, bukan foto udara. Berkas disimpan di Cache
    Storage (ambilCache) jadi dibuka ulang tanpa mengunduh lagi. Gambar foto MENGGANTIKAN isi tekstur
    prosedural yang sama, sehingga semua bahan yang memakainya (tanah, area, campuran cat) ikut
    berubah tanpa membangun ulang adegan. Luring / gagal → tekstur prosedural tetap dipakai. */
-/* global DECOTEX, teksturSitus, unduhTeksturPH, ambilCache, bayangKotor */
+/* global DECOTEX, teksturSitus, unduhTeksturPH, ambilCache, bayangKotor, MAT, uvMetrik, rebuildScene */
 (function () {
   'use strict';
   // kata kunci per jenis; foto udara (skala puluhan meter) dan salju/pasir tidak cocok untuk halaman rumah
@@ -57,5 +57,50 @@
     return p;
   }
 
-  window.TANAHFOTO = { pasang, lengkapi, info: jenis => DATA.get(jenis) || null };
+  /* PERABOT (JEV-094): bahan kayu polos katalog (perabot, pintu, kusen) memakai foto kayu Poly Haven —
+     terang & gelap. Mesh yang memakainya diberi UV per meter (uvMetrik) supaya serat tidak meregang
+     mengikuti ukuran tiap muka. Kain & marmer sudah bertekstur sendiri, tidak diganti. */
+  const KAYU = [{ mat: ['wood', 'door'], suka: /veneer|fine|table|oak|plywood|beech|birch|light/ },
+    { mat: ['woodDark', 'frame'], suka: /dark|walnut|mahogany|brown/ }];
+  const BUANG_KAYU = /floor|plank|bark|log|pallet|fence|paint|rough|old|worn|shutter|door|wall|roof|crate|branch|burnt|chip|board/;
+  const METRIK = new WeakMap(), FOTO = new Set();
+  let janjiKayu = null;
+  async function pilihKayu(suka, kecuali) {
+    const d = await katalog();
+    const c = d.filter(a => (a.kat.includes('wood') || /\bwood/.test(a.teks)) && !BUANG_KAYU.test(a.id) && a.id !== kecuali);
+    c.sort((a, b) => (suka.test(b.teks) - suka.test(a.teks)) || (b.unduh - a.unduh));
+    return c[0] || null;
+  }
+  function kayu() {
+    if (janjiKayu) return janjiKayu;
+    janjiKayu = (async () => {
+      let lalu = null, n = 0;
+      for (const k of KAYU) {
+        const a = await pilihKayu(k.suka, lalu); if (!a) continue; lalu = a.id;
+        const t = await unduhTeksturPH(a.id, '1k'), u = 1 / 0.8;                 // satu ulangan ±80 cm
+        t.peta.encoding = THREE.sRGBEncoding;
+        for (const x of [t.peta, t.normal, t.kasar]) if (x) { x.repeat.set(u, u); x.needsUpdate = true; }
+        for (const nm of k.mat) { const m = MAT[nm]; if (!m) continue;
+          m.map = t.peta; m.color.setHex(0xffffff);
+          if (t.normal) { m.normalMap = t.normal; m.normalScale = new THREE.Vector2(0.8, 0.8); }
+          if (t.kasar) { m.roughnessMap = t.kasar; m.roughness = 1; }
+          m.needsUpdate = true; FOTO.add(m); n++; }
+      }
+      if (n) rebuildScene();                                       // UV per meter dipasang lewat uv() di rebuildScene
+      return n > 0;
+    })().catch(e => { console.warn('kayu foto', e); return false; });
+    return janjiKayu;
+  }
+  function uv(akar) {
+    if (!FOTO.size) return;
+    akar.traverse(m => {
+      if (!m.isMesh || m.isInstancedMesh || !m.geometry || m.geometry.userData.metrik) return;
+      if (![].concat(m.material).some(b => FOTO.has(b))) return;
+      let g = METRIK.get(m.geometry);
+      if (!g) { g = m.geometry.clone(); if (!g.attributes.normal) g.computeVertexNormals(); uvMetrik(g); METRIK.set(m.geometry, g); }
+      m.geometry = g;
+    });
+  }
+
+  window.TANAHFOTO = { pasang, lengkapi, info: jenis => DATA.get(jenis) || null, kayu, uv, kayuSiap: () => FOTO.size > 0 };
 })();

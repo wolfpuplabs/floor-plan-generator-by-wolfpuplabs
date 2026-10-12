@@ -4083,6 +4083,192 @@
     "target": "0",
     "tinjau": "2027-01-12"
    }
+  },
+  {
+   "id": "JEV-093",
+   "judul": "Mode jalan lancar dengan model berat: raycast BVH, resolusi adaptif, batas tekstur per model",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model berat (ratusan ribu segitiga) membuat mode jalan tersendat: 5 sinar pijakan + bidikan tiap frame memeriksa semua segitiga (±255 ms/frame di desktop, lebih parah di iPad).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-12 (rekaman layar iPad, reruntuhan Sketchfab + langit danau, mode jalan tersendat): \"kenapa jadi berat sama lag gini, bisa dioptimized?\"",
+    "alternatif": [
+     "three-mesh-bvh dari CDN (tidak bisa diverifikasi tipe MIME .cjs di jsDelivr; BVH ringkas sendiri cukup)",
+     "menyederhanakan mesh saat impor (mengubah bentuk model)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa host / pustaka baru; data tetap lewat jalur yang sudah disaring"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri / tekstur CC0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "BVH ±0,2–1 dtk sekali per geometri besar di sela frame; resolusi turun hanya bila lambat terus"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tidak mengubah kontrol"
+    }
+   },
+   "metrik": {
+    "nama": "waktu logika mode jalan per frame dengan model berat",
+    "target": "< 10 ms",
+    "tinjau": "2027-01-12"
+   }
+  },
+  {
+   "id": "JEV-094",
+   "judul": "Kayu perabot, pintu & kusen katalog dari foto Poly Haven",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Perabot katalog berbahan kayu memakai warna polos — tampak seperti plastik di samping model scan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-12: \"texture object asset library juga bisa dibikin foto realistic?\"",
+    "alternatif": [
+     "memberi semua bahan katalog foto (kain berwarna-warni per sofa akan hilang warnanya)",
+     "tekstur kayu prosedural (tetap terlihat buatan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa host / pustaka baru; data tetap lewat jalur yang sudah disaring"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri / tekstur CC0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "dua tekstur kayu 1K dibagi semua perabot; Cache Storage"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tidak mengubah kontrol"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan perabot kayu foto",
+    "target": "semua saat daring",
+    "tinjau": "2027-01-12"
+   }
+  },
+  {
+   "id": "JEV-095",
+   "judul": "Pemilih berkas di iPad: input sementara di atas tombol yang diketuk",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di iPad, tombol Pilih audio… / Pilih audio / video… / Gambar sendiri… (dan BGM, foto & avatar lobi) tidak membuka apa pun: iPadOS menampilkan menu pemilih sebagai popover yang menunjuk ke input, sedangkan input sementara diletakkan di luar layar (left:-9999px).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar pengguna 2026-10-12 (iPad Chrome): \"ga bisa upload\"",
+    "alternatif": [
+     "input tetap tersembunyi (display:none) — posisi popover tidak terkendali",
+     "label <label for> statis di tiap tombol — perlu mengubah semua pemanggil"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 20,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "berkas tetap lewat penyaring media yang sama"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "satu pendengar pointerdown pasif"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "input tak terlihat & tidak menangkap ketukan; tombol aslinya tetap fokus"
+    }
+   },
+   "metrik": {
+    "nama": "unggah media dari inspector di iPad",
+    "target": "pemilih selalu terbuka",
+    "tinjau": "2027-01-12"
+   }
   }
  ]
 }

@@ -1854,10 +1854,20 @@ function setFX(on){
 
 const clock=new THREE.Clock();
 var JEDA_RENDER=0;                  // panel AR terbuka: adegan utama tertutup — tidak digambar (JEV-083)
+// resolusi adaptif (JEV-093): frame lambat terus (model berat, iPad panas) → piksel render turun bertahap; lancar lagi → naik
+const RES={skala:1, dasar:Math.min(devicePixelRatio,2), lambat:0, lancar:0};
+function aturResolusi(t){
+  if(document.hidden||t>0.5) return;
+  if(t>1/24){ RES.lambat+=t; RES.lancar=0; } else if(t<1/45){ RES.lancar+=t; RES.lambat=Math.max(0,RES.lambat-t); }
+  let k=RES.skala;
+  if(RES.lambat>1.5&&k>0.5){ k=Math.max(0.5,k*0.85); RES.lambat=0; } else if(RES.lancar>5&&k<1){ k=Math.min(1,k/0.85); RES.lancar=0; }
+  if(k!==RES.skala){ RES.skala=k; renderer.setPixelRatio(RES.dasar*k); fitViewport(); }
+}
 (function animate(){
   requestAnimationFrame(animate);
   if(JEDA_RENDER) return;
-  const dt=Math.min(clock.getDelta(),0.1);          // lompatan waktu dibatasi
+  const mentah=clock.getDelta(), dt=Math.min(mentah,0.1);   // lompatan waktu dibatasi
+  aturResolusi(mentah);
   if(FPS.on) fpsStep(dt); else orbit.update();
   stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
@@ -5282,7 +5292,7 @@ function buildSitus(opsi={}){
     for(let q=0;q<nx*nz;q++){ const [a,b]=catDi(R,pos[q*3],pos[q*3+2]); w[q*2]=a; w[q*2+1]=b; }
     geo.setAttribute('catBobot',new THREE.BufferAttribute(w,2)); }
   const mat=dicat?matSitusCat(st.tanah):matSitus(st.tanah); uvDunia(geo,mat.userData.ukuran);
-  const tanah=new THREE.Mesh(geo,mat); tanah.receiveShadow=true; tanah.castShadow=!!(R&&R.h.some(v=>v)); tanah.userData.situs=true;
+  const tanah=new THREE.Mesh(geo,mat); tanah.receiveShadow=true; bvhNanti(tanah); tanah.castShadow=!!(R&&R.h.some(v=>v)); tanah.userData.situs=true;
   const g=new THREE.Group(); g.userData.situsGrup=true; g.add(tanah);
   // lantai dasar selalu ada di tapak rumah, walau pelat lantai 1 dimatikan
   const pelat=$('#showSlab'), adaPelat=lv.slab && (!pelat || pelat.checked);
@@ -7193,6 +7203,9 @@ function stepLampu(dt){
 
 /* klon model: mesh berkulit (karakter beranimasi) butuh kerangka sendiri yang menunjuk tulang
    salinannya — clone() biasa tetap menunjuk tulang templat (seperti SkeletonUtils.clone) */
+// raycast cepat untuk model & tanah besar (JEV-093, modul/bvh.js): pijakan & bidikan tiap frame tidak memeriksa semua segitiga
+function bvhNanti(obj){ const gs=[]; obj.traverse(m=>{ const g=m.isMesh&&!m.isSkinnedMesh&&m.geometry; if(g&&g.attributes.position&&!g.bvhPohon&&(g.index?g.index.count:g.attributes.position.count)>6000) gs.push(g); });
+  if(gs.length) muatModul('bvh').then(()=>window.BVH.antre(gs),()=>{}); }
 function klonModel(tpl){
   const c=tpl.clone(true); if(!tpl.userData.berkulit) return c;
   const a=[], b=[]; tpl.traverse(n=>a.push(n)); c.traverse(n=>b.push(n));
@@ -7320,6 +7333,9 @@ function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry) c.geometry.dis
 function rebuildScene(){
   ANIM.clear(); OPS.clear(); REG=true;
   try{ rebuildScene0(); } finally { REG=false; }
+  // kayu perabot / pintu / kusen dari foto Poly Haven saat daring (JEV-094, modul/tanahfoto.js)
+  if(window.TANAHFOTO&&window.TANAHFOTO.kayuSiap()) window.TANAHFOTO.uv(worldRoot);
+  else if(!rebuildScene.kayu&&PROJECT.levels.some(l=>l.walls.length||l.objects.some(o=>o.kind==='furn'))){ rebuildScene.kayu=true; muatModul('tanahfoto').then(()=>window.TANAHFOTO.kayu(),()=>{}); }
   kumpulkanLampu(); kumpulkanHadap(); kumpulkanGerak(); renderBgmUI();
   kumpulkanAudio();
   if(window.__siap) terapkanPantulan();       // MOOD & finishing sudah terdefinisi
@@ -8044,7 +8060,7 @@ function parseAsset(id,buf){
         let kulit=false; r.obj.traverse(n=>{ if(n.isSkinnedMesh){ kulit=true; n.frustumCulled=false; } });
         r.obj.userData.berkulit=kulit; r.anim=klip.length;
         if(klip.length) ASSET_ANIM.set(id,klip); else ASSET_ANIM.delete(id);
-        ASSET_OBJ.set(id,r.obj); ASSET_BUF.set(id,buf);
+        ASSET_OBJ.set(id,r.obj); ASSET_BUF.set(id,buf); bvhNanti(r.obj);
         res(r);
       },err=>rej(new Error(err&&err.message?err.message:'berkas glTF tidak terbaca')));
     }catch(err){ rej(new Error(err.message||'berkas glTF tidak terbaca')); }
@@ -12599,6 +12615,7 @@ async function rampingkanGLB(buf,maks=TEKS_MAKS,maksWarna=maks===TEKS_MAKS?TEKS_
   // gambar warna & normal (paling menentukan kesan nyata) boleh setajam maksWarna; peta lain cukup maks
   const tajam=new Set(), TX=json.textures||[];
   for(const mt of json.materials||[]){ const p=mt.pbrMetallicRoughness||{}; for(const t of [p.baseColorTexture,mt.normalTexture]) if(t&&TX[t.index]) tajam.add(TX[t.index].source); }
+  if(tajam.size>4) maksWarna=Math.min(maksWarna,maks);      // banyak tekstur besar (model scan berbahan banyak): 1K saja — memori grafis iPad (JEV-093)
   for(const [ii,im] of json.images.entries()){
     const bv=BV[im.bufferView]; if(!bv||!/^image\/(png|jpeg)$/.test(im.mimeType||'')||baru.has(im.bufferView)) continue;
     const o=bv.byteOffset||0, data=bin.subarray(o,o+bv.byteLength), uk=ukuranGambar(data); if(!uk) continue;
@@ -13454,8 +13471,16 @@ function inspektorMaterialDinding(ins,d){
   ins.appendChild(det);
 }
 // input berkas ditempel ke dokumen: iOS Safari tidak memicu 'change' untuk input yang tidak terpasang
+/* iPad menampilkan menu pemilih (Perpustakaan Foto / Ambil Video / Pilih Berkas) sebagai popover yang
+   menunjuk ke elemen input — input di luar layar (left:-9999px) membuat popover tak terlihat, jadi
+   "tidak bisa unggah". Input sementara diletakkan tepat di atas tombol yang baru diketuk. */
+let ketukTerakhir=null;
+addEventListener('pointerdown',e=>{ ketukTerakhir=e.target; },{capture:true,passive:true});
 function pilihBerkasUmum(accept,cb){ const i=document.createElement('input'); i.type='file'; i.accept=accept;
-  i.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(i);
+  const t=ketukTerakhir&&ketukTerakhir.closest&&ketukTerakhir.closest('button,label,a,[role=button]'), r=t&&t.isConnected?t.getBoundingClientRect():null;
+  const [x,y,w,h]=r&&r.width?[r.left,r.top,r.width,r.height]:[innerWidth/2,innerHeight/2,1,1];
+  i.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:0;pointer-events:none`;
+  document.querySelectorAll('input.berkas-sementara').forEach(s=>s.remove()); i.className='berkas-sementara'; document.body.appendChild(i);   // sisa pemilih yang ditutup tanpa event cancel (iOS lama)
   i.addEventListener('cancel',()=>i.remove());
   i.onchange=async()=>{ const f=i.files&&i.files[0]; i.remove(); if(!f) return;
     try{ await cb(f); }catch(err){ toast('Gagal: '+(err.message||err)); } };
@@ -14651,7 +14676,7 @@ function setRenderQuality(k){
   RQ_KINI=RQ[k]?k:'halus';
   for(const id of ['#rq','#fpsRq']){ const e=$(id); if(e) e.value=RQ_KINI; }      // panel Tampilan & bilah mode jalan selalu sama
   const q=RQ[k]||RQ.halus;
-  renderer.setPixelRatio(Math.min(devicePixelRatio*q.lipat, q.batas));
+  RES.dasar=Math.min(devicePixelRatio*q.lipat, q.batas); renderer.setPixelRatio(RES.dasar*RES.skala);
   renderer.toneMapping=q.tone; renderer.toneMappingExposure=q.exp*((SUASANA[MOOD]||SUASANA.siang).exp);
   sun.shadow.mapSize.set(q.bayang,q.bayang);
   if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
