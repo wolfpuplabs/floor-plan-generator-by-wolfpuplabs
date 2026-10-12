@@ -56,6 +56,8 @@ export async function bukaApp(browser, url, opsi = {}) {
   // tes ditulis dengan teks UI bahasa Indonesia; bahasa bawaan aplikasi Inggris (JEV-061).
   // opsi.bahasa: 'en' / 'id' (bawaan 'id'), null = tanpa pilihan tersimpan (bawaan aplikasi)
   if (opsi.bahasa !== null) await page.addInitScript(b => { try { if (!localStorage.getItem('bahasa')) localStorage.setItem('bahasa', b); } catch (e) { /* abaikan */ } }, opsi.bahasa || 'id');
+  // Poly Haven tidak dihubungi kecuali tes memasang rutenya sendiri (rute yang dipasang belakangan menang) — tanah foto (JEV-092) dll.
+  await page.route(/^https:\/\/(api\.polyhaven\.com|dl\.polyhaven\.org)\//, r => r.abort());
   if (opsi.rute) await opsi.rute(page);
   if (opsi.init) await page.addInitScript(opsi.init);
   await page.goto(url, { waitUntil: 'load', timeout: opsi.waktuBuka || 30000 });

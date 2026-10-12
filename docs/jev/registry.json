@@ -4021,6 +4021,68 @@
     "target": "< 10%",
     "tinjau": "2027-01-12"
    }
+  },
+  {
+   "id": "JEV-092",
+   "judul": "Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tanah situs tampak pucat dan kartun di samping model hasil scan & langit foto — teksturnya digambar di kanvas dan dibaca sebagai warna linear, sedangkan tekstur model dibaca sRGB.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-12 (tangkapan layar iPad mode jalan, rumput hijau mint di depan pohon & batu scan, langit hutan 360°): \"texture terrainnya ga realistis jadi ga ngeblend\"",
+    "alternatif": [
+     "hanya mengubah warna prosedural (tetap terlihat buatan)",
+     "tekstur foto dikemas di repo (menambah unduhan awal & ukuran repo)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 12,
+      "menitHemat": 1
+     },
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "hanya berkas dl.polyhaven.org lewat unduhTeksturPH yang sudah ada (alamat diperiksa); id katalog disaring pola"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "host yang sama dengan pustaka tekstur foto yang sudah ada"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tekstur Poly Haven CC0"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "1K per peta, hanya jenis tanah yang dipakai, Cache Storage; modul dimuat saat dibutuhkan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tidak mengubah kontrol"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan tanah tidak menyatu",
+    "target": "0",
+    "tinjau": "2027-01-12"
+   }
   }
  ]
 }
