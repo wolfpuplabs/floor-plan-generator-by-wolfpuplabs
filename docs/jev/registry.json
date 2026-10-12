@@ -4269,6 +4269,131 @@
     "target": "pemilih selalu terbuka",
     "tinjau": "2027-01-12"
    }
+  },
+  {
+   "id": "JEV-096",
+   "judul": "Beberapa track sekaligus: daftar putar musik latar & media objek (acak), suara objek acak",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Musik latar, media objek, dan suara sendiri hanya menerima satu berkas — unggahan baru menggantikan yang lama, tidak bisa membuat daftar putar atau variasi suara acak.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"bisa upload multiple track yg bisa di random\"",
+    "alternatif": [
+     "satu berkas gabungan yang disusun di luar aplikasi (tidak bisa diacak)",
+     "daftar putar hanya untuk musik latar (objek tetap satu berkas)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 15,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "setiap track lewat penyaring media yang sama (jenis dari isi berkas, batas 15 MB); id daftar disaring ID_AMAN, maks. 12 track"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar; track ikut tautan lihat seperti media lain"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "satu track dimuat sekaligus; batas media per proyek 20 → 40 berkas; referensi simbol denah dipindah ke modul/simbol.js (−11 KB index.html)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol hapus per track & tombol track berikutnya berlabel; acak lewat kotak centang"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan daftar putar ≥ 2 track",
+    "target": "dipakai pada proyek bermusik",
+    "tinjau": "2027-01-13"
+   }
+  },
+  {
+   "id": "JEV-097",
+   "judul": "Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Musik latar & suara objek hanya bisa diisi dari berkas sendiri — pengguna harus mencari, mengunduh, lalu mengunggah musik di luar aplikasi, tanpa tahu lisensinya.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"music juga bisa browse\"",
+    "alternatif": [
+     "Jamendo API (perlu client_id & kunci di server)",
+     "Freesound API (perlu token; hanya efek suara)",
+     "tautan ke situs musik gratis saja (tetap unduh-unggah manual)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 15,
+      "menitHemat": 6
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "host baru api.openverse.org (connect-src https: sudah ada; CSP media-src tidak dilonggarkan — coba dengar lewat blob); berkas lewat penyaring media yang sama; judul/pembuat hanya textContent; tautan kredit https saja, rel=noopener"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya kata pencarian yang dikirim ke Openverse; tanpa akun/kunci"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "hanya audio berlisensi CC/domain publik; pembuat, lisensi & halaman asli disimpan sebagai kredit dan tampil di daftar track, tombol Musik & pemutar; saringan 'boleh dipakai komersial'"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/musik.js dimuat saat dibuka; coba dengar & tambah memakai satu unduhan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "dialog role=dialog + aria-modal, Escape menutup (tanpa membatalkan pilihan objek), tombol berlabel"
+    }
+   },
+   "metrik": {
+    "nama": "track yang ditambahkan dari pustaka",
+    "target": "≥ 30% track musik latar baru",
+    "tinjau": "2027-01-13"
+   }
   }
  ]
 }

@@ -174,6 +174,7 @@ html{touch-action:manipulation}
 /* pemutar media menempel di bawah; .ciut = disembunyikan ke bawah, tinggal bilah judul (media tetap diputar) */
 #mediaDock{left:50%;transform:translateX(-50%);bottom:calc(max(12px,env(safe-area-inset-bottom)) + 12px);width:min(420px,calc(100% - 24px));z-index:55;padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;border-radius:12px;transition:transform .2s}
 #mediaDock[hidden]{display:none}
+.trek{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}.trek span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.trek .btn{width:28px;height:28px;padding:0;flex:none}
 #mediaDock .md-kepala{display:flex;align-items:center;gap:6px}
 #mediaDock .md-kepala b{flex:1;min-width:0;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mediaDock .md-kepala .btn{width:34px;height:34px;padding:0;flex:none}
@@ -657,9 +658,11 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
     <!-- ============ TAB TAMPILAN ============ -->
     <div class="tab-body" data-panel="tampilan" hidden>
       <div class="section-title">Musik latar (BGM)</div>
-      <div class="row"><button class="btn sm ghost" id="bgmPilih"><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> Pilih musik…</button><button class="btn sm ghost" id="bgmCoba" hidden></button><button class="btn sm ghost" id="bgmHapus" hidden><svg class="ik" aria-hidden="true"><use href="#i-hapus"/></svg> Hapus</button></div>
+      <div class="row"><button class="btn sm ghost" id="bgmPilih"><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> Pilih musik…</button><button class="btn sm ghost" id="bgmJelajah"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi musik…</button><button class="btn sm ghost" id="bgmCoba" hidden></button><button class="btn sm ghost" id="bgmHapus" hidden><svg class="ik" aria-hidden="true"><use href="#i-hapus"/></svg> Hapus</button></div>
+      <div id="bgmDaftar"></div>
       <p class="hint" id="bgmNama">Belum ada musik latar. MP3 / M4A / WAV / OGG, maks. 15 MB — diputar di seluruh rumah saat jalan-jalan & di tautan lihat.</p>
       <div id="bgmAtur" hidden>
+        <label class="chk" id="bgmAcakL"><input type="checkbox" id="bgmAcak"><span>Acak urutan (shuffle)</span></label>
         <label class="chk"><input type="checkbox" id="bgmUlang" checked><span>Ulang terus</span></label>
         <label class="chk"><input type="checkbox" id="bgmOto" checked><span>Putar otomatis saat jalan-jalan &amp; di tautan lihat</span></label>
         <div class="f-row"><label>Volume</label><input type="range" id="bgmVol" min="0" max="100" step="5" value="60"></div>
@@ -993,6 +996,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
     </div>
     <div class="float" id="mediaDock" hidden role="region" aria-label="Pemutar media">
       <div class="md-kepala"><b id="mediaJudul"></b>
+        <button class="btn ghost sm" id="mediaLanjut" title="Track berikutnya" aria-label="Track berikutnya" hidden><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button>
         <button class="btn ghost sm" id="mediaCiut" title="Kecilkan ke bawah" aria-label="Kecilkan ke bawah" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-bawah"/></svg></button>
         <button class="btn ghost sm" id="mediaTutup" title="Hentikan & tutup" aria-label="Hentikan & tutup"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg></button></div>
       <video id="mediaVideo" controls playsinline hidden></video>
@@ -6082,7 +6086,7 @@ const KANAL_TV={
     c.fillStyle='#050a12'; c.beginPath(); c.moveTo(0,h); for(let x=0;x<=w;x+=10) c.lineTo(x,h*0.78-Math.abs(Math.sin(x*0.013))*h*0.18-Math.sin(x*0.05)*6); c.lineTo(w,h); c.fill();
     c.fillStyle='#0b1a24'; c.fillRect(0,h*0.92,w,h*0.08); }}
 };
-const MEDIA_BATAS={jumlah:20, mb:15}, MEDIA_MIME=/^(video\/(mp4|webm|quicktime)|image\/(gif|jpeg|png|webp)|audio\/(mpeg|mp4|ogg|wav|aac))$/;
+const TREK_MAKS=12, MEDIA_BATAS={jumlah:40, mb:15}, MEDIA_MIME=/^(video\/(mp4|webm|quicktime)|image\/(gif|jpeg|png|webp)|audio\/(mpeg|mp4|ogg|wav|aac))$/;
 var TV={sumber:new Map(), kunci:new Map(), t:0, jeda:0};   // sumber: kunci → {tex, mat, gambar|video|gif}; kunci: id objek → kunci sumber
 function kunciTV(o){ const p=(o&&o.params)||{};
   if(p.tvMedia && PROJECT.media && PROJECT.media[p.tvMedia]) return 'media:'+p.tvMedia;
@@ -11368,80 +11372,8 @@ function updatePxm(){
     ? fmt(LAST_RESULT.pxm,1)+' px/m'
     : (SRC_IMG ? 'skala dihitung saat generate' : '– px/m');
 }
-/* ---------- referensi simbol: apa yang dibaca dan jadi apa di 3D ---------- */
-const SYMREF=[
-  ['Dinding & struktur',[
-    ['Dinding masif','tebal dibaca dari gambar','<rect x="6" y="18" width="52" height="10" fill="#7f7f7f"/>'],
-    ['Dinding garis ganda','rongga diisi jadi dinding','<path d="M6 18H58M6 28H58" stroke="#222" stroke-width="1.6"/>'],
-    ['Sekat tipis','dinding sekat ±10 cm','<path d="M6 23H58" stroke="#7f7f7f" stroke-width="4"/><path d="M32 23V44" stroke="#7f7f7f" stroke-width="4"/>'],
-    ['Dinding lengkung','jadi rangkaian tali busur','<path d="M10 10A22 22 0 0 0 54 10" fill="none" stroke="#7f7f7f" stroke-width="7"/>'],
-    ['Dinding kaca','kaca penuh + mullion tegak','<path d="M4 21H60M4 25H60" stroke="#444" stroke-width="1"/><g fill="#fff" stroke="#444">'+[6,19,32,45,58].map(x=>`<rect x="${x-3}" y="20" width="6" height="6"/>`).join('')+'</g>'],
-    ['Kaca antar kolom','garis kaca tipis di antara dua kolom / ujung dinding','<rect x="4" y="17" width="10" height="10" fill="#1a1a1a"/><rect x="50" y="17" width="10" height="10" fill="#1a1a1a"/><path d="M14 20H50M14 24H50" stroke="#888" stroke-width="1"/>'],
-    ['Kolom persegi','kolom setinggi lantai','<rect x="24" y="14" width="16" height="16" fill="#7f7f7f"/>'],
-    ['Kolom bulat','kolom bulat setinggi lantai','<circle cx="32" cy="22" r="9" fill="#7f7f7f"/>'],
-    ['Pilaster','ikut menjadi dinding','<rect x="6" y="14" width="52" height="8" fill="#7f7f7f"/><rect x="26" y="22" width="12" height="7" fill="#7f7f7f"/>']
-  ]],
-  ['Bukaan',[
-    ['Pintu ayun','engsel & arah ayun dari busur','<rect x="4" y="30" width="16" height="7" fill="#222"/><rect x="44" y="30" width="16" height="7" fill="#222"/><path d="M20 30V6A24 24 0 0 1 44 30" fill="none" stroke="#333" stroke-width="1.3"/>'],
-    ['Jendela','garis kaca di celah dinding','<rect x="4" y="18" width="16" height="9" fill="#222"/><rect x="44" y="18" width="16" height="9" fill="#222"/><path d="M20 20H44M20 25H44" stroke="#333" stroke-width="1.2"/>'],
-    ['Pintu / jendela lipat','daun zig-zag di samping kaca','<rect x="4" y="30" width="8" height="8" fill="#1a1a1a"/><rect x="52" y="30" width="8" height="8" fill="#1a1a1a"/><path d="M12 32H52M12 35H52" stroke="#888" stroke-width="1"/><path d="M12 32L20 16L28 32L36 16L44 32L52 16" fill="none" stroke="#444" stroke-width="1.1"/>'],
-    ['Pintu geser','dua daun bergeser sejajar','<rect x="4" y="18" width="14" height="9" fill="#222"/><rect x="46" y="18" width="14" height="9" fill="#222"/><path d="M18 20H36M28 25H46" stroke="#333" stroke-width="2"/>']
-  ]],
-  ['Tangga (panah = arah naik)',[
-    ['Lurus','satu lengan','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><rect x="24" y="4" width="16" height="38"/>'+[9,14,19,24,29,34,39].map(y=>`<path d="M24 ${y}H40"/>`).join('')+'<path d="M32 38V9"/></g><path d="M29 11L32 5L35 11Z" fill="#2b4a6f"/>'],
-    ['Bentuk L','bordes di sudut','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><rect x="8" y="4" width="12" height="28"/>'+[9,14,19,24,29].map(y=>`<path d="M8 ${y}H20"/>`).join('')+'<rect x="8" y="32" width="12" height="12"/><rect x="20" y="32" width="36" height="12"/>'+[26,32,38,44,50].map(x=>`<path d="M${x} 32V44"/>`).join('')+'</g>'],
-    ['Bentuk U','dua lengan + bordes','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><rect x="14" y="4" width="36" height="12"/><rect x="14" y="16" width="16" height="28"/><rect x="34" y="16" width="16" height="28"/>'+[21,26,31,36,41].map(y=>`<path d="M14 ${y}H30M34 ${y}H50"/>`).join('')+'</g>'],
-    ['Berputar','bordes berisi antrede miring','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><rect x="14" y="4" width="36" height="14"/><path d="M32 18L16 5M32 18V4M32 18L48 5"/><rect x="14" y="18" width="16" height="26"/><rect x="34" y="18" width="16" height="26"/>'+[24,30,36].map(y=>`<path d="M14 ${y}H30M34 ${y}H50"/>`).join('')+'</g>'],
-    ['Lengkung','antrede menjari, berlubang tengah','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><path d="M8 42A24 24 0 0 1 56 42M20 42A12 12 0 0 1 44 42"/>'+[200,220,240,260,280,300,320,340].map(a=>{const r=a*Math.PI/180;return `<path d="M${(32+Math.cos(r)*12).toFixed(1)} ${(42+Math.sin(r)*12).toFixed(1)}L${(32+Math.cos(r)*24).toFixed(1)} ${(42+Math.sin(r)*24).toFixed(1)}"/>`;}).join('')+'</g>'],
-    ['Putar (spiral)','mengelilingi tiang','<g fill="none" stroke="#2b4a6f" stroke-width="1.2"><circle cx="32" cy="24" r="19"/><circle cx="32" cy="24" r="2"/>'+[0,30,60,90,120,150,180,210,240,270,300,330].map(a=>{const r=a*Math.PI/180;return `<path d="M${(32+Math.cos(r)*2).toFixed(1)} ${(24+Math.sin(r)*2).toFixed(1)}L${(32+Math.cos(r)*19).toFixed(1)} ${(24+Math.sin(r)*19).toFixed(1)}"/>`;}).join('')+'</g>']
-  ]],
-  ['Perabot kamar & ruang tamu (garis tipis, tampak atas)',[
-    ['Ranjang','bantal = sisi kepala; lebar → single/double/king','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="16" y="4" width="32" height="40"/><rect x="19" y="7" width="12" height="7"/><rect x="33" y="7" width="12" height="7"/><path d="M16 18H48"/></g>'],
-    ['Nakas','kotak kecil di samping kepala ranjang','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="6" y="6" width="12" height="12"/><circle cx="12" cy="12" r="3"/><rect x="22" y="6" width="36" height="38"/></g>'],
-    ['Lemari','strip ±60 cm menempel dinding, di ruang yang ada ranjang','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="4" y="6" width="56" height="13"/><path d="M32 6V19M10 12.5H26M38 12.5H54"/></g>'],
-    ['Sofa & kursi santai','sandaran = garis dalam di satu sisi','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="6" y="12" width="52" height="22"/><path d="M6 18H58M12 18V34M52 18V34M25 18V34M39 18V34"/></g>'],
-    ['Sofa L','tinta di dua sisi yang bersebelahan','<g fill="none" stroke="#5a4632" stroke-width="1.2"><path d="M6 6H58V18H18V44H6Z"/><path d="M6 12H52V18M12 12V44"/></g>'],
-    ['Meja tamu','kotak / oval di depan sofa','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="8" y="4" width="48" height="10"/><ellipse cx="32" cy="32" rx="16" ry="8"/></g>'],
-    ['Meja samping','kotak / bulat kecil di sisi sofa','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="4" y="14" width="38" height="20"/><path d="M4 20H42"/><rect x="47" y="17" width="12" height="12"/></g>'],
-    ['Konsol / set TV','strip ramping menempel dinding, seruang dengan sofa','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="8" y="34" width="48" height="9"/><rect x="18" y="31" width="28" height="3"/><rect x="16" y="6" width="32" height="12"/><path d="M16 12H48"/></g>']
-  ]],
-  ['Makan & dapur',[
-    ['Meja makan','meja + ≥2 kursi terpisah di sekelilingnya','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="18" y="14" width="28" height="20"/><rect x="21" y="5" width="8" height="7"/><rect x="35" y="5" width="8" height="7"/><rect x="21" y="36" width="8" height="7"/><rect x="35" y="36" width="8" height="7"/></g>'],
-    ['Meja + kursi menyatu','daun meja di tengah, dudukan menempel; bulat → meja bulat','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="6" y="16" width="26" height="16"/><path d="M9 16V10H15V16M23 16V10H29V16M9 32V38H15V32M23 32V38H29V32"/><circle cx="48" cy="24" r="9"/><path d="M39 15L42 12L45 15M57 15L54 12L51 15M39 33L42 36L45 33M57 33L54 36L51 33"/></g>'],
-    ['Kompor','kotak berisi ≥2 lingkaran tungku','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="16" y="8" width="32" height="32"/><circle cx="25" cy="17" r="4"/><circle cx="39" cy="17" r="4"/><circle cx="25" cy="31" r="4"/><circle cx="39" cy="31" r="4"/></g>'],
-    ['Sink dapur','1–2 bak cekung di deret dapur','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="6" y="12" width="52" height="24"/><rect x="10" y="16" width="18" height="16" rx="3"/><rect x="31" y="16" width="18" height="16" rx="3"/><path d="M52 16V32"/></g>'],
-    ['Kulkas & kabinet','kotak polos sederet kompor/sink','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="4" y="14" width="18" height="20"/><path d="M4 30H22"/><rect x="24" y="14" width="18" height="20"/><circle cx="29" cy="20" r="2.5"/><circle cx="37" cy="20" r="2.5"/><circle cx="29" cy="28" r="2.5"/><circle cx="37" cy="28" r="2.5"/><rect x="44" y="14" width="16" height="20"/><path d="M44 18H60"/></g>'],
-    ['Deret dapur','strip ±60 cm bersekat / berisi bak & tungku','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="4" y="30" width="56" height="12"/><path d="M18 30V42M32 30V42M46 30V42"/><circle cx="25" cy="36" r="3"/><circle cx="39" cy="36" r="3"/></g>'],
-    ['Island + kursi bar','meja lepas dinding berisi kompor/bak, atau dekat deret dapur','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="10" y="6" width="44" height="22"/><circle cx="28" cy="17" r="3"/><circle cx="36" cy="17" r="3"/><circle cx="22" cy="38" r="4"/><circle cx="32" cy="38" r="4"/><circle cx="42" cy="38" r="4"/></g>'],
-    ['Mesin cuci & pengering','dua kotak ±60 cm berdampingan','<g fill="none" stroke="#5a4632" stroke-width="1.2"><rect x="10" y="14" width="22" height="22"/><rect x="32" y="14" width="22" height="22"/></g>']
-  ]],
-  ['Kamar mandi',[
-    ['Kloset','dinding di sisi PENDEK (tangki di belakang)','<g fill="none" stroke="#2b6f6a" stroke-width="1.2"><rect x="6" y="16" width="8" height="16"/><path d="M14 18H22M14 30H22"/><ellipse cx="32" cy="24" rx="12" ry="8"/></g>'],
-    ['Wastafel','dinding di sisi PANJANG, ada cekungan','<g fill="none" stroke="#2b6f6a" stroke-width="1.2"><path d="M14 8H50"/><path d="M16 8V14A16 14 0 0 0 48 14V8"/><ellipse cx="32" cy="17" rx="10" ry="7"/></g>'],
-    ['Meja wastafel','strip menempel dinding berisi 1–2 bak','<g fill="none" stroke="#2b6f6a" stroke-width="1.2"><rect x="4" y="8" width="56" height="18"/><ellipse cx="18" cy="17" rx="8" ry="5"/><ellipse cx="46" cy="17" rx="8" ry="5"/></g>'],
-    ['Bathtub','garis ganda, bagian dalam bersudut bulat & kosong','<g fill="none" stroke="#2b6f6a" stroke-width="1.2"><rect x="4" y="10" width="56" height="28"/><rect x="9" y="14" width="46" height="20" rx="9"/></g>'],
-    ['Shower','kotak ±0,9 m dengan diagonal / silang','<g fill="none" stroke="#2b6f6a" stroke-width="1.2"><rect x="16" y="6" width="34" height="34"/><path d="M16 6L50 40M50 6L16 40"/><circle cx="33" cy="23" r="2"/></g>']
-  ]],
-  ['Diabaikan — bukan dinding',[
-    ['Arsiran','garis sejajar berulang','<rect x="10" y="6" width="44" height="36" fill="none" stroke="#999" stroke-width=".8"/>'+[11,16,21,26,31,36].map(y=>`<path d="M10 ${y}H54" stroke="#aaa" stroke-width=".8"/>`).join('')],
-    ['As / grid','garis titik-garis + bulatan','<circle cx="32" cy="8" r="5" fill="none" stroke="#777"/><path d="M32 13V44M6 30H58" stroke="#777" stroke-dasharray="7 2 1 2"/>'],
-    ['Balok','garis putus-putus','<rect x="8" y="18" width="48" height="8" fill="none" stroke="#666" stroke-dasharray="4 3"/>']
-  ]]
-];
-(function renderSymref(){
-  const body=$('#symref-body'); if(!body) return;
-  for(const [head,items] of SYMREF){
-    body.appendChild(el('div','sr-h',head));
-    const g=el('div','sr-grid');
-    for(const [nm,desc,svg] of items){
-      const it=el('div','sr');
-      it.innerHTML=`<svg viewBox="0 0 64 48" aria-hidden="true">${svg}</svg><b></b><span></span>`;
-      it.querySelector('b').textContent=nm; it.querySelector('span').textContent=desc;
-      g.appendChild(it);
-    }
-    body.appendChild(g);
-  }
-})();
+/* ---------- referensi simbol: apa yang dibaca dan jadi apa di 3D — modul/simbol.js, dibangun saat panelnya dibuka ---------- */
+$('#symref').addEventListener('toggle',()=>{ if($('#symref').open) muatModul('simbol').catch(e=>toast(e.message)); });
 
 /* ---------- layer denah: tiap lantai menyimpan gambar denahnya sendiri ----------
    Gambar disimpan di PROJECT.plans (di luar levels) agar catatan undo tetap ringan. */
@@ -13286,7 +13218,8 @@ function reliefAman(R){
 // musik latar: id media + pilihan; medianya sendiri disaring bersama media lain
 function bgmAman(b){
   if(!b||typeof b!=='object'||typeof b.media!=='string'||!ID_AMAN.test(b.media)) return {};
-  return {bgm:{media:b.media, ulang:b.ulang!==false, otomatis:b.otomatis!==false, vol:Number.isFinite(+b.vol)?clamp(+b.vol,0,1):0.6}};
+  const lain=Array.isArray(b.lain)?b.lain.filter(x=>typeof x==='string'&&ID_AMAN.test(x)).slice(0,TREK_MAKS-1):[];
+  return {bgm:{media:b.media, ...(lain.length?{lain}:{}), ...(b.acak===true?{acak:true}:{}), ulang:b.ulang!==false, otomatis:b.otomatis!==false, vol:Number.isFinite(+b.vol)?clamp(+b.vol,0,1):0.6}};
 }
 function sanitasiProyek(j){
   if(!j || typeof j!=='object' || !Array.isArray(j.levels) || !j.levels.length) throw new Error('format tidak dikenali');
@@ -13337,7 +13270,7 @@ function sanitasiProyek(j){
   for(const [k,m] of Object.entries(j.media&&typeof j.media==='object'?j.media:{}).slice(0,MEDIA_BATAS.jumlah)){
     if(!ID_AMAN.test(k)||!m||typeof m!=='object'||typeof m.data!=='string'||!MEDIA_MIME.test(m.mime||'')) continue;
     if(m.data.length>MEDIA_BATAS.mb*1.4*1048576||!/^[A-Za-z0-9+/=]*$/.test(m.data.slice(0,4096))) continue;
-    media[k]={nama:teks(m.nama,120,'video')||'video', mime:m.mime, data:m.data};
+    media[k]=denganKredit({nama:teks(m.nama,120,'video')||'video', mime:m.mime, data:m.data},m.kredit);
   }
   return {
     name:teks(j.name,120,'Denah 3D')||'Denah 3D', pxPerMeter:angka(j.pxPerMeter,1,1e4,30), levels,
@@ -13412,7 +13345,13 @@ async function keJPEG(f,maks=2048){
   const b=await new Promise(ok=>c.toBlob(ok,'image/jpeg',0.86)); if(!b) throw new Error('gambar tidak bisa dibaca');
   return b.arrayBuffer();
 }
-async function unggahMediaObjek(f,jenis){
+// kredit musik dari pustaka (JEV-097): pembuat, lisensi & halaman asli (https saja) — teks luar, dipotong
+function kreditAman(k){ if(!k||typeof k!=='object') return null; let url='';
+  try{ const u=new URL(String(k.url||'')); if(u.protocol==='https:') url=u.href; }catch(e){}
+  const oleh=String(k.oleh||'').slice(0,120), lisensi=String(k.lisensi||'').slice(0,40);
+  return oleh||lisensi||url?{oleh,lisensi,url}:null; }
+function denganKredit(o,k){ const x=kreditAman(k); if(x) o.kredit=x; return o; }
+async function unggahMediaObjek(f,jenis,kredit){
   if(f.size>MEDIA_BATAS.mb*1048576) throw new Error(`berkas ${fmt(f.size/1048576,1)} MB melebihi batas ${MEDIA_BATAS.mb} MB`);
   let buf=await f.arrayBuffer(), mime=jenisMedia(new Uint8Array(buf,0,Math.min(16,buf.byteLength)));
   const ext=((f.name||'').match(/\.([a-z0-9]+)$/i)||[])[1]||'';
@@ -13425,14 +13364,15 @@ async function unggahMediaObjek(f,jenis){
   if(!cocok) throw new Error(jenis==='media'?'perlu video MP4 / MOV / WebM atau audio MP3 / M4A / OGG / WAV':jenis==='audio'?'perlu musik MP3 / M4A / OGG / WAV':'perlu gambar JPG / PNG / WebP / GIF / HEIC');
   PROJECT.media=PROJECT.media||{};
   if(Object.keys(PROJECT.media).length>=MEDIA_BATAS.jumlah) throw new Error(`maksimal ${MEDIA_BATAS.jumlah} berkas media per proyek`);
-  const mid=uid('md'); PROJECT.media[mid]={nama:f.name.replace(/\.[^.]+$/,'').slice(0,120)||jenis, mime, data:b64FromBuf(buf)}; return mid;
+  const mid=uid('md'); PROJECT.media[mid]=denganKredit({nama:f.name.replace(/\.[^.]+$/,'').slice(0,120)||jenis, mime, data:b64FromBuf(buf)},kredit); return mid;
 }
 // media yang tidak dipakai objek mana pun lagi dibuang (berkas proyek & tautan tidak menggendutkan)
 function buangMediaYatim(mid){
   if(!mid||!PROJECT.media||!PROJECT.media[mid]) return;
-  if(PROJECT.bgm&&PROJECT.bgm.media===mid) return;
+  const ada=x=>Array.isArray(x)&&x.includes(mid);
+  if(PROJECT.bgm&&(PROJECT.bgm.media===mid||ada(PROJECT.bgm.lain))) return;
   for(const lv of PROJECT.levels) for(const o of lv.objects){ const p=o.params||{}, a=p.aksi||{};
-    if(p.tvMedia===mid||a.musik===mid||a.sfxMedia===mid||a.media===mid||(a.detail&&a.detail.gambar===mid)) return; }
+    if(p.tvMedia===mid||a.musik===mid||a.sfxMedia===mid||a.media===mid||ada(a.sfxLain)||ada(a.mediaLain)||(a.detail&&a.detail.gambar===mid)) return; }
   delete PROJECT.media[mid];
 }
 const LABEL_BAWAAN={lampu:'menyalakan / mematikan lampu', duduk:'duduk', tv:'menyalakan TV', audio:'memutar musik', piano:'bermain piano', api:'menyalakan api', gorden:'membuka / menutup gorden'};
@@ -13476,19 +13416,43 @@ function inspektorMaterialDinding(ins,d){
    "tidak bisa unggah". Input sementara diletakkan tepat di atas tombol yang baru diketuk. */
 let ketukTerakhir=null;
 addEventListener('pointerdown',e=>{ ketukTerakhir=e.target; },{capture:true,passive:true});
-function pilihBerkasUmum(accept,cb){ const i=document.createElement('input'); i.type='file'; i.accept=accept;
+function pilihBerkasUmum(accept,cb,banyak){ const i=document.createElement('input'); i.type='file'; i.accept=accept; i.multiple=!!banyak;
   const t=ketukTerakhir&&ketukTerakhir.closest&&ketukTerakhir.closest('button,label,a,[role=button]'), r=t&&t.isConnected?t.getBoundingClientRect():null;
   const [x,y,w,h]=r&&r.width?[r.left,r.top,r.width,r.height]:[innerWidth/2,innerHeight/2,1,1];
   i.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:${w}px;height:${h}px;opacity:0;pointer-events:none`;
   document.querySelectorAll('input.berkas-sementara').forEach(s=>s.remove()); i.className='berkas-sementara'; document.body.appendChild(i);   // sisa pemilih yang ditutup tanpa event cancel (iOS lama)
   i.addEventListener('cancel',()=>i.remove());
-  i.onchange=async()=>{ const f=i.files&&i.files[0]; i.remove(); if(!f) return;
-    try{ await cb(f); }catch(err){ toast('Gagal: '+(err.message||err)); } };
+  i.onchange=async()=>{ const fs=[...i.files||[]]; i.remove();
+    for(const f of fs) try{ await cb(f); }catch(err){ toast('Gagal: '+(fs.length>1?f.name+' — ':'')+(err.message||err)); } };
   i.click(); }
 /* pemilih audio: iPad/iPhone menyaring berkas menurut accept — "audio/*" saja kadang menyembunyikan
    berkas MP3/M4A di Files. MP4 berisi suara saja (rekaman, unduhan) diterima sebagai audio. */
 const TERIMA_AUDIO='audio/*,video/mp4,.mp3,.m4a,.aac,.wav,.ogg,.mp4';
 const TAP_PILIH=new Map();          // pilihan "Saat diketuk" yang berkasnya belum dipilih (id objek → sfx/media)
+// daftar track di UI: nama + tombol hapus per track (JEV-096)
+function uiTrek(w,ids,hapus){ ids.forEach((mid,i)=>{ const m=PROJECT.media[mid]; if(!m) return;
+  const r=el('div','trek'), x=el('button','btn sm ghost','×'); x.type='button'; x.title='Hapus track'; x.setAttribute('aria-label',x.title); x.onclick=()=>hapus(i);
+  const k=m.kredit, sp=el('span',null,(ids.length>1?(i+1)+'. ':'♪ ')+m.nama+(k?` — ${[k.oleh,k.lisensi].filter(Boolean).join(' · ')}`:''));
+  if(k&&k.url) sp.title=k.url; r.append(sp,x); w.appendChild(r); }); }
+// tambah track ke objek (dari berkas sendiri atau pustaka musik): dibaca ulang dari objeknya, bukan dari closure inspector
+async function tambahTrekObjek(id,sfx,f,kredit){
+  const o=cariObjek(id); if(!o) throw new Error('objek sudah dihapus');
+  const A=Object.assign({},(o.params=o.params||{}).aksi), [k,kl,re]=sfx?['sfxMedia','sfxLain',/^audio\//]:['media','mediaLain',/^(audio|video)\//];
+  const daf=daftarTrek(A[k],A[kl],re); if(daf.length>=TREK_MAKS) throw new Error(`maksimal ${TREK_MAKS} track`);
+  daf.push(await unggahMediaObjek(f,sfx?'audio':'media',kredit));
+  delete A[kl]; A[k]=daf[0]; if(daf.length>1) A[kl]=daf.slice(1); if(sfx) A.sfx='unggah';
+  o.params.aksi=A; TAP_PILIH.delete(id); hentikanMediaObjek(id);
+  HIST.label='Interaksi: '+(sfx?'audio suara':'media'); rebuildScene(); if(SEL&&SEL.id===id) renderInspector(); toast((sfx?'Suara: ':'Media: ')+f.name);
+}
+async function tambahBgm(f,kredit){
+  const d=bgmData(), daf=d?d.daftar:[]; if(daf.length>=TREK_MAKS) throw new Error(`maksimal ${TREK_MAKS} track`);
+  const mid=await unggahMediaObjek(f,'audio',kredit);
+  PROJECT.bgm=Object.assign({ulang:true, otomatis:true, vol:0.6},PROJECT.bgm,daf.length?{lain:[...daf.slice(1),mid]}:{media:mid});
+  hentikanBGM(); HIST.label='Musik latar'; rebuildScene(); toast('Musik latar: '+PROJECT.media[mid].nama);
+}
+// pustaka musik & suara (JEV-097): modul dimuat saat dibuka
+const bukaMusik=(jenis,judul,pakai)=>muatModul('musik').then(()=>window.MUSIK.buka({jenis,judul,pakai}),e=>toast(e.message));
+function lepasTrek(ids,i){ const s=[...ids], [b]=s.splice(i,1); return [s,b]; }
 function inspektorAksi(ins,d){
   d.params=d.params||{};
   const A=Object.assign({},d.params.aksi);
@@ -13499,6 +13463,7 @@ function inspektorAksi(ins,d){
   const centang=(label,on,ubah)=>{ const l=el('label','cek'), c=document.createElement('input'); c.type='checkbox'; c.checked=on; c.onchange=()=>ubah(c.checked); l.appendChild(c); l.appendChild(document.createTextNode(' '+label)); ins.appendChild(l); return c; };
   // input berkas ditempel ke dokumen: iOS Safari tidak memicu 'change' untuk input yang tidak terpasang
   const pilihBerkas=pilihBerkasUmum;
+  const isiTrek=(k,kl,s)=>{ delete A[k]; delete A[kl]; if(s[0]) A[k]=s[0]; if(s.length>1) A[kl]=s.slice(1); };
   // DETAIL
   centang('Detail — panel info & tautan saat diketuk',!!A.detail,v=>{ if(v) A.detail={judul:'',teks:'',url:''}; else { const g=A.detail&&A.detail.gambar; delete A.detail; buangMediaYatim(g); } simpan('detail'); });
   if(A.detail){
@@ -13521,27 +13486,34 @@ function inspektorAksi(ins,d){
   if(A.musik && !A.media){ A.media=A.musik; if(A.ulang!==false) A.mediaUlang=true; delete A.musik; delete A.ulang; }
   const mode = A.media ? 'media' : A.sfx==='unggah' ? 'sfx' : (A.sfx || TAP_PILIH.get(d.id) || '');
   fRow(ins,'Saat diketuk',selInput([['','Tidak ada'],['klik','Suara klik'],['swoosh','Suara swoosh'],['sfx','Suara sendiri (SFX)'],['media','Media — audio / video']],mode,v=>{
-    const lama=[A.sfxMedia,A.media,A.musik];
-    for(const k of ['sfx','sfxMedia','media','mediaUlang','musik','ulang']) delete A[k];
+    const lama=[A.sfxMedia,A.media,A.musik,...[].concat(A.sfxLain||[],A.mediaLain||[])];
+    for(const k of ['sfx','sfxMedia','sfxLain','media','mediaLain','mediaAcak','mediaUlang','musik','ulang']) delete A[k];
     TAP_PILIH.delete(d.id); hentikanMediaObjek(d.id);
     if(v==='klik'||v==='swoosh') A.sfx=v; else if(v) TAP_PILIH.set(d.id,v);     // berkasnya dipilih lewat tombol di bawah
     simpan('saat diketuk'); lama.forEach(buangMediaYatim); }));
   if(mode==='klik'||mode==='swoosh'||mode==='sfx'){
-    const rs=el('div','row'), ns=A.sfxMedia&&PROJECT.media&&PROJECT.media[A.sfxMedia];
-    if(mode==='sfx'){ const bu=tombolIkon('btn sm ghost','suara',ns?'Ganti audio':'Pilih audio…');
-      bu.onclick=()=>pilihBerkas(TERIMA_AUDIO,async f=>{ const lama=A.sfxMedia; A.sfx='unggah'; A.sfxMedia=await unggahMediaObjek(f,'audio'); TAP_PILIH.delete(d.id); simpan('audio suara'); buangMediaYatim(lama); toast('Suara: '+f.name); });
-      rs.appendChild(bu); }
+    // beberapa audio (JEV-096): tiap ketukan memutar salah satu secara acak
+    const rs=el('div','row'), sd=mode==='sfx'?daftarTrek(A.sfxMedia,A.sfxLain,/^audio\//):[], ns=sd.length;
+    if(mode==='sfx'){ const bu=tombolIkon('btn sm ghost','suara',ns?'Tambah audio…':'Pilih audio…');
+      bu.onclick=()=>pilihBerkas(TERIMA_AUDIO,f=>tambahTrekObjek(d.id,true,f),true);
+      const bj=tombolIkon('btn sm ghost','dunia','Jelajahi suara…'); bj.onclick=()=>bukaMusik('sound_effect','Suara saat diketuk — '+namaObjek(d),(f,k)=>tambahTrekObjek(d.id,true,f,k));
+      rs.append(bu,bj); }
     if(mode!=='sfx'||ns){ const bc=tombolIkon('btn sm ghost','main','Coba'); bc.onclick=()=>{ const c=audioSiap(); if(c&&c.state!=='running') c.resume().catch(()=>{}); sfxObjek(d.id); }; rs.appendChild(bc); }
     ins.appendChild(rs);
-    if(mode==='sfx') ins.appendChild(el('p','hint',ns?'♪ '+ns.nama:'Pilih berkas MP3 / M4A / WAV / OGG pendek.'));
+    if(mode==='sfx'){ uiTrek(ins,sd,i=>{ const [sisa,b]=lepasTrek(sd,i); isiTrek('sfxMedia','sfxLain',sisa); simpan('hapus audio'); buangMediaYatim(b); });
+      ins.appendChild(el('p','hint',ns>1?`${ns} audio — tiap ketukan memutar salah satu secara acak.`:ns?'Tambah audio lain supaya tiap ketukan berbunyi acak.':'Pilih berkas MP3 / M4A / WAV / OGG pendek — bisa beberapa sekaligus, diputar acak.')); }
   }
   if(mode==='media'){
-    const nmd=A.media&&PROJECT.media&&PROJECT.media[A.media];
-    const rd=el('div','row'), bd=tombolIkon('btn sm ghost','folder',nmd?'Ganti media':'Pilih audio / video…');
-    bd.onclick=()=>pilihBerkas('video/*,audio/*,.mp4,.mov,.webm,.mp3,.m4a,.aac,.wav,.ogg',async f=>{ const lama=A.media; A.media=await unggahMediaObjek(f,'media'); TAP_PILIH.delete(d.id); simpan('media'); buangMediaYatim(lama); toast('Media: '+f.name); });
-    rd.appendChild(bd); ins.appendChild(rd);
-    if(nmd) centang('Ulang terus',A.mediaUlang===true,v=>{ if(v) A.mediaUlang=true; else delete A.mediaUlang; simpan('ulang media'); });
-    ins.appendChild(el('p','hint',nmd?'▶ '+nmd.nama+' — diputar saat objek diketuk; ketuk lagi untuk berhenti.':`Audio atau video, maks. ${MEDIA_BATAS.mb} MB — video tampil di tengah layar, audio di pojok bawah; keduanya bisa dikecilkan.`));
+    // daftar putar (JEV-096): berurutan atau acak, tombol "berikutnya" di pemutar
+    const md=daftarTrek(A.media,A.mediaLain,/^(audio|video)\//), n=md.length;
+    const rd=el('div','row'), bd=tombolIkon('btn sm ghost','folder',n?'Tambah track…':'Pilih audio / video…');
+    bd.onclick=()=>pilihBerkas('video/*,audio/*,.mp4,.mov,.webm,.mp3,.m4a,.aac,.wav,.ogg',f=>tambahTrekObjek(d.id,false,f),true);
+    const bj=tombolIkon('btn sm ghost','dunia','Jelajahi musik…'); bj.onclick=()=>bukaMusik('music','Media — '+namaObjek(d),(f,k)=>tambahTrekObjek(d.id,false,f,k));
+    rd.append(bd,bj); ins.appendChild(rd);
+    uiTrek(ins,md,i=>{ const [sisa,b]=lepasTrek(md,i); isiTrek('media','mediaLain',sisa); if(!sisa.length) TAP_PILIH.set(d.id,'media'); hentikanMediaObjek(d.id); simpan('hapus track'); buangMediaYatim(b); });
+    if(n>1) centang('Acak urutan (shuffle)',A.mediaAcak===true,v=>{ if(v) A.mediaAcak=true; else delete A.mediaAcak; simpan('acak media'); });
+    if(n) centang(n>1?'Ulang terus (seluruh daftar)':'Ulang terus',A.mediaUlang===true,v=>{ if(v) A.mediaUlang=true; else delete A.mediaUlang; simpan('ulang media'); });
+    ins.appendChild(el('p','hint',n>1?`${n} track — diputar ${A.mediaAcak?'acak':'berurutan'} saat objek diketuk; ketuk lagi untuk berhenti.`:n?'Diputar saat objek diketuk; ketuk lagi untuk berhenti. Tambah track lain untuk daftar putar.':`Audio atau video, maks. ${MEDIA_BATAS.mb} MB — bisa beberapa sekaligus jadi daftar putar. Video tampil di tengah layar, audio di pojok bawah.`));
   }
   // ANIMASI MODEL (JEV-084)
   const klip=d.kind==='model'?ASSET_ANIM.get(d.type):null;
@@ -13796,13 +13768,13 @@ async function buatTautanLihat(kemajuan=()=>{}, opsi={}){
   // video/GIF layar TV: hanya yang dipakai TV
   let mediaDitinggal=0;
   const dipakaiTV=new Set();
-  if(bgmData()) dipakaiTV.add(PROJECT.bgm.media);                    // musik latar ikut tautan
+  for(const m of bgmData()?.daftar||[]) dipakaiTV.add(m);           // musik latar ikut tautan
   for(const lv of PROJECT.levels) for(const o of lv.objects){ if(o.params&&o.params.tvMedia) dipakaiTV.add(o.params.tvMedia);
-    const ak=aksiObjek(o); if(ak){ if(ak.sfxMedia) dipakaiTV.add(ak.sfxMedia); if(ak.media) dipakaiTV.add(ak.media); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
+    const ak=aksiObjek(o); if(ak){ for(const m of [...ak.sfxDaftar||[],...ak.mediaDaftar||[]]) dipakaiTV.add(m); if(ak.detail&&ak.detail.gambar) dipakaiTV.add(ak.detail.gambar); } }
   for(const [k,md] of Object.entries(PROJECT.media||{})){
     if(!dipakaiTV.has(k)) continue;
     const b=await lampirkan(md.nama,new Uint8Array(bufFromB64(md.data)));
-    if(b) lampiran.media[k]={nama:md.nama, mime:md.mime, bagian:b}; else mediaDitinggal++;
+    if(b) lampiran.media[k]=denganKredit({nama:md.nama, mime:md.mime, bagian:b},md.kredit); else mediaDitinggal++;
   }
   // langit 360° dari berkas sendiri (dulu penerima mendapat panorama acak)
   let langitDitinggal=false;
@@ -14077,7 +14049,7 @@ async function pasangLampiran(L){
     catch(e){ console.warn('lampiran tekstur',k,e); }
   }
   for(const [k,m] of isi(L.media).slice(0,MEDIA_BATAS.jumlah)){
-    try{ if(!MEDIA_MIME.test(m.mime||'')) continue; media[k]={nama:m.nama, mime:m.mime, data:b64FromBuf((await ambil(m.nama,m.bagian)).buffer)}; }
+    try{ if(!MEDIA_MIME.test(m.mime||'')) continue; media[k]=denganKredit({nama:m.nama, mime:m.mime, data:b64FromBuf((await ambil(m.nama,m.bagian)).buffer)},m.kredit); }
     catch(e){ console.warn('lampiran media',k,e); }
   }
   for(const [k,a] of isi(L.aset).slice(0,BATAS_PROYEK.aset)){
@@ -15119,6 +15091,13 @@ function berdiri(){
    objek) dan HADAP KAMERA (objek menoleh ke pengunjung di mode jalan / lihat).
    Data di o.params.aksi selalu dinormalkan saat dipakai: tautan hanya http(s), media harus ada
    & berjenis benar. */
+/* BEBERAPA TRACK (JEV-096): berkas pertama + daftar tambahan (…Lain); yang hilang / salah jenis dibuang */
+function daftarTrek(utama,lain,re){ const M=PROJECT.media||{};
+  return [utama,...(Array.isArray(lain)?lain:[])].filter((id,i,s)=>typeof id==='string'&&s.indexOf(id)===i&&M[id]&&re.test(M[id].mime)).slice(0,TREK_MAKS); }
+// urutan putar: berurutan, atau diacak (Fisher–Yates) tanpa mengulang track terakhir di awal
+function urutanTrek(d,acak,akhir){ const u=[...d];
+  if(acak){ for(let i=u.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [u[i],u[j]]=[u[j],u[i]]; } if(u.length>1&&u[0]===akhir) u.push(u.shift()); }
+  return u; }
 function aksiObjek(o){
   const a=o&&o.params&&o.params.aksi; if(!a||typeof a!=='object') return null;
   const md=(id,re)=>typeof id==='string'&&PROJECT.media&&PROJECT.media[id]&&re.test(PROJECT.media[id].mime)?id:null;
@@ -15133,9 +15112,9 @@ function aksiObjek(o){
   // satu hal saja yang berbunyi saat diketuk: media (audio/video; "musik sendiri" lama ikut di sini) atau suara
   let me=md(a.media,/^(audio|video)\//), ul=a.mediaUlang===true;
   if(!me){ const mu=md(a.musik,/^audio\//); if(mu){ me=mu; ul=a.ulang!==false; } }
-  if(me){ out.media=me; if(ul) out.mediaUlang=true; }
+  if(me){ out.media=me; out.mediaDaftar=daftarTrek(me,a.mediaLain,/^(audio|video)\//); if(ul) out.mediaUlang=true; if(a.mediaAcak===true) out.mediaAcak=true; }
   else if(a.sfx==='klik'||a.sfx==='swoosh') out.sfx=a.sfx;
-  else if(a.sfx==='unggah'){ const sm=md(a.sfxMedia,/^audio\//); if(sm){ out.sfx='unggah'; out.sfxMedia=sm; } }
+  else if(a.sfx==='unggah'){ const sm=md(a.sfxMedia,/^audio\//); if(sm){ out.sfx='unggah'; out.sfxMedia=sm; out.sfxDaftar=daftarTrek(sm,a.sfxLain,/^audio\//); } }
   return Object.keys(out).length?out:null;
 }
 /* ---------- ANIMASI MODEL & MEDIA OBJEK (JEV-084/086) ----------
@@ -15180,26 +15159,42 @@ function stepGerak(dt){
 /* media objek (JEV-086): diputar saat objek diketuk (tanpa tombol aksi terpisah) di pemutar yang
    menempel di bawah — video tampil di sana, dan pemutarnya bisa disembunyikan ke bawah sambil tetap
    berjalan. Satu media sekaligus; musik latar dijeda selama media diputar. Ketuk lagi untuk berhenti. */
-const MEDIA_OBJ=new Map();
+const MEDIA_OBJ=new Map(), TREK_AKHIR=new Map();     // track terakhir per objek: acakan berikutnya tidak mulai dari situ
 function mulaiMediaObjek(id){
   const o=cariObjek(id), ak=aksiObjek(o); if(!ak||!ak.media||MEDIA_OBJ.has(id)) return;
   hentikanSemuaMediaObjek();
-  const m=PROJECT.media[ak.media], video=/^video\//.test(m.mime), x=$(video?'#mediaVideo':'#mediaAudio');
-  const url=URL.createObjectURL(new Blob([bufFromB64(m.data)],{type:m.mime}));
-  MEDIA_OBJ.set(id,{x,url,bgm:bgmMain()});
-  if(bgmMain()) jedaBgmSebentar();
-  $('#mediaJudul').textContent=m.nama||namaObjek(o);
-  $('#mediaVideo').hidden=!video; $('#mediaAudio').hidden=video;
+  const M={id, urutan:urutanTrek(ak.mediaDaftar,ak.mediaAcak,TREK_AKHIR.get(id)), k:0, ulang:!!ak.mediaUlang, bgm:bgmMain()};
+  MEDIA_OBJ.set(id,M);
+  if(M.bgm) jedaBgmSebentar();
+  putarTrekObjek(M); $('#mediaDock').hidden=false;
+}
+// satu track daftar: elemen <audio>/<video> yang sama dipakai ulang — iOS mengizinkan track berikutnya tanpa ketukan baru
+function putarTrekObjek(M){
+  const mid=M.urutan[M.k], m=PROJECT.media[mid], n=M.urutan.length; if(!m){ hentikanMediaObjek(M.id); return; }
+  TREK_AKHIR.set(M.id,mid);
+  if(M.x){ try{ M.x.pause(); }catch(e){} M.x.onended=null; } if(M.url) URL.revokeObjectURL(M.url);
+  const video=/^video\//.test(m.mime), x=M.x=$(video?'#mediaVideo':'#mediaAudio');
+  M.url=URL.createObjectURL(new Blob([bufFromB64(m.data)],{type:m.mime}));
+  $('#mediaJudul').textContent=(m.nama||namaObjek(cariObjek(M.id)))+(n>1?` · ${M.k+1}/${n}`:'');
+  $('#mediaJudul').title=m.kredit?[m.kredit.oleh,m.kredit.lisensi].filter(Boolean).join(' · '):'';
+  $('#mediaVideo').hidden=!video; $('#mediaAudio').hidden=video; $('#mediaLanjut').hidden=n<2;
   $('#mediaDock').classList.toggle('tengah',video); $('#mediaDock').classList.remove('ciut');
-  x.loop=!!ak.mediaUlang; x.src=url; x.onended=()=>{ if(!x.loop){ hentikanMediaObjek(id); laporAksi('media',id,false); } };
-  $('#mediaDock').hidden=false;
+  x.loop=M.ulang&&n<2; x.src=M.url; x.onended=()=>{ if(!x.loop) lanjutTrekObjek(M,true); };
   if(video && document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
   const c=x.play(); if(c&&c.catch) c.catch(()=>tundaPutar(x));
 }
+// track berikutnya; daftar habis → mulai lagi (diacak ulang) bila "Ulang terus" / tombol berikutnya, selain itu berhenti
+function lanjutTrekObjek(M,habis){
+  if(MEDIA_OBJ.get(M.id)!==M) return;
+  if(++M.k>=M.urutan.length){
+    if(habis&&!M.ulang){ hentikanMediaObjek(M.id); laporAksi('media',M.id,false); return; }
+    const ak=aksiObjek(cariObjek(M.id)); M.urutan=urutanTrek(ak?ak.mediaDaftar:M.urutan,ak&&ak.mediaAcak,M.urutan[M.urutan.length-1]); M.k=0; }
+  putarTrekObjek(M);
+}
 function hentikanMediaObjek(id){
   const M=MEDIA_OBJ.get(id); if(!M) return; MEDIA_OBJ.delete(id);
-  try{ M.x.pause(); }catch(e){} M.x.onended=null; M.x.removeAttribute('src'); try{ M.x.load(); }catch(e){}
-  URL.revokeObjectURL(M.url);
+  if(M.x){ try{ M.x.pause(); }catch(e){} M.x.onended=null; M.x.removeAttribute('src'); try{ M.x.load(); }catch(e){} }
+  if(M.url) URL.revokeObjectURL(M.url);
   if(!MEDIA_OBJ.size){ $('#mediaDock').hidden=true; if(M.bgm) lanjutBgmSebentar(); }
 }
 function mediaObjekJalan(id){ return MEDIA_OBJ.has(id); }
@@ -15213,18 +15208,27 @@ var BGM={a:null, url:null, mid:null, tunda:false, mati:false};
 function bgmData(){
   const b=PROJECT.bgm; if(!b||typeof b!=='object') return null;
   const m=PROJECT.media&&PROJECT.media[b.media]; if(!m||!/^audio\//.test(m.mime)) return null;
-  return {mid:b.media, m, ulang:b.ulang!==false, otomatis:b.otomatis!==false, vol:Number.isFinite(+b.vol)?clamp(+b.vol,0,1):0.6};
+  return {mid:b.media, m, daftar:daftarTrek(b.media,b.lain,/^audio\//), acak:b.acak===true, ulang:b.ulang!==false, otomatis:b.otomatis!==false, vol:Number.isFinite(+b.vol)?clamp(+b.vol,0,1):0.6};
 }
 function bgmMain(){ return !!(BGM&&BGM.a&&!BGM.a.paused); }
 function mulaiBGM(){
   const d=bgmData(); if(!d) return;
-  if(!BGM.a || BGM.mid!==d.mid){ hentikanBGM();
-    BGM.url=URL.createObjectURL(new Blob([bufFromB64(d.m.data)],{type:d.m.mime})); BGM.mid=d.mid;
-    const a=BGM.a=new Audio(); a.src=BGM.url; a.playsInline=true; a.onended=()=>tulisBgm(); }
-  BGM.a.loop=d.ulang; BGM.a.volume=d.vol;
+  if(!BGM.a || !d.daftar.includes(BGM.mid)){ hentikanBGM(); BGM.urutan=urutanTrek(d.daftar,d.acak,null); BGM.k=0; trekBGM(d); }
+  BGM.a.loop=d.ulang&&d.daftar.length<2; BGM.a.volume=d.vol;
   const c=BGM.a.play(); BGM.tunda=false;
   if(c&&c.then) c.then(tulisBgm,()=>{ BGM.tunda=true; tulisBgm(); });
   tulisBgm();
+}
+// daftar putar musik latar (JEV-096): satu elemen <audio> berganti sumber di akhir tiap track (iOS tetap mengizinkan)
+function trekBGM(d){
+  if(BGM.url) URL.revokeObjectURL(BGM.url);
+  const mid=BGM.mid=BGM.urutan[BGM.k], m=PROJECT.media[mid];
+  BGM.url=URL.createObjectURL(new Blob([bufFromB64(m.data)],{type:m.mime}));
+  const a=BGM.a||(BGM.a=new Audio()); a.playsInline=true; a.src=BGM.url; a.volume=d.vol; a.loop=d.ulang&&d.daftar.length<2;
+  a.onended=()=>{ const e=bgmData(); if(!e||a!==BGM.a||a.loop) return tulisBgm();
+    if(++BGM.k>=BGM.urutan.length){ if(!e.ulang) return tulisBgm(); BGM.urutan=urutanTrek(e.daftar,e.acak,mid); BGM.k=0; }
+    if(!e.daftar.includes(BGM.urutan[BGM.k])) return tulisBgm();
+    trekBGM(e); a.play().then(tulisBgm,()=>{ BGM.tunda=true; tulisBgm(); }); };
 }
 function jedaBGM(){ if(!BGM) return; BGM.tunda=false; if(BGM.a) try{ BGM.a.pause(); }catch(e){} tulisBgm(); }
 function hentikanBGM(){
@@ -15239,18 +15243,24 @@ function lanjutBgmSebentar(){ if(BGM&&BGM.a&&!BGM.mati) BGM.a.play().then(tulisB
 function togelBGM(){ if(bgmMain()||BGM.tunda){ BGM.mati=true; jedaBGM(); } else { BGM.mati=false; mulaiBGM(); } }
 function tulisBgm(){
   const ada=!!bgmData(), on=bgmMain()||!!(BGM&&BGM.tunda);
-  for(const id of ['#fpsBgm','#lihatBgm']){ const b=$(id); if(!b) continue; b.hidden=!ada; isiIkon(b,on?'suara':'senyap','Musik'); b.setAttribute('aria-pressed',on?'true':'false'); }
+  const m=BGM&&BGM.mid&&PROJECT.media&&PROJECT.media[BGM.mid], kr=m&&m.kredit;      // kredit track yang diputar (CC BY)
+  for(const id of ['#fpsBgm','#lihatBgm']){ const b=$(id); if(!b) continue; b.hidden=!ada; isiIkon(b,on?'suara':'senyap','Musik'); b.setAttribute('aria-pressed',on?'true':'false');
+    if(m) b.title='♪ '+m.nama+(kr?' — '+[kr.oleh,kr.lisensi].filter(Boolean).join(' · '):''); }
   const c=$('#bgmCoba'); if(c){ c.hidden=!ada; isiIkon(c,bgmMain()?'henti':'main',bgmMain()?'Hentikan':'Coba'); }
 }
 function renderBgmUI(){
   if(!$('#bgmNama')) return;
   const d=bgmData();
-  $('#bgmNama').textContent=d?'♪ '+d.m.nama:'Belum ada musik latar. MP3 / M4A / WAV / OGG, maks. 15 MB — diputar di seluruh rumah saat jalan-jalan & di tautan lihat.';
-  $('#bgmAtur').hidden=!d; $('#bgmHapus').hidden=!d;
-  isiIkon($('#bgmPilih'),'suara',d?'Ganti musik…':'Pilih musik…');
-  if(d){ $('#bgmUlang').checked=d.ulang; $('#bgmOto').checked=d.otomatis; $('#bgmVol').value=Math.round(d.vol*100); }
+  const n=d?d.daftar.length:0, w=$('#bgmDaftar'); w.textContent='';
+  if(d) uiTrek(w,d.daftar,i=>{ const [sisa,b]=lepasTrek(d.daftar,i); hentikanBGM();
+    if(sisa.length) Object.assign(PROJECT.bgm,{media:sisa[0],lain:sisa.slice(1)}); else delete PROJECT.bgm;
+    buangMediaYatim(b); HIST.label='Hapus track musik latar'; rebuildScene(); });
+  $('#bgmNama').textContent=n>1?`${n} track — diputar ${d.acak?'acak':'berurutan'}; tambah sampai ${TREK_MAKS} track.`:d?`Tambah track lain untuk daftar putar (maks. ${TREK_MAKS}), bisa diacak.`:'Belum ada musik latar. MP3 / M4A / WAV / OGG, maks. 15 MB — diputar di seluruh rumah saat jalan-jalan & di tautan lihat.';
+  $('#bgmAtur').hidden=!d; $('#bgmHapus').hidden=!d; $('#bgmAcakL').hidden=n<2;
+  isiIkon($('#bgmPilih'),'suara',d?'Tambah musik…':'Pilih musik…'); isiIkon($('#bgmHapus'),'hapus',n>1?'Hapus semua':'Hapus');
+  if(d){ $('#bgmUlang').checked=d.ulang; $('#bgmOto').checked=d.otomatis; $('#bgmVol').value=Math.round(d.vol*100); $('#bgmAcak').checked=d.acak; }
   else if(BGM && BGM.a) hentikanBGM();
-  if(BGM && BGM.a && d){ BGM.a.loop=d.ulang; BGM.a.volume=d.vol; }
+  if(BGM && BGM.a && d){ BGM.a.loop=d.ulang&&d.daftar.length<2; BGM.a.volume=d.vol; }
   tulisBgm();
 }
 // peramban menolak memutar tanpa ketukan (tautan lihat dibuka): coba lagi di ketukan pertama
@@ -15366,8 +15376,12 @@ async function sfxObjek(id){
   if(ak.sfx!=='unggah'){ sfx(ak.sfx,titik); return; }
   if(!SFX.on) return;
   const ctx=audioSiap(); if(!ctx) return;
-  let b=SFX_BUF.get(ak.sfxMedia);
-  if(!b){ try{ const m=PROJECT.media[ak.sfxMedia]; b=await ctx.decodeAudioData(bufFromB64(m.data)); SFX_BUF.set(ak.sfxMedia,b); }catch(e){ toast('Audio suara tidak bisa diputar di peramban ini'); return; } }
+  // beberapa audio (JEV-096): tiap ketukan memilih acak, tidak sama dengan ketukan sebelumnya
+  const daf=ak.sfxDaftar||[ak.sfxMedia]; let mid=daf[Math.floor(Math.random()*daf.length)];
+  if(daf.length>1&&mid===TREK_AKHIR.get(id)) mid=daf[(daf.indexOf(mid)+1)%daf.length];
+  TREK_AKHIR.set(id,mid);
+  let b=SFX_BUF.get(mid);
+  if(!b){ try{ const m=PROJECT.media[mid]; b=await ctx.decodeAudioData(bufFromB64(m.data)); SFX_BUF.set(mid,b); }catch(e){ toast('Audio suara tidak bisa diputar di peramban ini'); return; } }
   const src=ctx.createBufferSource(); src.buffer=b;
   let d=AUDIO.master;
   if(titik){ const p=ctx.createPanner(); p.panningModel='HRTF'; p.distanceModel='inverse'; p.refDistance=1.2;
@@ -16259,12 +16273,13 @@ const ubahBgm=(lbl,f)=>{ f(PROJECT.bgm); HIST.label=lbl; rebuildScene(); };
 const togelCiutMedia=()=>{ const k=$('#mediaDock').classList.toggle('ciut'); const b=$('#mediaCiut'); b.title=k?'Tampilkan pemutar':'Kecilkan ke bawah'; b.setAttribute('aria-label',b.title); b.setAttribute('aria-expanded',k?'false':'true'); };
 $('#mediaCiut').onclick=togelCiutMedia;
 $('#mediaJudul').onclick=()=>{ if($('#mediaDock').classList.contains('ciut')) togelCiutMedia(); };
+$('#mediaLanjut').onclick=()=>{ for(const M of [...MEDIA_OBJ.values()]) lanjutTrekObjek(M,false); };
 $('#mediaTutup').onclick=()=>{ for(const id of [...MEDIA_OBJ.keys()]){ hentikanMediaObjek(id); laporAksi('media',id,false); } };
-$('#bgmPilih').onclick=()=>pilihBerkasUmum(TERIMA_AUDIO,async f=>{
-  const lama=PROJECT.bgm&&PROJECT.bgm.media, mid=await unggahMediaObjek(f,'audio');
-  PROJECT.bgm=Object.assign({ulang:true, otomatis:true, vol:0.6},PROJECT.bgm,{media:mid});
-  hentikanBGM(); buangMediaYatim(lama); HIST.label='Musik latar'; rebuildScene(); toast('Musik latar: '+PROJECT.media[mid].nama); });
-$('#bgmHapus').onclick=()=>{ const m=PROJECT.bgm&&PROJECT.bgm.media; hentikanBGM(); delete PROJECT.bgm; buangMediaYatim(m); HIST.label='Hapus musik latar'; rebuildScene(); };
+// beberapa berkas sekaligus → daftar putar (JEV-096)
+$('#bgmPilih').onclick=()=>pilihBerkasUmum(TERIMA_AUDIO,f=>tambahBgm(f),true);
+$('#bgmJelajah').onclick=()=>bukaMusik('music','Musik latar',tambahBgm);
+$('#bgmHapus').onclick=()=>{ const d=bgmData(), m=d?d.daftar:[PROJECT.bgm&&PROJECT.bgm.media]; hentikanBGM(); delete PROJECT.bgm; m.forEach(buangMediaYatim); HIST.label='Hapus musik latar'; rebuildScene(); };
+$('#bgmAcak').onchange=e=>ubahBgm('Acak musik latar',b=>{ if(e.target.checked) b.acak=true; else delete b.acak; });
 $('#bgmCoba').onclick=()=>{ if(bgmMain()) jedaBGM(); else mulaiBGM(); };
 $('#bgmUlang').onchange=e=>ubahBgm('Ulang musik latar',b=>{ b.ulang=e.target.checked; });
 $('#bgmOto').onchange=e=>ubahBgm('Musik latar otomatis',b=>{ b.otomatis=e.target.checked; });

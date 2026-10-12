@@ -24,7 +24,7 @@ export const tes = {
     await fc.setFiles({ name: 'hujan.wav', mimeType: 'audio/wav', buffer: wav() });
     await page.waitForFunction(() => !!PROJECT.bgm, undefined, { timeout: 15000 });
     const r = await page.evaluate(() => ({ bgm: { ...PROJECT.bgm, media: !!PROJECT.media[PROJECT.bgm.media] }, mime: PROJECT.media[PROJECT.bgm.media].mime,
-      nama: document.getElementById('bgmNama').textContent, atur: !document.getElementById('bgmAtur').hidden, coba: !document.getElementById('bgmCoba').hidden }));
+      nama: document.querySelector('#bgmDaftar .trek span').textContent, atur: !document.getElementById('bgmAtur').hidden, coba: !document.getElementById('bgmCoba').hidden }));
     assert.deepEqual(r, { bgm: { media: true, ulang: true, otomatis: true, vol: 0.6 }, mime: 'audio/wav', nama: '♪ hujan', atur: true, coba: true });
     // pilihan tersimpan di proyek
     await page.evaluate(() => { const u = document.getElementById('bgmUlang'); u.checked = false; u.dispatchEvent(new Event('change'));
