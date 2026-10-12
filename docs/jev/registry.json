@@ -4583,15 +4583,15 @@
   },
   {
    "id": "JEV-101",
-   "judul": "Satu sakelar Otomatis: waktu berjalan + cuaca acak (hujan tiba-tiba); bilah mode jalan lebih jelas",
+   "judul": "Cuaca Acak (hujan turun tiba-tiba lalu reda) + sakelar ikon Siklus waktu; bilah mode jalan lebih jelas",
    "status": "terkirim",
    "kelas": "fitur",
    "J": {
     "masalah": "Tombol Waktu ▸, pilihan cuaca, pilihan suasana, dan siklus waktu tumpang-tindih dan membingungkan; cuaca tidak pernah berubah sendiri.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-13: \"default weather clear, tapi by time of day cycle bisa random tiba2 hujan\" + tangkapan layar bilah mode jalan: \"bingungin, apa bedanya … toggle on/off time of day cycle … yg user friendly\"",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"default weather clear, tapi by time of day cycle bisa random tiba2 hujan\" + tangkapan layar bilah mode jalan: \"bingungin, apa bedanya … toggle on/off time of day cycle … yg user friendly\" + \"bisa tambah random pilihan cuacanya?\" + \"button otomatis diganti icon day cycle\"",
     "alternatif": [
-     "opsi cuaca 'Acak' terpisah dari siklus (dua sakelar untuk satu gagasan)",
+     "satu sakelar Otomatis untuk waktu + cuaca sekaligus (dua gagasan dalam satu tombol — membingungkan)",
      "tetap tombol Waktu ▸ + pilihan siklus di tab Tampilan saja"
     ]
    },
@@ -4634,7 +4634,7 @@
     },
     "aksesibilitas": {
      "status": "lolos",
-     "catatan": "sakelar dengan aria-pressed & warna aksen; pilihan Waktu/Cuaca selalu menunjukkan keadaan sekarang; pemberitahuan singkat saat hujan turun / reda"
+     "catatan": "sakelar ikon dengan aria-label & aria-pressed + warna aksen; pilihan Acak menunjukkan cuaca sekarang; pemberitahuan singkat saat hujan turun / reda"
     }
    },
    "metrik": {

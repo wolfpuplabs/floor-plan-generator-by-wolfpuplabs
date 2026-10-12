@@ -1677,6 +1677,17 @@ window.KAMUS_EN={
   "⛈ Tiba-tiba badai petir":"⛈ A thunderstorm suddenly breaks",
   "🌦 Gerimis mulai turun":"🌦 It starts to drizzle",
   "🌧 Tiba-tiba hujan turun":"🌧 It suddenly starts raining",
+  "🎲 Acak — berganti sendiri":"🎲 Random — changes by itself",
+  "🎲 Acak · sekarang cerah":"🎲 Random · now clear",
+  "🎲 Acak · sekarang gerimis":"🎲 Random · now drizzle",
+  "🎲 Acak · sekarang hujan":"🎲 Random · now rain",
+  "🎲 Acak · sekarang badai petir":"🎲 Random · now thunderstorm",
+  "Mati — waktu tetap":"Off — time stays put",
+  "Siklus waktu: siang → senja → malam → fajar berjalan sendiri":"Day cycle: day → dusk → night → dawn runs by itself",
+  "Di mode jalan & tautan lihat. Cuaca Acak: kebanyakan cerah, kadang hujan tiba-tiba lalu reda. Siklus waktu: siang → senja → malam → fajar berjalan sendiri.":"In walk mode & view links. Random weather: mostly clear, sometimes sudden rain that clears again. Day cycle: day → dusk → night → dawn runs by itself.",
+  "Siklus waktu mati — waktu tetap":"Day cycle off — time stays put",
+  "Siklus waktu berjalan · cuaca Acak, kadang hujan":"Day cycle running · Random weather, sometimes rain",
+  "Siklus waktu berjalan":"Day cycle running",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1727,7 +1738,12 @@ window.KAMUS_EN={
   "Hujan reda":"The rain has stopped",
   "Tiba-tiba badai petir":"A thunderstorm suddenly breaks",
   "Gerimis mulai turun":"It starts to drizzle",
-  "Tiba-tiba hujan turun":"It suddenly starts raining"
+  "Tiba-tiba hujan turun":"It suddenly starts raining",
+  "Acak — berganti sendiri":"Random — changes by itself",
+  "Acak · sekarang cerah":"Random · now clear",
+  "Acak · sekarang gerimis":"Random · now drizzle",
+  "Acak · sekarang hujan":"Random · now rain",
+  "Acak · sekarang badai petir":"Random · now thunderstorm"
  },
  // frasa
  "frasa":{

@@ -76,16 +76,16 @@ export const tes = {
     assert.deepEqual(c, [0, 0.9, undefined]);
   },
 
-  'hujan acak: cuaca bawaan Cerah, tapi selama siklus waktu hujan bisa turun tiba-tiba lalu reda': async (page) => {
+  'cuaca Acak: bawaan Cerah; pilihan Acak membuat hujan turun tiba-tiba lalu reda (tanpa perlu siklus waktu)': async (page) => {
     await muatProyekJSON(page, rumah);
     await page.click('.tabs button[data-tab="tampilan"]');
     assert.equal(await page.evaluate(() => $('#cuaca').value), 'cerah', 'bawaan cerah');
-    await page.selectOption('#siklus', '2');
+    await page.selectOption('#cuaca', 'acak');
     await page.waitForFunction(() => !!window.CUACA);
     const r = await page.evaluate(() => {
       const asli = Math.random; Math.random = () => 0.3;                 // peluang terpenuhi, jenis 'gerimis'
       enterFPS(); let mulai = -1, jenis = null, tetes = 0, toast1 = '';
-      for (let i = 0; i < 200 && mulai < 0; i++) { CUACA.langkah(0.5); const k = CUACA.keadaan(); if (k.acak) { mulai = i; jenis = k.acak; toast1 = $('#toast').textContent; } }
+      for (let i = 0; i < 200 && mulai < 0; i++) { CUACA.langkah(0.5); const k = CUACA.keadaan(); if (k.acak) { mulai = i; jenis = k.acak; toast1 = $('#toast').textContent + ' | ' + $('#fpsCuaca').selectedOptions[0].textContent; } }
       for (let i = 0; i < 12; i++) CUACA.langkah(0.5); tetes = CUACA.keadaan().tetes;
       let reda = -1; for (let i = 0; i < 400 && reda < 0; i++) { CUACA.langkah(0.5); if (!CUACA.keadaan().acak) reda = i; }
       const toast2 = $('#toast').textContent;
@@ -96,33 +96,34 @@ export const tes = {
     assert.ok(r.mulai >= 0, 'hujan turun sendiri');
     assert.equal(r.jenis, 'gerimis');
     assert.ok(r.tetes > 0, 'tetes tampil');
-    assert.match(r.toast1, /Gerimis/);
+    assert.match(r.toast1, /Gerimis.*\| 🎲 Acak · sekarang gerimis/);
     assert.ok(r.reda >= 0, 'hujan reda lagi');
     assert.match(r.toast2, /reda/);
     assert.equal(r.sisa, 0);
-    assert.deepEqual(r.simpan, { jenis: 'cerah', siklus: 2 }, 'pengaturan proyek tetap Cerah');
-    // tanpa siklus: tidak pernah hujan sendiri
-    const tanpa = await page.evaluate(() => { aturCuaca({ siklus: 0 }); const asli = Math.random; Math.random = () => 0.01; enterFPS();
+    assert.deepEqual(r.simpan, { jenis: 'acak', siklus: 0 }, 'pengaturan proyek tetap Acak');
+    // cuaca Cerah (meski siklus waktu berjalan): tidak pernah hujan sendiri
+    const tanpa = await page.evaluate(() => { aturCuaca({ jenis: 'cerah', siklus: 2 }); const asli = Math.random; Math.random = () => 0.01; enterFPS();
       for (let i = 0; i < 300; i++) CUACA.langkah(0.5); const k = CUACA.keadaan(); Math.random = asli; exitFPS(); return [k.acak, k.tetes]; });
     assert.deepEqual(tanpa, [null, 0]);
   },
 
-  'otomatis: satu sakelar di mode jalan menyalakan / mematikan waktu berjalan + cuaca acak; pilihan cuaca saat otomatis sementara': async (page) => {
+  'sakelar Siklus waktu di mode jalan: nyala → waktu berjalan & cuaca Cerah jadi Acak; pilihan cuaca tetap dihormati; mati → waktu tetap': async (page) => {
     await muatProyekJSON(page, rumah);
     await page.evaluate(() => enterFPS());
     const klik = () => page.evaluate(() => $('#fpsOto').click());
     await klik();
     await page.waitForFunction(() => window.CUACA && CUACA.keadaan().siklus === 6);
-    assert.deepEqual(await page.evaluate(() => [PROJECT.cuaca, $('#fpsOto').getAttribute('aria-pressed'), $('#fpsCuaca').value]), [{ jenis: 'cerah', siklus: 6 }, 'true', 'cerah']);
-    // memilih Hujan saat otomatis: turun sekarang, pengaturan proyek tetap Cerah + otomatis
-    await page.evaluate(() => { const e = $('#fpsCuaca'); e.value = 'hujan'; e.dispatchEvent(new Event('change')); for (let i = 0; i < 10; i++) CUACA.langkah(0.5); });
-    const r = await page.evaluate(() => { const k = CUACA.keadaan(); return [k.efektif, k.tetes > 0, $('#fpsCuaca').value, PROJECT.cuaca]; });
-    assert.deepEqual(r, ['hujan', true, 'hujan', { jenis: 'cerah', siklus: 6 }]);
-    // mati: kembali ke cuaca tetap (Cerah), bilah ikut
+    assert.deepEqual(await page.evaluate(() => [PROJECT.cuaca, $('#fpsOto').getAttribute('aria-pressed'), $('#fpsCuaca').value]), [{ jenis: 'acak', siklus: 6 }, 'true', 'acak']);
+    // memilih Hujan: tetap hujan (bukan acak), siklus waktu tetap berjalan
+    await page.evaluate(() => { const e = $('#fpsCuaca'); e.value = 'hujan'; e.dispatchEvent(new Event('change')); });
+    await page.waitForFunction(() => CUACA.keadaan().jenis === 'hujan');
+    const r = await page.evaluate(() => { for (let i = 0; i < 10; i++) CUACA.langkah(0.5); const k = CUACA.keadaan(); return [k.efektif, k.tetes > 0, $('#fpsCuaca').value, PROJECT.cuaca]; });
+    assert.deepEqual(r, ['hujan', true, 'hujan', { jenis: 'hujan', siklus: 6 }]);
+    // mati: waktu berhenti, cuaca pilihan tetap
     await klik();
-    await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
-    const m = await page.evaluate(() => { for (let i = 0; i < 10; i++) CUACA.langkah(0.5); const k = CUACA.keadaan(); return [PROJECT.cuaca, k.siklus, k.efektif, k.tetes, $('#fpsOto').getAttribute('aria-pressed'), $('#fpsCuaca').value]; });
-    assert.deepEqual(m, [undefined, 0, 'cerah', 0, 'false', 'cerah']);
+    await page.waitForFunction(() => CUACA.keadaan().siklus === 0);
+    const m = await page.evaluate(() => { for (let i = 0; i < 4; i++) CUACA.langkah(0.5); const k = CUACA.keadaan(); return [PROJECT.cuaca, k.efektif, k.tetes > 0, $('#fpsOto').getAttribute('aria-pressed')]; });
+    assert.deepEqual(m, [{ jenis: 'hujan', siklus: 0 }, 'hujan', true, 'false']);
     await page.evaluate(() => exitFPS());
   },
 };

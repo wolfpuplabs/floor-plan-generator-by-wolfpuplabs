@@ -6,9 +6,9 @@
       ikut bergeser saat berjalan), tidak turun di dalam tapak bangunan (masker dari tapakAtap). Langit
       mendung, matahari meredup, kabut menebal, tanah situs basah mengkilap, suara hujan sintesis yang
       teredam saat di dalam rumah. Badai: kilat (kilasan cahaya) + guruh tertunda.
-   3. OTOMATIS (JEV-101): satu sakelar — waktu berjalan sendiri DAN cuaca berganti sendiri: mulai cerah,
-      sesekali hujan turun tiba-tiba (gerimis / hujan / badai), bertahan ½–1½ fase waktu, lalu reda.
-      Memilih waktu / cuaca saat otomatis menyala: langsung ke sana, lalu otomatis berlanjut dari situ.
+   3. CUACA ACAK (JEV-101): pilihan cuaca "Acak" — mulai cerah, sesekali hujan turun tiba-tiba (gerimis /
+      hujan / badai), bertahan ½–1½ fase waktu (fase = ¼ siklus, bawaan 6 menit per hari), lalu reda.
+      Tidak bergantung pada siklus waktu; memilih waktu saat siklus berjalan melanjutkan siklus dari situ.
    Hanya aktif di mode jalan & tautan lihat; editor tetap bersih. */
 /* global scene, camera, sun, hemiL, renderer, SUASANA, setSuasana, kubahLangit, fotoAktif, FPS, LIHAT, orbit, MOOD, PBR_ON,
    PROJECT, tapakAtap, worldRoot, audioSiap, AUDIO, pasBayangMatahari, bayangKotor, terapkanLangit, toast */
@@ -22,9 +22,9 @@
   const C = { jenis: 'cerah', siklus: 0, w: 0, tw: 0, tween: null, tSiklus: 0, fase: 0, kilat: 8, flash: 0, guruh: [], basah: new Map(), tapakTanda: '',
     acak: null, tAcak: 0, sisaAcak: 0, lalu: 'hujan' };
   const PELUANG_HUJAN = 0.45;                                          // tiap pemeriksaan acak saat siklus berjalan
-  const efektif = () => (C.siklus ? C.acak || 'cerah' : C.jenis);    // otomatis: cuaca acak; manual: cuaca pilihan
+  const efektif = () => (C.jenis === 'acak' ? C.acak || 'cerah' : C.jenis);   // Acak: cuaca yang sedang terjadi
   const kabari = () => { if (typeof window.cuacaBerubah === 'function') window.cuacaBerubah(); };
-  const faseDetik = () => C.siklus * 60 / SIKLUS.length;
+  const faseDetik = () => (C.siklus || 6) * 60 / SIKLUS.length;
 
   // ---------- hujan ----------
   const U = { waktu: { value: 0 }, pusat: { value: new THREE.Vector3() }, ukuran: { value: new THREE.Vector3(36, 20, 36) }, laju: { value: 9 },
@@ -169,9 +169,9 @@
   const aktif = () => (FPS.on || LIHAT.on) && !camera.isOrthographicCamera;
   function pasang(o) {
     o = o || {};
-    const jenis = KUAT[o.jenis] != null ? o.jenis : 'cerah', siklus = [2, 6, 12].includes(+o.siklus) ? +o.siklus : 0;
+    const jenis = KUAT[o.jenis] != null || o.jenis === 'acak' ? o.jenis : 'cerah', siklus = [2, 6, 12].includes(+o.siklus) ? +o.siklus : 0;
     if (siklus !== C.siklus) { C.tSiklus = 0; const kini = MOOD; C.fase = Math.max(0, SIKLUS.indexOf(kini === 'gelap' ? 'malam' : kini)); }
-    if (siklus !== C.siklus) { C.acak = null; C.tAcak = siklus * 60 / SIKLUS.length * (0.3 + Math.random() * 0.7); }
+    if (jenis !== C.jenis) { C.acak = null; C.tAcak = (siklus || 6) * 60 / SIKLUS.length * (0.3 + Math.random() * 0.7); }
     C.jenis = jenis; C.siklus = siklus; C.tw = KUAT[efektif()];
     if (jenis !== 'cerah') segarkanTapak();
     if (C.w > 0) basah();                                             // bahan tanah baru setelah adegan dibangun ulang
@@ -194,7 +194,7 @@
       if (C.tSiklus >= fase) { C.tSiklus = 0; C.fase = (C.fase + 1) % SIKLUS.length; transisi(SIKLUS[C.fase], fase * 0.35); kabari(); }
     }
     // hujan acak selama siklus waktu (cuaca Cerah)
-    if (on && C.siklus) {
+    if (on && C.jenis === 'acak') {
       if (C.acak) { if ((C.sisaAcak -= dt) <= 0) { C.acak = null; C.tw = 0; C.tAcak = faseDetik() * (0.6 + Math.random()); toast('🌤 Hujan reda'); kabari(); } }
       else if ((C.tAcak -= dt) <= 0) {
         C.tAcak = faseDetik() * (0.5 + Math.random());
@@ -234,19 +234,13 @@
       if (C.flash <= 0) mendungLampu();
     }
   }
-  // pilihan pengguna di bilah mode jalan: waktu → transisi halus (siklus berlanjut dari situ); cuaca → saat otomatis,
-  // berlaku sampai pergantian acak berikutnya; saat manual, menjadi cuaca tetap (disimpan oleh index)
+  // pilihan waktu di bilah mode jalan → transisi halus; saat siklus berjalan, siklus berlanjut dari situ
   function pilihWaktu(k) {
     transisi(k, 3);
     if (C.siklus) { C.fase = Math.max(0, SIKLUS.indexOf(k === 'gelap' ? 'malam' : k)); C.tSiklus = 0; }
   }
-  function pilihCuaca(j) {
-    if (!C.siklus || KUAT[j] == null) return false;
-    C.acak = j === 'cerah' ? null : j; C.sisaAcak = faseDetik() * (0.5 + Math.random()); C.tAcak = faseDetik() * (0.6 + Math.random());
-    C.tw = KUAT[efektif()]; if (C.acak) segarkanTapak(); kabari(); return true;
-  }
   function setelahSuasana() { if (C.w > 0) mendungLampu(); }
   function setelahLangitDalam() { if (C.w > 0) mendungLangit(); }
-  window.CUACA = { pasang, langkah, transisi, berikut, pilihWaktu, pilihCuaca, setelahSuasana, setelahLangit: setelahLangitDalam, segarkanTapak, diDalam,
+  window.CUACA = { pasang, langkah, transisi, berikut, pilihWaktu, setelahSuasana, setelahLangit: setelahLangitDalam, segarkanTapak, diDalam,
     keadaan: () => ({ jenis: C.jenis, efektif: efektif(), acak: C.acak, siklus: C.siklus, w: C.w, tetes: hujan.visible ? Math.round(U.jumlah.value * MAKS) : 0, transisi: !!C.tween, fase: C.fase }) };
 })();
