@@ -5,11 +5,12 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 65 GO · 3 DEFER · 5 NO-GO dari 73 item.
+**Ringkasan:** 66 GO · 3 DEFER · 5 NO-GO dari 74 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-087 | Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app | terkirim | 0.65 | 124,9 jt | 0,6 jt | 415.3× | 207.1× | 0.0 bln | 3 | **GO** |
+| JEV-091 | Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres | terkirim | 0.65 | 87,8 jt | 0,5 jt | 324.0× | 161.5× | 0.1 bln | 4 | **GO** |
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
 | JEV-090 | Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka | terkirim | 0.65 | 96,1 jt | 0,8 jt | 255.3× | 127.2× | 0.1 bln | 4 | **GO** |
 | JEV-089 | Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me | terkirim | 0.65 | 83,9 jt | 0,7 jt | 247.4× | 123.2× | 0.1 bln | 5 | **GO** |
@@ -88,6 +89,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 ## Alasan per item
 
 - **JEV-087 Kartu pratinjau tautan bagikan (judul, pesan & gambar dari tampilan 3D pilihan pengirim) lewat …/l/<id>, juga untuk undangan main bareng; ikon layar utama & manifest web app — GO.** ROI 415.3× ≥ 1, payback 0.0 bln.
+- **JEV-091 Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres — GO.** ROI 324.0× ≥ 1, payback 0.1 bln.
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
 - **JEV-090 Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka — GO.** ROI 255.3× ≥ 1, payback 0.1 bln.
 - **JEV-089 Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me — GO.** ROI 247.4× ≥ 1, payback 0.1 bln.

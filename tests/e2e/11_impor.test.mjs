@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { FIX, CORS } from './harness.mjs';
+import { FIX, CORS, unduhDariPanel } from './harness.mjs';
 
 // JEV-060: impor model dari situs lain (ZIP glTF, OBJ+MTL, FBX) + Sketchfab (lisensi, token, atribusi)
 function buatZip(entri) {
@@ -86,10 +86,12 @@ export const tes = {
     assert.deepEqual(kartu, ['a', 'c'], 'NC dan uid tidak sah disaring');
     // tanpa token → pesan jelas, tanpa permintaan unduhan
     await page.locator(`#galeriGrid .gl-card[data-id="${'a'.repeat(32)}"]`).click();
+    await unduhDariPanel(page);
     await page.waitForFunction(() => /token/.test(document.getElementById('galeriInfo').textContent));
     assert.equal(auth.length, 0);
     await page.fill('#skfToken', 'rahasia123'); await page.click('#skfSimpan');
     await page.locator(`#galeriGrid .gl-card[data-id="${'a'.repeat(32)}"]`).click();
+    await unduhDariPanel(page);
     await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 30000 });
     assert.deepEqual(auth, ['Token rahasia123']);
     const r = await page.evaluate(() => { const a = Object.values(PROJECT.assets).pop(); const B = sanitasiProyek(JSON.parse(JSON.stringify(PROJECT)));
