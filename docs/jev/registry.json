@@ -4580,6 +4580,68 @@
     "target": "dipakai pada presentasi rumah",
     "tinjau": "2027-01-13"
    }
+  },
+  {
+   "id": "JEV-101",
+   "judul": "Cuaca Acak (hujan turun tiba-tiba lalu reda) + sakelar ikon Siklus waktu; bilah mode jalan lebih jelas",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Tombol Waktu ▸, pilihan cuaca, pilihan suasana, dan siklus waktu tumpang-tindih dan membingungkan; cuaca tidak pernah berubah sendiri.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-13: \"default weather clear, tapi by time of day cycle bisa random tiba2 hujan\" + tangkapan layar bilah mode jalan: \"bingungin, apa bedanya … toggle on/off time of day cycle … yg user friendly\" + \"bisa tambah random pilihan cuacanya?\" + \"button otomatis diganti icon day cycle\"",
+    "alternatif": [
+     "satu sakelar Otomatis untuk waktu + cuaca sekaligus (dua gagasan dalam satu tombol — membingungkan)",
+     "tetap tombol Waktu ▸ + pilihan siklus di tab Tampilan saja"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "data cuaca tetap disaring (jenis & siklus daftar tetap)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pemeriksaan acak per fase, tanpa beban per frame tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "sakelar ikon dengan aria-label & aria-pressed + warna aksen; pilihan Acak menunjukkan cuaca sekarang; pemberitahuan singkat saat hujan turun / reda"
+    }
+   },
+   "metrik": {
+    "nama": "sesi mode jalan dengan Otomatis menyala",
+    "target": "pilihan utama di tautan lihat",
+    "tinjau": "2027-01-13"
+   }
   }
  ]
 }
