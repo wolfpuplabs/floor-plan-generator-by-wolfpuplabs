@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { FIX, CORS, bukaApp, muatProyekJSON } from './harness.mjs';
+import { FIX, CORS, bukaApp, muatProyekJSON, unduhDariPanel } from './harness.mjs';
 
 // JEV-058: tautan lihat-saja — proyek di fragmen URL, model katalog sebagai rujukan,
 // penerima bisa jalan-jalan tetapi tidak bisa mengedit; isi tautan disanitasi
@@ -29,6 +29,7 @@ export const tes = {
     await page.evaluate(() => bukaGaleri());
     await page.waitForFunction(() => document.querySelectorAll('#galeriGrid .gl-card').length > 0);
     await page.locator('#galeriGrid .gl-card').first().click();
+    await unduhDariPanel(page);
     await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 20000 });
     await page.evaluate(async () => {
       document.getElementById('galeri').hidden = true;

@@ -79,3 +79,8 @@ export async function muatProyekJSON(page, obj) {
   await page.waitForFunction(() => /Proyek dimuat|Gagal memuat/.test(document.getElementById('toast').textContent), undefined, { timeout: 60000 });
   return page.evaluate(() => document.getElementById('toast').textContent);
 }
+
+// galeri model: kartu membuka panel info berkas dulu (JEV-091) — tekan "Unduh & pasang"
+export async function unduhDariPanel(page) {
+  await page.locator('#galeriDetail .gd-tombol .btn:not(.ghost)').click({ timeout: 20000 });
+}

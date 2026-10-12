@@ -253,6 +253,7 @@ body.jalan #mediaDock{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 96px)}
 .gl-modal .gl-card img{width:100%;aspect-ratio:1;object-fit:contain;background:#2a2a31;border-radius:5px}
 .gl-modal .gl-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gl-modal .hint{padding:8px 14px 12px;margin:0}
+.gl-modal .gl-info{display:flex;align-items:center;gap:8px;padding-right:14px}.gl-modal .gl-info .hint{flex:1}
 .gl-modal .gl-grid.lebar{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
 .gl-modal .gl-grid.lebar .gl-card img{aspect-ratio:2/1;object-fit:cover}
 .gl-modal .gl-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
@@ -1020,7 +1021,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <select id="galeriSumber" title="Sumber model"><option value="ph">Poly Haven — fotogrametri (CC0)</option><option value="khr">Produk nyata — Wayfair dkk. (CC0/CC-BY)</option><option value="skf">Sketchfab — ribuan model + hasil scan (CC0/CC-BY, perlu token)</option><option value="gso">Google Scanned Objects — 1.000+ benda hasil scan 3D (CC-BY)</option></select>
         <input type="search" id="galeriCari" placeholder="Cari: chair, sofa, plant, lamp…">
         <select id="galeriKat"><option value="semua">Semua</option></select>
-        <select id="galeriRes"><option value="1k">Tekstur 1K — ringan</option><option value="2k">Tekstur 2K — lebih detail</option></select>
+        <select id="galeriRes"><option value="2k" selected>Tekstur 2K — ultra (dikompres)</option><option value="1k">Tekstur 1K — ringan</option></select>
         <button class="btn sm ghost" id="galeriTutup" style="flex:0 0 auto"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg> Tutup</button></div>
       <div class="gl-ruang" id="galeriRuang" role="group" aria-label="Saring menurut ruangan"></div>
       <div class="gl-token" id="skfBaris" hidden>
@@ -1030,7 +1031,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <span class="hint">Token hanya disimpan di perangkat ini dan hanya dikirim ke Sketchfab.</span>
       </div>
       <div class="gl-grid" id="galeriGrid"></div>
-      <p class="hint" id="galeriInfo"></p>
+      <div class="gl-info"><p class="hint" id="galeriInfo"></p><button class="btn sm ghost" id="galeriBatal" hidden>Batalkan unduhan</button></div>
       <div class="gl-situs" id="galeriSitus"></div>
     </div></div>
     <div id="teksturModal" class="gl-modal" hidden><div class="gl-box">
@@ -1288,14 +1289,12 @@ function pakaiKamera(orto){
 }
 camera.position.set(14,14,18);
 
-/* Konteks WebGL bisa gagal dibuat — memori grafis peramban penuh (iPad dengan banyak tab game / 3D terbuka).
-   Dulu skrip berhenti di sini: viewport hitam & hanya "Script error". Kini dicoba lagi dengan setelan lebih ringan,
-   dan bila tetap gagal muncul pesan yang jelas dengan tombol muat ulang. */
+// WebGL bisa gagal dibuat (memori grafis penuh): coba setelan lebih ringan, lalu pesan + muat ulang (dulu layar hitam)
 function buatRenderer(){
   for(const o of [{antialias:true, preserveDrawingBuffer:true},{antialias:false, preserveDrawingBuffer:true},{antialias:false, powerPreference:'low-power'}]){
     try{ return new THREE.WebGLRenderer(o); }catch(e){ console.warn('WebGL gagal',o,e); }
   }
-  catatGalat.sudah=true;                          // bukan toast galat umum: pesannya ditampilkan sendiri
+  catatGalat.sudah=true;
   const d=document.createElement('div'); d.id='tanpaGL'; d.setAttribute('role','alert');
   d.style.cssText='position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(16,16,20,.94);color:#e8e8ec;text-align:center;font-size:15px';
   d.innerHTML='<div style="max-width:420px"><b style="font-size:18px">Tampilan 3D tidak bisa dimulai</b><p>Memori grafis peramban sedang penuh. Tutup tab lain yang memakai 3D atau game, lalu muat ulang halaman ini.</p><button class="btn">Muat ulang</button></div>';
@@ -1414,7 +1413,7 @@ function pasangGIShader(sh){
   Object.assign(sh.uniforms,GI_U);
   sh.vertexShader=sh.vertexShader
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos;')
-    .replace('#include <project_vertex>','#include <project_vertex>\n#ifdef USE_INSTANCING\n vGIPos=(modelMatrix*instanceMatrix*vec4(transformed,1.0)).xyz;\n#else\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;\n#endif');   // ubin/pagar dari model = InstancedMesh
+    .replace('#include <project_vertex>','#include <project_vertex>\n#ifdef USE_INSTANCING\n vGIPos=(modelMatrix*instanceMatrix*vec4(transformed,1.0)).xyz;\n#else\n vGIPos=(modelMatrix*vec4(transformed,1.0)).xyz;\n#endif');
   sh.fragmentShader=sh.fragmentShader
     .replace('#include <common>','#include <common>\nvarying vec3 vGIPos; uniform sampler2D giPeta, giWarna; uniform vec4 giInfo['+GI_MAKS+']; uniform vec3 giBatas['+GI_MAKS+']; uniform vec2 giLantai['+GI_MAKS+']; uniform float giSkala; uniform vec3 luarPos['+LUAR_MAKS+'], luarWarna['+LUAR_MAKS+']; uniform float luarN; uniform vec3 pbMin, pbMax, pbPos;')
     .replace('#include <envmap_physical_pars_fragment>',THREE.ShaderChunk.envmap_physical_pars_fragment.replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
@@ -5796,7 +5795,7 @@ for(const k of Object.keys(DUDUK)) NYALA_JENIS[k]='duduk';
 /* model unggahan memilih sendiri perannya di mode jalan (inspector → Interaksi) */
 const INTERAKSI_MODEL={duduk:'🪑 Duduk — kursi/sofa', lampu:'💡 Lampu — nyala/padam (cahaya dibangkitkan)', audio:'🔊 Audio — putar musik', piano:'🎹 Piano — mainkan'};
 function jenisNyala(o){ const v=o.params&&o.params.interaksi; if(o.kind==='model') return INTERAKSI_MODEL[v]?v:null;
-  // perabot pustaka tanpa peran bawaan (meja, lemari, bentuk dasar, …) bisa dijadikan tempat duduk (JEV-090); 'tidak' mematikan duduk bawaan
+  // perabot tanpa peran bisa jadi tempat duduk (JEV-090); 'tidak' mematikan duduk bawaan
   if(o.kind==='furn' && bisaDiduduki(o)) return v==='duduk'?'duduk':v==='tidak'?null:NYALA_JENIS[o.type];
   return NYALA_JENIS[o.type]; }
 function bisaDiduduki(o){ const j=NYALA_JENIS[o.type]; return !!FURN[o.type] && (!j||j==='duduk'); }
@@ -5906,7 +5905,7 @@ function hiasNyala(g,o){
   const jenis=jenisNyala(o); if(!jenis) return;
   g.userData.nyalaJenis=jenis;
   if(jenis==='duduk'){ const D=DUDUK[o.type], p=o.params||{};
-    // perabot tanpa titik duduk bawaan, atau arahnya diatur sendiri: dihitung dari kotak batasnya seperti model
+    // tanpa titik duduk bawaan / arah diatur sendiri: dari kotak batas seperti model
     if(!D || p.arahDuduk){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||(D&&D.h)||0.45,0.15,1.2), arah:+p.arahDuduk||0}; return; }
     g.userData.duduk={h:p.tinggiDuduk!=null?clamp(+p.tinggiDuduk,0.15,1.2):D.h, n:D.n||1, z:D.z||0, w:(FURN[o.type]&&FURN[o.type].f[0])||0.5}; return; }
   if(jenis==='lampu'||jenis==='api'){
@@ -7454,7 +7453,7 @@ function commitGizmo(){
    ====================================================================== */
 /* terang lampu: lumen manual, atau dihitung dari luas & jenis ruang (SNI 6197) */
 /* model unggahan: peran di mode jalan — duduk, lampu, audio, atau piano */
-/* perabot pustaka (JEV-090): bisa diduduki di mode jalan — bawaan untuk kursi/sofa/ranjang, pilihan untuk sisanya */
+// perabot pustaka bisa diduduki (JEV-090)
 function inspektorDuduk(ins,d){
   d.params=d.params||{};
   const bawaan=NYALA_JENIS[d.type]==='duduk', ubah=(lbl,fn)=>{ fn(); HIST.label=lbl; rebuildScene(); renderInspector(); };
@@ -7952,6 +7951,7 @@ const ASSET_MAX=20*1024*1024;
 const ZIP_MAKS=200*1048576;          // isi ZIP sesudah dibuka (model unduhan situs lain)
 const RAMPING_MAKS=100*1048576;      // GLB mentah yang masih boleh dirampingkan; sesudahnya tetap ≤ ASSET_MAX
 const TEKS_MAKS=1024;                // sisi terpanjang tekstur model (lihat RAMPINGKAN MODEL)
+const TEKS_WARNA=2048;               // tekstur warna & normal: 2K tajam (JEV-091); kekasaran/AO/emisi tetap 1K
 const ASSET_ANIM=new Map();          // id -> klip animasi glTF (JEV-084)
 function tplAset(id){ return ASSET_OBJ.get(id); }   // dipakai pembangun pagar/lantai yang letaknya di atas deklarasi ini
 const ASSET_BUF=new Map();           // id -> GLB yang sedang dipakai (untuk pemulihan konteks WebGL)
@@ -8026,6 +8026,9 @@ function parseAsset(id,buf){
         if(!root) return rej(new Error('berkas tidak memuat scene'));
         const r=prepareAssetObject(root);
         if(!r.dims[0]&&!r.dims[1]&&!r.dims[2]) return rej(new Error('modelnya kosong'));
+        // anisotropik: tekstur tetap tajam dilihat miring (JEV-091)
+        const an=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+        r.obj.traverse(m=>{ if(m.isMesh) for(const b of [].concat(m.material||[])) if(b) for(const k of ['map','normalMap','roughnessMap','metalnessMap','aoMap','emissiveMap']) if(b[k]) b[k].anisotropy=an; });
         // animasi (JEV-084): klip disimpan per aset; mesh berkulit tidak dipotong frustum (posenya bergerak di luar kotak awal)
         const klip=(gltf.animations||[]).filter(c=>c&&c.duration>0&&c.tracks.length).slice(0,24);
         let kulit=false; r.obj.traverse(n=>{ if(n.isSkinnedMesh){ kulit=true; n.frustumCulled=false; } });
@@ -8698,7 +8701,7 @@ function simpanTraceObjek(kind,type,P,ket){
   else { o={id:uid('ob'), kind, type, x:cx, y:0, z:cz, rotY:0, sx:1, sy:1, sz:1, params:Object.assign(paramsAwal(kind,type),{pts},VT.mode.model?{model:VT.mode.model}:{})};
     lv.objects.push(o); HIST.label='Gambar '+VT_NAMA(VT.mode); }
   const nama=VT_NAMA(VT.mode);
-  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
+  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();
   toast(`${nama[0].toUpperCase()+nama.slice(1)} — ${ket}`);
 }
 /* prisma bebas: alas hasil tracing, disimpan ternormalisasi (−0,5…0,5) + skala = ukuran kotaknya */
@@ -8709,7 +8712,7 @@ function simpanPrisma(P){
   const lv=L(); let o=VT.ganti&&lv.objects.find(x=>x.id===VT.ganti);
   if(o){ Object.assign(o,{x:cx,z:cz,rotY:0,sx:w,sz:d}); o.params.pts=pts; delete o.params.potong; HIST.label='Gambar ulang prisma'; }
   else { o={id:uid('ob'), kind:'furn', type:'bentuk_prisma', x:cx, y:0, z:cz, rotY:0, sx:w, sy:1, sz:d, params:{pts}}; lv.objects.push(o); HIST.label='Prisma bebas (tracing)'; }
-  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
+  setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();
   toast(`Prisma ${fmt(w)} × ${fmt(d)} m — tinggi diatur lewat skala Y`);
 }
 /* potong bentuk: keliling tracing (dunia) → koordinat lokal 1 m bentuk itu, jadi lubang tegak */
@@ -8719,7 +8722,7 @@ function selesaiPotong(){
   const a=o.rotY||0, ca=Math.cos(a), sa=Math.sin(a), sx=o.sx||1, sz=o.sz||1;
   const lok=VT.pts.map(({x,z})=>{ const dx=x-o.x, dz=z-o.z; let u=(dx*ca-dz*sa)/sx; const v=(dx*sa+dz*ca)/sz; if(o.flip) u=-u; return [+u.toFixed(4),+v.toFixed(4)]; });
   o.params=o.params||{}; o.params.potong=potonganAman(o.params.potong).concat([lok]).slice(-8);
-  HIST.label='Potong bentuk'; setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();   // pilih SETELAH dibangun: objek baru belum ada di scene lama
+  HIST.label='Potong bentuk'; setTool('select'); rebuildScene(); select('obj',o.id); renderInspector();
   toast(`Bentuk dipotong (${o.params.potong.length} potongan)`);
 }
 $('#traceDone').onclick=()=>selesaiTrace();
@@ -12422,9 +12425,21 @@ const KATALOG_PRODUK=[
   {id:'CommercialRefrigerator',  nama:'Kulkas display kaca',          kat:'Dapur',        lisensi:'CC-BY 4.0 — Darmstadt Graphics Group',sha:'ef8da8b144e650c277ac953e6d9e50ac1689ff1ee88c2c5bd9551ae8bccb6065', b:10131180},
   {id:'CarConcept',              nama:'Mobil konsep (untuk garasi)',  kat:'Garasi',       lisensi:'CC-BY 4.0 — Darmstadt Graphics Group',sha:'c272098089d78c5cd9fd9f24ff50ee8acf8d932c55f2d55fc10adb6c8998966b', b:11778688}
 ];
+// unduhan galeri bisa dibatalkan (JEV-091)
+function mulaiUnduh(){ GALERI.henti=new AbortController(); $('#galeriBatal').hidden=false; }
+function selesaiUnduh(){ GALERI.henti=null; $('#galeriBatal').hidden=true; }
+const sinyalUnduh=()=>GALERI.henti?GALERI.henti.signal:undefined;
+const dibatalkan=e=>!!e&&e.name==='AbortError';
+function cekBatal(){ if(GALERI.henti&&GALERI.henti.signal.aborted) throw new DOMException('dibatalkan','AbortError'); $('#galeriBatal').hidden=true; }
+$('#galeriBatal').onclick=()=>{ if(GALERI.henti) GALERI.henti.abort(); };
+// info berkas 3D sebelum diunduh (JEV-091, modul/infomodel.js)
+function infoSebelumUnduh(sumber,m,pasang){
+  if(GALERI.sibuk) return;
+  muatModul('infomodel').then(()=>window.INFOMODEL.tampil(sumber,m,pasang),()=>pasang());
+}
 async function sha256Hex(buf){ const h=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 async function unduhTerverifikasi(url,sha,ukuran,onP){
-  const r=await fetch(url,{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  const r=await fetch(url,{mode:'cors',signal:sinyalUnduh()}); if(!r.ok) throw new Error('HTTP '+r.status);
   const bag=[]; let n=0;
   if(r.body&&r.body.getReader){ const rd=r.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length; if(n>ASSET_MAX) throw new Error('berkas lebih besar dari yang dikatalogkan'); if(onP) onP(n,ukuran); } }
   else { const u=new Uint8Array(await r.arrayBuffer()); bag.push(u); n=u.length; }
@@ -12434,12 +12449,13 @@ async function unduhTerverifikasi(url,sha,ukuran,onP){
   return u.buffer;
 }
 async function pasangModelProduk(a){
-  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  if(GALERI.sibuk) return; GALERI.sibuk=true; mulaiUnduh();
   const info=$('#galeriInfo'), kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(a.id)}"]`); if(kartu) kartu.classList.add('muat');
   try{
     info.textContent='Mengunduh '+a.nama+'…';
     const buf=await unduhTerverifikasi(KHR_DASAR+a.id+'/glTF-Binary/'+a.id+'.glb',a.sha,a.b,(n,t)=>{ info.textContent=`Mengunduh ${a.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
     info.textContent='Menyusun '+a.nama+'…';
+    cekBatal();
     const r=await daftarkanAset(a.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/'+KHR_COMMIT+'/Models/'+a.id, lisensi:a.lisensi});
     if(!pakaiDariGaleri(r.id,a.nama)) return;
@@ -12447,10 +12463,10 @@ async function pasangModelProduk(a){
     if(a.p && o && o.type===r.id){ o.params=Object.assign({},o.params,a.p); rebuildScene(); }
     info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · ${a.lisensi}`;
     toast(a.nama+' dipasang'+(a.p&&a.p.interaksi?` (interaksi: ${a.p.interaksi})`:'')+' · '+a.lisensi);
-  }catch(e){
+  }catch(e){ if(dibatalkan(e)){ info.textContent='Unduhan '+a.nama+' dibatalkan'; return; }
     console.warn('model produk',e);
     info.textContent='Gagal: '+(e.message||e)+(/fetch|network/i.test(e.message||'')?' — perlu koneksi internet':'');
-  }finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+  }finally{ GALERI.sibuk=false; selesaiUnduh(); if(kartu) kartu.classList.remove('muat'); }
 }
 function gltfKeGLB(json,ambil){
   const bag=[]; let off=0;
@@ -12487,15 +12503,15 @@ async function daftarModelPH(){
 async function unduhModelPH(id,nama,res,onP){
   if(!ID_AMAN.test(id)) throw new Error('id model tidak sah');
   if(!/^(1k|2k)$/.test(res)) res='1k';
-  const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  const r=await fetch('https://api.polyhaven.com/files/'+encodeURIComponent(id),{mode:'cors',signal:sinyalUnduh()}); if(!r.ok) throw new Error('HTTP '+r.status);
   const f=await r.json(), g=f.gltf&&(f.gltf[res]||f.gltf['1k']||f.gltf[Object.keys(f.gltf)[0]]);
   const gl=g&&g.gltf; if(!gl||!gl.url) throw new Error('model ini tidak punya versi glTF');
   const inc=gl.include||{}, daftar=[[null,gl.url],...Object.entries(inc).map(([k,v])=>[k,v.url])];
   const total=Object.values(inc).reduce((s,v)=>s+(v.size||0),gl.size||0);
-  if(total>ASSET_MAX*1.05) throw new Error(`ukurannya ${fmt(total/1048576,1)} MB — melebihi batas 20 MB, pilih tekstur 1K`);
+  if(total>RAMPING_MAKS) throw new Error(`ukurannya ${fmt(total/1048576,1)} MB — terlalu besar, pilih tekstur 1K`);   // dirampingkan sesudahnya
   const isi=new Map(); let n=0;
   await Promise.all(daftar.map(async([k,url])=>{
-    const rr=await fetch(url,{mode:'cors'}); if(!rr.ok) throw new Error('HTTP '+rr.status+' '+(k||'gltf'));
+    const rr=await fetch(url,{mode:'cors',signal:sinyalUnduh()}); if(!rr.ok) throw new Error('HTTP '+rr.status+' '+(k||'gltf'));
     const b=new Uint8Array(await rr.arrayBuffer()); isi.set(k,b); n+=b.length; if(onP) onP(n,total);
   }));
   const json=JSON.parse(new TextDecoder().decode(isi.get(null)));
@@ -12560,21 +12576,25 @@ async function kodeUlangGambar(data,mime,w,h){
   let alfa=false;
   if(mime==='image/png'){ const d=x.getImageData(0,0,w,h).data; for(let i=3;i<d.length;i+=4) if(d[i]<250){ alfa=true; break; } }
   const tipe=alfa?'image/png':'image/jpeg';
-  const hasil=await new Promise(ok=>c.toBlob(ok,tipe,0.9)); c.width=0;
+  const hasil=await new Promise(ok=>c.toBlob(ok,tipe,0.86)); c.width=0;
   return hasil ? {data:new Uint8Array(await hasil.arrayBuffer()), mime:tipe} : null;
 }
-async function rampingkanGLB(buf,maks=TEKS_MAKS){
+async function rampingkanGLB(buf,maks=TEKS_MAKS,maksWarna=maks===TEKS_MAKS?TEKS_WARNA:maks){
   let g=null; try{ g=bacaGLB(buf); }catch(e){ g=null; }
   if(!g||!g.bin||!Array.isArray(g.json.images)||!g.json.images.length) return {buf,n:0};
   const {json,bin}=g, BV=json.bufferViews||[];
   // satu buffer saja; data meshopt merujuk buffer langsung sehingga tidak bisa disusun ulang
   if((json.buffers||[]).length!==1 || (json.extensionsUsed||[]).some(e=>/meshopt/i.test(e))) return {buf,n:0};
   const baru=new Map(); let n=0;
-  for(const im of json.images){
+  // gambar warna & normal (paling menentukan kesan nyata) boleh setajam maksWarna; peta lain cukup maks
+  const tajam=new Set(), TX=json.textures||[];
+  for(const mt of json.materials||[]){ const p=mt.pbrMetallicRoughness||{}; for(const t of [p.baseColorTexture,mt.normalTexture]) if(t&&TX[t.index]) tajam.add(TX[t.index].source); }
+  for(const [ii,im] of json.images.entries()){
     const bv=BV[im.bufferView]; if(!bv||!/^image\/(png|jpeg)$/.test(im.mimeType||'')||baru.has(im.bufferView)) continue;
     const o=bv.byteOffset||0, data=bin.subarray(o,o+bv.byteLength), uk=ukuranGambar(data); if(!uk) continue;
-    const s=Math.min(1,maks/Math.max(uk[0],uk[1])), pngBesar=im.mimeType==='image/png'&&data.length>262144;
-    if(s>=1&&!pngBesar) continue;
+    const s=Math.min(1,(tajam.has(ii)?maksWarna:maks)/Math.max(uk[0],uk[1])), pngBesar=im.mimeType==='image/png'&&data.length>262144;
+    // JPEG yang jauh lebih boros dari ±0,35 bita/piksel ikut dikompres ulang (JEV-091)
+    if(s>=1&&!pngBesar&&!(im.mimeType==='image/jpeg'&&data.length>uk[0]*uk[1]*0.35)) continue;
     let r=null; try{ r=await kodeUlangGambar(data,im.mimeType,Math.max(1,Math.round(uk[0]*s)),Math.max(1,Math.round(uk[1]*s))); }catch(e){ console.warn('rampingkan gambar',e); }
     if(!r || (s>=1 && r.data.length>=data.length*0.9)) continue;
     baru.set(im.bufferView,r.data); n++;
@@ -12604,7 +12624,7 @@ async function perkecilTeksturAset(id,maks){
   const a=PROJECT.assets[id], buf0=ASSET_BUF.get(id); if(!a||!buf0||LIHAT.on) return;
   $('#loader').classList.add('on');
   try{
-    const o=await rampingkanGLB(buf0,maks);
+    const o=await rampingkanGLB(buf0,maks,maks);
     if(!o.n) return toast('Tekstur model ini sudah kecil');
     a.asli=a.asli||a.size; a.size=o.buf.byteLength; if(a.data) a.data=b64FromBuf(o.buf);
     await parseAsset(id,o.buf); rebuildScene(); renderInspector();
@@ -12781,7 +12801,9 @@ function ubahSketchfab(m,dariTag){
   const glb=m.archives&&m.archives.glb&&+m.archives.glb.size;
   const scan=dariTag || (Array.isArray(m.tags)?m.tags:[]).some(t=>RE_SCAN.test(String(t&&(t.slug||t.name)||'')));
   return {uid, nama:String(m.name||'model').slice(0,80), pembuat:String(m.user&&(m.user.displayName||m.user.username)||'').slice(0,60),
-    lis, thumb:im?im.url:'', ukuran:glb||0, laman:'https://sketchfab.com/3d-models/'+uid, scan, suka:+m.likeCount||0};
+    lis, thumb:im?im.url:'', ukuran:glb||0, laman:'https://sketchfab.com/3d-models/'+uid, scan, suka:+m.likeCount||0,
+    tri:+(m.archives&&m.archives.glb&&m.archives.glb.faceCount)||+m.faceCount||0, teks:+(m.archives&&m.archives.glb&&m.archives.glb.textureCount)||0,
+    teksRes:+(m.archives&&m.archives.glb&&m.archives.glb.textureMaxResolution)||0};
 }
 const SKF_API=/^https:\/\/api\.sketchfab\.com\/v3\/search\?/;
 // beberapa pencarian sekaligus (biasa + per tag scan) → digabung tanpa duplikat; "next" tiap
@@ -12812,7 +12834,7 @@ async function muatLagiSketchfab(){
 function tombolMuatLagi(fn){ const b=el('button','btn sm ghost gl-lagi','Muat lebih banyak'); b.type='button'; b.onclick=fn; $('#galeriGrid').appendChild(b); }
 // unduhan dengan kemajuan & batas ukuran (dihentikan begitu melewati batas)
 async function unduhAliran(url,maks,onP,total){
-  const rr=await fetch(url); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
+  const rr=await fetch(url,{signal:sinyalUnduh()}); if(!rr.ok) throw new Error('unduhan gagal (HTTP '+rr.status+')');
   total=total||+rr.headers.get('content-length')||0;
   const bag=[]; let n=0;
   if(rr.body&&rr.body.getReader){ const rd=rr.body.getReader(); for(;;){ const {done,value}=await rd.read(); if(done) break; bag.push(value); n+=value.length;
@@ -12823,7 +12845,7 @@ async function unduhAliran(url,maks,onP,total){
 }
 async function unduhSketchfab(m,onP){
   if(!SKF.token) throw new Error('masukkan token API Sketchfab dulu');
-  const r=await fetch('https://api.sketchfab.com/v3/models/'+m.uid+'/download',{headers:{Authorization:'Token '+SKF.token}});
+  const r=await fetch('https://api.sketchfab.com/v3/models/'+m.uid+'/download',{headers:{Authorization:'Token '+SKF.token},signal:sinyalUnduh()});
   if(r.status===401||r.status===403) throw new Error('token Sketchfab ditolak — periksa lagi di Settings → Password & API');
   if(!r.ok) throw new Error('Sketchfab menolak unduhan (HTTP '+r.status+')');
   const j=await r.json(), pilih=(j.glb&&j.glb.url)?{...j.glb,glb:true}:(j.gltf&&j.gltf.url)?j.gltf:null;
@@ -12834,17 +12856,18 @@ async function unduhSketchfab(m,onP){
   return (await berkasKeGLB([new File([buf],m.uid+'.zip',{type:'application/zip'})])).buf;
 }
 async function pasangModelSketchfab(m){
-  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  if(GALERI.sibuk) return; GALERI.sibuk=true; mulaiUnduh();
   const info=$('#galeriInfo'), kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(m.uid)}"]`); if(kartu) kartu.classList.add('muat');
   try{
     info.textContent='Mengunduh '+m.nama+'…';
     const buf=await unduhSketchfab(m,(n,t)=>{ info.textContent=`Mengunduh ${m.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
+    cekBatal();
     const r=await daftarkanAset(m.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:m.lis+(m.pembuat?' — '+m.pembuat:'')+' (Sketchfab)'});
     if(!pakaiDariGaleri(r.id,m.nama)) return;
     info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${r.ramping?`dirampingkan ${fmt(r.asal/1048576,1)} → ${fmt(r.ukuran/1048576,1)} MB · `:''}${m.lis}${m.pembuat?' — '+m.pembuat:''}`;
-  }catch(e){ console.warn('sketchfab',e); info.textContent='Gagal: '+(e.message||e); }
-  finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+  }catch(e){ if(dibatalkan(e)){ info.textContent='Unduhan '+m.nama+' dibatalkan'; return; } console.warn('sketchfab',e); info.textContent='Gagal: '+(e.message||e); }
+  finally{ GALERI.sibuk=false; selesaiUnduh(); if(kartu) kartu.classList.remove('muat'); }
 }
 function renderGaleriSketchfab(){
   const g=$('#galeriGrid'); g.textContent='';
@@ -12854,7 +12877,7 @@ function renderGaleriSketchfab(){
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; if(m.thumb) im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
     k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(el('small','gl-lis',m.lis));
     if(m.scan) k.appendChild(isiIkon(el('small','gl-scan'),'kamera','Scan'));
-    k.onclick=()=>pasangModelSketchfab(m); g.appendChild(k);
+    k.onclick=()=>infoSebelumUnduh('skf',m,()=>pasangModelSketchfab(m)); g.appendChild(k);
   }
   if(SKF.lanjut.length&&SKF.hasil.length) tombolMuatLagi(muatLagiSketchfab);
   if(!GALERI.sibuk) $('#galeriInfo').textContent=daftar.length?`${daftar.length} model berlisensi bebas-komersial (CC0 / CC-BY / CC-BY-SA)`+(nScan?` · ${nScan} hasil scan 3D / fotogrametri`:'')+(SKF.token?' · ketuk untuk mengunduh & memasang':' · masukkan token API untuk mengunduh'):'Tidak ada model berlisensi bebas-komersial untuk pencarian ini.';
@@ -12892,20 +12915,21 @@ async function glbGSO(id,onP){
   return (await berkasKeGLB([new File([zip],id+'.zip',{type:'application/zip'})])).buf;
 }
 async function pasangModelGSO(m){
-  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  if(GALERI.sibuk) return; GALERI.sibuk=true; mulaiUnduh();
   const info=$('#galeriInfo'), kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(m.id)}"]`); if(kartu) kartu.classList.add('muat');
   try{
     info.textContent='Mengunduh '+m.nama+'…';
     const buf=await glbGSO(m.id,(n,t)=>{ info.textContent=`Mengunduh ${m.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
+    cekBatal();
     const r=await daftarkanAset(m.nama,buf);
     Object.assign(PROJECT.assets[r.id],{sumber:m.laman, lisensi:'CC-BY 4.0 — Google Research (Google Scanned Objects)'});
     if(!pakaiDariGaleri(r.id,m.nama)) return;
     info.textContent=`${m.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · CC-BY 4.0 Google`;
-  }catch(e){
+  }catch(e){ if(dibatalkan(e)){ info.textContent='Unduhan '+m.nama+' dibatalkan'; return; }
     console.warn('google scanned objects',e);
     info.textContent='Gagal: '+(e.message||e)+' — buka halaman modelnya, unduh ZIP-nya, lalu unggah lewat tombol di bawah.';
     const a=el('a',null,'Buka halaman '+m.nama); a.href=m.laman; a.target='_blank'; a.rel='noopener noreferrer'; $('#galeriSitus').prepend(a);
-  }finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+  }finally{ GALERI.sibuk=false; selesaiUnduh(); if(kartu) kartu.classList.remove('muat'); }
 }
 function renderGaleriGSO(){
   const g=$('#galeriGrid'); g.textContent='';
@@ -12913,7 +12937,7 @@ function renderGaleriGSO(){
     const k=el('button','gl-card'); k.dataset.id=m.id; k.title=m.nama+' — Google Scanned Objects · CC-BY 4.0';
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=m.thumb; im.onerror=()=>{ im.style.visibility='hidden'; };
     k.appendChild(im); k.appendChild(el('span',null,m.nama)); k.appendChild(isiIkon(el('small','gl-scan'),'kamera','Scan'));
-    k.onclick=()=>pasangModelGSO(m); g.appendChild(k);
+    k.onclick=()=>infoSebelumUnduh('gso',m,()=>pasangModelGSO(m)); g.appendChild(k);
   }
   if(!GSO.habis&&GSO.hasil.length) tombolMuatLagi(muatLagiGSO);
   if(!GALERI.sibuk) $('#galeriInfo').textContent=GSO.hasil.length?`${GSO.hasil.length} benda hasil scan 3D (CC-BY 4.0, Google Research) · ketuk untuk mengunduh & memasang`
@@ -12945,22 +12969,23 @@ function renderSitusLain(){
   b.onclick=()=>$('#glbInput').click(); w.appendChild(b);
 }
 async function pasangModelPH(a){
-  if(GALERI.sibuk) return; GALERI.sibuk=true;
+  if(GALERI.sibuk) return; GALERI.sibuk=true; mulaiUnduh();
   const res=$('#galeriRes').value||'1k', info=$('#galeriInfo');
   const kartu=document.querySelector(`.gl-card[data-id="${CSS.escape(a.id)}"]`); if(kartu) kartu.classList.add('muat');
   try{
     info.textContent='Mengunduh '+a.nama+'…';
     const buf=await unduhModelPH(a.id,a.nama,res,(n,t)=>{ info.textContent=`Mengunduh ${a.nama} — ${t?Math.min(100,Math.round(n/t*100))+'%':fmt(n/1048576,1)+' MB'}`; });
     info.textContent='Menyusun '+a.nama+'…';
+    cekBatal();
     const r=await daftarkanAset(a.nama+' (foto '+res.toUpperCase()+')',buf);
     PROJECT.assets[r.id].sumber='https://polyhaven.com/a/'+a.id;
     if(!pakaiDariGaleri(r.id,a.nama)) return;
     info.textContent=`${a.nama} dipasang — ${r.dims.map(v=>fmt(v,2)).join(' × ')} m · ${fmt(r.ukuran/1048576,1)} MB · Poly Haven (CC0)`;
     toast(a.nama+' dipasang di tengah tampilan — geser dengan W');
-  }catch(e){
+  }catch(e){ if(dibatalkan(e)){ info.textContent='Unduhan '+a.nama+' dibatalkan'; return; }
     console.warn('model fotogrametri',e);
     info.textContent='Gagal: '+(e.message||e)+(/fetch|network/i.test(e.message||'')?' — perlu koneksi internet':'');
-  }finally{ GALERI.sibuk=false; if(kartu) kartu.classList.remove('muat'); }
+  }finally{ GALERI.sibuk=false; selesaiUnduh(); if(kartu) kartu.classList.remove('muat'); }
 }
 /* Pintasan per ruangan: pengguna mencari "barang kamar mandi", bukan kategori
    teknis sumbernya. Dicocokkan per KATA (id camelCase/garis bawah dipecah dulu),
@@ -13006,7 +13031,7 @@ function renderGaleri(){
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=`https://cdn.polyhaven.com/asset_img/thumbs/${a.id}.png?width=256&height=256`;
     im.onerror=()=>{ im.style.visibility='hidden'; };
     k.appendChild(im); k.appendChild(el('span',null,a.nama));
-    k.onclick=()=>pasangModelPH(a);
+    k.onclick=()=>infoSebelumUnduh('ph',a,()=>pasangModelPH(a));
     g.appendChild(k);
   }
   if(c.length>batas) tombolMuatLagi(()=>{ GALERI.batas=batas+160; renderGaleri(); });
@@ -13021,7 +13046,7 @@ function renderGaleriProduk(){
     const im=document.createElement('img'); im.loading='lazy'; im.alt=''; im.src=KHR_DASAR+a.id+'/screenshot/screenshot.jpg';
     im.onerror=()=>{ im.style.visibility='hidden'; };
     k.appendChild(im); k.appendChild(el('span',null,a.nama));
-    k.onclick=()=>pasangModelProduk(a);
+    k.onclick=()=>infoSebelumUnduh('khr',a,()=>pasangModelProduk(a));
     g.appendChild(k);
   }
   if(!GALERI.sibuk) $('#galeriInfo').textContent=c.length?`${c.length} model produk nyata · ketuk untuk mengunduh, memverifikasi (SHA-256) & memasang · kursi/sofa langsung bisa diduduki, lampu langsung menyala`:infoKosongRuang();
@@ -13043,8 +13068,7 @@ function isiKategoriGaleri(){
   $('#galeriCari').placeholder=GALERI.sumber==='skf'?'Cari di Sketchfab (bahasa Inggris): sofa, bed, toilet, kitchen…'
     :GALERI.sumber==='gso'?'Cari benda hasil scan (bahasa Inggris): mug, shoe, pillow, toy…':'Cari: chair, sofa, plant, lamp…';
 }
-/* model dari galeri: dipasang di denah, atau — bila galeri dibuka dari pembuat pagar / lantai (JEV-090) —
-   dipilih sebagai potongan pagar / ubin lalu tracing langsung dimulai */
+// model galeri: dipasang di denah, atau (dibuka dari pembuat pagar/lantai, JEV-090) dipilih lalu tracing dimulai
 function pakaiDariGaleri(id,nama){
   renderCatalogs();
   const t=GALERI.tujuan;
@@ -14762,7 +14786,7 @@ function fpsResolveWalls(px,pz,feetY){
   }
   return [px,pz];
 }
-/* pagar taman (bawaan maupun dari model, JEV-090) menahan badan seperti dinding tipis */
+// pagar taman menahan badan seperti dinding tipis (JEV-090)
 function dorongPagar(o,px,pz){
   const a=o.rotY||0, c=Math.cos(a), s=Math.sin(a), P=garisPoli(o).map(([x,z])=>[o.x+x*c+z*s, o.z-x*s+z*c]);
   const t=o.params.jenis==='pagar_model'?(window.POTONG&&window.POTONG.adaModel(o)?clamp(window.POTONG.ukuranPotong(o)[2],0.04,0.6)/2:0.05):o.params.jenis==='pagar_tanaman'?0.27:0.05, rad=t+FPS.r;
@@ -16369,9 +16393,7 @@ try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
   if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false,
       pilih:pr.pilih==='acak'?'acak':'manual', id:typeof pr.id==='string'&&ID_AMAN.test(pr.id)?pr.id:null, nama:typeof pr.nama==='string'?pr.nama.slice(0,120):''});
     if(pr.mode==='foto') mulaiLangitFoto(); } }catch(e){}
-/* Ikon layar utama iPhone/iPad (JEV-087): iOS mengambil ikon lewat permintaan terpisah yang bisa gagal
-   (deployment pratinjau Vercel berlogin, tembolok ikon lama) lalu memakai huruf "P". Ikonnya diambil sekali
-   lewat sesi halaman ini dan dipasang sebagai data: URL — "Tambahkan ke Layar Utama" membaca tag di halaman. */
+// ikon layar utama iOS (JEV-087): diambil lewat sesi halaman & dipasang sebagai data: URL — iOS kadang gagal mengambilnya sendiri
 addEventListener('load',()=>{ const l=document.querySelector('link[rel="apple-touch-icon"]');
   if(!l||!/iP(ad|hone|od)|Macintosh/.test(navigator.userAgent)) return;
   fetch(l.href,{credentials:'same-origin'}).then(r=>r.ok&&/^image\/png/.test(r.headers.get('content-type')||'')?r.blob():null).then(b=>{ if(!b) return;

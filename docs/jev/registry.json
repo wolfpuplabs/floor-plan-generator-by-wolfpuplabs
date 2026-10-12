@@ -3959,6 +3959,68 @@
     "target": "≥ 10% proyek berpagar",
     "tinjau": "2027-01-12"
    }
+  },
+  {
+   "id": "JEV-091",
+   "judul": "Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model galeri langsung diunduh begitu kartunya diketuk — pengguna tidak tahu ukuran/beratnya dan tidak bisa menghentikan unduhan besar; tekstur model diperkecil ke 1K sehingga kurang tajam.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-12: \"tambahin info file 3d sebelum di download sama cancel download, trus bikin semua asset library texture ultra realistic dan compressed\"",
+    "alternatif": [
+     "kompresi GPU KTX2/Basis (butuh enkoder wasm besar di peramban & loader tambahan — ditunda)",
+     "tekstur 4K (memori grafis iPad tidak cukup)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "metadata dari API sumber hanya lewat textContent; jalur unduh & verifikasi (SHA-256, G3) tidak berubah"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada host baru (api.polyhaven.com, Sketchfab, Gazebo Fuel sudah dipakai)"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "tanpa pustaka baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "hanya warna & normal 2K, peta lain tetap 1K, JPEG terkompres; panel info di modul/infomodel.js yang dimuat saat dipakai"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "panel ber-role dialog, Esc menutup, tombol berlabel"
+    }
+   },
+   "metrik": {
+    "nama": "unduhan galeri yang dibatalkan / gagal",
+    "target": "< 10%",
+    "tinjau": "2027-01-12"
+   }
   }
  ]
 }

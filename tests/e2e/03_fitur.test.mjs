@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { FIX, CORS, buatDenah } from './harness.mjs';
+import { FIX, CORS, buatDenah, unduhDariPanel } from './harness.mjs';
 
 export const tes = {
   'tracing: alas denah dibersihkan saat mulai ulang / tambah lantai': async (page) => {
@@ -43,6 +43,7 @@ tes['galeri fotogrametri: glTF + bin + tekstur dikemas jadi GLB & dipasang'] = a
   await page.evaluate(() => bukaGaleri());
   await page.waitForFunction(() => document.querySelectorAll('.gl-card').length > 0);
   await page.locator('.gl-card').first().click();
+  await unduhDariPanel(page);
   await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 20000 });
   const r = await page.evaluate(() => {
     const id = Object.keys(PROJECT.assets)[0]; let tex = null;
@@ -155,6 +156,7 @@ tes['produk nyata: unduhan terverifikasi SHA-256, kredit lisensi, interaksi bawa
   assert.ok(await page.locator('#galeriGrid .gl-card[data-id="KursiUji"]').count() === 1, 'kartu produk tidak tampil');
   assert.ok(await page.locator('#galeriGrid .gl-card').count() >= 14, 'katalog produk kurang lengkap');
   await page.locator('#galeriGrid .gl-card[data-id="KursiUji"]').click();
+  await unduhDariPanel(page);
   await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 20000 });
   const r = await page.evaluate(() => {
     const id = Object.keys(PROJECT.assets).find(k => PROJECT.assets[k].name === 'Kursi uji'), a = PROJECT.assets[id];
@@ -176,6 +178,7 @@ tes['produk nyata: unduhan terverifikasi SHA-256, kredit lisensi, interaksi bawa
   const n0 = await page.evaluate(() => Object.keys(PROJECT.assets).length);
   await page.evaluate(() => { document.getElementById('galeriInfo').textContent = ''; });
   await page.locator('#galeriGrid .gl-card[data-id="KursiUji"]').click();
+  await unduhDariPanel(page);
   await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 20000 });
   assert.match(await page.textContent('#galeriInfo'), /SHA-256/);
   assert.equal(await page.evaluate(() => Object.keys(PROJECT.assets).length), n0, 'berkas rusak tidak boleh masuk pustaka');

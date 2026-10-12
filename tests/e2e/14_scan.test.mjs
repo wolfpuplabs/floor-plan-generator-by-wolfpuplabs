@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { FIX, CORS } from './harness.mjs';
+import { FIX, CORS, unduhDariPanel } from './harness.mjs';
 
 // JEV-063: model hasil scan 3D — Sketchfab bertag photogrammetry/3D scan ikut dicari, ditandai &
 // didahulukan; Google Scanned Objects (Gazebo Fuel, CC-BY 4.0) sebagai sumber tanpa token
@@ -80,6 +80,7 @@ export const tes = {
     assert.equal(kartu[0][2], `https://fuel.gazebosim.org/1.0/GoogleResearch/models/${ID_GSO}/1/files/thumbnails/0.jpg`);
     assert.match(kartu[1][2], /Threshold_Porcelain_Teapot_White\/tip\/files\/thumbnails\/0\.jpg$/);
     await page.locator(`#galeriGrid .gl-card[data-id="${ID_GSO}"]`).click();
+    await unduhDariPanel(page);
     await page.waitForFunction(() => !GALERI.sibuk && /dipasang|Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 60000 });
     assert.match(await page.textContent('#galeriInfo'), /dipasang/);
     const r = await page.evaluate(() => { const id = Object.keys(PROJECT.assets).pop(), a = PROJECT.assets[id]; let tex = 0;
@@ -103,6 +104,7 @@ export const tes = {
     await page.selectOption('#galeriSumber', 'gso');
     await page.waitForFunction(() => document.querySelectorAll('#galeriGrid .gl-card').length === 1, undefined, { timeout: 30000 });
     await page.locator('#galeriGrid .gl-card').click();
+    await unduhDariPanel(page);
     await page.waitForFunction(() => !GALERI.sibuk && /Gagal/.test(document.getElementById('galeriInfo').textContent), undefined, { timeout: 30000 });
     assert.match(await page.textContent('#galeriInfo'), /unduh ZIP-nya, lalu unggah/);
     const a = await page.$eval('#galeriSitus a', x => [x.href, x.target, x.rel]);
