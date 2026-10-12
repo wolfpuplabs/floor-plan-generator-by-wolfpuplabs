@@ -307,6 +307,12 @@ body.jalan #mediaDock{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 96px)}
 }
 #toolbar{top:max(12px,env(safe-area-inset-top))}
 #fpsStick{position:absolute;width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);z-index:36;pointer-events:none;touch-action:none}
+#fpsFoto{display:none;position:absolute;left:50%;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 10px);transform:translateX(-50%);z-index:37;width:62px;height:62px;border-radius:50%;
+  place-items:center;padding:0;color:#fff;background:rgba(18,20,24,.45);border:3px solid rgba(255,255,255,.92);box-shadow:0 2px 12px rgba(0,0,0,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer}
+#fpsFoto .ik{width:24px;height:24px}
+#fpsFoto:active{transform:translateX(-50%) scale(.92);background:rgba(255,255,255,.3)}
+body.jalan #fpsFoto{display:grid}
+body.jalan #toast{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 84px)}
 #fpsKnob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(78,201,176,.5);border:1px solid rgba(78,201,176,.8)}
 #app.nosidebar #sidebar{display:none}
 #toolbar button.on{background:#2a3d39;color:var(--accent)}
@@ -964,10 +970,11 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
       <button class="btn ghost sm" id="fpsFull"><svg class="ik" aria-hidden="true"><use href="#i-penuh"/></svg> Layar penuh</button>
       </span>
-      <button class="btn ghost sm" id="fpsFoto" title="Ambil foto" aria-label="Ambil foto"><svg class="ik" aria-hidden="true"><use href="#i-kamera"/></svg></button>
       <button class="btn ghost sm" id="fpsCiut" title="Sembunyikan / tampilkan menu" aria-label="Sembunyikan / tampilkan menu" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-ciut"/></svg></button>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
+    <!-- tombol rana mode jalan: di tengah bawah, terjangkau ibu jari (permintaan pengguna) -->
+    <button id="fpsFoto" title="Ambil foto" aria-label="Ambil foto"><svg class="ik" aria-hidden="true"><use href="#i-kamera"/></svg></button>
     <div class="float" id="detailPanel" hidden role="dialog" aria-labelledby="detailJudul">
       <button class="btn ghost sm" id="detailTutup" aria-label="Tutup" title="Tutup"><svg class="ik" aria-hidden="true"><use href="#i-tutup"/></svg></button>
       <img id="detailGambar" alt="" hidden>

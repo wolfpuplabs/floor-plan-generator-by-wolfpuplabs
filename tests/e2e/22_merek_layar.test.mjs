@@ -27,7 +27,7 @@ export const tes = {
     await page.evaluate(() => { delete document.fullscreenElement; document.dispatchEvent(new Event('fullscreenchange')); exitFPS(); });
     assert.equal(await page.evaluate(() => document.body.classList.contains('layar-penuh')), false);
   },
-  'tata letak mode jalan: Keluar di kiri bilah, tombol sembunyikan di kanan; pemutar media di tengah bawah; --bilah-atas = tepi bawah bilah': async (page) => {
+  'tata letak mode jalan: Keluar di kiri bilah, tombol sembunyikan di kanan; pemutar media & tombol foto di tengah bawah; --bilah-atas = tepi bawah bilah': async (page) => {
     const r = await page.evaluate(async () => {
       enterFPS(); ciutkanFps(false); const d = $('#mediaDock'); d.hidden = false; $('#mediaAudio').hidden = false;
       await new Promise(r => setTimeout(r, 300));
@@ -37,9 +37,12 @@ export const tes = {
       ciutkanFps(true); await new Promise(r => setTimeout(r, 300));
       out.ciut = [...bar.children].filter(e => e.offsetParent).map(e => e.id);
       out.atasCiut = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bilah-atas')) === Math.ceil(bar.getBoundingClientRect().bottom);
-      d.hidden = true; ciutkanFps(false); exitFPS(); return out;
+      // tombol foto: lingkaran rana di tengah bawah, di bawah pemutar media (tidak menindih)
+      const f = $('#fpsFoto').getBoundingClientRect(), m2 = d.getBoundingClientRect();
+      out.foto = Math.abs(f.left + f.width / 2 - innerWidth / 2) < 2 && f.bottom > innerHeight - 90 && f.top >= m2.bottom;
+      d.hidden = true; ciutkanFps(false); exitFPS(); out.fotoKeluar = getComputedStyle($('#fpsFoto')).display; return out;
     });
-    assert.deepEqual(r, { awal: 'fpsExit', akhir: 'fpsCiut', tengah: true, bawah: true, atas: true, ciut: ['fpsExit', 'fpsFoto', 'fpsCiut'], atasCiut: true });
+    assert.deepEqual(r, { awal: 'fpsExit', akhir: 'fpsCiut', tengah: true, bawah: true, atas: true, ciut: ['fpsExit', 'fpsCiut'], atasCiut: true, foto: true, fotoKeluar: 'none' });
   },
   'foto mode jalan: tombol kamera menyimpan JPEG tampilan sekarang (diunduh di desktop), kilat & nama berwaktu': async (page) => {
     await page.evaluate(() => { PROJECT.levels[0].walls = [[0, 0, 5, 0], [5, 0, 5, 4], [5, 4, 0, 4], [0, 4, 0, 0]].map(([a, b, c, d]) => ({ id: uid('w'), x1: a, z1: b, x2: c, z2: d, thickness: 0.15, openings: [] })); rebuildScene(); enterFPS(); });
