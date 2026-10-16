@@ -328,6 +328,7 @@ body{font-size:14px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
 /* foto profil main bareng: pratinjau bulat */
 .lobi-foto{align-items:center}
+.npc-baris .lobi-kartu{flex:1}.npc-dadu{display:flex;width:64px;height:64px;align-items:center;justify-content:center;font-size:2rem}.npc-warna{display:flex;gap:6px;margin:6px 0}.npc-warna span{width:22px;height:22px;border-radius:50%;border:1px solid var(--line)}
 .lobi-av3d{flex-wrap:wrap}.lobi-kartu-baris{display:flex;gap:8px;width:100%}.lobi-kartu{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--txt);font-size:.72rem;cursor:pointer}.lobi-kartu img{width:64px;height:64px;border-radius:8px;object-fit:cover}.lobi-kartu[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .lobi-av3d-nama{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.74rem;color:var(--muted)}
 .lobi-foto-lihat{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #fff;flex:none}
@@ -437,8 +438,29 @@ body.lihat.jalan #lihatBar{display:none}
 .ikgrid .ik{width:18px;height:18px;margin-right:4px;vertical-align:-4px}
 .gl-ruang button .ik{width:16px;height:16px;margin-right:2px;vertical-align:-3px}
 /* bilah mode jalan: bisa diciutkan jadi satu tombol (layar HP), pilihan kualitas render */
-#fpsbar .fps-alat{display:contents}
-#fpsbar.ciut .fps-alat,#fpsbar.ciut #fpsinfo{display:none}
+#fpsbar.ciut #fpsinfo{display:none}
+#fpsDok{display:none;position:absolute;left:50%;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 18px);transform:translateX(-50%);z-index:37;align-items:center;gap:12px}
+body.jalan #fpsDok{display:flex}
+body.jalan.menu-ciut #fpsDok,body.jalan.menu-ciut #fpsLembar{display:none}
+#fpsDok .fps-rana{width:66px;height:1px}
+.fps-ik{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;padding:0;color:#fff;background:rgba(18,20,24,.55);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.fps-ik .ik{width:22px;height:22px}
+.fps-ik[aria-expanded="true"]{border-color:var(--accent);color:var(--accent);background:rgba(18,20,24,.85)}
+#fpsLembar{left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 88px);z-index:38;width:min(360px,calc(100% - 24px));padding:12px 14px;font-size:.8rem;max-height:calc(100% - var(--bilah-atas,70px) - 110px);overflow:auto}
+#fpsLembar .fl{display:flex;flex-direction:column;gap:10px}
+#fpsLembar .fl[hidden]{display:none}
+.fl-judul{font-weight:700;color:var(--txt)}
+.fl-judul small{font-weight:400;color:var(--muted)}
+.fl-baris{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--muted)}
+.fl-baris select{flex:0 0 60%;min-height:38px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:0 8px;font:inherit}
+.fl-chip{display:flex;flex-wrap:wrap;gap:8px}
+.fl-chip button{flex:1 1 calc(50% - 8px);min-height:40px;white-space:nowrap}
+.fl-chip button[hidden]{display:none}
+.fl-npc{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.fl-npc[hidden]{display:none}
+#fpsLembar .fps-langit{display:flex;gap:6px}
+#fpsLembar .fps-langit #fpsLangit{flex:1;min-height:40px}
+#fpsLembar .fps-langit button{min-height:40px}
 #fpsbar.ciut{padding:6px;gap:6px}
 #fpsCiut{min-width:40px;padding:0 8px}
 #fpsCiut .ik{width:20px;height:20px}
@@ -491,7 +513,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
 </head>
 <body>
 <!-- ikon garis sendiri (24×24, goresan currentColor) — pengganti emoji di antarmuka (JEV-067) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-denah" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h11M14 3v11M9 14v7M14 14h7"/></symbol><symbol id="i-lantai" viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5z"/><path d="m2 12 10 5 10-5M2 16l10 5 10-5"/></symbol><symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 11a2 2 0 0 1 2 2v2h14v-2a2 2 0 1 1 4 0v5H1v-5a2 2 0 0 1 2-2z"/><path d="M4 18v2M20 18v2"/></symbol><symbol id="i-palet" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.6-.9 1.6-1.6 0-.9-.6-1.3-.6-2.1 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.9 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol><symbol id="i-simpan" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></symbol><symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol><symbol id="i-urung" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="i-siklus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.6"/><path d="M12 9.6V12l1.7 1.2"/><path d="M4.4 8.6A8.4 8.4 0 0 1 19.3 7.6"/><path d="m19.9 3.9-.6 3.7-3.7-.5"/><path d="M19.6 15.4A8.4 8.4 0 0 1 4.7 16.4"/><path d="m4.1 20.1.6-3.7 3.7.5"/></symbol><symbol id="i-ulang" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol><symbol id="i-pilih" viewBox="0 0 24 24"><path d="M5 3l14 7.5-6 1.5-3 6.5z"/><path d="m13 12 5 6"/></symbol><symbol id="i-geser" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol><symbol id="i-putar" viewBox="0 0 24 24"><path d="M20.5 13a8.5 8.5 0 1 1-2.5-7.5"/><path d="M20 3v5h-5"/></symbol><symbol id="i-skala" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6"/><path d="m20 4-7 7M4 20l7-7"/></symbol><symbol id="i-dinding" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 12h18M9 5v7M15 12v7"/></symbol><symbol id="i-jalan" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="M9 21l2.5-6 2.5 2v4M13 10l-2 5M8 11l3-3h3l2 3 3 1"/></symbol><symbol id="i-lainnya" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol><symbol id="i-bantuan" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4M12 17h.01"/></symbol><symbol id="i-railing" viewBox="0 0 24 24"><path d="M3 7h18M3 19h18M5 7v12M10 7v12M14 7v12M19 7v12"/></symbol><symbol id="i-ukur" viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></symbol><symbol id="i-dimensi" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M3 5v3M21 5v3"/></symbol><symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></symbol><symbol id="i-duplikat" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol><symbol id="i-hapus" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol><symbol id="i-tembus" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5"/><path d="M4 14l6-6 4 4 6-6"/></symbol><symbol id="i-atap" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol><symbol id="i-kubus" viewBox="0 0 24 24"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></symbol><symbol id="i-mata" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-langit" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></symbol><symbol id="i-suara" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3.5 3.5 0 0 1 0 6M18.5 6.5a7 7 0 0 1 0 11"/></symbol><symbol id="i-penuh" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol><symbol id="i-keluar" viewBox="0 0 24 24"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></symbol><symbol id="i-tutup" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol><symbol id="i-kiri" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol><symbol id="i-kanan" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol><symbol id="i-tautan" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-kirim" viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v8h14v-8"/></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol><symbol id="i-pensil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></symbol><symbol id="i-dokumen" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></symbol><symbol id="i-dunia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></symbol><symbol id="i-kamera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol><symbol id="i-dadu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r=".8"/><circle cx="15" cy="15" r=".8"/><circle cx="15" cy="9" r=".8"/><circle cx="9" cy="15" r=".8"/></symbol><symbol id="i-piano" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7.5 5v14M12 5v14M16.5 5v14"/><path d="M6 5v7M10.5 5v7M15 5v7M19.5 5v7" stroke-width="2.6"/></symbol><symbol id="i-bidik" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-main" viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></symbol><symbol id="i-henti" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol><symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4"/></symbol><symbol id="i-kartuSemua" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol><symbol id="i-ranjang" viewBox="0 0 24 24"><path d="M3 19V6M3 14h18v5M21 19v-2"/><path d="M3 14v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol><symbol id="i-bak" viewBox="0 0 24 24"><path d="M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/></symbol><symbol id="i-panci" viewBox="0 0 24 24"><path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 10h2M20 10h2M9.5 7c0-1.2 1-1.3 1-2.5M13.5 7c0-1.2 1-1.3 1-2.5"/></symbol><symbol id="i-lampu" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol><symbol id="i-meja" viewBox="0 0 24 24"><path d="M3 8h18M5 8l-1 12M19 8l1 12M7 8v4h10V8"/></symbol><symbol id="i-lemari" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M5 12h14M11 7.5h2M11 16.5h2"/></symbol><symbol id="i-vas" viewBox="0 0 24 24"><path d="M9 3h6M10 3v3.2C7.2 8 6 10.6 6 13.5a6 6 0 0 0 12 0c0-2.9-1.2-5.5-4-7.3V3"/></symbol><symbol id="i-tanaman" viewBox="0 0 24 24"><path d="M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 15c0-4 3-6 7-6 0 4-3 6-7 6zM8 21h8"/></symbol><symbol id="i-pohon" viewBox="0 0 24 24"><path d="M12 22v-5M12 2 6 10h3l-4 7h14l-4-7h3z"/></symbol><symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></symbol><symbol id="i-mobil" viewBox="0 0 24 24"><path d="M3 16v-4l2.2-5h13.6L21 12v4z"/><path d="M3 12h18"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/></symbol><symbol id="i-kualitas" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/></symbol><symbol id="i-ciut" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol><symbol id="i-buka" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol><symbol id="i-bawah" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-cek" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></symbol><symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></symbol><symbol id="i-senyap" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="m16 9 5 6M21 9l-5 6"/></symbol></defs></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-denah" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h11M14 3v11M9 14v7M14 14h7"/></symbol><symbol id="i-lantai" viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5z"/><path d="m2 12 10 5 10-5M2 16l10 5 10-5"/></symbol><symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 11a2 2 0 0 1 2 2v2h14v-2a2 2 0 1 1 4 0v5H1v-5a2 2 0 0 1 2-2z"/><path d="M4 18v2M20 18v2"/></symbol><symbol id="i-palet" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.6-.9 1.6-1.6 0-.9-.6-1.3-.6-2.1 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.9 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol><symbol id="i-simpan" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></symbol><symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol><symbol id="i-urung" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="i-cuaca" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M9 2v1.5M3 8h1.5M4.8 3.8l1 1M13.2 3.8l-1 1"/><path d="M8.5 20h8.5a3.8 3.8 0 0 0 0-7.6 5 5 0 0 0-9.4 1.6 3 3 0 0 0 .9 6z"/></symbol><symbol id="i-orang" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2.6"/><path d="M12 8.5v6.5M7 21.5l5-6.5 5 6.5M5.5 11.5 12 10l6.5 1.5"/></symbol><symbol id="i-atur" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol><symbol id="i-siklus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.6"/><path d="M12 9.6V12l1.7 1.2"/><path d="M4.4 8.6A8.4 8.4 0 0 1 19.3 7.6"/><path d="m19.9 3.9-.6 3.7-3.7-.5"/><path d="M19.6 15.4A8.4 8.4 0 0 1 4.7 16.4"/><path d="m4.1 20.1.6-3.7 3.7.5"/></symbol><symbol id="i-ulang" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol><symbol id="i-pilih" viewBox="0 0 24 24"><path d="M5 3l14 7.5-6 1.5-3 6.5z"/><path d="m13 12 5 6"/></symbol><symbol id="i-geser" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol><symbol id="i-putar" viewBox="0 0 24 24"><path d="M20.5 13a8.5 8.5 0 1 1-2.5-7.5"/><path d="M20 3v5h-5"/></symbol><symbol id="i-skala" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6"/><path d="m20 4-7 7M4 20l7-7"/></symbol><symbol id="i-dinding" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 12h18M9 5v7M15 12v7"/></symbol><symbol id="i-jalan" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="M9 21l2.5-6 2.5 2v4M13 10l-2 5M8 11l3-3h3l2 3 3 1"/></symbol><symbol id="i-lainnya" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol><symbol id="i-bantuan" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4M12 17h.01"/></symbol><symbol id="i-railing" viewBox="0 0 24 24"><path d="M3 7h18M3 19h18M5 7v12M10 7v12M14 7v12M19 7v12"/></symbol><symbol id="i-ukur" viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></symbol><symbol id="i-dimensi" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M3 5v3M21 5v3"/></symbol><symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></symbol><symbol id="i-duplikat" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol><symbol id="i-hapus" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol><symbol id="i-tembus" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5"/><path d="M4 14l6-6 4 4 6-6"/></symbol><symbol id="i-atap" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol><symbol id="i-kubus" viewBox="0 0 24 24"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></symbol><symbol id="i-mata" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-langit" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></symbol><symbol id="i-suara" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3.5 3.5 0 0 1 0 6M18.5 6.5a7 7 0 0 1 0 11"/></symbol><symbol id="i-penuh" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol><symbol id="i-keluar" viewBox="0 0 24 24"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></symbol><symbol id="i-tutup" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol><symbol id="i-kiri" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol><symbol id="i-kanan" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol><symbol id="i-tautan" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-kirim" viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v8h14v-8"/></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol><symbol id="i-pensil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></symbol><symbol id="i-dokumen" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></symbol><symbol id="i-dunia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></symbol><symbol id="i-kamera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol><symbol id="i-dadu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r=".8"/><circle cx="15" cy="15" r=".8"/><circle cx="15" cy="9" r=".8"/><circle cx="9" cy="15" r=".8"/></symbol><symbol id="i-piano" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7.5 5v14M12 5v14M16.5 5v14"/><path d="M6 5v7M10.5 5v7M15 5v7M19.5 5v7" stroke-width="2.6"/></symbol><symbol id="i-bidik" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-main" viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></symbol><symbol id="i-henti" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol><symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4"/></symbol><symbol id="i-kartuSemua" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol><symbol id="i-ranjang" viewBox="0 0 24 24"><path d="M3 19V6M3 14h18v5M21 19v-2"/><path d="M3 14v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol><symbol id="i-bak" viewBox="0 0 24 24"><path d="M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/></symbol><symbol id="i-panci" viewBox="0 0 24 24"><path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 10h2M20 10h2M9.5 7c0-1.2 1-1.3 1-2.5M13.5 7c0-1.2 1-1.3 1-2.5"/></symbol><symbol id="i-lampu" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol><symbol id="i-meja" viewBox="0 0 24 24"><path d="M3 8h18M5 8l-1 12M19 8l1 12M7 8v4h10V8"/></symbol><symbol id="i-lemari" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M5 12h14M11 7.5h2M11 16.5h2"/></symbol><symbol id="i-vas" viewBox="0 0 24 24"><path d="M9 3h6M10 3v3.2C7.2 8 6 10.6 6 13.5a6 6 0 0 0 12 0c0-2.9-1.2-5.5-4-7.3V3"/></symbol><symbol id="i-tanaman" viewBox="0 0 24 24"><path d="M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 15c0-4 3-6 7-6 0 4-3 6-7 6zM8 21h8"/></symbol><symbol id="i-pohon" viewBox="0 0 24 24"><path d="M12 22v-5M12 2 6 10h3l-4 7h14l-4-7h3z"/></symbol><symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></symbol><symbol id="i-mobil" viewBox="0 0 24 24"><path d="M3 16v-4l2.2-5h13.6L21 12v4z"/><path d="M3 12h18"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/></symbol><symbol id="i-kualitas" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/></symbol><symbol id="i-ciut" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol><symbol id="i-buka" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol><symbol id="i-bawah" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-cek" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></symbol><symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></symbol><symbol id="i-senyap" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="m16 9 5 6M21 9l-5 6"/></symbol></defs></svg>
 <div id="app">
   <div id="sideTirai" aria-hidden="true"></div>
   <aside id="sidebar">
@@ -762,6 +784,9 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="cat-grid" id="cat-bentuk"></div>
       <p class="hint">Kotak, silinder, bola, dan kerucut 1 m — ubah ukuran dengan Skala, warnanya di inspector.</p>
       <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
+      <div class="section-title">NPC (penghuni)</div>
+      <div class="lobi-kartu-baris npc-baris"><button class="lobi-kartu" type="button" data-npc="F"><img src="avatar/F.webp" alt="" loading="lazy"><span>NPC F</span></button><button class="lobi-kartu" type="button" data-npc="M"><img src="avatar/M.webp" alt="" loading="lazy"><span>NPC M</span></button><button class="lobi-kartu" type="button" data-npc="acak"><span class="npc-dadu" aria-hidden="true">🎲</span><span>Acak</span></button></div>
+      <p class="hint">Rambut, kulit &amp; pakaian tiap NPC diacak. Di mode jalan NPC hidup sendiri: diam, jalan-jalan, duduk di kursi / lantai, joget, mengantuk, melambai — dan bisa disapa. Maks 12 per proyek.</p>
       <div class="section-title">Model realistis &amp; model sendiri</div>
       <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi model realistis</button>
       <p class="hint">Fotogrametri Poly Haven, produk nyata, dan <b>Sketchfab</b> — saring per ruangan: kamar tidur, sofa, kamar mandi, dapur. Juga tautan ke CGTrader, TurboSquid, Free3D, Poly Pizza, Smithsonian 3D, Fab.</p>
@@ -974,25 +999,39 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
     <div class="float" id="fpsbar" hidden>
       <button class="btn sm" id="fpsExit"><svg class="ik" aria-hidden="true"><use href="#i-keluar"/></svg> Keluar (Esc)</button>
       <span id="fpsinfo"></span>
-      <span class="fps-alat">
-      <button class="btn ghost sm" id="fpsOto" aria-pressed="false" aria-label="Siklus waktu" title="Siklus waktu: siang → senja → malam → fajar berjalan sendiri"><svg class="ik" aria-hidden="true"><use href="#i-siklus"/></svg></button>
-      <select id="fpsCuaca" title="Cuaca"><option value="cerah">Cerah</option><option value="acak">🎲 Acak — berganti sendiri</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select>
-      <select id="fpsGaya" title="Gaya — terlihat oleh teman di Main bareng"><option value="">🙂 Gaya…</option><option value="lantai">🧘 Duduk di lantai</option><option value="joget">💃 Joget</option><option value="ngantuk">😴 Ngantuk</option><option value="lambai">👋 Lambai</option></select>
-      <select id="fpsMood" title="Suasana cahaya">
-        <option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option><option value="gelap">Malam gelap</option>
-      </select>
-      <span class="fps-langit"><button class="btn ghost sm" id="fpsLangitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya"><svg class="ik" aria-hidden="true"><use href="#i-kiri"/></svg></button><button class="btn ghost sm" id="fpsLangit" title="Nyalakan langit foto 360°"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Langit</button><button class="btn ghost sm" id="fpsLangitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya"><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button></span>
-      <select id="fpsFov" title="Lebar pandang (lensa)">
-        <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option>
-      </select>
-      <select id="fpsRq" title="Kualitas render"><option value="cepat">Cepat</option><option value="halus" selected>Halus</option><option value="tinggi">Tinggi</option></select>
-      <button class="btn ghost sm" id="fpsBgm" title="Musik latar" hidden><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> Musik</button>
-      <button class="btn ghost sm" id="fpsSfx" title="Efek suara interaksi"><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> SFX</button>
-      <button class="btn ghost sm" id="fpsWall">Tembok: Solid</button>
-      <button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button>
-      <button class="btn ghost sm" id="fpsFull"><svg class="ik" aria-hidden="true"><use href="#i-penuh"/></svg> Layar penuh</button>
-      </span>
       <button class="btn ghost sm" id="fpsCiut" title="Sembunyikan / tampilkan menu" aria-label="Sembunyikan / tampilkan menu" aria-expanded="true"><svg class="ik" aria-hidden="true"><use href="#i-ciut"/></svg></button>
+    </div>
+    <!-- dok mode jalan (JEV-107): ikon di kiri-kanan tombol foto, tiap ikon membuka satu lembar kecil -->
+    <div id="fpsDok" role="toolbar" aria-label="Menu mode jalan">
+      <button class="fps-ik" data-lembar="waktu" aria-expanded="false" aria-label="Waktu &amp; cuaca" title="Waktu &amp; cuaca"><svg class="ik" aria-hidden="true"><use href="#i-cuaca"/></svg></button>
+      <button class="fps-ik" data-lembar="gaya" aria-expanded="false" aria-label="Gaya &amp; NPC" title="Gaya &amp; NPC"><svg class="ik" aria-hidden="true"><use href="#i-orang"/></svg></button>
+      <span class="fps-rana" aria-hidden="true"></span>
+      <button class="fps-ik" data-lembar="langit" aria-expanded="false" aria-label="Langit 360°" title="Langit 360°"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg></button>
+      <button class="fps-ik" data-lembar="atur" aria-expanded="false" aria-label="Pengaturan" title="Pengaturan"><svg class="ik" aria-hidden="true"><use href="#i-atur"/></svg></button>
+    </div>
+    <div class="float" id="fpsLembar" hidden role="dialog" aria-label="Menu mode jalan">
+      <div class="fl" data-lembar="waktu" hidden>
+        <div class="fl-judul">Waktu &amp; cuaca</div>
+        <div class="fl-baris"><span>Siklus waktu</span><button class="btn ghost sm" id="fpsOto" aria-pressed="false" aria-label="Siklus waktu" title="Siklus waktu: siang → senja → malam → fajar berjalan sendiri"><svg class="ik" aria-hidden="true"><use href="#i-siklus"/></svg></button></div>
+        <label class="fl-baris"><span>Waktu</span><select id="fpsMood" title="Suasana cahaya"> <option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option><option value="gelap">Malam gelap</option> </select></label>
+        <label class="fl-baris"><span>Cuaca</span><select id="fpsCuaca" title="Cuaca"><option value="cerah">Cerah</option><option value="acak">🎲 Acak — berganti sendiri</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select></label>
+      </div>
+      <div class="fl" data-lembar="gaya" hidden>
+        <div class="fl-judul">Gaya <small>— terlihat oleh teman di Main bareng</small></div>
+        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button></div>
+        <div class="fl-npc"><div class="fl-judul">NPC <small>— muncul di depanmu</small></div>
+        <div class="fl-chip"><button class="btn sm ghost" data-npc-jalan="F">NPC F</button><button class="btn sm ghost" data-npc-jalan="M">NPC M</button><button class="btn sm ghost" data-npc-jalan="acak">🎲 Acak</button></div></div>
+      </div>
+      <div class="fl" data-lembar="langit" hidden>
+        <div class="fl-judul">Langit 360°</div>
+        <span class="fps-langit"><button class="btn ghost sm" id="fpsLangitPrev" title="Panorama sebelumnya" aria-label="Panorama sebelumnya"><svg class="ik" aria-hidden="true"><use href="#i-kiri"/></svg></button><button class="btn ghost sm" id="fpsLangit" title="Nyalakan langit foto 360°"><svg class="ik" aria-hidden="true"><use href="#i-langit"/></svg> Langit</button><button class="btn ghost sm" id="fpsLangitNext" title="Panorama berikutnya" aria-label="Panorama berikutnya"><svg class="ik" aria-hidden="true"><use href="#i-kanan"/></svg></button></span>
+      </div>
+      <div class="fl" data-lembar="atur" hidden>
+        <div class="fl-judul">Pengaturan</div>
+        <label class="fl-baris"><span>Lensa</span><select id="fpsFov" title="Lebar pandang (lensa)"> <option value="50">Lensa sempit</option><option value="65" selected>Lensa normal</option><option value="80">Lensa lebar</option> </select></label>
+        <label class="fl-baris"><span>Kualitas</span><select id="fpsRq" title="Kualitas render"><option value="cepat">Cepat</option><option value="halus" selected>Halus</option><option value="tinggi">Tinggi</option></select></label>
+        <div class="fl-chip"><button class="btn ghost sm" id="fpsSfx" title="Efek suara interaksi"><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> SFX</button><button class="btn ghost sm" id="fpsBgm" title="Musik latar" hidden><svg class="ik" aria-hidden="true"><use href="#i-suara"/></svg> Musik</button><button class="btn ghost sm" id="fpsWall">Tembok: Solid</button><button class="btn ghost sm" id="fpsRoof">Atap: Terbuka</button><button class="btn ghost sm" id="fpsFull"><svg class="ik" aria-hidden="true"><use href="#i-penuh"/></svg> Layar penuh</button></div>
+      </div>
     </div>
     <div id="fpsStick" hidden><div id="fpsKnob"></div></div>
     <!-- tombol rana mode jalan: di tengah bawah, terjangkau ibu jari (permintaan pengguna) -->
@@ -1884,7 +1923,7 @@ function aturResolusi(t){
   const mentah=clock.getDelta(), dt=Math.min(mentah,0.1);   // lompatan waktu dibatasi
   aturResolusi(mentah);
   if(FPS.on) fpsStep(dt); else orbit.update();
-  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt);
+  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt); if(window.NPC) window.NPC.langkah(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -5706,94 +5745,6 @@ const FURN={
   cassette_player:{l:'Boombox Kaset + Meja',i:'📼', c:'audio', f:[0.6,0.4],   b:cassettePlayer},
   cd_player      :{l:'Hi-Fi CD + Speaker',  i:'🎵', c:'audio', f:[1.3,0.42],  b:cdPlayer, wall:1, back:0.21}
 };
-/* KAIDAH penempatan — ditampilkan di inspector saat objeknya dipilih */
-const KAIDAH={
-  music_box:'Diletakkan di meja samping/nakas setinggi ±60 cm, dekat tempat duduk atau ranjang — bunyinya lirih, dinikmati dari dekat.',
-  vinyl_player:'Turntable di atas perabot yang kokoh dan datar (±60–75 cm), jauh dari speaker agar getarannya tidak membuat jarum melompat. Rak piringan: kedalaman ≥ 32 cm, piringan berdiri tegak.',
-  cassette_player:'Boombox cukup di meja samping; beri ruang ±10 cm di belakangnya. Kaset disimpan jauh dari panas dan magnet.',
-  cd_player:'Speaker kiri-kanan dan posisi duduk membentuk segitiga sama sisi (jarak 1,5–3 m); tweeter setinggi telinga duduk, ±20–50 cm dari dinding belakang.',
-  art_canvas:'Pusat lukisan ±150 cm dari lantai. Di atas sofa/meja: sisi bawah bingkai 20–25 cm di atasnya, lebar ±2/3 lebar perabot di bawahnya.',
-  art_triptych:'Tiga panel dibaca sebagai satu karya: jarak antarpanel 5–8 cm, pusat ±150 cm, lebar total ±2/3 perabot di bawahnya.',
-  gallery_wall:'Jarak antarbingkai 5–8 cm, pusat kelompok ±150 cm. Susun dari bingkai terbesar, jaga satu garis tepi (atas atau bawah) tetap rata.',
-  mirror_round:'Pusat ±150 cm. Di atas wastafel/meja konsol, lebar cermin ±70–80 % lebar mejanya.',
-  mirror_arch:'Pusat setinggi mata (±150 cm). Pasang berhadapan dengan jendela secara menyamping agar memantulkan cahaya, bukan menyilaukan.',
-  mirror_floor:'Sandarkan dengan kemiringan 5–7°. Posisi tegak lurus jendela memantulkan cahaya siang ke dalam ruang.',
-  wall_shelf:'Rak dipasang 25–40 cm di atas meja/sofa, jarak antarrak 30–40 cm. Letakkan beban berat di dekat angkur.',
-  wall_clock:'Pasang ±180–200 cm, atau pusatnya ±25 cm di atas perabot di bawahnya.',
-  tv_wall:'Pusat layar setinggi mata duduk ±110 cm. Jarak pandang ±1,5–2,5 × diagonal layar (TV 55" → 2,1–3,5 m).',
-  slat_panel:'Kisi kayu di atas felt menyerap gema; efektif di dinding yang berhadapan dengan sumber suara (TV/speaker).',
-  curtain:'Rel dipasang dekat plafon dan melebar 15–25 cm di tiap sisi jendela agar jendela tampak lebih tinggi dan lebar. Kain jatuh ±1 cm di atas lantai.',
-  pendant:'Di atas meja makan: sisi bawah kap 75–85 cm di atas daun meja (±155 cm dari lantai). Diameter kap ±1/2–2/3 lebar meja.',
-  pendant_trio:'Di atas island: 75–90 cm di atas meja, jarak antarlampu 60–75 cm, lampu terluar ±15 cm dari ujung meja.',
-  chandelier:'Di area lalu-lalang sisi terbawah ≥ 210 cm. Diameter (cm) ≈ (panjang + lebar ruangan dalam meter) × 10.',
-  table_lamp:'Naikkan Y setinggi mejanya (nakas ±55 cm). Sisi bawah kap setinggi dagu saat duduk, ±100–105 cm dari lantai.',
-  night_lamp:'Nakas setinggi kasur (±55 cm), 5–10 cm dari sisi ranjang. Lampu di kedua sisi untuk kamar bersama.',
-  arc_lamp:'Pangkal di belakang/samping sofa, kap menjangkau di atas meja tamu setinggi ±170–180 cm.',
-  wall_sconce:'Pasang ±160–170 cm. Di samping ranjang ±120–150 cm; mengapit cermin setinggi mata, 75–100 cm terpisah.',
-  floor_lamp:'Di sudut ruang atau di samping kursi baca; kap sejajar bahu saat duduk.',
-  downlight:'Jarak antar-downlight ≈ tinggi plafon (±1,2–1,5 m), ±60 cm dari dinding. Hitung lumennya dengan tombol SNI di bawah.',
-  ceiling_flush:'Satu di tengah ruang kecil (≤ 12 m²). Plafon rendah (< 2,6 m) lebih cocok lampu tempel daripada lampu gantung.',
-  ceiling_panel:'Mengikuti modul plafon 60 × 60 cm; cocok untuk ruang kerja, dapur, dan garasi yang butuh terang merata.',
-  monstera:'Cahaya terang tidak langsung, 1–2 m dari jendela. Tanaman besar di sudut menyeimbangkan perabot yang rendah.',
-  fiddle_leaf:'Butuh cahaya terang dekat jendela dan tidak suka dipindah-pindah. Tinggi 1,5–2 m cocok sebagai titik fokus di sudut.',
-  snake_plant:'Tahan cahaya rendah dan menyaring udara — cocok untuk kamar tidur dan sudut minim cahaya.',
-  hanging_plant:'Gantung dekat jendela; di area lalu-lalang sisi bawah pot ≥ 190 cm.',
-  cactus:'Butuh matahari langsung beberapa jam sehari: dekat jendela timur/barat.',
-  plant:'Kelompokkan tanaman dalam jumlah ganjil dengan tinggi berbeda agar tampak alami.',
-  plant_big:'Tanaman besar di sudut kosong mengisi ruang vertikal dan melunakkan sudut ruangan.',
-  rug:'Ruang tamu: kaki depan sofa dan kursi di atas karpet, sisakan 30–45 cm lantai ke dinding.',
-  rug_round:'Di bawah meja makan/meja tamu bulat, lebih lebar ±60 cm dari meja di tiap sisi.',
-  rug_oval:'Melunakkan ruang yang didominasi garis lurus; kaki depan perabot di atas karpet.',
-  rug_runner:'Untuk lorong dan dapur: sisakan 10–15 cm lantai di kiri-kanan dan ±30 cm di ujungnya.',
-  rug_organic:'Bentuk bebas sebagai aksen di ruang santai; hindari di bawah meja makan (kursi tersangkut).',
-  rug_persia:'Ruang makan: karpet ≥ 60–75 cm lebih lebar dari meja di tiap sisi agar kursi tetap di atas karpet saat ditarik.',
-  rug_berber:'Kamar: karpet menjorok ±60 cm dari sisi dan kaki ranjang, mulai di depan nakas.',
-  display_cab:'Letakkan di dinding yang terlihat dari pintu masuk; beri lampu di dalamnya untuk menonjolkan isi.',
-  shoe_cab:'Di dekat pintu masuk, sisakan ruang 90 cm di depannya untuk duduk dan berganti alas kaki.',
-  console_tbl:'Tinggi 75–85 cm di foyer/belakang sofa; cermin di atasnya ±2/3 lebar meja.',
-  tv_console:'Lebar kabinet ≥ lebar TV + 20–30 cm, tinggi 40–60 cm.',
-  pantry:'Letakkan di ujung deret dapur dekat kulkas, bukan di tengah permukaan kerja.',
-  kitchen_line:'Urutan kerja kulkas → sink → kompor. Meja 85–90 cm, kabinet atas 55–65 cm di atas meja, hood 65–75 cm di atas kompor.',
-  kitchen_l2:'Segitiga kerja kulkas–sink–kompor: tiap sisi 1,2–2,7 m, total 4–8 m. Sudut L diisi kabinet sudut, bukan kompor.',
-  kitchen_u:'Ruang kerja di tengah U minimal 1,2 m. Sink di deret tengah, kompor dan kulkas di kaki U.',
-  kitchen_par:'Lorong antarderet 1,0–1,2 m (1,2 m bila dipakai dua orang).',
-  kitchen_isl:'Jarak island ke deret belakang 1,0–1,2 m. Tempat duduk menjorok 25–30 cm, 60 cm per orang.',
-  range_hood:'Sisi bawah hood 65–75 cm di atas kompor, lebar ≥ lebar kompor, saluran buang sependek mungkin.',
-  fire_modern:'Hearth menjorok ≥ 45 cm dari muka perapian, ruang bebas 90 cm di depannya. TV di atas perapian ≥ 30 cm di atas bukaan.',
-  fire_classic:'Rak mantel ±120 cm. Material tidak mudah terbakar ≥ 15–30 cm di sekeliling bukaan api.',
-  wood_stove:'Jarak ke dinding yang mudah terbakar ≥ 45 cm; alas tahan api menjorok ≥ 45 cm di depan pintu tungku.',
-  dining_round:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik, 120 cm bila menjadi jalur lalu-lalang.',
-  dining4:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik; 60 cm lebar meja per orang.',
-  dining6:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik; 60 cm lebar meja per orang.',
-  dining8:'Sisakan 90 cm dari tepi meja ke dinding agar kursi bisa ditarik; 60 cm lebar meja per orang.',
-  ottoman:'Tinggi setara dudukan sofa; bisa berfungsi ganda sebagai meja tamu dengan nampan.',
-  bench:'Di foyer atau kaki ranjang: sisakan 60 cm di depannya.',
-  rattan_chair:'Kursi aksen di sudut baca: pasangkan dengan lampu berdiri dan meja sudut.',
-  piano:'Di dinding dalam, jauh dari jendela, AC, dan perapian — suhu dan kelembapan stabil.',
-  room_divider:'Membagi ruang tanpa memutus cahaya; sisakan jalur ≥ 90 cm di ujungnya.',
-  coat_rack:'Di dekat pintu masuk, di luar jalur buka daun pintu.',
-  floor_vase:'Kelompokkan dengan tanaman atau perabot rendah; tinggi total 1/3–2/3 tinggi dinding di belakangnya terasa seimbang.',
-  sofa2:'Jarak sofa ke meja tamu 40–45 cm; jalur lalu-lalang di belakang/samping ≥ 90 cm.',
-  sofa3:'Jarak sofa ke meja tamu 40–45 cm; jalur lalu-lalang di belakang/samping ≥ 90 cm.',
-  sofa_l:'Jarak sofa ke meja tamu 40–45 cm; sisi terbuka L menghadap jalur masuk ruangan.',
-  armchair:'Kursi berhadapan dalam jarak ≤ 2,5 m agar percakapan tetap nyaman.',
-  coffee_table:'Tinggi setara dudukan sofa atau ±5 cm lebih rendah; panjang ±2/3 panjang sofa.',
-  tv_set:'Jarak pandang ±1,5–2,5 × diagonal layar; pusat layar setinggi mata duduk ±110 cm.',
-  bed_single:'Sisakan 60–75 cm di sisi ranjang dan 90 cm di kakinya.',
-  bed_double:'Sisakan 60–75 cm di kedua sisi ranjang dan 90 cm di kakinya.',
-  bed_king:'Sisakan 60–75 cm di kedua sisi ranjang dan 90 cm di kakinya.',
-  wardrobe:'Sisakan ±90 cm di depan lemari berpintu ayun, 60 cm untuk pintu geser.',
-  wardrobe3:'Sisakan ±90 cm di depan lemari berpintu ayun, 60 cm untuk pintu geser.',
-  desk:'Tinggi meja 72–75 cm; letakkan tegak lurus jendela agar layar tidak silau.',
-  kitchen:'Meja 85–90 cm, kabinet atas 55–65 cm di atas meja.',
-  kitchen_l:'Segitiga kerja kulkas–sink–kompor total 4–8 m.',
-  island:'Jarak island ke deret dapur 1,0–1,2 m.',
-  bar_stool:'Dudukan 25–30 cm di bawah daun meja, 60 cm per kursi.',
-  toilet:'Ruang bebas 60 cm di depan kloset; as kloset 38–45 cm dari dinding samping.',
-  washbasin:'Tinggi 80–85 cm; cermin di atasnya ±70–80 % lebar wastafel.',
-  ac_split:'Dipasang ±15 cm di bawah plafon, tidak meniup langsung ke ranjang/kursi.'
-};
-for(const [k,t] of Object.entries(KAIDAH)) if(FURN[k]) FURN[k].t=t;
 for(const k of ['upper_cab','ac_split']) if(FURN[k]){ FURN[k].wall=1; FURN[k].back=FURN[k].f[1]/2; }
 const STAIRS={
   straight:{l:'Lurus',    i:'📐'},
@@ -7244,6 +7195,20 @@ function klonModel(tpl){
     d.skeleton.bones=n.skeleton.bones.map(t=>peta.get(t)); d.bind(d.skeleton,d.bindMatrix); });
   return c;
 }
+// NPC (JEV-106): kotak bidik tak tampak + badan; karakter, warna acak & perilakunya di modul/npc.js
+let NPC_KOTAK=null, NPC_TAK_TAMPAK=null;
+function bangunNPC(o,lv){
+  const g=new THREE.Group(), badan=new THREE.Group(); g.add(badan); Object.assign(g.userData,{badan, npc:true, perabot:true});
+  const hit=new THREE.Mesh(NPC_KOTAK||(NPC_KOTAK=new THREE.BoxGeometry(0.5,1.7,0.4).translate(0,0.85,0)),NPC_TAK_TAMPAK||(NPC_TAK_TAMPAK=new THREE.MeshBasicMaterial({visible:false})));
+  hit.userData={noExport:true, hit:true, bersama:true}; badan.add(hit);
+  if(window.NPC) window.NPC.pasang(g,o,lv); else muatModul('npc').then(()=>window.NPC.pasang(g,o,lv),e=>console.warn(e.message));
+  return g;
+}
+function tambahNPC(k){
+  if(LIHAT.on) return;
+  if(PROJECT.levels.reduce((s,l)=>s+l.objects.filter(o=>o.kind==='npc').length,0)>=12){ toast('Maksimal 12 NPC per proyek'); return; }
+  addObject('npc',k==='M'||k==='F'?k:(Math.random()<0.5?'F':'M'));
+}
 function buildObject(o, lv){
   let g;
   if(o.kind==='stair') g=buildStair(o,lv);
@@ -7251,6 +7216,7 @@ function buildObject(o, lv){
   else if(o.kind==='void') g=buildVoid(o);
   else if(o.kind==='area') g=buildArea(o);
   else if(o.kind==='garis') g=buildGaris(o);
+  else if(o.kind==='npc') g=bangunNPC(o,lv);
   else if(o.kind==='model'){
     const tpl=ASSET_OBJ.get(o.type);
     g = tpl ? klonModel(tpl) : missingModelBox();
@@ -7357,7 +7323,7 @@ function updateHistUI(){
 
 /* geometri dibuat ulang tiap edit — bebaskan yang lama agar memori GPU tidak menumpuk
    (material sengaja tidak di-dispose karena dipakai bersama seluruh scene) */
-function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry) c.geometry.dispose(); }); }
+function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry&&!c.userData.bersama) c.geometry.dispose(); }); }
 
 function rebuildScene(){
   ANIM.clear(); OPS.clear(); REG=true;
@@ -7735,6 +7701,9 @@ function renderInspector(){
     ins.appendChild(el('div','section-title','Penempatan'));
     addTransformFields(ins,d,false);
 
+  } else if(d.kind==='npc'){
+    if(window.NPC) window.NPC.inspektor(ins,d); else muatModul('npc').then(renderInspector,()=>{});
+
   } else if(d.kind==='column'){
     const h=el('h3',null,'Kolom'); h.appendChild(el('span','tag',d.type==='round'?'bulat':'persegi'));
     ins.appendChild(h);
@@ -7883,7 +7852,9 @@ function renderInspector(){
     fRow(ins,'Jenis',selInput(Object.entries(FURN).map(([k,v])=>[k,v.l]),d.type,v=>{
       d.type=v; rebuildScene(); renderInspector();
     }));
-    if(def && def.t){ const k=el('div','badge ok'); k.textContent='Kaidah: '+def.t; ins.appendChild(k); }
+    // kaidah penempatan (modul/kaidah.js) dimuat saat pertama dibutuhkan
+    if(window.KAIDAH){ if(window.KAIDAH[d.type]){ const k=el('div','badge ok'); k.textContent='Kaidah: '+window.KAIDAH[d.type]; ins.appendChild(k); } }
+    else muatModul('kaidah').then(()=>{ if(selData()===d) renderInspector(); },()=>{});
     const bw=tombolIkon('btn sm ghost','dinding','Tempel ke dinding terdekat');
     bw.onclick=()=>{
       const dd=FURN[d.type];
@@ -7967,6 +7938,7 @@ function duplicateSelection(){
   } else {
     const c=JSON.parse(JSON.stringify(d));
     c.id=uid('ob'); c.x+=0.6; c.z+=0.6;
+    if(c.kind==='npc') c.params.benih=Math.floor(Math.random()*4294967296);
     lv.objects.push(c); SEL={kind:'obj',id:c.id};
   }
   rebuildScene(); toast('Objek diduplikasi');
@@ -8257,6 +8229,7 @@ function snapToWall(o,walls,back,maxD){
 /* parameter awal tiap jenis objek — dipakai saat menambah objek dan saat
    menggambar thumbnail katalog, supaya keduanya selalu sama */
 function paramsAwal(kind,type){
+  if(kind==='npc') return {benih:Math.floor(Math.random()*4294967296), jelajah:4};
   if(kind==='stair')
     return { variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
              rise:0, steps:0, radius:type==='curved'?2.0:0.95, sweep:type==='curved'?180:270,
@@ -8292,6 +8265,7 @@ function addObject(kind,type){
   HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
                       : kind==='column'? 'kolom'
                       : kind==='void'  ? 'void'
+                      : kind==='npc'   ? 'NPC '+type
                       : kind==='model' ? (PROJECT.assets[type]?.name||'model')
                       : (FURN[type]?.l||type));
   rebuildScene();
@@ -8299,6 +8273,7 @@ function addObject(kind,type){
   const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type))
            : kind==='column'? (type==='round'?'Kolom bulat':'Kolom persegi')
            : kind==='void'  ? 'Void (lubang pelat)'
+           : kind==='npc'   ? 'NPC '+type
            : kind==='model' ? (PROJECT.assets[type]?.name||'Model')
            : (FURN[type]?.l||type);
   toast(nm+' ditambahkan ke '+lv.name+(menempel?' — menempel ke dinding terdekat':''));
@@ -15404,6 +15379,7 @@ function cariTarget(ray){
     let n=m;
     while(n && n!==worldRoot){
       if(n.userData.op){ const o=OPS.get(n.userData.op); return (o && BUKA_AWAL[o.type]!=null) ? {jenis:'bukaan', o} : null; }
+      if(n.userData.npc) return {jenis:'sapa', ekstra:[], id:n.userData.id, grp:n};
       if(n.userData.kind==='obj'){
         // satu objek bisa punya beberapa aksi: bawaan (duduk, lampu…) + detail / musik tambahan
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
@@ -15433,6 +15409,7 @@ function labelAksi(t){
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='detail') return 'Lihat detail';
+  if(t.jenis==='sapa') return 'Sapa';
   if(t.jenis==='bunyi') return aksiObjek(cariObjek(t.id))?.mediaOto ? (window.SUMBER&&window.SUMBER.aktif(t.id)?'Matikan suara':'Nyalakan suara') : aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : 'Bunyikan';
   if(t.jenis==='anim') return GERAK.main.has(t.id)?'Hentikan animasi':'Putar animasi';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
@@ -15468,6 +15445,7 @@ function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind
 function pakai(t){
   if(!t){ if(FPS.duduk) berdiri(); return; }
   if(t.jenis==='berdiri'){ berdiri(); return; }
+  if(t.jenis==='sapa'){ AIM_T=0; if(window.NPC) window.NPC.sapa(t.id); return; }
   // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
   if(t.id && aksiObjek(cariObjek(t.id))?.sfx){ sfxObjek(t.id); laporAksi('bunyi',t.id,true); }
   // media objek ikut diketuk seperti suara: putar / hentikan
@@ -15611,10 +15589,33 @@ function stepBidik(dt){
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
 for(const [id,f] of [['#adeganBaru','baru'],['#adeganDuplikat','duplikat']]) $(id).onclick=()=>muatModul('adegan').then(()=>window.ADEGAN[f](),e=>toast(e.message));
-$('#fpsGaya').onchange=e=>{ const v=e.target.value; e.target.value=''; e.target.blur(); if(!v||!FPS.on) return;
+function pilihGaya(v){ if(!v||!FPS.on) return; tutupLembar();
   if(v==='lantai') return dudukLantai();
   if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
-  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); };
+  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
+// dok mode jalan (JEV-107): satu lembar terbuka sekali waktu; ketuk ikon yang sama / layar = tutup
+function tutupLembar(){ $('#fpsLembar').hidden=true; for(const b of document.querySelectorAll('#fpsDok .fps-ik')) b.setAttribute('aria-expanded','false'); }
+function bukaLembar(k){
+  const sudah=!$('#fpsLembar').hidden && $('#fpsDok [data-lembar="'+k+'"]').getAttribute('aria-expanded')==='true';
+  tutupLembar(); if(sudah) return;
+  for(const f of document.querySelectorAll('#fpsLembar .fl')) f.hidden=f.dataset.lembar!==k;
+  $('#fpsDok [data-lembar="'+k+'"]').setAttribute('aria-expanded','true');
+  $('.fl-npc').hidden=LIHAT.on; $('#fpsLembar').hidden=false;
+}
+for(const b of document.querySelectorAll('#fpsDok .fps-ik')) b.onclick=()=>bukaLembar(b.dataset.lembar);
+for(const b of document.querySelectorAll('[data-gaya]')) b.onclick=()=>pilihGaya(b.dataset.gaya);
+for(const b of document.querySelectorAll('[data-npc-jalan]')) b.onclick=()=>{ tutupLembar(); npcDiDepan(b.dataset.npcJalan); };
+renderer.domElement.addEventListener('pointerdown',()=>{ if(!$('#fpsLembar').hidden) tutupLembar(); });
+// NPC dari mode jalan: muncul 1,6 m di depan, menghadap pengunjung
+function npcDiDepan(k){
+  if(LIHAT.on||!FPS.on) return;
+  if(PROJECT.levels.reduce((s,l)=>s+l.objects.filter(o=>o.kind==='npc').length,0)>=12){ toast('Maksimal 12 NPC per proyek'); return; }
+  const li=fpsLevelAt(FPS.feet), lv=PROJECT.levels[li], fx=Math.sin(FPS.yaw), fz=Math.cos(FPS.yaw);
+  const o={id:uid('ob'), kind:'npc', type:k==='M'||k==='F'?k:(Math.random()<0.5?'F':'M'), x:+(camera.position.x+fx*1.6).toFixed(2), y:+Math.max(0,FPS.feet-levelElevation(li)).toFixed(2),
+    z:+(camera.position.z+fz*1.6).toFixed(2), rotY:FPS.yaw+Math.PI, sx:1, sy:1, sz:1, params:paramsAwal('npc')};
+  lv.objects.push(o); HIST.label='Tambah NPC'; rebuildScene(); toast('NPC '+o.type+' muncul di depanmu');
+}
+document.querySelectorAll('[data-npc]').forEach(b=>{ b.onclick=()=>tambahNPC(b.dataset.npc); });
 $('#fpsMood').onchange=e=>{ const v=e.target.value; e.target.blur(); if(window.CUACA) window.CUACA.pilihWaktu(v); else setSuasana(v); };
 // cuaca & siklus waktu (JEV-100): modul/cuaca.js dimuat begitu dipakai
 function segarkanCuaca(){ const c=PROJECT.cuaca||{};
@@ -15794,7 +15795,7 @@ function exitFPS(){
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
   if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
   document.body.classList.remove('jalan'); aturTataLihat();
-  $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
+  tutupLembar(); $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   setTimeout(perbaruiMulai,0);          // FPS.on baru dimatikan di akhir fungsi ini
   $('#levelbar').hidden=false;
   viewport.style.cursor='';
@@ -15892,7 +15893,7 @@ $('#fpsFov').onchange=e=>{ FPS.fov=+e.target.value; try{ localStorage.setItem('f
 $('#fpsExit').onclick=exitFPS;
 $('#fpsRq').onchange=e=>{ setRenderQuality(e.target.value); toast('Kualitas render: '+e.target.selectedOptions[0].textContent); };
 // menu mode jalan bisa diciutkan jadi satu tombol; bawaan ciut di layar sempit (HP), pilihan diingat
-function ciutkanFps(v){ const b=$('#fpsbar'); b.classList.toggle('ciut',v); $('#fpsCiut').setAttribute('aria-expanded',String(!v));
+function ciutkanFps(v){ const b=$('#fpsbar'); b.classList.toggle('ciut',v); document.body.classList.toggle('menu-ciut',!!v); if(v) tutupLembar(); $('#fpsCiut').setAttribute('aria-expanded',String(!v));
   try{ localStorage.setItem('fps_ciut',v?'1':'0'); }catch(e){ /* mode privat */ } }
 $('#fpsCiut').onclick=()=>ciutkanFps(!$('#fpsbar').classList.contains('ciut'));
 /* Foto mode jalan: bingkai 3D terakhir (sudah lewat efek render) + avatar main bareng (foto bulat & nama).
@@ -15927,7 +15928,7 @@ function fotoJalan(){
 }
 $('#fpsFoto').onclick=()=>fotoJalan();
 { let v=null; try{ v=localStorage.getItem('fps_ciut'); }catch(e){ /* mode privat */ }
-  $('#fpsbar').classList.toggle('ciut', v==null ? innerWidth<700 : v==='1'); }
+  const c=v==='1'; $('#fpsbar').classList.toggle('ciut',c); document.body.classList.toggle('menu-ciut',c); }
 /* Pointer lock bisa lepas karena banyak hal — Esc pertama, pindah jendela,
    masuk layar penuh. Kalau itu langsung dianggap keluar, mode jalan terasa
    rapuh. Jadi dijeda saja: klik layar untuk lanjut, Esc sekali lagi keluar. */

@@ -4889,6 +4889,130 @@
     "target": "dipakai pada tautan lihat",
     "tinjau": "2027-01-16"
    }
+  },
+  {
+   "id": "JEV-106",
+   "judul": "NPC karakter F / M dengan penampilan acak (kulit, rambut, pakaian) & perilaku diam → jalan-jalan / aktivitas → diam",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Rumah yang dijelajahi terasa kosong; tidak ada penghuni yang bergerak sendiri untuk menghidupkan presentasi.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16: \"tambahin button npc VRM M &F yg procedural generate random outfit, hair, skin tone color, animasi idle>random walk & activity>idle\"",
+    "alternatif": [
+     "model manusia statis dari pustaka (tidak bergerak)",
+     "karakter NPC dari situs pihak ketiga (lisensi & ukuran berkas)"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "parameter NPC disaring ulang di modul (jenis F/M, benih bilangan bulat, jelajah 0–15 m); maks 12 per proyek; tanpa host baru"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar; perilaku NPC dihitung di tiap perangkat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "karakter VRM karya wolfpuplabs (pemilik); berkas tidak diubah — hanya salinan tekstur di memori yang diwarnai ulang"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/npc.js dimuat saat ada NPC; atlas dipetakan sekali per karakter, tekstur 512 px per benih ditembolok (≤ 24); mesh NPC tidak ikut raycast, cek tanah dibatasi ±8×/dtk; animasi berhenti > 40 m"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol kartu bertulisan; contoh warna berlabel; NPC menunggu bila pengunjung menghalangi; aksi Sapa lewat tombol Berinteraksi"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan NPC",
+    "target": "dipakai pada presentasi rumah",
+    "tinjau": "2027-01-16"
+   }
+  },
+  {
+   "id": "JEV-107",
+   "judul": "Menu mode jalan jadi dok ikon di sekitar tombol foto (Waktu & cuaca · Gaya & NPC · Langit · Pengaturan) + NPC dari mode jalan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Bilah mode jalan berisi belasan pilihan & tombol berteks dalam dua baris yang menutupi pandangan di iPad; NPC hanya bisa ditambah dari tab Objek di editor sehingga pengguna tidak menemukannya.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16 + tangkapan layar bilah jalan bercoret panah ke sekitar tombol kamera: \"opsi nampilin npc dimana? sama bisa ga ui DI BIKIN CLEAN, SIMPLE, kaya jadiin icon2 di menu walk ini\"",
+    "alternatif": [
+     "bilah atas tetap, hanya diciutkan otomatis (isi tetap padat saat dibuka)",
+     "satu tombol menu hamburger berisi semua pilihan (dua ketukan untuk tiap aksi)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.6,
+      "pakaiPerTahun": 24,
+      "menitHemat": 1
+     },
+     "konversi": {
+      "jangkauan": 0.6,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "tanpa data / host baru; NPC dari mode jalan memakai jalur objek yang sama (maks 12), tidak tersedia di tautan lihat"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikon SVG digambar sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tabel kaidah perabot (±9 KB) dipindah ke modul/kaidah.js agar index.html tetap di bawah anggaran"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "ikon ≥ 46 px berlabel aria & title, aria-expanded untuk lembar terbuka; lembar tidak menutupi tombol foto; tombol sembunyikan menu untuk tampilan bersih"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan bilah jalan menutupi pandangan",
+    "target": "tidak ada",
+    "tinjau": "2027-01-16"
+   }
   }
  ]
 }

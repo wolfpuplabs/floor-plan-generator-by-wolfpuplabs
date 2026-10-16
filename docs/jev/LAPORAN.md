@@ -5,11 +5,12 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 80 GO · 3 DEFER · 5 NO-GO dari 88 item.
+**Ringkasan:** 82 GO · 3 DEFER · 5 NO-GO dari 90 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-095 | Pemilih berkas di iPad: input sementara di atas tombol yang diketuk | terkirim | 0.65 | 96,5 jt | 0,2 jt | 1071.5× | 535.3× | 0.0 bln | 1 | **GO** |
+| JEV-107 | Menu mode jalan jadi dok ikon di sekitar tombol foto (Waktu & cuaca · Gaya & NPC · Langit · Pengaturan) + NPC dari mode jalan | terkirim | 0.65 | 190,1 jt | 0,4 jt | 1055.3× | 527.1× | 0.0 bln | 1 | **GO** |
 | JEV-104 | Lihat di AR per objek / model pustaka dalam ukuran asli | terkirim | 0.65 | 130,7 jt | 0,3 jt | 828.5× | 413.8× | 0.0 bln | 2 | **GO** |
 | JEV-092 | Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) | terkirim | 0.65 | 125,8 jt | 0,4 jt | 644.0× | 321.5× | 0.0 bln | 2 | **GO** |
 | JEV-101 | Cuaca Acak (hujan turun tiba-tiba lalu reda) + sakelar ikon Siklus waktu; bilah mode jalan lebih jelas | terkirim | 0.65 | 107,3 jt | 0,4 jt | 594.8× | 296.9× | 0.0 bln | 2 | **GO** |
@@ -26,6 +27,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-103 | Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan | terkirim | 0.65 | 109,7 jt | 0,7 jt | 316.9× | 158.0× | 0.1 bln | 4 | **GO** |
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
 | JEV-099 | Gitar yang bisa dimainkan (seperti piano) | terkirim | 0.65 | 83,9 jt | 0,6 jt | 271.9× | 135.5× | 0.1 bln | 4 | **GO** |
+| JEV-106 | NPC karakter F / M dengan penampilan acak (kulit, rambut, pakaian) & perilaku diam → jalan-jalan / aktivitas → diam | terkirim | 0.65 | 132,6 jt | 1 jt | 271.0× | 135.0× | 0.1 bln | 4 | **GO** |
 | JEV-090 | Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka | terkirim | 0.65 | 96,1 jt | 0,8 jt | 255.3× | 127.2× | 0.1 bln | 4 | **GO** |
 | JEV-089 | Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me | terkirim | 0.65 | 83,9 jt | 0,7 jt | 247.4× | 123.2× | 0.1 bln | 5 | **GO** |
 | JEV-069 | Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan | terkirim | 0.80 | 72 jt | 0,6 jt | 239.0× | 119.0× | 0.1 bln | 5 | **GO** |
@@ -103,6 +105,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 ## Alasan per item
 
 - **JEV-095 Pemilih berkas di iPad: input sementara di atas tombol yang diketuk — GO.** ROI 1071.5× ≥ 1, payback 0.0 bln.
+- **JEV-107 Menu mode jalan jadi dok ikon di sekitar tombol foto (Waktu & cuaca · Gaya & NPC · Langit · Pengaturan) + NPC dari mode jalan — GO.** ROI 1055.3× ≥ 1, payback 0.0 bln.
 - **JEV-104 Lihat di AR per objek / model pustaka dalam ukuran asli — GO.** ROI 828.5× ≥ 1, payback 0.0 bln.
 - **JEV-092 Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) — GO.** ROI 644.0× ≥ 1, payback 0.0 bln.
 - **JEV-101 Cuaca Acak (hujan turun tiba-tiba lalu reda) + sakelar ikon Siklus waktu; bilah mode jalan lebih jelas — GO.** ROI 594.8× ≥ 1, payback 0.0 bln.
@@ -119,6 +122,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-103 Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan — GO.** ROI 316.9× ≥ 1, payback 0.1 bln.
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
 - **JEV-099 Gitar yang bisa dimainkan (seperti piano) — GO.** ROI 271.9× ≥ 1, payback 0.1 bln.
+- **JEV-106 NPC karakter F / M dengan penampilan acak (kulit, rambut, pakaian) & perilaku diam → jalan-jalan / aktivitas → diam — GO.** ROI 271.0× ≥ 1, payback 0.1 bln.
 - **JEV-090 Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka — GO.** ROI 255.3× ≥ 1, payback 0.1 bln.
 - **JEV-089 Avatar 3D sendiri di lobi main bareng (.glb / .vrm dari VRoid Studio, Avaturn, dll.) sebagai pengganti Ready Player Me — GO.** ROI 247.4× ≥ 1, payback 0.1 bln.
 - **JEV-069 Tautan lihat di HP: UI tidak menumpuk, atap tertutup ikut tautan & mode jalan beratap, sebab tautan pendek gagal ditampilkan — GO.** ROI 239.0× ≥ 1, payback 0.1 bln.
