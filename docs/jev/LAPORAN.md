@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 82 GO · 3 DEFER · 5 NO-GO dari 90 item.
+**Ringkasan:** 83 GO · 3 DEFER · 5 NO-GO dari 91 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -26,6 +26,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-097 | Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek | terkirim | 0.65 | 96,5 jt | 0,6 jt | 320.8× | 159.9× | 0.1 bln | 4 | **GO** |
 | JEV-103 | Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan | terkirim | 0.65 | 109,7 jt | 0,7 jt | 316.9× | 158.0× | 0.1 bln | 4 | **GO** |
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
+| JEV-108 | Dialog NPC: kartu karakter, memori & relasi (port npc-dialogue-system, MIT) — tanpa server, AI opsional lewat /api/npc (Groq) | terkirim | 0.65 | 171,6 jt | 1,1 jt | 304.1× | 151.5× | 0.1 bln | 4 | **GO** |
 | JEV-099 | Gitar yang bisa dimainkan (seperti piano) | terkirim | 0.65 | 83,9 jt | 0,6 jt | 271.9× | 135.5× | 0.1 bln | 4 | **GO** |
 | JEV-106 | NPC karakter F / M dengan penampilan acak (kulit, rambut, pakaian) & perilaku diam → jalan-jalan / aktivitas → diam | terkirim | 0.65 | 132,6 jt | 1 jt | 271.0× | 135.0× | 0.1 bln | 4 | **GO** |
 | JEV-090 | Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka | terkirim | 0.65 | 96,1 jt | 0,8 jt | 255.3× | 127.2× | 0.1 bln | 4 | **GO** |
@@ -121,6 +122,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-097 Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek — GO.** ROI 320.8× ≥ 1, payback 0.1 bln.
 - **JEV-103 Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan — GO.** ROI 316.9× ≥ 1, payback 0.1 bln.
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
+- **JEV-108 Dialog NPC: kartu karakter, memori & relasi (port npc-dialogue-system, MIT) — tanpa server, AI opsional lewat /api/npc (Groq) — GO.** ROI 304.1× ≥ 1, payback 0.1 bln.
 - **JEV-099 Gitar yang bisa dimainkan (seperti piano) — GO.** ROI 271.9× ≥ 1, payback 0.1 bln.
 - **JEV-106 NPC karakter F / M dengan penampilan acak (kulit, rambut, pakaian) & perilaku diam → jalan-jalan / aktivitas → diam — GO.** ROI 271.0× ≥ 1, payback 0.1 bln.
 - **JEV-090 Pagar & lantai dari model unggahan lewat tracing, dan duduk di perabot pustaka — GO.** ROI 255.3× ≥ 1, payback 0.1 bln.

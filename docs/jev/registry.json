@@ -5013,6 +5013,68 @@
     "target": "tidak ada",
     "tinjau": "2027-01-16"
    }
+  },
+  {
+   "id": "JEV-108",
+   "judul": "Dialog NPC: kartu karakter, memori & relasi (port npc-dialogue-system, MIT) — tanpa server, AI opsional lewat /api/npc (Groq)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "NPC hanya bisa disapa (melambai); tidak ada percakapan, kepribadian atau ingatan sehingga terasa seperti boneka.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16: \"bisa integrasiin https://github.com/morganpage-tech/npc-dialogue-system.git buat npc interaction?\"",
+    "alternatif": [
+     "menjalankan server Python asli (FastAPI + Ollama) — tidak bisa di hosting statis / iPad",
+     "pohon dialog tetap tanpa kepribadian & relasi"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.04
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "prompt sistem disusun di server dari kartu bawaan (peramban hanya mengirim id kartu, angka & teks pemain terpotong 300 huruf, riwayat ≤ 10); asal harus situs sendiri, ±20 permintaan/menit/IP, jawaban ≤ 160 token, waktu habis 12 dtk; kunci GROQ_API_KEY hanya di env Vercel; teks NPC ditulis sebagai textContent (tanpa innerHTML)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tanpa kunci: tidak ada data keluar. Dengan AI: hanya pesan obrolan & ringkasan angka rumah dikirim ke Groq lewat server situs; ingatan & relasi disimpan di localStorage pengunjung"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "npc-dialogue-system berlisensi MIT (Morgan Page) — format kartu, tiga kartu asli (diterjemahkan), tingkat relasi & sikap per tingkat diadaptasi dengan kredit di modul/kartunpc.js, modul/dialog.js & api/npc.js"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/dialog.js & modul/kartunpc.js dimuat saat pertama Ngobrol; tanpa beban per frame selain cek jarak tiap 0,4 dtk saat panel terbuka"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "panel role=dialog, log aria-live, kolom & tombol berlabel; Esc menutup obrolan; mengetik tidak menggerakkan pemain; tombol cepat untuk layar sentuh"
+    }
+   },
+   "metrik": {
+    "nama": "obrolan NPC per sesi mode jalan",
+    "target": "≥ 1 pada presentasi rumah",
+    "tinjau": "2027-01-16"
+   }
   }
  ]
 }

@@ -15379,7 +15379,7 @@ function cariTarget(ray){
     let n=m;
     while(n && n!==worldRoot){
       if(n.userData.op){ const o=OPS.get(n.userData.op); return (o && BUKA_AWAL[o.type]!=null) ? {jenis:'bukaan', o} : null; }
-      if(n.userData.npc) return {jenis:'sapa', ekstra:[], id:n.userData.id, grp:n};
+      if(n.userData.npc) return {jenis:'ngobrol', ekstra:['sapa'], id:n.userData.id, grp:n};
       if(n.userData.kind==='obj'){
         // satu objek bisa punya beberapa aksi: bawaan (duduk, lampu…) + detail / musik tambahan
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
@@ -15410,6 +15410,7 @@ function labelAksi(t){
   if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='detail') return 'Lihat detail';
   if(t.jenis==='sapa') return 'Sapa';
+  if(t.jenis==='ngobrol') return 'Ngobrol';
   if(t.jenis==='bunyi') return aksiObjek(cariObjek(t.id))?.mediaOto ? (window.SUMBER&&window.SUMBER.aktif(t.id)?'Matikan suara':'Nyalakan suara') : aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : 'Bunyikan';
   if(t.jenis==='anim') return GERAK.main.has(t.id)?'Hentikan animasi':'Putar animasi';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
@@ -15446,6 +15447,8 @@ function pakai(t){
   if(!t){ if(FPS.duduk) berdiri(); return; }
   if(t.jenis==='berdiri'){ berdiri(); return; }
   if(t.jenis==='sapa'){ AIM_T=0; if(window.NPC) window.NPC.sapa(t.id); return; }
+  // dialog NPC (JEV-108): kartu karakter + memori + relasi; AI opsional lewat /api/npc
+  if(t.jenis==='ngobrol'){ AIM_T=0; muatModul('kartunpc').then(()=>muatModul('dialog')).then(()=>window.DIALOG.buka(t.id),e=>toast(e.message)); return; }
   // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
   if(t.id && aksiObjek(cariObjek(t.id))?.sfx){ sfxObjek(t.id); laporAksi('bunyi',t.id,true); }
   // media objek ikut diketuk seperti suara: putar / hentikan
@@ -15796,7 +15799,7 @@ function exitFPS(){
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
   if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
   document.body.classList.remove('jalan'); aturTataLihat();
-  tutupLembar(); $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
+  tutupLembar(); if(window.DIALOG) window.DIALOG.tutup(); $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   setTimeout(perbaruiMulai,0);          // FPS.on baru dimatikan di akhir fungsi ini
   $('#levelbar').hidden=false;
   viewport.style.cursor='';

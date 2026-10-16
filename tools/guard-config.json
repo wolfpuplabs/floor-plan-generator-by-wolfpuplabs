@@ -19,7 +19,8 @@
     "fuel.gazebosim.org": "daftar, thumbnail & unduhan ZIP Google Scanned Objects (CC-BY 4.0, API publik tanpa token) (JEV-063)",
     "app.gazebosim.org": "tautan kredit/halaman model Google Scanned Objects (tidak ada permintaan jaringan) (JEV-063)",
     "0.peerjs.com": "server sinyal PeerJS publik untuk \"main bareng\" — hanya mempertemukan peramban; isi lewat kanal WebRTC terenkripsi antar-peserta (JEV-077)",
-    "api.openverse.org": "pencarian pustaka musik & suara berlisensi Creative Commons (JEV-097)"
+    "api.openverse.org": "pencarian pustaka musik & suara berlisensi Creative Commons (JEV-097)",
+    "api.groq.com": "hanya dipanggil dari fungsi server api/npc.js bila pemilik situs mengisi GROQ_API_KEY — dialog NPC dengan AI (JEV-108); peramban tidak pernah menghubunginya"
   },
   "anggaran": {
     "indexHtmlKB": 1050,
