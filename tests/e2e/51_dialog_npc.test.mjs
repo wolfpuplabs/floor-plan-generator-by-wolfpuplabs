@@ -45,7 +45,7 @@ export const tes = {
     assert.deepEqual([r.panel, r.nama, r.mode], [true, 'Pak Bima', 'ngobrol']);
     assert.match(r.log.at(-1), /^Welcome\. I'm Bima|^Selamat datang\. Saya Bima/, 'salam pertama dari kartu');
     // tombol cepat & ketik (tanpa server: balasan kartu)
-    const b = await page.evaluate(async () => { const tunggu = async n => { for (let i = 0; i < 60 && document.querySelectorAll('#npcObrol .no-m').length < n; i++) await new Promise(r => setTimeout(r, 50)); };
+    const b = await page.evaluate(async () => { const tunggu = async n => { for (let i = 0; i < 200 && (document.querySelectorAll('#npcObrol .no-m').length < n || document.querySelector('#npcObrol .no-ketik')); i++) await new Promise(r => setTimeout(r, 50)); };
       const jumlah = () => document.querySelectorAll('#npcObrol .no-m').length, akhir = () => [...document.querySelectorAll('#npcObrol .no-m')].at(-1).textContent;
       let n = jumlah(); document.querySelector('#npcObrol [data-cepat="rumah"]').click(); await tunggu(n + 2); const rumahT = akhir();
       const s0 = window.DIALOG.skor('nB');

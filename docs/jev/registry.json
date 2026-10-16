@@ -5075,6 +5075,68 @@
     "target": "≥ 1 pada presentasi rumah",
     "tinjau": "2027-01-16"
    }
+  },
+  {
+   "id": "JEV-109",
+   "judul": "Interaksi berpasangan: peluk, gandeng tangan, duduk bersandar, berbaring di ranjang, dansa berdua (pemain, NPC & Main bareng)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Avatar & NPC hanya bisa berpose sendiri-sendiri; tidak ada interaksi hangat berdua. Permintaan awal (animasi seksual) ditolak — tidak pantas untuk karakter berwajah muda, NPC anak & lobi bersama; alternatif ramah semua umur ini yang dipilih pengguna.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16: daftar alternatif (peluk, gandeng, duduk berdampingan bersandar, berbaring/tidur di ranjang, dansa berpasangan) → \"semua\"",
+    "alternatif": [
+     "hanya emote 2D di atas kepala",
+     "tanpa interaksi berpasangan"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kode pose 6–10 disaring di posAman (nilai lain dibuang); tanpa data baru"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya kode pose yang terkirim ke peserta Main bareng"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "pose prosedural sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pose dijumlahkan bersama pose lain sekali per frame; NPC mengikuti pengunjung tanpa raycast tambahan selain pijakan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berteks di lembar Gaya & panel obrolan; ketuk lagi = berhenti; bidik NPC → Lepas; konten ramah semua umur — interaksi berpasangan tidak tersedia untuk kartu anak & butuh relasi cukup dekat"
+    }
+   },
+   "metrik": {
+    "nama": "interaksi berpasangan per sesi",
+    "target": "dipakai di Main bareng & presentasi",
+    "tinjau": "2027-01-16"
+   }
   }
  ]
 }

@@ -318,6 +318,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const sb = v => new THREE.Vector3(...v).applyQuaternion(qp).normalize();
       a.rig[k] = { b, rest: b.quaternion.clone(), ax: sb([-1, 0, 0]), ay: sb([0, 1, 0]), az: sb([0, 0, 1]) };
     }
+    if (a.rig.hips) { m.updateMatrixWorld(true); const hp = a.rig.hips.b.getWorldPosition(new THREE.Vector3()), mp = m.getWorldPosition(new THREE.Vector3()), sk = a.g.getWorldScale(new THREE.Vector3()).y || 1; a.tinggiPinggul = (hp.y - mp.y) / sk; }
     // lengan kanan untuk melambai: orientasi diam & arah tulang (ke anak) dalam ruang avatar
     for (const k of ['rightUpperArm', 'rightLowerArm']) {
       const r = a.rig[k], anak = r && r.b.children.find(n => n.isBone); if (!anak) continue;
@@ -374,8 +375,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       a.ly = (Math.random() * 2 - 1) * (jauh ? 0.55 : 0.2); a.lp = (Math.random() * 2 - 1) * 0.1 - 0.03; a.lr = (Math.random() * 2 - 1) * 0.07; }
     const kh = Math.min(1, dt * 2.4); a.cy += (a.ly - a.cy) * kh; a.cp += (a.lp - a.cp) * kh; a.cr += (a.lr - a.cr) * kh;
     // pose (JEV-103): bobot halus tiap pose menuju pose yang diminta peserta atau varian diam otomatis
-    const P = pilihPose(a, dt), pw = a.pw || (a.pw = [0, 0, 0, 0, 0]), duduk = Math.max(pw[1], pw[2]);
-    for (let i = 1; i < 5; i++) pw[i] += ((P === i ? 1 : 0) - pw[i]) * Math.min(1, dt * (i <= 2 ? 3.2 : 2));
+    const P = pilihPose(a, dt), pw = a.pw && a.pw.length > 10 ? a.pw : (a.pw = Array.from({ length: 11 }, (_, i) => (a.pw && a.pw[i]) || 0)), duduk = Math.max(pw[1], pw[2], pw[8], pw[9]);
+    for (let i = 1; i <= 10; i++) if (i !== 5) pw[i] += ((P === i ? 1 : 0) - pw[i]) * Math.min(1, dt * (i <= 2 || i >= 8 ? 3.2 : 2));
     const bebas = 1 - duduk, wd = w * bebas, dd = d * bebas;          // kaki jalan/diam memudar saat duduk
     // kaki
     const pahaL = 0.42 * wd * s, pahaR = -0.42 * wd * s;
@@ -406,7 +407,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const po = (a.tuju && a.tuju.po) | 0;
     if (po === 5 && a.poLalu !== 5) mulaiLambai(a);
     a.poLalu = po;
-    if (po >= 1 && po <= 4) { a.mikro = null; return po; }
+    if ((po >= 1 && po <= 4) || (po >= 6 && po <= 10)) { a.mikro = null; return po; }
     a.diam = a.v < 0.05 ? (a.diam || 0) + dt : 0;
     if (a.diam > 45) return 4;                                        // lama diam: mengantuk
     if (a.diam > 4 && adaMusik()) return 3;                           // musik: joget pelan
@@ -449,6 +450,27 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       tambah('chest', 0.1 + 0.05 * k - 0.08 * uap, 0, 0, b); tambah('spine', 0.06, 0, 0, b);
       tambah('leftUpperArm', -0.04, 0, -0.04, b); tambah('rightUpperArm', -0.04 + 2.0 * uap, 0, -0.35 * uap, b); tambah('rightLowerArm', 1.9 * uap, 0, 0, b);
       tambah('leftUpperLeg', 0, 0, 0.03, b); tambah('rightUpperLeg', 0, 0, -0.03, b); }
+    /* INTERAKSI BERPASANGAN (JEV-109) — 6 peluk, 7 gandeng tangan (a.sisi: 1 tangan kanan, −1 kiri), 8 duduk bersandar ke
+       samping (a.sandar: 1 ke kanan, −1 ke kiri), 9 berbaring telentang (akar avatar = permukaan kasur), 10 dansa berdua */
+    if (pw[6] > 0.001) { const b = pw[6], n = 0.04 * Math.sin(t * 1.6);
+      tambah('leftUpperArm', 0.78, 0, -0.12, b); tambah('rightUpperArm', 0.78, 0, 0.12, b); tambah('leftLowerArm', 0.95 + n, 0, 0, b); tambah('rightLowerArm', 0.95 + n, 0, 0, b);
+      tambah('spine', 0.06, 0, 0, b); tambah('chest', 0.1, 0, 0, b); tambah('neck', 0.05, 0, 0, b); tambah('head', 0.1, 0.25, -0.12, b); }
+    if (pw[7] > 0.001) { const b = pw[7], s = a.sisi === -1 ? -1 : 1, k = s === 1 ? 'right' : 'left';
+      tambah(k + 'UpperArm', 0.22, 0, -0.42 * s, b); tambah(k + 'LowerArm', 0.12, 0, 0, b); tambah('head', 0, 0.12 * s * -1, 0, b * 0.5); }
+    if (pw[8] > 0.001) { const b = pw[8], s = a.sandar === -1 ? -1 : 1;
+      tambah('leftUpperLeg', 1.5, 0, 0.06, b); tambah('rightUpperLeg', 1.5, 0, -0.06, b); tambah('leftLowerLeg', -1.5, 0, 0, b); tambah('rightLowerLeg', -1.5, 0, 0, b);
+      tambah('spine', 0.02, 0, 0.1 * s, b); tambah('chest', 0, 0, 0.12 * s, b); tambah('neck', 0, 0, 0.16 * s, b); tambah('head', 0.05, 0.1 * s, 0.32 * s, b);
+      tambah('leftUpperArm', 0.5, 0, 0.1, b); tambah('rightUpperArm', 0.5, 0, -0.1, b); tambah('leftLowerArm', 0.6, 0, 0, b); tambah('rightLowerArm', 0.6, 0, 0, b); turun += 0.42 * b; }
+    if (pw[9] > 0.001) { const b = pw[9], napas = 0.025 * Math.sin(t * 1.3);
+      tambah('hips', -Math.PI / 2, 0, 0, b); tambah('chest', napas, 0, 0, b); tambah('head', 0.28, 0.15 * Math.sin(t * 0.13), 0, b);
+      tambah('leftUpperArm', -0.08, 0, 0.12, b); tambah('rightUpperArm', -0.08, 0, -0.12, b); tambah('leftLowerArm', 0.25, 0, 0, b); tambah('rightLowerArm', 0.25, 0, 0, b);
+      tambah('leftUpperLeg', 0.32, 0, 0.04, b); tambah('leftLowerLeg', -0.55, 0, 0, b); tambah('rightUpperLeg', 0.04, 0, -0.04, b);
+      turun += ((a.tinggiPinggul || 0.9) - 0.13) * b; }
+    if (pw[10] > 0.001) { const b = pw[10], f = t * 2 * Math.PI * 0.42, p = Math.sin(f), naik = Math.max(0, p), turunK = Math.max(0, -p);
+      tambah('leftUpperArm', 0.72, 0, 0.1, b); tambah('rightUpperArm', 0.72, 0, -0.1, b); tambah('leftLowerArm', 0.7, 0, 0, b); tambah('rightLowerArm', 0.7, 0, 0, b);
+      tambah('hips', 0, 0.07 * p, 0.05 * p, b); tambah('spine', 0.03, -0.04 * p, -0.04 * p, b); tambah('head', 0.04, 0, 0.1 + 0.04 * p, b);
+      tambah('leftUpperLeg', 0.1 * naik, 0, 0, b); tambah('rightUpperLeg', 0.1 * turunK, 0, 0, b); tambah('leftLowerLeg', -0.18 * naik, 0, 0, b); tambah('rightLowerLeg', -0.18 * turunK, 0, 0, b);
+      turun += 0.012 * (naik + turunK) * b; }
     // gerak kecil saat diam
     const M = a.mikro;
     if (M) { const e = amplop(M.t, M.d);
@@ -628,10 +650,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   const hapusSemuaAvatar = () => { for (const id of [...L.avatar.keys()]) hapusAvatar(id); };
   function posAman(d) {
     if (!d || !d.jalan) return null;
-    // po: pose (JEV-103, 0–5); ad: adegan/area tempat peserta berada (JEV-105) — avatar hanya tampil di area yang sama
+    // po: pose (JEV-103 0–5, JEV-109 6–10); ad: adegan/area tempat peserta berada (JEV-105) — avatar hanya tampil di area yang sama
     const po = Math.round(+d.po) || 0, ad = typeof d.ad === 'string' && /^[A-Za-z0-9_-]{1,24}$/.test(d.ad) ? d.ad : '';
     return { x: angkaAman(d.x, -1e4, 1e4), y: angkaAman(d.y, -100, 500), z: angkaAman(d.z, -1e4, 1e4), yaw: angkaAman(d.yaw, -100, 100),
-      ...(po >= 1 && po <= 5 ? { po } : {}), ...(ad ? { ad } : {}) };
+      ...(po >= 1 && po <= 10 ? { po } : {}), ...(ad ? { ad } : {}) };
   }
   function perbaruiPos(id, pos) {
     if (L.saya && id === L.saya.id) return;
@@ -660,12 +682,15 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     tBayang -= dt;
     if (gerak && tBayang <= 0) { BAYANG_KOTOR = Math.max(BAYANG_KOTOR, 1); tBayang = 0.1; }   // peta bayangan saja, bukan probe pantulan
   }
-  const KODE_GAYA = { joget: 3, ngantuk: 4, lambai: 5 };
+  const KODE_GAYA = { joget: 3, ngantuk: 4, lambai: 5, peluk: 6, gandeng: 7, dansa: 10 };
   function posSaya() {
     if (!FPS.on) return { jalan: 0 };
     // gaya pilihan sendiri berakhir saat mulai berjalan; melambai hanya ±2,6 dtk
     const G = FPS.gaya;
-    if (G && (Math.hypot(camera.position.x - G.x, camera.position.z - G.z) > 0.2 || (G.k === 'lambai' && performance.now() - G.t > 2600))) FPS.gaya = null;
+    const batas = G && (G.k === 'gandeng' ? Infinity : G.k === 'dansa' ? 1.2 : 0.2);
+    if (G && (Math.hypot(camera.position.x - G.x, camera.position.z - G.z) > batas || (G.k === 'lambai' && performance.now() - G.t > 2600))) FPS.gaya = null;
+    const B = FPS.duduk && FPS.duduk.baring;
+    if (B) return { jalan: 1, x: +B.x.toFixed(2), y: +B.y.toFixed(2), z: +B.z.toFixed(2), yaw: +B.yaw.toFixed(3), po: 9, ...(PROJECT.adeganKini ? { ad: PROJECT.adeganKini } : {}) };
     const po = FPS.duduk ? (FPS.duduk.lantai ? 2 : 1) : FPS.gaya ? KODE_GAYA[FPS.gaya.k] || 0 : 0;
     return { jalan: 1, x: +camera.position.x.toFixed(2), y: +FPS.feet.toFixed(2), z: +camera.position.z.toFixed(2), yaw: +FPS.yaw.toFixed(3),
       ...(po ? { po } : {}), ...(PROJECT.adeganKini ? { ad: PROJECT.adeganKini } : {}) };

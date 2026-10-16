@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 83 GO · 3 DEFER · 5 NO-GO dari 91 item.
+**Ringkasan:** 84 GO · 3 DEFER · 5 NO-GO dari 92 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -25,6 +25,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-091 | Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres | terkirim | 0.65 | 87,8 jt | 0,5 jt | 324.0× | 161.5× | 0.1 bln | 4 | **GO** |
 | JEV-097 | Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek | terkirim | 0.65 | 96,5 jt | 0,6 jt | 320.8× | 159.9× | 0.1 bln | 4 | **GO** |
 | JEV-103 | Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan | terkirim | 0.65 | 109,7 jt | 0,7 jt | 316.9× | 158.0× | 0.1 bln | 4 | **GO** |
+| JEV-109 | Interaksi berpasangan: peluk, gandeng tangan, duduk bersandar, berbaring di ranjang, dansa berdua (pemain, NPC & Main bareng) | terkirim | 0.65 | 128,7 jt | 0,8 jt | 311.0× | 155.0× | 0.1 bln | 4 | **GO** |
 | JEV-073 | Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring | terkirim | 0.80 | 72 jt | 0,5 jt | 308.7× | 153.8× | 0.1 bln | 4 | **GO** |
 | JEV-108 | Dialog NPC: kartu karakter, memori & relasi (port npc-dialogue-system, MIT) — tanpa server, AI opsional lewat /api/npc (Groq) | terkirim | 0.65 | 171,6 jt | 1,1 jt | 304.1× | 151.5× | 0.1 bln | 4 | **GO** |
 | JEV-099 | Gitar yang bisa dimainkan (seperti piano) | terkirim | 0.65 | 83,9 jt | 0,6 jt | 271.9× | 135.5× | 0.1 bln | 4 | **GO** |
@@ -121,6 +122,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-091 Info berkas 3D sebelum diunduh, batalkan unduhan, tekstur galeri 2K tajam tapi dikompres — GO.** ROI 324.0× ≥ 1, payback 0.1 bln.
 - **JEV-097 Jelajahi musik & suara (Openverse, Creative Commons) untuk musik latar & objek — GO.** ROI 320.8× ≥ 1, payback 0.1 bln.
 - **JEV-103 Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan — GO.** ROI 316.9× ≥ 1, payback 0.1 bln.
+- **JEV-109 Interaksi berpasangan: peluk, gandeng tangan, duduk bersandar, berbaring di ranjang, dansa berdua (pemain, NPC & Main bareng) — GO.** ROI 311.0× ≥ 1, payback 0.1 bln.
 - **JEV-073 Editor di HP: panel bisa ditutup (X & ketuk di luar), toolbar satu baris, petunjuk tidak menimpa, panel lega di HP miring — GO.** ROI 308.7× ≥ 1, payback 0.1 bln.
 - **JEV-108 Dialog NPC: kartu karakter, memori & relasi (port npc-dialogue-system, MIT) — tanpa server, AI opsional lewat /api/npc (Groq) — GO.** ROI 304.1× ≥ 1, payback 0.1 bln.
 - **JEV-099 Gitar yang bisa dimainkan (seperti piano) — GO.** ROI 271.9× ≥ 1, payback 0.1 bln.

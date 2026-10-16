@@ -1158,7 +1158,7 @@ window.KAMUS_EN={
   "Hapus video ini dari proyek":"Remove this video from the project",
   "Ganti tekstur…":"Change texture…",
   "Pilih tekstur foto…":"Choose photo texture…",
-  "Lepas":"Remove",
+  "Lepas":"Let go",
   "Scan":"Scan",
   "Lampu":"Lighting",
   "Meja":"Tables",
@@ -1757,6 +1757,23 @@ window.KAMUS_EN={
   "Nama NPC":"NPC name",
   "Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli":"NPC colours can't be randomised on this device — using the original colours",
   "Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Di mode jalan bidik lalu Ngobrol untuk bercakap (kepribadian & ingatan per NPC), atau Sapa.":"In walk mode the NPC strolls within this radius of its spot, sits on the nearest chair / sofa, sits on the floor, dances, gets sleepy & waves. 0 = stays put. In walk mode aim, then Talk to chat (personality & memory per NPC), or Greet.",
+  "🤗 Peluk":"🤗 Hug",
+  "🤝 Gandeng":"🤝 Hold hands",
+  "💞 Dansa berdua":"💞 Slow dance",
+  "💞 Dansa":"💞 Dance",
+  "🛋️ Duduk bareng":"🛋️ Sit together",
+  "🤗 Kamu memeluk":"🤗 You hug",
+  "🤝 Kamu bergandengan tangan":"🤝 You hold hands",
+  "💞 Kamu berdansa":"💞 You're dancing",
+  "Gaya selesai":"Pose ended",
+  "Berbaring":"Lie down",
+  "Hehe, aku main bola aja yuk, Kak!":"Hehe, let's just play football!",
+  "Eh… kita belum seakrab itu, ya.":"Uh… we're not that close yet.",
+  "Hmm, di sini tidak ada tempat duduk di sebelahmu.":"Hmm, there's no seat next to you here.",
+  "Sini, peluk dulu!":"Come here, a hug!",
+  "Ayo, jalan bareng!":"Let's walk together!",
+  "Pelan-pelan, ya…":"Nice and slow…",
+  "Boleh duduk di sebelahmu?":"Mind if I sit next to you?",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1828,7 +1845,15 @@ window.KAMUS_EN={
   "Siapa kamu?":"Who are you?",
   "Puji":"Compliment",
   "Beri hadiah":"Give a gift",
-  "Pamit":"Say goodbye"
+  "Pamit":"Say goodbye",
+  "Peluk":"Hug",
+  "Gandeng":"Hold hands",
+  "Dansa berdua":"Slow dance",
+  "Dansa":"Dance",
+  "Duduk bareng":"Sit together",
+  "Kamu memeluk":"You hug",
+  "Kamu bergandengan tangan":"You hold hands",
+  "Kamu berdansa":"You're dancing"
  },
  // frasa
  "frasa":{
@@ -1869,7 +1894,9 @@ window.KAMUS_EN={
   "Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab Lantai.":"A model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. Piece size & direction can be changed in the inspector. Floors from a model are in the <b>Floors</b> tab.",
   "Duduk di lantai · ketuk Berdiri atau geser stik":"<b>Sitting on the floor</b> · tap <b>Stand up</b> or move the stick",
   "Duduk di lantai · E atau W A S D untuk berdiri":"<b>Sitting on the floor</b> · <b>E</b> or <b>W A S D</b> to stand up",
-  "Satu proyek bisa punya beberapa area — mis. rumah & pantai. Di mode jalan, pindah area lewat objek berinteraksi Pindah ke adegan (mis. gerbang atau pintu). Ikut tersimpan di berkas proyek & tautan lihat.":"One project can have several areas — e.g. a house &amp; a beach. In walk mode, move between areas through an object with the <b>Go to scene</b> interaction (e.g. a gate or door). Saved in the project file &amp; view link too."
+  "Satu proyek bisa punya beberapa area — mis. rumah & pantai. Di mode jalan, pindah area lewat objek berinteraksi Pindah ke adegan (mis. gerbang atau pintu). Ikut tersimpan di berkas proyek & tautan lihat.":"One project can have several areas — e.g. a house &amp; a beach. In walk mode, move between areas through an object with the <b>Go to scene</b> interaction (e.g. a gate or door). Saved in the project file &amp; view link too.",
+  "Berbaring · ketuk Berdiri atau geser stik":"<b>Lying down</b> · tap <b>Stand up</b> or move the stick",
+  "Berbaring · E atau W A S D untuk bangun":"<b>Lying down</b> · <b>E</b> or <b>W A S D</b> to get up"
  },
  // pola
  "pola":[
