@@ -1688,6 +1688,30 @@ window.KAMUS_EN={
   "Siklus waktu mati — waktu tetap":"Day cycle off — time stays put",
   "Siklus waktu berjalan · cuaca Acak, kadang hujan":"Day cycle running · Random weather, sometimes rain",
   "Siklus waktu berjalan":"Day cycle running",
+  "Karakter F":"Character F",
+  "Karakter M":"Character M",
+  "Pilih karakter F / M (oleh wolfpuplabs), atau unggah sendiri dari VRoid Studio / Avaturn (.vrm / .glb). Tanpa avatar 3D: foto bulat.":"Pick character F / M (by wolfpuplabs), or upload your own from VRoid Studio / Avaturn (.vrm / .glb). Without a 3D avatar: round photo.",
+  "🙂 Gaya…":"🙂 Pose…",
+  "🧘 Duduk di lantai":"🧘 Sit on the floor",
+  "💃 Joget":"💃 Dance",
+  "😴 Ngantuk":"😴 Sleepy",
+  "👋 Lambai":"👋 Wave",
+  "Gaya — terlihat oleh teman di Main bareng":"Pose — visible to friends in Play together",
+  "Gaya ini terlihat oleh teman di Main bareng":"This pose is visible to friends in Play together",
+  "💃 Kamu berjoget":"💃 You're dancing",
+  "😴 Kamu mengantuk":"😴 You're sleepy",
+  "👋 Kamu melambai":"👋 You wave",
+  "Lihat di AR (ukuran asli)":"View in AR (actual size)",
+  "Adegan (area)":"Scenes (areas)",
+  "Proyek ini satu area. Tambah area baru untuk tempat lain (pantai, kafe, taman…).":"This project is one area. Add a new area for other places (beach, café, park…).",
+  "＋ Adegan baru":"＋ New scene",
+  "Duplikat adegan ini":"Duplicate this scene",
+  "Pindah ke adegan":"Go to scene",
+  "Dibuka":"Open now",
+  "Buka":"Open",
+  "Hapus adegan":"Delete scene",
+  "Nama adegan":"Scene name",
+  "area lain":"another area",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1743,7 +1767,16 @@ window.KAMUS_EN={
   "Acak · sekarang cerah":"Random · now clear",
   "Acak · sekarang gerimis":"Random · now drizzle",
   "Acak · sekarang hujan":"Random · now rain",
-  "Acak · sekarang badai petir":"Random · now thunderstorm"
+  "Acak · sekarang badai petir":"Random · now thunderstorm",
+  "Gaya…":"Pose…",
+  "Duduk di lantai":"Sit on the floor",
+  "Joget":"Dance",
+  "Ngantuk":"Sleepy",
+  "Lambai":"Wave",
+  "Kamu berjoget":"You're dancing",
+  "Kamu mengantuk":"You're sleepy",
+  "Kamu melambai":"You wave",
+  "Adegan baru":"New scene"
  },
  // frasa
  "frasa":{
@@ -1781,7 +1814,10 @@ window.KAMUS_EN={
   "Tekan Lihat di ruanganmu — model dibuka di Google Scene Viewer (butuh Google Play Services for AR).":"Press <b>View in your room</b> — the model opens in Google Scene Viewer (needs Google Play Services for AR).",
   "Dipakai semua lantai yang tidak memilih materialnya sendiri. Material dinding diatur per dinding: pilih dinding, lalu lihat bagian Material di panel kanan.":"Used by every floor that doesn't pick its own material. Wall materials are set per wall: select a wall, then see the <b>Material</b> section in the right panel.",
   "Pagar: model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Lantai: model ubin, papan dek, atau paving disusun berpetak mengisi keliling yang digambar. Ukuran potongan & arahnya bisa diubah di inspector.":"<b>Fence</b>: a model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. <b>Floor</b>: a tile, deck board or paver model is laid in a grid filling the drawn outline. Piece size & direction can be changed in the inspector.",
-  "Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab Lantai.":"A model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. Piece size & direction can be changed in the inspector. Floors from a model are in the <b>Floors</b> tab."
+  "Model satu potong pagar (panel, tiang + rel) diulang sepanjang jalur yang digambar, seperti dinding. Ukuran potongan & arahnya bisa diubah di inspector. Lantai dari model ada di tab Lantai.":"A model of one fence piece (panel, post + rails) is repeated along the drawn path, like a wall. Piece size & direction can be changed in the inspector. Floors from a model are in the <b>Floors</b> tab.",
+  "Duduk di lantai · ketuk Berdiri atau geser stik":"<b>Sitting on the floor</b> · tap <b>Stand up</b> or move the stick",
+  "Duduk di lantai · E atau W A S D untuk berdiri":"<b>Sitting on the floor</b> · <b>E</b> or <b>W A S D</b> to stand up",
+  "Satu proyek bisa punya beberapa area — mis. rumah & pantai. Di mode jalan, pindah area lewat objek berinteraksi Pindah ke adegan (mis. gerbang atau pintu). Ikut tersimpan di berkas proyek & tautan lihat.":"One project can have several areas — e.g. a house &amp; a beach. In walk mode, move between areas through an object with the <b>Go to scene</b> interaction (e.g. a gate or door). Saved in the project file &amp; view link too."
  },
  // pola
  "pola":[
@@ -2032,7 +2068,14 @@ window.KAMUS_EN={
   ["Suara: (.+)","Sound: $1"],
   ["Pustaka musik tidak bisa dihubungi \\((.+)\\)\\. Periksa koneksi, atau unggah berkas sendiri\\.","Music library can't be reached ($1). Check the connection, or upload your own file."],
   ["⚠ berkas tidak tersedia \\(HTTP (\\d+)\\)","⚠ file not available (HTTP $1)"],
-  ["Akor (.+) \\((\\d)\\)","Chord $1 ($2)"]
+  ["Akor (.+) \\((\\d)\\)","Chord $1 ($2)"],
+  ["Pergi ke (.+)","Go to $1"],
+  ["Area (\\d+)","Area $1"],
+  ["(.+) \\(salinan\\)","$1 (copy)"],
+  ["Maksimal (\\d+) adegan per proyek","At most $1 scenes per project"],
+  ["Hapus adegan \"(.+)\"\\? Isinya ikut terhapus\\.","Delete scene \"$1\"? Its contents are deleted too."],
+  ["Hapus adegan (.+)","Delete scene $1"],
+  ["Adegan: (.+)","Scene: $1"]
  ],
  // frasaPola
  "frasaPola":[
@@ -2080,6 +2123,8 @@ window.KAMUS_EN={
   ["Menyiapkan model untuk AR \\(Google Scene Viewer\\)…","Preparing the model for AR (Google Scene Viewer)…"],
   ["Model lebih dari 4 MB — terlalu besar untuk Google Scene Viewer\\. Unduh \\.glb lalu buka di aplikasi AR\\.","The model is over 4 MB — too large for Google Scene Viewer. Download the .glb and open it in an AR app."],
   ["AR di perangkat ini lewat Google Scene Viewer, yang butuh model di server — tidak tersedia di hosting ini atau koneksi gagal\\. Unduh \\.glb lalu buka di aplikasi AR\\.","AR on this device goes through Google Scene Viewer, which needs the model on a server — not available on this hosting or the connection failed. Download the .glb and open it in an AR app."],
-  ["Menyiapkan berkas AR \\(USDZ\\) untuk browser ini… tombol <b>Lihat di ruanganmu</b> muncul setelah siap\\.","Preparing the AR file (USDZ) for this browser… the <b>View in your room</b> button appears when it is ready."]
+  ["Menyiapkan berkas AR \\(USDZ\\) untuk browser ini… tombol <b>Lihat di ruanganmu</b> muncul setelah siap\\.","Preparing the AR file (USDZ) for this browser… the <b>View in your room</b> button appears when it is ready."],
+  ["Objek <b>","Object <b>"],
+  [" — ukuran asli, diletakkan di ruanganmu\\."," — actual size, placed in your room. "]
  ]
 };

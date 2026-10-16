@@ -328,6 +328,7 @@ body{font-size:14px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
 /* foto profil main bareng: pratinjau bulat */
 .lobi-foto{align-items:center}
+.lobi-av3d{flex-wrap:wrap}.lobi-kartu-baris{display:flex;gap:8px;width:100%}.lobi-kartu{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--txt);font-size:.72rem;cursor:pointer}.lobi-kartu img{width:64px;height:64px;border-radius:8px;object-fit:cover}.lobi-kartu[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .lobi-av3d-nama{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.74rem;color:var(--muted)}
 .lobi-foto-lihat{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #fff;flex:none}
 #bagikanGambar,#lobiGambar{display:block;width:100%;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-top:6px}
@@ -832,6 +833,10 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="group"><label>Buka proyek</label><input type="file" id="loadInput" accept="application/json,.json"></div>
       <button class="btn ghost" id="exportObjBtn">Ekspor Model (.obj)</button>
       <button class="btn ghost" id="snapshotBtn">Simpan Gambar (.png)</button>
+      <div class="section-title">Adegan (area)</div>
+      <div id="adeganDaftar"><p class="hint">Proyek ini satu area. Tambah area baru untuk tempat lain (pantai, kafe, taman…).</p></div>
+      <div class="row"><button class="btn sm ghost" id="adeganBaru">＋ Adegan baru</button><button class="btn sm ghost" id="adeganDuplikat">Duplikat adegan ini</button></div>
+      <p class="hint">Satu proyek bisa punya beberapa area — mis. rumah &amp; pantai. Di mode jalan, pindah area lewat objek berinteraksi <b>Pindah ke adegan</b> (mis. gerbang atau pintu). Ikut tersimpan di berkas proyek &amp; tautan lihat.</p>
       <div class="section-title">Bagikan</div>
       <button class="btn" id="bagikanBtn"><svg class="ik" aria-hidden="true"><use href="#i-tautan"/></svg> Buat tautan lihat-saja</button>
       <p class="hint">Penerima bisa melihat &amp; jalan-jalan di dalam rumah, tetapi tidak bisa mengedit. Proyek ikut di dalam tautannya sendiri — tidak diunggah ke server mana pun.</p>
@@ -850,7 +855,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <p class="hint">Undangan tetap berlaku walau kamu offline: siapa pun yang masuk duluan otomatis jadi pusat koneksi, dan perannya pindah ke orang lain saat ia keluar.</p>
         <div class="group"><label for="lobiNamaHost">Namamu</label><input type="text" id="lobiNamaHost" maxlength="24" placeholder="Pemilik"></div>
         <div class="group"><label>Foto profil (opsional)</label><div class="row lobi-foto"><img class="lobi-foto-lihat" alt="" hidden><button class="btn sm ghost lobi-foto-pilih">Pilih foto</button><button class="btn sm ghost lobi-foto-hapus" hidden>Hapus</button></div></div>
-        <div class="group"><label>Avatar 3D (opsional)</label><div class="row lobi-av3d"><span class="lobi-av3d-nama"></span><button class="btn sm ghost lobi-av3d-pilih">Pilih .glb / .vrm</button><button class="btn sm ghost lobi-av3d-hapus" hidden>Hapus</button></div><p class="hint">Buat gratis di VRoid Studio atau Avaturn, lalu ekspor .vrm / .glb. Tanpa avatar 3D: foto bulat.</p></div>
+        <div class="group"><label>Avatar 3D (opsional)</label><div class="row lobi-av3d"><span class="lobi-av3d-nama"></span><button class="btn sm ghost lobi-av3d-pilih">Pilih .glb / .vrm</button><button class="btn sm ghost lobi-av3d-hapus" hidden>Hapus</button></div><p class="hint">Pilih karakter F / M (oleh wolfpuplabs), atau unggah sendiri dari VRoid Studio / Avaturn (.vrm / .glb). Tanpa avatar 3D: foto bulat.</p></div>
         <div class="group"><label>Izin tamu</label>
           <div class="row lobi-mode" role="group" aria-label="Izin tamu"><button class="btn sm ghost active" data-lobi-mode="lihat" aria-pressed="true">Lihat saja</button><button class="btn sm ghost" data-lobi-mode="edit" aria-pressed="false">Bangun bareng</button></div>
           <p class="hint">Lihat saja: tamu jalan-jalan, mengobrol &amp; menyalakan lampu dsb.; hanya kamu yang mengubah rumah &amp; suasana. Bangun bareng: semua ikut mengubah rumah.</p>
@@ -972,6 +977,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <span class="fps-alat">
       <button class="btn ghost sm" id="fpsOto" aria-pressed="false" aria-label="Siklus waktu" title="Siklus waktu: siang → senja → malam → fajar berjalan sendiri"><svg class="ik" aria-hidden="true"><use href="#i-siklus"/></svg></button>
       <select id="fpsCuaca" title="Cuaca"><option value="cerah">Cerah</option><option value="acak">🎲 Acak — berganti sendiri</option><option value="gerimis">Gerimis</option><option value="hujan">Hujan</option><option value="badai">Badai petir</option></select>
+      <select id="fpsGaya" title="Gaya — terlihat oleh teman di Main bareng"><option value="">🙂 Gaya…</option><option value="lantai">🧘 Duduk di lantai</option><option value="joget">💃 Joget</option><option value="ngantuk">😴 Ngantuk</option><option value="lambai">👋 Lambai</option></select>
       <select id="fpsMood" title="Suasana cahaya">
         <option value="siang">Siang</option><option value="senja">Senja</option><option value="malam">Malam</option><option value="gelap">Malam gelap</option>
       </select>
@@ -7359,7 +7365,7 @@ function rebuildScene(){
   // kayu perabot / pintu / kusen dari foto Poly Haven saat daring (JEV-094, modul/tanahfoto.js)
   if(window.TANAHFOTO&&window.TANAHFOTO.kayuSiap()) window.TANAHFOTO.uv(worldRoot);
   else if(!rebuildScene.kayu&&PROJECT.levels.some(l=>l.walls.length||l.objects.some(o=>o.kind==='furn'))){ rebuildScene.kayu=true; muatModul('tanahfoto').then(()=>window.TANAHFOTO.kayu(),()=>{}); }
-  kumpulkanLampu(); kumpulkanHadap(); kumpulkanGerak(); renderBgmUI(); segarkanCuaca();
+  kumpulkanLampu(); kumpulkanHadap(); kumpulkanGerak(); renderBgmUI(); segarkanCuaca(); if(window.ADEGAN) window.ADEGAN.render(); else if(PROJECT.adegan) muatModul('adegan').then(()=>window.ADEGAN.render(),()=>{});
   kumpulkanAudio();
   if(window.__siap) terapkanPantulan();       // MOOD & finishing sudah terdefinisi
   rebuildDims();
@@ -7913,6 +7919,7 @@ function renderInspector(){
   const bdup=el('button','btn sm ghost','Duplikat'); bdup.onclick=duplicateSelection;
   const bdel=el('button','btn sm danger','Hapus');   bdel.onclick=deleteSelection;
   row.appendChild(bdup); row.appendChild(bdel); ins.appendChild(row);
+  if(SEL.kind==='obj' && (d.kind==='furn'||d.kind==='model')){ const ba=tombolIkon('btn sm ghost','kubus','Lihat di AR (ukuran asli)'); ba.onclick=()=>lihatAR({obj:d.id}); ins.appendChild(ba); }
 }
 
 function flipObjek(d){
@@ -12200,7 +12207,8 @@ function renderCatalogs(){
     bdel.style.flex='0 0 34px';
     bdel.title='Hapus model dari pustaka';
     bdel.onclick=()=>deleteAsset(id);
-    row.appendChild(badd); row.appendChild(bdel);
+    const bar=tombolIkon('btn sm ghost','kubus',''); bar.style.flex='0 0 38px'; bar.title='Lihat di AR (ukuran asli)'; bar.setAttribute('aria-label',bar.title); bar.onclick=()=>lihatAR({aset:id});
+    row.appendChild(badd); if(ASSET_OBJ.has(id)) row.appendChild(bar); row.appendChild(bdel);
     ml.appendChild(row);
   }
   // pilihan model untuk pagar (tab Taman) & lantai (tab Lantai), JEV-090 — pilihan terakhir dipertahankan
@@ -13240,6 +13248,18 @@ function reliefAman(R){
 function cuacaAman(c){ if(!c||typeof c!=='object') return {};
   const j=['acak','gerimis','hujan','badai'].includes(c.jenis)?c.jenis:'cerah', s=[2,6,12].includes(+c.siklus)?+c.siklus:0;
   return j==='cerah'&&!s?{}:{cuaca:{jenis:j,siklus:s}}; }
+// adegan / area (JEV-105): isi area lain disaring seperti proyek; aset, media & tekstur dipakai bersama
+const KUNCI_ADEGAN=['levels','active','pxPerMeter','finish','atap','site','bgm','cuaca','langit'], ID_ADEGAN=/^[A-Za-z0-9_-]{1,24}$/;
+function adeganAman(j){
+  if(!Array.isArray(j.adegan)||!ID_ADEGAN.test(j.adeganKini||'')) return {};
+  const daf=[];
+  for(const a of j.adegan.slice(0,8)){ if(!a||!ID_ADEGAN.test(a.id||'')||daf.some(x=>x.id===a.id)) continue;
+    const e={id:a.id, nama:String(a.nama||'Adegan').slice(0,40)||'Adegan'};
+    if(a.id!==j.adeganKini){ try{ const p=sanitasiProyek({...a.isi, assets:j.assets, plans:j.plans, tekstur:j.tekstur, media:j.media}); e.isi={}; for(const k of KUNCI_ADEGAN) if(p[k]!==undefined) e.isi[k]=p[k]; }catch(err){ continue; } }
+    const m=a.masuk; if(m&&typeof m==='object') e.masuk={x:clamp(+m.x||0,-1e4,1e4), z:clamp(+m.z||0,-1e4,1e4), yaw:clamp(+m.yaw||0,-10,10), lantai:clamp(Math.floor(+m.lantai||0),0,30)};
+    daf.push(e); }
+  return daf.some(x=>x.id===j.adeganKini)?{adegan:daf, adeganKini:j.adeganKini}:{};
+}
 function bgmAman(b){
   if(!b||typeof b!=='object'||typeof b.media!=='string'||!ID_AMAN.test(b.media)) return {};
   const lain=Array.isArray(b.lain)?b.lain.filter(x=>typeof x==='string'&&ID_AMAN.test(x)).slice(0,TREK_MAKS-1):[];
@@ -13302,7 +13322,7 @@ function sanitasiProyek(j){
     finish:pilih(j.finish,{in:'cat',out:'plester',floor:'keramik',inColor:'#efece5',outColor:'#d9d3c7'},(k,v)=>/Color$/.test(k)?warna(v):typeof v==='string'&&v.length<40),
     atap:{tritisan:angka(j.atap&&j.atap.tritisan,0,3,0.6), tebal:angka(j.atap&&j.atap.tebal,0.05,1,0.12), ...(j.atap&&j.atap.tutup===true?{tutup:true}:{})},
     site:{tanah:teks(j.site&&j.site.tanah,20,'none')||'none', margin:angka(j.site&&j.site.margin,0,60,6), ...(j.site&&j.site.sembunyi===true?{sembunyi:true}:{}), ...reliefAman(j.site&&j.site.relief)},
-    ...bgmAman(j.bgm), ...cuacaAman(j.cuaca),
+    ...bgmAman(j.bgm), ...cuacaAman(j.cuaca), ...adeganAman(j),
     langit:pilih(j.langit,LANGIT_BAWAAN,(k,v)=>k==='id'?(v===null||(typeof v==='string'&&ID_AMAN.test(v))):k==='putar'?Number.isFinite(+v):k==='editor'?typeof v==='boolean':typeof v==='string'&&v.length<120)
   };
 }
@@ -13505,6 +13525,9 @@ function inspektorAksi(ins,d){
     ins.appendChild(r);
     if(!D.gambar) ins.appendChild(el('p','hint','Tanpa gambar sendiri, panel memakai gambar objek ini.'));
   }
+  // PINDAH KE ADEGAN (JEV-105): objek jadi pintu / gerbang ke area lain di mode jalan
+  const lain=(PROJECT.adegan||[]).filter(x=>x.id!==PROJECT.adeganKini);
+  if(lain.length) fRow(ins,'Pindah ke adegan',selInput([['','Tidak'],...lain.map(x=>[x.id,x.nama])],A.pindah||'',v=>{ if(v) A.pindah=v; else delete A.pindah; simpan('pindah adegan'); }));
   // SAAT DIKETUK (JEV-086): SATU pilihan — suara klik/swoosh, suara sendiri (SFX), atau media (audio / video)
   // supaya tidak ada beberapa audio yang berbunyi bersamaan. "Musik sendiri" lama dibaca sebagai media.
   if(A.musik && !A.media){ A.media=A.musik; if(A.ulang!==false) A.mediaUlang=true; delete A.musik; delete A.ulang; }
@@ -13651,14 +13674,13 @@ $('#loadInput').addEventListener('change',e=>{
 });
 /* teks JSON (berkas) atau objek (rumah contoh) → proyek; atomik: gagal = proyek lama utuh */
 function muatProyekObjek(sumber){
-  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','tekstur','media','finish','atap','site','langit','bgm'];
+  const KUNCI=['name','pxPerMeter','levels','active','assets','plans','tekstur','media','finish','atap','site','langit','bgm','cuaca','adegan','adeganKini'];
   const cadangan=Object.fromEntries(KUNCI.map(k=>[k,PROJECT[k]]));
   try{
     let j=sumber;
     if(typeof sumber==='string'){ try{ j=JSON.parse(sumber); }catch(_){ throw new Error('bukan JSON yang sah'); } }
     const B=sanitasiProyek(j);
-    for(const k of KUNCI) PROJECT[k]=B[k];
-    if(!PROJECT.bgm) delete PROJECT.bgm;
+    for(const k of KUNCI){ if(B[k]===undefined) delete PROJECT[k]; else PROJECT[k]=B[k]; }   // kunci pilihan (bgm, cuaca, adegan) yang tidak ada: dihapus
     hentikanBGM();
     ATAP_TUTUP=!!PROJECT.atap.tutup;
     PLAN_IMG.clear(); PLAN_RES.clear(); PLAN_SHOWN=null;
@@ -13942,8 +13964,11 @@ pasangPilihFoto($('#lobiSiap .lobi-foto'));
 /* Avatar 3D sendiri (JEV-089): .glb / .vrm (VRoid, Avaturn…), tekstur dirampingkan ≤ 512 px, ≤ 8 MB, disimpan
    beralamat isi di api/tautan seperti lampiran — peserta lain mengunduhnya lewat sidik. Diingat di perangkat. */
 const AVATAR_LOBI={d:null};
+// karakter bawaan (JEV-102): avatar/F.vrm & avatar/M.vrm karya wolfpuplabs — diunduh peserta hanya bila dipilih
+const AV_BAWAAN={F:'Karakter F', M:'Karakter M'};
 try{ const v=JSON.parse(localStorage.getItem('lobiAvatar3D')||'null');
-  if(v&&typeof v.nama==='string'&&Array.isArray(v.bagian)&&v.bagian.length&&v.bagian.length<=3&&v.bagian.every(h=>SHA_HEX.test(h))) AVATAR_LOBI.d={nama:v.nama.slice(0,60), bagian:v.bagian}; }catch(e){ /* mode privat */ }
+  if(v&&typeof v.nama==='string'&&Array.isArray(v.bagian)&&v.bagian.length&&v.bagian.length<=3&&v.bagian.every(h=>SHA_HEX.test(h))) AVATAR_LOBI.d={nama:v.nama.slice(0,60), bagian:v.bagian};
+  else if(v&&AV_BAWAAN[v.bawaan]) AVATAR_LOBI.d={nama:AV_BAWAAN[v.bawaan], bawaan:v.bawaan}; }catch(e){ /* mode privat */ }
 async function avatar3DBaru(file){
   if(file.size>40*1048576) throw new Error('berkas terlalu besar (maks. 40 MB)');
   let buf=await file.arrayBuffer();
@@ -13959,7 +13984,12 @@ async function avatar3DBaru(file){
 }
 function pasangPilihAvatar3D(akar){
   const nama=akar.querySelector('.lobi-av3d-nama'), hapus=akar.querySelector('.lobi-av3d-hapus'), pilih=akar.querySelector('.lobi-av3d-pilih');
-  const isi=()=>{ nama.textContent=AVATAR_LOBI.d?AVATAR_LOBI.d.nama:''; hapus.hidden=!AVATAR_LOBI.d; };
+  const simpanAv=()=>{ try{ if(AVATAR_LOBI.d) localStorage.setItem('lobiAvatar3D',JSON.stringify(AVATAR_LOBI.d)); else localStorage.removeItem('lobiAvatar3D'); }catch(e){ /* mode privat */ } };
+  const baris=el('div','lobi-kartu-baris'), kartu={}, isi=()=>{ nama.textContent=AVATAR_LOBI.d&&!AVATAR_LOBI.d.bawaan?AVATAR_LOBI.d.nama:''; hapus.hidden=!AVATAR_LOBI.d;
+    for(const [k,b] of Object.entries(kartu)) b.setAttribute('aria-pressed',String(!!AVATAR_LOBI.d&&AVATAR_LOBI.d.bawaan===k)); };
+  for(const [k,l] of Object.entries(AV_BAWAAN)){ const b=el('button','lobi-kartu'), im=el('img'); b.type='button'; im.src='avatar/'+k+'.webp'; im.alt=''; b.append(im,el('span',null,l));
+    b.onclick=()=>{ AVATAR_LOBI.d=AVATAR_LOBI.d&&AVATAR_LOBI.d.bawaan===k?null:{nama:l, bawaan:k}; simpanAv(); isi(); }; kartu[k]=b; baris.appendChild(b); }
+  akar.prepend(baris);
   pilih.onclick=()=>pilihBerkasUmum('',async f=>{
     pilih.disabled=true; nama.textContent='Menyiapkan avatar…';
     try{ await avatar3DBaru(f); toast('Avatar 3D siap'); } finally{ pilih.disabled=false; isi(); } });
@@ -15106,6 +15136,14 @@ function duduk(t){
   FPS.info='<b>Duduk</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk berdiri');
   $('#fpsinfo').innerHTML=FPS.info;
 }
+// duduk bersila di lantai (JEV-103): kursi tak terlihat di bawah kamera, mata ±0,8 m; berjalan = berdiri
+function dudukLantai(){
+  if(FPS.duduk) berdiri(); FPS.gaya=null;
+  const p=camera.position;
+  FPS.duduk={id:null, lantai:true, dari:p.clone(), mata:new THREE.Vector3(p.x,FPS.feet+0.8,p.z), t:0, asal:{x:p.x, z:p.z, feet:FPS.feet}};
+  FPS.keys.clear(); if(FPS.move){ FPS.move.f=0; FPS.move.s=0; }
+  FPS.info='<b>Duduk di lantai</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk berdiri'); $('#fpsinfo').innerHTML=FPS.info;
+}
 function berdiri(){
   const D=FPS.duduk; if(!D) return;
   FPS.duduk=null; FPS.feet=D.asal.feet; FPS.vy=0;
@@ -15135,6 +15173,7 @@ function aksiObjek(o){
     try{ const u=new URL(String(d.url||'')); if(/^https?:$/.test(u.protocol)) url=u.href; }catch(e){}
     out.detail={judul:String(d.judul||'').slice(0,120), teks:String(d.teks||'').slice(0,500), url, gambar:md(d.gambar,/^image\//)}; }
   if(a.hadap===true) out.hadap=true;
+  if(typeof a.pindah==='string'&&a.pindah!==PROJECT.adeganKini&&(PROJECT.adegan||[]).some(x=>x.id===a.pindah)) out.pindah=a.pindah;
   // animasi model unggahan (JEV-084): hanya bila asetnya memang punya klip
   if(a.anim&&typeof a.anim==='object'&&o.kind==='model'){ const kl=ASSET_ANIM.get(o.type);
     if(kl&&kl.length) out.anim={klip:typeof a.anim.klip==='string'&&kl.some(c=>c.name===a.anim.klip)?a.anim.klip:'', ulang:a.anim.ulang!==false, otomatis:a.anim.otomatis===true}; }
@@ -15369,6 +15408,7 @@ function cariTarget(ray){
         // satu objek bisa punya beberapa aksi: bawaan (duduk, lampu…) + detail / musik tambahan
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
         if(ak&&ak.detail) ekstra.push('detail');
+        if(ak&&ak.pindah) ekstra.unshift('pindah');
         if(ak&&ak.anim) ekstra.push('anim');
         if(ak&&(ak.sfx||ak.media)&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
@@ -15398,6 +15438,7 @@ function labelAksi(t){
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
   if(t.jenis==='piano') return PIANO.buka?'Tutup piano':'Mainkan piano';
   if(t.jenis==='gitar') return window.GITAR&&window.GITAR.terbuka()?'Tutup gitar':'Mainkan gitar';
+  if(t.jenis==='pindah') return 'Pergi ke '+(((PROJECT.adegan||[]).find(x=>x.id===aksiObjek(cariObjek(t.id))?.pindah)||{}).nama||'area lain');
   if(t.jenis==='duduk') return FPS.duduk&&FPS.duduk.id===t.id?'Berdiri':'Duduk';
   if(t.jenis==='berdiri') return 'Berdiri';
   return '';
@@ -15437,6 +15478,7 @@ function pakai(t){
   if(t.jenis==='duduk'){ if(FPS.duduk&&FPS.duduk.id===t.id) berdiri(); else duduk(t); AIM_T=0; return; }
   if(t.jenis==='piano'){ if(PIANO.buka) tutupPiano(); else bukaPiano(t.grp); AIM_T=0; return; }
   if(t.jenis==='gitar'){ bukaGitar(t.grp); AIM_T=0; return; }
+  if(t.jenis==='pindah'){ const tuju=aksiObjek(cariObjek(t.id))?.pindah; AIM_T=0; if(tuju) muatModul('adegan').then(()=>window.ADEGAN.buka(tuju,{dari:t.id}),e=>toast(e.message)); return; }
   if(t.jenis==='detail'){ bukaDetail(t.id); AIM_T=0; return; }
   if(t.jenis==='anim'){ ketukGerak(t.id); laporAksi('anim',t.id,GERAK.main.has(t.id)); AIM_T=0; return; }
   if(t.jenis==='musik'){ togelMusik(t.id); laporAksi('musik',t.id,MUSIK.main.has(t.id)); AIM_T=0; return; }
@@ -15568,6 +15610,11 @@ function stepBidik(dt){
 }
 $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai(AIM); });
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
+for(const [id,f] of [['#adeganBaru','baru'],['#adeganDuplikat','duplikat']]) $(id).onclick=()=>muatModul('adegan').then(()=>window.ADEGAN[f](),e=>toast(e.message));
+$('#fpsGaya').onchange=e=>{ const v=e.target.value; e.target.value=''; e.target.blur(); if(!v||!FPS.on) return;
+  if(v==='lantai') return dudukLantai();
+  if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
+  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); };
 $('#fpsMood').onchange=e=>{ const v=e.target.value; e.target.blur(); if(window.CUACA) window.CUACA.pilihWaktu(v); else setSuasana(v); };
 // cuaca & siklus waktu (JEV-100): modul/cuaca.js dimuat begitu dipakai
 function segarkanCuaca(){ const c=PROJECT.cuaca||{};
@@ -15732,7 +15779,7 @@ function exitFPS(){
   hentikanSemuaMusik();                      // musik hanya bagian dari mode jalan
   hentikanSemuaMusikUnggah(); tutupDetail(); hentikanSemuaMediaObjek(); hentikanSemuaGerak();
   if(!LIHAT.on) jedaBGM();                                            // editor sunyi; di tautan lihat musik berlanjut
-  FPS.duduk=null;
+  FPS.duduk=null; FPS.gaya=null;
   FPS.on=false; FPS.move=null; FPS.look=null; FPS.keys.clear();
   if(PIANO.buka) tutupPiano();
   if(window.GITAR&&window.GITAR.terbuka()) window.GITAR.tutup();
@@ -15993,7 +16040,17 @@ const AR_SV_MAKS = 4*1048576;
 
 /* scene bersih khusus ekspor: semua lantai yang tampak, tanpa material hantu,
    tanpa helper/gizmo — dibangun ulang dari data supaya tidak mengusik viewport */
+/* AR SATU OBJEK (JEV-104): objek terpilih atau model pustaka saja, ukuran asli (1 : 1) — diletakkan di ruanganmu */
+function lihatAR(h){ AR.hanya=h; if(AR.denomLalu==null) AR.denomLalu=AR.denom; AR.denom=1; $('#arScale').value='1'; openAR(); }
+function arBuildSatu(h){
+  const o=h.aset?{id:'ar', kind:'model', type:h.aset, x:0, y:0, z:0, rotY:0, sx:1, sy:1, sz:1, params:{}}:cariObjek(h.obj); if(!o) return null;
+  const lv=PROJECT.levels.find(l=>l.objects.includes(o))||L(), g=buildObject(o,lv), drop=[];
+  g.traverse(c=>{ if(c.userData.noExport) drop.push(c); }); for(const c of drop) if(c.parent) c.parent.remove(c);
+  if(!g.children.length) return null;
+  const root=new THREE.Group(); root.add(g); return root;
+}
 function arBuildScene(){
+  if(AR.hanya) return arBuildSatu(AR.hanya);
   const root=new THREE.Group();
   let n=0;
   PROJECT.levels.forEach((lv,idx)=>{
@@ -16168,7 +16225,8 @@ function arInfo(){
   let t='';
   if(d){
     const cm=v=>(v/AR.denom*100).toFixed(1);
-    t=`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
+    t=AR.hanya?`Objek <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b> — ukuran asli, diletakkan di ruanganmu. `
+      :`Bangunan <b>${d.x.toFixed(2)} × ${d.z.toFixed(2)} m</b>, tinggi <b>${d.y.toFixed(2)} m</b> → maket 1 : ${AR.denom} = <b>${cm(d.x)} × ${cm(d.z)} cm</b>, tinggi <b>${cm(d.y)} cm</b>. `;
   }
   // teks dibungkus <span>: tombol di sebelahnya membuat lapisan terjemahan tidak mengenali kalimatnya
   $('#arInfo').innerHTML='<span>'+t+arNote()+'</span>';
@@ -16316,6 +16374,7 @@ async function openAR(){
 function closeAR(){
   JEDA_RENDER=0;
   AR.open=false; AR.svUrl=null; AR.sv='';
+  if(AR.hanya){ AR.hanya=null; AR.denom=AR.denomLalu||50; AR.denomLalu=null; $('#arScale').value=String(AR.denom); }
   $('#arPanel').hidden=true; $('#arSV').hidden=true;
   const mv=$('#arViewer');
   if(mv){ mv.removeAttribute('src'); mv.removeAttribute('ios-src'); }
