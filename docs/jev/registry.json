@@ -4642,6 +4642,253 @@
     "target": "pilihan utama di tautan lihat",
     "tinjau": "2027-01-13"
    }
+  },
+  {
+   "id": "JEV-102",
+   "judul": "Karakter bawaan F & M (VRM karya wolfpuplabs) bisa dipilih sebelum Main bareng",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengunjung harus membuat & mengunggah avatar 3D sendiri; tanpa itu hanya foto bulat.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16 (lampiran F.vrm & M.vrm): \"tiap asset ada opsi bisa view in AR / bisa save scene sama open scene interaction (misal open scene buat pindah area di walk mode) / tambahin 2 file vrm ini jadi default karakter yang bisa dipilih pas mau join / buat gesture lebih natural, tambahin varian animasi idle sama interaksi, misal ngantuk, joget kecil, duduk di kursi sama lantai\"",
+    "alternatif": [
+     "hanya unggah sendiri (keadaan sebelumnya)",
+     "avatar boneka prosedural"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 5
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "berkas dari situs sendiri (avatar/*.vrm), lewat pembaca VRM/GLB yang sama dengan unggahan; data peserta hanya kode bawaan F / M (daftar tetap)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar; pilihan disimpan di localStorage perangkat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "VRM karya pengguna sendiri (wolfpuplabs); berkas disertakan utuh tanpa diubah (meta: allowRedistribution false, modification prohibited untuk M — pemiliknya yang meminta), kredit 'oleh wolfpuplabs' ditampilkan; tekstur hanya diperkecil di memori saat dimuat"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "±12 MB per karakter diunduh hanya saat dipilih & dipakai di lobi; tekstur dirampingkan ke 1024 px; gambar kartu 192 px webp"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kartu berupa tombol dengan teks & aria-pressed"
+    }
+   },
+   "metrik": {
+    "nama": "peserta lobi yang memakai karakter bawaan",
+    "target": "mayoritas peserta tanpa unggahan sendiri",
+    "tinjau": "2027-01-16"
+   }
+  },
+  {
+   "id": "JEV-103",
+   "judul": "Gerak avatar lebih alami: duduk di kursi / lantai, joget kecil, mengantuk, lambai, varian diam otomatis + menu Gaya di mode jalan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Avatar lobi hanya berjalan & diam berdiri kaku; tidak bisa duduk di lantai atau mengekspresikan diri.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16 (lampiran F.vrm & M.vrm): \"tiap asset ada opsi bisa view in AR / bisa save scene sama open scene interaction (misal open scene buat pindah area di walk mode) / tambahin 2 file vrm ini jadi default karakter yang bisa dipilih pas mau join / buat gesture lebih natural, tambahin varian animasi idle sama interaksi, misal ngantuk, joget kecil, duduk di kursi sama lantai\"",
+    "alternatif": [
+     "klip animasi .vrma / mixamo (berkas & lisensi tambahan, ukuran besar)",
+     "emote 2D di atas kepala saja"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.5,
+      "pakaiPerTahun": 12,
+      "menitHemat": 3
+     },
+     "konversi": {
+      "jangkauan": 0.5,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kode pose dikirim sebagai angka 1–5 yang disaring (posAman); nilai lain dibuang"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar selain kode pose"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri; pose prosedural tanpa klip animasi pihak ketiga"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "rotasi tulang dijumlahkan sekali per frame per avatar; tanpa berkas animasi"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "menu Gaya berlabel; teks pemberitahuan; duduk di lantai bisa dilepas dengan Berdiri / E / WASD / stik"
+    }
+   },
+   "metrik": {
+    "nama": "pemakaian menu Gaya di lobi",
+    "target": "dipakai di sesi Main bareng",
+    "tinjau": "2027-01-16"
+   }
+  },
+  {
+   "id": "JEV-104",
+   "judul": "Lihat di AR per objek / model pustaka dalam ukuran asli",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "AR hanya menampilkan seluruh rumah sebagai maket; tidak bisa mencoba satu perabot dalam ukuran asli di ruangan nyata.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16 (lampiran F.vrm & M.vrm): \"tiap asset ada opsi bisa view in AR / bisa save scene sama open scene interaction (misal open scene buat pindah area di walk mode) / tambahin 2 file vrm ini jadi default karakter yang bisa dipilih pas mau join / buat gesture lebih natural, tambahin varian animasi idle sama interaksi, misal ngantuk, joget kecil, duduk di kursi sama lantai\"",
+    "alternatif": [
+     "ekspor .glb satu objek lalu buka di aplikasi AR lain"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "memakai jalur AR yang sudah ada (model-viewer, USDZ, Scene Viewer); tanpa host baru"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar selain jalur AR yang sudah ada"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "model yang sama dengan yang sudah dipakai di proyek"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "hanya satu objek dibangun — lebih ringan dari AR seluruh rumah"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel & title 'Lihat di AR (ukuran asli)'; info ukuran objek dalam cm"
+    }
+   },
+   "metrik": {
+    "nama": "pembukaan AR satu objek",
+    "target": "dipakai saat memilih perabot",
+    "tinjau": "2027-01-16"
+   }
+  },
+  {
+   "id": "JEV-105",
+   "judul": "Adegan / area dalam satu proyek + interaksi 'Pindah ke adegan' di mode jalan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Satu proyek hanya satu tempat; tidak bisa membuat beberapa area (mis. rumah & pantai) yang bisa dijelajahi bergantian di mode jalan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-16 (lampiran F.vrm & M.vrm): \"tiap asset ada opsi bisa view in AR / bisa save scene sama open scene interaction (misal open scene buat pindah area di walk mode) / tambahin 2 file vrm ini jadi default karakter yang bisa dipilih pas mau join / buat gesture lebih natural, tambahin varian animasi idle sama interaksi, misal ngantuk, joget kecil, duduk di kursi sama lantai\"",
+    "alternatif": [
+     "proyek terpisah per area dibuka satu per satu (tanpa pintu antar area)",
+     "lantai tambahan dipakai sebagai area lain (bertumpuk vertikal, membingungkan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 6
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "isi area lain disaring ulang dengan penyaring proyek; id adegan [A-Za-z0-9_-]{1,24}, maks 8 area, posisi masuk dibatasi; data rusak dibuang"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru keluar; Main bareng: posisi & sinkron co-edit membawa id area sehingga peserta di area lain tidak saling menimpa"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "kode sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "hanya area yang dibuka yang dibangun; modul/adegan.js dimuat saat dipakai; aset & media dipakai bersama"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "daftar area dengan kolom nama berlabel, tombol Buka / Hapus berlabel; pemberitahuan nama area saat pindah"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan lebih dari satu area",
+    "target": "dipakai pada tautan lihat",
+    "tinjau": "2027-01-16"
+   }
   }
  ]
 }
