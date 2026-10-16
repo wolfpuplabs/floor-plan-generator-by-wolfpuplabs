@@ -2107,7 +2107,10 @@ window.KAMUS_EN={
   ["Hapus adegan \"(.+)\"\\? Isinya ikut terhapus\\.","Delete scene \"$1\"? Its contents are deleted too."],
   ["Hapus adegan (.+)","Delete scene $1"],
   ["Adegan: (.+)","Scene: $1"],
-  ["NPC ([FM]) muncul di depanmu","NPC $1 appears in front of you"]
+  ["NPC ([FM]) muncul di depanmu","NPC $1 appears in front of you"],
+  ["Memuat karakter NPC ([FM])…","Loading NPC character $1…"],
+  ["NPC gagal dimuat — (.+)","NPC failed to load — $1"],
+  ["karakter ([FM]) tidak tersedia \\(HTTP (\\d+)\\)","character $1 not available (HTTP $2)"]
  ],
  // frasaPola
  "frasaPola":[

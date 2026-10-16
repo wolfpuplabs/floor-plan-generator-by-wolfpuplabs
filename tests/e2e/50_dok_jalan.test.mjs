@@ -40,6 +40,11 @@ export const tes = {
     const n = await page.evaluate(() => { document.querySelector('[data-npc-jalan="M"]').click(); const o = L().objects.find(x => x.kind === 'npc');
       return o && { type: o.type, x: o.x, z: o.z, hadap: +Math.cos(o.rotY).toFixed(2), tutup: $('#fpsLembar').hidden }; });
     assert.deepEqual(n, { type: 'M', x: 2, z: 4.6, hadap: -1, tutup: true });
+    // selama karakter dimuat tampil siluet; setelah siap siluet hilang & model terpasang
+    const sil = await page.evaluate(async () => { const id = L().objects.find(x => x.kind === 'npc').id; let ada = false;
+      for (let i = 0; i < 600; i++) { const n = window.NPC && window.NPC._uji.NPC.get(id); if (n && n.badan.children.some(c => c.userData.siluet)) ada = true; if (n && n.a) return [ada || i === 0, n.badan.children.some(c => c.userData.siluet)]; await new Promise(r => setTimeout(r, 100)); }
+      return null; });
+    assert.deepEqual(sil, [true, false], 'siluet saat memuat, lalu model');
     // sembunyikan menu: dok & info hilang, tombol foto & keluar tetap
     await page.evaluate(() => $('#fpsCiut').click());
     assert.deepEqual(await page.evaluate(() => [getComputedStyle($('#fpsDok')).display, getComputedStyle($('#fpsFoto')).display, !!$('#fpsExit').offsetParent]), ['none', 'grid', true]);

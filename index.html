@@ -15601,6 +15601,7 @@ function bukaLembar(k){
   for(const f of document.querySelectorAll('#fpsLembar .fl')) f.hidden=f.dataset.lembar!==k;
   $('#fpsDok [data-lembar="'+k+'"]').setAttribute('aria-expanded','true');
   $('.fl-npc').hidden=LIHAT.on; $('#fpsLembar').hidden=false;
+  if(k==='gaya'&&!LIHAT.on){ muatModul('npc').catch(()=>{}); muatModul('lobi').catch(()=>{}); }   // NPC lebih cepat muncul
 }
 for(const b of document.querySelectorAll('#fpsDok .fps-ik')) b.onclick=()=>bukaLembar(b.dataset.lembar);
 for(const b of document.querySelectorAll('[data-gaya]')) b.onclick=()=>pilihGaya(b.dataset.gaya);
