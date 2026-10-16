@@ -7254,7 +7254,7 @@ function bangunNPC(o,lv){
   const g=new THREE.Group(), badan=new THREE.Group(); g.add(badan); Object.assign(g.userData,{badan, npc:true, perabot:true});
   const hit=new THREE.Mesh(NPC_KOTAK||(NPC_KOTAK=new THREE.BoxGeometry(0.5,1.7,0.4).translate(0,0.85,0)),NPC_TAK_TAMPAK||(NPC_TAK_TAMPAK=new THREE.MeshBasicMaterial({visible:false})));
   hit.userData={noExport:true, hit:true, bersama:true}; badan.add(hit);
-  muatModul('npc').then(()=>window.NPC.pasang(g,o,lv)).then(()=>{ if(SEL&&SEL.id===o.id&&!$('#inspector .npc-warna')) renderInspector(); },e=>console.warn(e.message));
+  if(window.NPC) window.NPC.pasang(g,o,lv); else muatModul('npc').then(()=>window.NPC.pasang(g,o,lv),e=>console.warn(e.message));
   return g;
 }
 function tambahNPC(k){
@@ -7755,16 +7755,7 @@ function renderInspector(){
     addTransformFields(ins,d,false);
 
   } else if(d.kind==='npc'){
-    const h=el('h3',null,'NPC'); h.appendChild(el('span','tag',d.type==='M'?'Karakter M':'Karakter F')); ins.appendChild(h);
-    fRow(ins,'Karakter',selInput([['F','Karakter F'],['M','Karakter M']],d.type==='M'?'M':'F',v=>{ d.type=v; HIST.label='Karakter NPC'; rebuildScene(); renderInspector(); }));
-    const ba=el('button','btn sm','🎲 Acak penampilan'); ba.onclick=()=>{ d.params.benih=Math.floor(Math.random()*4294967296); HIST.label='Acak penampilan NPC'; rebuildScene(); renderInspector(); }; ins.appendChild(ba);
-    if(window.NPC){ const p=window.NPC.penampilan(d), w=el('div','npc-warna');
-      for(const [k,l] of [['kulit','Kulit'],['rambut','Rambut'],['atas','Atasan'],['bawah','Bawahan'],['sepatu','Sepatu']]){ const s=el('span'); s.title=l; s.setAttribute('aria-label',l); s.style.background=p[k]?'rgb('+p[k].join(',')+')':'#f4f4f4'; w.appendChild(s); }
-      ins.appendChild(w); }
-    fRow(ins,'Jelajah (m)',numInput(d.params.jelajah??4,0.5,v=>{ d.params.jelajah=clamp(v,0,15); rebuildScene(); },0,15));
-    ins.appendChild(el('p','hint','Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Bidik lalu Sapa untuk menyapanya.'));
-    ins.appendChild(el('div','section-title','Penempatan'));
-    addTransformFields(ins,d,false);
+    if(window.NPC) window.NPC.inspektor(ins,d); else muatModul('npc').then(renderInspector,()=>{});
 
   } else if(d.kind==='column'){
     const h=el('h3',null,'Kolom'); h.appendChild(el('span','tag',d.type==='round'?'bulat':'persegi'));

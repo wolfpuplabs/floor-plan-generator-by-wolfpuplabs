@@ -9,7 +9,8 @@
    → diam lagi. NPC tidak menembus dinding & perabot, menunggu bila pengunjung menghalangi, dan bisa disapa.
    Di editor NPC berdiri di tempatnya (bernapas & berkedip) agar mudah ditata. */
 /* global FPS, LIHAT, camera, levelGroups, PROJECT, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
-   adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, BAYANG_KOTOR:writable */
+   adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
+   renderInspector, addTransformFields */
 (function () {
   'use strict';
   const UK = 512, SIMPAN_MAKS = 24, MAKS = 12;
@@ -60,8 +61,12 @@
       const v = [0, 1, 2].map(k => (idx ? idx[i + k] : i + k)), b = { r: 0, k: 0, s: 0, b: 0, t: 0, a: 0 };
       if (kat && si && sw) for (const q of v) for (let j = 0; j < 4; j++) { const w = komp(sw, q, j); if (w > 0) b[kat[komp(si, q, j)] || 'a'] += w; }
       let km = 'a', bm = -1; for (const k in b) if (b[k] > bm) { bm = b[k]; km = k; }
-      hasil.push({ uv: v.map(q => [uv.getX(q), uv.getY(q)]), kat: km });
+      hasil.push({ uv: v.map(q => [uv.getX(q), uv.getY(q)]), kat: km, v0: v[0], v });
     }
+    // pulau: segitiga yang bersambung (satu potong kain / sepatu / rambut) — ujung kaus yang digerakkan pinggul tetap atasan
+    const ind = new Int32Array(uv.count).map((_, i) => i), akar = i => { while (ind[i] !== i) { ind[i] = ind[ind[i]]; i = ind[i]; } return i; };
+    for (const t of hasil) { const r0 = akar(t.v[0]); for (const q of [t.v[1], t.v[2]]) { const r = akar(q); if (r !== r0) ind[r] = r0; } }
+    for (const t of hasil) { t.pulau = m.id + ':' + akar(t.v0); delete t.v; delete t.v0; }
     return hasil;
   }
   function petakan(tpl) {
@@ -86,13 +91,14 @@
     for (const p of daftar) {
       p.kelas = new Uint8Array(UK * UK);
       if (p.wajah) continue;
-      const kel = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+      const kel = { 1: [], 2: [], 3: [], 4: [], 5: [] }, suara = new Map(), sisa = [];
       for (const s of p.tri) {
         const c = ambil(p, ...tengah(s), balik);
-        const k = s.kat === 'r' || s.kat === 'k' ? KELAS.rambut : s.kat === 't' || miripKulit(c[0], c[1], c[2], ref) ? KELAS.kulit
-          : s.kat === 's' ? KELAS.sepatu : s.kat === 'b' ? KELAS.bawah : KELAS.atas;
-        kel[k].push(s);
+        if (s.kat === 'r' || s.kat === 'k') kel[KELAS.rambut].push(s);
+        else if (s.kat === 't' || miripKulit(c[0], c[1], c[2], ref)) kel[KELAS.kulit].push(s);
+        else { sisa.push(s); const u = suara.get(s.pulau) || { a: 0, b: 0, s: 0 }; u[s.kat === 's' ? 's' : s.kat === 'b' ? 'b' : 'a']++; suara.set(s.pulau, u); }
       }
+      for (const s of sisa) { const u = suara.get(s.pulau), k = u.s >= u.a && u.s >= u.b ? KELAS.sepatu : u.b > u.a ? KELAS.bawah : KELAS.atas; kel[k].push(s); }
       const c = document.createElement('canvas'); c.width = c.height = UK; const x = c.getContext('2d', { willReadFrequently: true });
       for (const k of [1, 3, 4, 5, 2]) {
         x.clearRect(0, 0, UK, UK); x.fillStyle = x.strokeStyle = '#fff'; x.lineWidth = 2; x.lineJoin = 'round';
@@ -146,17 +152,31 @@
   /* ---------- PASANG ke grup objek ---------- */
   const NPC = new Map();
   const kotor = () => { BAYANG_KOTOR = Math.max(BAYANG_KOTOR, 1); };
+  // bangun ulang adegan (edit, masuk mode jalan, pintu…) membuat grup baru: NPC dipasang seketika bila karakternya
+  // sudah dimuat, dan keadaannya (posisi, kegiatan, kursi, bobot pose) dibawa ke grup baru selama tempat asalnya sama
+  const TPL = {};
+  const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg'];
+  const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
+  function rakit(n, tpl, lama) {
+    const o = n.o, peta = materiUntuk(tpl, jenisAman(o.type) + ':' + benihAman(o), penampilan(o));
+    const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
+    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material)) x.material = peta.get(x.material); x.raycast = () => {}; x.userData.bersama = true; } });
+    n.badan.add(m);
+    const a = { g: n.badan, tuju: { po: 0 } }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
+    if (lama && lama.a) { for (const k of ['pw', 'w', 'v', 'mikro', 'lambai', 'diam']) if (lama.a[k] != null) a[k] = Array.isArray(lama.a[k]) ? lama.a[k].slice() : lama.a[k]; }
+    if (n.mode && n.p) pasangBadan(n);
+    kotor();
+  }
   function pasang(g, o, lv) {
-    const n = { id: o.id, o, g, badan: g.userData.badan, li: Math.max(0, PROJECT.levels.indexOf(lv)), mode: null, po: 0 };
+    const lama = NPC.get(o.id), n = { id: o.id, o, g, badan: g.userData.badan, li: Math.max(0, PROJECT.levels.indexOf(lv)), mode: null, po: 0 };
+    if (lama && lama.mode && lama.o.x === o.x && lama.o.z === o.z && (lama.o.y || 0) === (o.y || 0) && lama.o.type === o.type && lama.li === n.li) for (const k of BAWA) n[k] = lama[k];
     NPC.set(o.id, n);
-    return muatModul('lobi').then(() => window.LOBI.muatAvatar3D({ bawaan: jenisAman(o.type) })).then(tpl => {
-      if (NPC.get(o.id) !== n || !g.parent) return;
-      const peta = materiUntuk(tpl, jenisAman(o.type) + ':' + benihAman(o), penampilan(o));
-      const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
-      m.traverse(x => { if (x.isMesh) { if (peta.has(x.material)) x.material = peta.get(x.material); x.raycast = () => {}; x.userData.bersama = true; } });
-      n.badan.add(m);
-      const a = { g: n.badan, tuju: { po: 0 } }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
-      kotor();
+    const k = jenisAman(o.type);
+    if (TPL[k] && window.LOBI) { rakit(n, TPL[k], lama); return Promise.resolve(); }
+    return muatModul('lobi').then(() => window.LOBI.muatAvatar3D({ bawaan: k })).then(tpl => {
+      TPL[k] = tpl;
+      if (NPC.get(o.id) !== n || !diDunia(g)) return;
+      rakit(n, tpl, lama);
     }).catch(e => console.warn('NPC', e.message));
   }
 
@@ -292,7 +312,7 @@
     dt = Math.min(dt, 0.1);
     const aktif = hidup(); let gerak = false;
     for (const [id, n] of NPC) {
-      if (!n.g.parent) { lepasKursi(n); NPC.delete(id); continue; }
+      if (!diDunia(n.g)) { if (NPC.get(id) === n) { lepasKursi(n); NPC.delete(id); } continue; }
       if (!n.a || !tampak(n)) continue;
       if (!aktif) { if (n.mode) kembali(n); n.a.tuju.po = 0; window.LOBI.gerak.gerakAvatar(n.a, dt, 0); continue; }
       if (!n.mode) mulai(n);
@@ -325,7 +345,23 @@
     tBayang -= dt;
     if (gerak && tBayang <= 0) { kotor(); tBayang = 0.1; }
   }
+  /* ---------- INSPECTOR ---------- */
+  function inspektor(ins, d) {
+    d.params = d.params || {};
+    const h = el('h3', null, 'NPC'); h.appendChild(el('span', 'tag', d.type === 'M' ? 'Karakter M' : 'Karakter F')); ins.appendChild(h);
+    fRow(ins, 'Karakter', selInput([['F', 'Karakter F'], ['M', 'Karakter M']], jenisAman(d.type), v => { d.type = v; HIST.label = 'Karakter NPC'; rebuildScene(); renderInspector(); }));
+    const ba = el('button', 'btn sm', '🎲 Acak penampilan'); ba.onclick = () => { d.params.benih = Math.floor(Math.random() * 4294967296); HIST.label = 'Acak penampilan NPC'; rebuildScene(); renderInspector(); };
+    ins.appendChild(ba);
+    const p = penampilan(d), w = el('div', 'npc-warna');
+    for (const [k, l] of [['kulit', 'Kulit'], ['rambut', 'Rambut'], ['atas', 'Atasan'], ['bawah', 'Bawahan'], ['sepatu', 'Sepatu']]) {
+      const s = el('span'); s.title = l; s.setAttribute('aria-label', l); s.style.background = p[k] ? 'rgb(' + p[k].join(',') + ')' : '#f4f4f4'; w.appendChild(s); }
+    ins.appendChild(w);
+    fRow(ins, 'Jelajah (m)', numInput(jelajahAman(d), 0.5, v => { d.params.jelajah = clamp(v, 0, 15); rebuildScene(); }, 0, 15));
+    ins.appendChild(el('p', 'hint', 'Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Bidik lalu Sapa untuk menyapanya.'));
+    ins.appendChild(el('div', 'section-title', 'Penempatan'));
+    addTransformFields(ins, d, false);
+  }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, penampilan, jumlah, MAKS, keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+  window.NPC = { pasang, langkah, sapa, penampilan, jumlah, inspektor, MAKS, keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
 })();

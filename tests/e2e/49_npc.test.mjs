@@ -15,7 +15,6 @@ export const tes = {
     const r = await page.evaluate(() => {
       const o = L().objects.find(x => x.kind === 'npc'), N = window.NPC, n = N._uji.NPC.get(o.id);
       const peta = [...n.badan.children].find(c => c.userData.rigIdx); let mats = []; peta.traverse(m => { if (m.isMesh) mats.push(m.material); });
-      const tpl = [...window.LOBI.gerak ? [] : []]; void tpl;
       const P = mats.map(m => m.map && m.map.isCanvasTexture);
       const a = N.penampilan(o), b = N.penampilan(JSON.parse(JSON.stringify(o))), c = N.penampilan({ ...o, params: { ...o.params, benih: o.params.benih + 1 } });
       return { type: o.type, jelajah: o.params.jelajah, benihOk: Number.isInteger(o.params.benih), kanvas: P.every(Boolean) && P.length >= 2, sama: JSON.stringify(a) === JSON.stringify(b),
@@ -52,14 +51,15 @@ export const tes = {
     await page.evaluate(() => { orbit.target.set(2, 0, 3); addObject('npc', 'M'); addObject('furn', 'armchair'); const k = L().objects.at(-1); k.x = 1; k.z = 1.2; k.rotY = 0; rebuildScene(); });
     await siap(page);
     const r = await page.evaluate(() => {
-      const N = window.NPC, U = N._uji, o = L().objects.find(x => x.kind === 'npc'), n = U.NPC.get(o.id), hasil = {};
+      const N = window.NPC, U = N._uji, o = L().objects.find(x => x.kind === 'npc'), hasil = {}; let n = U.NPC.get(o.id);
       for (let i = 0; i < 40; i++) N.langkah(0.05);
       hasil.editor = [n.mode, n.badan.position.length()];
-      enterFPS(); camera.position.set(3.5, 1.6, 5.5); FPS.yaw = Math.PI;
+      enterFPS(); camera.position.set(3.5, 1.6, 5.5); FPS.yaw = Math.PI; n = U.NPC.get(o.id);
       N.langkah(0.05); hasil.mulai = n.mode;
       // jalan ke titik bebas di ruangan yang sama
       U.mulaiJalan(n, 3, 4); for (let i = 0; i < 120 && n.mode === 'jalan'; i++) N.langkah(0.05);
       hasil.jalan = [n.mode, +n.p.x.toFixed(1), +n.p.z.toFixed(1), n.a.w];
+      U.aktivitas(n, 2, 30); N.langkah(0.05); rebuildScene(); const n2 = U.NPC.get(o.id); hasil.bawa = [n2 !== n, n2.mode, n2.po, n2.p.distanceTo(n.p) < 1e-6, !!n2.a]; n = n2;
       // tujuan di balik dinding x = 4: tertahan, lalu kembali diam
       n.mode = 'diam'; U.mulaiJalan(n, 6, 4); let maksX = 0; for (let i = 0; i < 200 && n.mode === 'jalan'; i++) { N.langkah(0.05); maksX = Math.max(maksX, n.p.x); }
       hasil.dinding = [n.mode, +maksX.toFixed(2)];
@@ -73,14 +73,15 @@ export const tes = {
       // siklus otomatis: dalam 90 detik NPC berganti keadaan beberapa kali
       const urut = new Set(); for (let i = 0; i < 900; i++) { N.langkah(0.1); urut.add(n.mode); } hasil.siklus = [...urut].sort();
       // sapa lewat bidikan
-      n.mode = 'diam'; n.t = 99; n.po = 0; n.p.set(3, 0, 4); camera.position.set(3, 1.6, 5.4); FPS.yaw = Math.PI; FPS.pitch = -0.35; N.langkah(0.05);
+      n.mode = 'diam'; n.t = 99; n.po = 0; n.p.set(3, 0, 4); camera.position.set(3, 1.6, 5.4); FPS.yaw = Math.PI; FPS.pitch = -0.35; N.langkah(0.05); fpsStep(0); scene.updateMatrixWorld();
       AIM_T = 0; stepBidik(0.2); hasil.bidik = AIM && [AIM.jenis, labelAksi(AIM)]; if (AIM) pakai(AIM); hasil.sapa = [n.mode, n.po];
-      exitFPS(); N.langkah(0.05); hasil.keluar = [n.mode, n.badan.position.length()];
+      exitFPS(); n = U.NPC.get(o.id); N.langkah(0.05); hasil.keluar = [n.mode, n.badan.position.length()];
       return hasil;
     });
     assert.deepEqual(r.editor, [null, 0], 'editor: berdiri di tempat');
     assert.equal(r.mulai, 'diam');
     assert.equal(r.jalan[0], 'diam'); assert.ok(Math.abs(r.jalan[1] - 3) < 0.3 && Math.abs(r.jalan[2] - 4) < 0.3, 'sampai tujuan: ' + r.jalan);
+    assert.deepEqual(r.bawa, [true, 'aktivitas', 2, true, true], 'bangun ulang: keadaan NPC terbawa');
     assert.equal(r.dinding[0], 'diam'); assert.ok(r.dinding[1] < 3.8, 'tertahan dinding: ' + r.dinding);
     assert.ok(r.kursiAda, 'kursi ditemukan');
     assert.equal(r.duduk[0], 'duduk'); assert.equal(r.duduk[1], 1); assert.ok(Math.abs(r.duduk[2]) < 0.02 && r.duduk[3] < 0.05 && r.duduk[4] > 0.8, 'duduk di dudukan: ' + r.duduk);
