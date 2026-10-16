@@ -9,7 +9,7 @@
    → diam lagi. NPC tidak menembus dinding & perabot, menunggu bila pengunjung menghalangi, dan bisa disapa.
    Di editor NPC berdiri di tempatnya (bernapas & berkedip) agar mudah ditata. */
 /* global FPS, LIHAT, camera, levelGroups, PROJECT, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
-   adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
+   adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, MOOD, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
    renderInspector, addTransformFields, toast, BAHASA */
 (function () {
   'use strict';
@@ -259,11 +259,29 @@
       const kunci = c.userData.id + ':' + s.pos.x.toFixed(1) + ':' + s.pos.z.toFixed(1); if (KURSI_DIPAKAI.has(kunci)) continue;
       if (Math.hypot(s.pos.x - n.rumah.x, s.pos.z - n.rumah.z) > n.jelajah + 1.5) continue;
       const q = { x: s.pos.x + s.arah.x * 0.62, z: s.pos.z + s.arah.z * 0.62 };
-      calon.push({ s, q, kunci, id: c.userData.id, d: Math.hypot(q.x - n.p.x, q.z - n.p.z) });
+      calon.push({ s, q, kunci, id: c.userData.id, d: Math.hypot(q.x - n.p.x, q.z - n.p.z), x: s.pos.x, z: s.pos.z, y: s.pos.y - 0.45, yaw: Math.atan2(s.arah.x, s.arah.z), po: 1 });
     }
     calon.sort((a, b) => a.d - b.d);
     for (const k of calon.slice(0, 3)) if (k.d < 0.3 || jalurBebas(n, k.q.x, k.q.z, k.id)) return k;
     return null;
+  }
+  // kasur: berbaring telentang (pose 9) di tengah ranjang, kepala ke arah sandaran (−Z lokal ranjang)
+  function cariKasur(n) {
+    const lg = levelGroups[n.li], lv = PROJECT.levels[n.li]; if (!lg || !lv) return null;
+    const calon = [];
+    for (const c of lg.children) {
+      if (c.userData.kind !== 'obj' || !c.visible || !c.userData.duduk) continue;
+      const o = lv.objects.find(x => x.id === c.userData.id); if (!o || !/^bed_/.test(o.type) || !FURN[o.type]) continue;
+      const kunci = 'kasur:' + o.id; if (KURSI_DIPAKAI.has(kunci) || (FPS.duduk && FPS.duduk.id === o.id)) continue;
+      c.updateMatrixWorld(true);
+      const f = FURN[o.type].f, h = c.userData.duduk.h || 0.55, tengah = c.localToWorld(new THREE.Vector3(0, h, 0.12));
+      if (Math.hypot(tengah.x - n.rumah.x, tengah.z - n.rumah.z) > n.jelajah + 2) continue;
+      const sisi = c.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * (Math.random() < 0.5 ? 1 : -1), 0, 0.2));
+      const yaw = (o.rotY || 0), q = { x: sisi.x, z: sisi.z };
+      if (!jalurBebas(n, q.x, q.z, o.id)) continue;
+      calon.push({ id: o.id, kunci, q, x: tengah.x, z: tengah.z, y: tengah.y, yaw, po: 9, lama: 20 + Math.random() * 25, d: Math.hypot(q.x - n.p.x, q.z - n.p.z) });
+    }
+    calon.sort((a, b) => a.d - b.d); return calon[0] || null;
   }
   function diam(n, t) { n.mode = 'diam'; n.t = t != null ? t : 2.5 + Math.random() * 5; n.po = 0; n.menoleh = Math.random() < 0.6; }
   function aktivitas(n, po, t, mikro) { n.mode = 'aktivitas'; n.po = po; n.t = t; if (mikro) n.a.mikro = { k: mikro, t: 0, d: mikro === 'regang' ? 2.6 : mikro === 'jam' ? 2.2 : 1.2 }; }
@@ -271,16 +289,18 @@
     const r = Math.random(), dekat = jarakPengunjung(n) < 6;
     if (dekat && !n.disapa && Math.random() < 0.25) { n.disapa = true; return sapaAuto(n); }
     if (r < 0.48 && cobaJalan(n)) return;
-    const pilihan = [['kursi', 0.24], ['lantai', 0.12], ['joget', adaMusik() ? 0.4 : 0.12], ['ngantuk', 0.1], ['mikro', 0.3]];
+    const malam = typeof MOOD !== 'undefined' && (MOOD === 'malam' || MOOD === 'gelap');
+    const pilihan = [['kursi', 0.24], ['kasur', malam ? 0.45 : 0.08], ['lantai', 0.12], ['joget', adaMusik() ? 0.4 : 0.12], ['ngantuk', 0.1], ['mikro', 0.3]];
     let x = Math.random() * pilihan.reduce((s, p) => s + p[1], 0), k = 'mikro';
     for (const [nm, w] of pilihan) { x -= w; if (x <= 0) { k = nm; break; } }
+    if (k === 'kasur') { const ks = cariKasur(n); if (ks) { KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; return mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); } k = 'kursi'; }
     if (k === 'kursi') { const ks = cariKursi(n); if (ks) { KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; return ks.d < 0.3 ? masukKursi(n) : mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); } k = 'lantai'; }
     if (k === 'lantai') return aktivitas(n, 2, 8 + Math.random() * 10);
     if (k === 'joget') return aktivitas(n, 3, 5 + Math.random() * 6);
     if (k === 'ngantuk') return aktivitas(n, 4, 7 + Math.random() * 7);
     return aktivitas(n, 0, 2.8, pilih(Math.random, ['regang', 'jam', 'bahu']));
   }
-  function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = 1; n.yawTuju = Math.atan2(k.s.arah.x, k.s.arah.z); }
+  function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = k.po || 1; n.yawTuju = k.yaw; if (k.sandar != null) n.a.sandar = k.sandar; }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
   function sapaAuto(n) { hadapPengunjung(n); aktivitas(n, 5, 2.8); }
@@ -301,6 +321,54 @@
     else if (ev === 'puji' || ev === 'terimakasih') n.a.mikro = { k: 'bahu', t: 0, d: 1.2 };
     else if (ev === 'hina') n.a.mikro = { k: 'jam', t: 0, d: 2.2 };
   }
+  /* INTERAKSI BERPASANGAN dengan pengunjung (JEV-109): peluk, gandeng (mengikuti di sisi kanan), dansa berdua, duduk bareng */
+  function aksiPasangan(id, k) {
+    const n = NPC.get(id); if (!n || !n.a || !FPS.on || !n.mode) return false;
+    if (k === 'lepas') { if (n.mode === 'gandeng' || n.mode === 'dansa' || n.mode === 'peluk') diam(n, 1.5); return true; }
+    if (n.mode === 'duduk' || n.mode === 'masuk') { lepasKursi(n); n.kursi = null; }
+    n.a.mikro = null; n.a.lambai = null;
+    if (k === 'peluk' || k === 'dansa') { n.mode = k; n.po = k === 'peluk' ? 6 : 10; n.t = k === 'peluk' ? 4.5 : 18; n.jarak = k === 'peluk' ? 0.34 : 0.48; return true; }
+    if (k === 'gandeng') { n.mode = 'gandeng'; n.po = 7; n.a.sisi = -1; return true; }
+    if (k === 'duduk') {
+      const D = FPS.duduk; if (!D || !D.id || D.lantai || D.baring) return false;
+      const lg = levelGroups[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), S = g && g.userData.duduk; if (!S) return false;
+      g.updateMatrixWorld(true);
+      const arah = new THREE.Vector3(0, 0, 1).transformDirection(g.matrixWorld); arah.y = 0; arah.normalize();
+      let best = null;
+      for (let i = 0; i < (S.n || 1); i++) {
+        const x = S.n > 1 ? ((i + 0.5) / S.n - 0.5) * S.w * 0.8 : 0, p = g.localToWorld(new THREE.Vector3(x, S.h, S.z || 0)), dd = Math.hypot(p.x - camera.position.x, p.z - camera.position.z);
+        if (dd < 0.35) continue; if (!best || dd < best.dd) best = { p, dd };
+      }
+      if (!best) return false;
+      const yaw = Math.atan2(arah.x, arah.z), kanan = { x: -Math.cos(yaw), z: Math.sin(yaw) }, sisi = (camera.position.x - best.p.x) * kanan.x + (camera.position.z - best.p.z) * kanan.z > 0 ? 1 : -1;
+      const ks = { id: D.id, bareng: D.id, kunci: D.id + ':' + best.p.x.toFixed(1) + ':' + best.p.z.toFixed(1), s: { pos: best.p, arah }, q: { x: best.p.x + arah.x * 0.62, z: best.p.z + arah.z * 0.62 },
+        x: best.p.x, z: best.p.z, y: best.p.y - 0.45, yaw, po: 8, sandar: sisi, lama: 30 };
+      KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); return true;
+    }
+    return false;
+  }
+  // gandeng: berjalan di sisi kanan pengunjung, menyamai arah pandangnya
+  function ikut(n, dt) {
+    const yaw = FPS.yaw, kx = -Math.cos(yaw), kz = Math.sin(yaw), tx = camera.position.x + kx * 0.55, tz = camera.position.z + kz * 0.55;
+    const dx = tx - n.p.x, dz = tz - n.p.z, d = Math.hypot(dx, dz);
+    if (d > 6) { diam(n, 1); return 0; }
+    if (d < 0.04) { putarKe(n, yaw, dt, 4); return 0; }
+    const v = Math.min(d * 5, 4), l = Math.min(d, v * dt);
+    let [px, pz] = fpsResolveWalls(n.p.x + dx / d * l, n.p.z + dz / d * l, n.p.y);
+    const t = tanahDi(n, px, pz); if (t != null && Math.abs(t - n.p.y) < 0.3) n.p.y = t; else { px = n.p.x; pz = n.p.z; }
+    const maju = Math.hypot(px - n.p.x, pz - n.p.z); n.p.x = px; n.p.z = pz;
+    putarKe(n, d > 0.4 ? Math.atan2(dx, dz) : yaw, dt, 5);
+    return maju / Math.max(dt, 1e-4);
+  }
+  // peluk & dansa: berdiri ±0,4–0,5 m di depan pengunjung, menghadapnya
+  function rapat(n, dt) {
+    const fx = camera.position.x - n.p.x, fz = camera.position.z - n.p.z, d = Math.hypot(fx, fz) || 1, tx = camera.position.x - fx / d * n.jarak, tz = camera.position.z - fz / d * n.jarak;
+    const l = Math.min(Math.hypot(tx - n.p.x, tz - n.p.z), 2.5 * dt), ax = tx - n.p.x, az = tz - n.p.z, al = Math.hypot(ax, az);
+    if (al > 1e-4) { const [px, pz] = fpsResolveWalls(n.p.x + ax / al * l, n.p.z + az / al * l, n.p.y); n.p.x = px; n.p.z = pz; }
+    putarKe(n, Math.atan2(fx, fz), dt, 4);
+    if (d > 2.5) diam(n, 1);
+    return 0;
+  }
   function putarKe(n, yaw, dt, laju = 3) { const d = sudut(yaw - n.yaw); n.yaw += clamp(d, -laju * dt, laju * dt); return Math.abs(d); }
   function jalan(n, dt) {
     const dx = n.tuju.x - n.p.x, dz = n.tuju.z - n.p.z, d = Math.hypot(dx, dz);
@@ -309,7 +377,7 @@
     let v = beda > 1 ? 0 : n.laju * (d < 0.6 ? Math.max(0.35, d / 0.6) : 1) * (1 - beda * 0.5);
     // pengunjung / NPC lain di depan: tunggu sebentar, lalu cari tujuan lain
     const fx = Math.sin(n.yaw), fz = Math.cos(n.yaw), halang = (x, z, r) => { const ax = x - n.p.x, az = z - n.p.z, j = Math.hypot(ax, az); return j < r && (ax * fx + az * fz) / Math.max(j, 1e-6) > 0.4; };
-    let tutup = FPS.on && halang(camera.position.x, camera.position.z, 0.95);
+    let tutup = FPS.on && !(n.kursi && n.kursi.bareng) && halang(camera.position.x, camera.position.z, 0.95);   // diajak duduk bareng: pengunjung bukan penghalang
     for (const m of NPC.values()) if (m !== n && m.p && m.li === n.li && halang(m.p.x, m.p.z, 0.7)) { tutup = true; break; }
     if (tutup) { v = 0; n.tunggu += dt; if (n.tunggu > 2.5) { lepasKursi(n); n.kursi = null; diam(n, 1); return 0; } } else n.tunggu = 0;
     if (v <= 0) return 0;
@@ -360,14 +428,17 @@
       else if (n.mode === 'aktivitas') {
         n.t -= dt; if (n.yawTuju != null && n.po === 5) putarKe(n, n.yawTuju, dt, 2.5);
         if (n.t <= 0) { n.a.mikro = null; diam(n); }
-      } else if (n.mode === 'ngobrol') {
+      } else if (n.mode === 'gandeng') laju = ikut(n, dt);
+      else if (n.mode === 'peluk' || n.mode === 'dansa') { rapat(n, dt); n.t -= dt; if (n.t <= 0) diam(n, 2); }
+      else if (n.mode === 'ngobrol') {
         if (FPS.on) { hadapPengunjung(n); putarKe(n, n.yawTuju, dt, 3); }
       } else if (n.mode === 'masuk') {
         const k = n.kursi; n.t = Math.min(1, n.t + dt / 0.7); const e = n.t * n.t * (3 - 2 * n.t);
-        n.p.set(n.dari.x + (k.s.pos.x - n.dari.x) * e, n.dari.y + (k.s.pos.y - 0.45 - n.dari.y) * e, n.dari.z + (k.s.pos.z - n.dari.z) * e);
+        n.p.set(n.dari.x + (k.x - n.dari.x) * e, n.dari.y + (k.y - n.dari.y) * e, n.dari.z + (k.z - n.dari.z) * e);
         putarKe(n, n.yawTuju, dt, 5);
-        if (n.t >= 1) { n.mode = 'duduk'; n.t = 10 + Math.random() * 14; }
+        if (n.t >= 1) { n.mode = 'duduk'; n.t = k.lama || 10 + Math.random() * 14; }
       } else if (n.mode === 'duduk') {
+        if (n.kursi && n.kursi.bareng && FPS.duduk && FPS.duduk.id === n.kursi.bareng) n.t = Math.max(n.t, 3 + Math.random() * 3);   // menemani selama pengunjung masih duduk
         if (!n.obrol) n.t -= dt; if (n.t <= 0) { const k = n.kursi; n.mode = 'keluar'; n.t = 0; n.dari = { x: n.p.x, y: n.p.y, z: n.p.z }; n.po = 0; n.ke = { x: k.q.x, z: k.q.z, y: n.rumah.y }; }
       } else if (n.mode === 'keluar') {
         n.t = Math.min(1, n.t + dt / 0.8); const e = n.t * n.t * (3 - 2 * n.t);
@@ -408,6 +479,6 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
-    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, ekstra: id => { const n = NPC.get(id); return n && (n.mode === 'gandeng' || n.mode === 'dansa') ? ['lepas'] : []; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
 })();

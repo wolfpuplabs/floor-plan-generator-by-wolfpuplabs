@@ -1018,7 +1018,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       </div>
       <div class="fl" data-lembar="gaya" hidden>
         <div class="fl-judul">Gaya <small>— terlihat oleh teman di Main bareng</small></div>
-        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button></div>
+        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button><button class="btn sm ghost" data-gaya="peluk">🤗 Peluk</button><button class="btn sm ghost" data-gaya="gandeng">🤝 Gandeng</button><button class="btn sm ghost" data-gaya="dansa">💞 Dansa berdua</button></div>
         <div class="fl-npc"><div class="fl-judul">NPC <small>— muncul di depanmu</small></div>
         <div class="fl-chip"><button class="btn sm ghost" data-npc-jalan="F">NPC F</button><button class="btn sm ghost" data-npc-jalan="M">NPC M</button><button class="btn sm ghost" data-npc-jalan="acak">🎲 Acak</button></div></div>
       </div>
@@ -15111,6 +15111,15 @@ function duduk(t){
   FPS.info='<b>Duduk</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk berdiri');
   $('#fpsinfo').innerHTML=FPS.info;
 }
+// berbaring di ranjang (JEV-109): mata di bantal (dekat sandaran), memandang ke arah kaki ranjang & sedikit ke atas
+function baring(t){
+  const g=t.grp, o=cariObjek(t.id), D=g.userData.duduk||{h:0.55}, f=(FURN[o&&o.type]||{f:[1.6,2]}).f; g.updateMatrixWorld(true);
+  if(FPS.duduk) berdiri(); FPS.gaya=null;
+  const tengah=g.localToWorld(new THREE.Vector3(0,D.h,0.12)), mata=g.localToWorld(new THREE.Vector3(0,D.h+0.24,-(f[1]/2-0.42))), yaw=(o&&o.rotY)||0;
+  FPS.duduk={id:t.id, baring:{x:tengah.x, y:tengah.y, z:tengah.z, yaw}, dari:camera.position.clone(), mata, t:0, asal:{x:camera.position.x, z:camera.position.z, feet:FPS.feet}};
+  FPS.yaw=yaw; FPS.pitch=0.45; FPS.keys.clear(); if(FPS.move){ FPS.move.f=0; FPS.move.s=0; }
+  FPS.info='<b>Berbaring</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk bangun'); $('#fpsinfo').innerHTML=FPS.info;
+}
 // duduk bersila di lantai (JEV-103): kursi tak terlihat di bawah kamera, mata ±0,8 m; berjalan = berdiri
 function dudukLantai(){
   if(FPS.duduk) berdiri(); FPS.gaya=null;
@@ -15379,13 +15388,14 @@ function cariTarget(ray){
     let n=m;
     while(n && n!==worldRoot){
       if(n.userData.op){ const o=OPS.get(n.userData.op); return (o && BUKA_AWAL[o.type]!=null) ? {jenis:'bukaan', o} : null; }
-      if(n.userData.npc) return {jenis:'ngobrol', ekstra:['sapa'], id:n.userData.id, grp:n};
+      if(n.userData.npc) return {jenis:'ngobrol', ekstra:['sapa',...(window.NPC?window.NPC.ekstra(n.userData.id):[])], id:n.userData.id, grp:n};
       if(n.userData.kind==='obj'){
         // satu objek bisa punya beberapa aksi: bawaan (duduk, lampu…) + detail / musik tambahan
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
         if(ak&&ak.detail) ekstra.push('detail');
         if(ak&&ak.pindah) ekstra.unshift('pindah');
         if(ak&&ak.anim) ekstra.push('anim');
+        if(n.userData.nyalaJenis==='duduk'&&/^bed_/.test((cariObjek(n.userData.id)||{}).type||'')) ekstra.push('baring');
         if(ak&&(ak.sfx||ak.media)&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
         return {jenis:n.userData.nyalaJenis||ekstra.shift(), ekstra, id:n.userData.id, grp:n, titik:h.point.clone()};
@@ -15411,6 +15421,8 @@ function labelAksi(t){
   if(t.jenis==='detail') return 'Lihat detail';
   if(t.jenis==='sapa') return 'Sapa';
   if(t.jenis==='ngobrol') return 'Ngobrol';
+  if(t.jenis==='lepas') return 'Lepas';
+  if(t.jenis==='baring') return 'Berbaring';
   if(t.jenis==='bunyi') return aksiObjek(cariObjek(t.id))?.mediaOto ? (window.SUMBER&&window.SUMBER.aktif(t.id)?'Matikan suara':'Nyalakan suara') : aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : 'Bunyikan';
   if(t.jenis==='anim') return GERAK.main.has(t.id)?'Hentikan animasi':'Putar animasi';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
@@ -15447,6 +15459,8 @@ function pakai(t){
   if(!t){ if(FPS.duduk) berdiri(); return; }
   if(t.jenis==='berdiri'){ berdiri(); return; }
   if(t.jenis==='sapa'){ AIM_T=0; if(window.NPC) window.NPC.sapa(t.id); return; }
+  if(t.jenis==='lepas'){ AIM_T=0; if(window.NPC) window.NPC.aksiPasangan(t.id,'lepas'); if(FPS.gaya) FPS.gaya=null; return; }
+  if(t.jenis==='baring'){ baring(t); return; }
   // dialog NPC (JEV-108): kartu karakter + memori + relasi; AI opsional lewat /api/npc
   if(t.jenis==='ngobrol'){ AIM_T=0; muatModul('kartunpc').then(()=>muatModul('dialog')).then(()=>window.DIALOG.buka(t.id),e=>toast(e.message)); return; }
   // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
@@ -15593,9 +15607,10 @@ $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventD
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
 for(const [id,f] of [['#adeganBaru','baru'],['#adeganDuplikat','duplikat']]) $(id).onclick=()=>muatModul('adegan').then(()=>window.ADEGAN[f](),e=>toast(e.message));
 function pilihGaya(v){ if(!v||!FPS.on) return; tutupLembar();
+  if(FPS.gaya&&FPS.gaya.k===v){ FPS.gaya=null; toast('Gaya selesai'); return; }   // ketuk lagi = berhenti (gandeng, dansa…)
   if(v==='lantai') return dudukLantai();
   if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
-  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
+  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai',peluk:'🤗 Kamu memeluk',gandeng:'🤝 Kamu bergandengan tangan',dansa:'💞 Kamu berdansa'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
 // dok mode jalan (JEV-107): satu lembar terbuka sekali waktu; ketuk ikon yang sama / layar = tutup
 function tutupLembar(){ $('#fpsLembar').hidden=true; for(const b of document.querySelectorAll('#fpsDok .fps-ik')) b.setAttribute('aria-expanded','false'); }
 function bukaLembar(k){
