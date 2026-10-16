@@ -66,12 +66,12 @@ export const tes = {
     assert.equal(r.sinkron, 'hujan');
     assert.deepEqual(r.adegan, { jenis: 'hujan', siklus: 0 }, 'cuaca ikut keadaan lobi');
     // badai: kilat menyalakan cahaya langit sesaat
-    await page.selectOption('#fpsCuaca', 'badai');
+    await page.evaluate(() => { const e = $('#fpsCuaca'); e.value = 'badai'; e.dispatchEvent(new Event('change')); });
     const kilat = await page.evaluate(() => { for (let i = 0; i < 8; i++) CUACA.langkah(0.5); let maks = 0; const dasar = hemiL.intensity;
       for (let i = 0; i < 400; i++) { CUACA.langkah(0.05); maks = Math.max(maks, hemiL.intensity); } return maks / Math.max(1e-6, dasar); });
     assert.ok(kilat > 3, 'kilat: ' + kilat);
     // cerah lagi → tetes hilang, matahari pulih
-    await page.selectOption('#fpsCuaca', 'cerah');
+    await page.evaluate(() => { const e = $('#fpsCuaca'); e.value = 'cerah'; e.dispatchEvent(new Event('change')); });
     const c = await page.evaluate(() => { for (let i = 0; i < 10; i++) CUACA.langkah(0.5); const k = CUACA.keadaan(); exitFPS(); return [k.tetes, Math.round(sun.intensity * 100) / 100, PROJECT.cuaca]; });
     assert.deepEqual(c, [0, 0.9, undefined]);
   },

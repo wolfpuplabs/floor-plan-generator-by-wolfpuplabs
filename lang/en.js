@@ -1730,6 +1730,17 @@ window.KAMUS_EN={
   "Sapa":"Greet",
   "Karakter NPC":"NPC character",
   "Acak penampilan NPC":"Randomize NPC look",
+  "Waktu & cuaca":"Time & weather",
+  "Gaya & NPC":"Pose & NPCs",
+  "Langit 360°":"360° sky",
+  "Pengaturan":"Settings",
+  "Waktu":"Time",
+  "Lensa":"Lens",
+  "Menu mode jalan":"Walk mode menu",
+  "Gaya":"Pose",
+  "— terlihat oleh teman di Main bareng":"— visible to friends in Play together",
+  "— muncul di depanmu":"— appears in front of you",
+  "Tambah NPC":"Add NPC",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1794,7 +1805,9 @@ window.KAMUS_EN={
   "Kamu mengantuk":"You're sleepy",
   "Kamu melambai":"You wave",
   "Adegan baru":"New scene",
-  "Acak penampilan":"Randomize look"
+  "Acak penampilan":"Randomize look",
+  "terlihat oleh teman di Main bareng":"visible to friends in Play together",
+  "muncul di depanmu":"appears in front of you"
  },
  // frasa
  "frasa":{
@@ -2093,7 +2106,8 @@ window.KAMUS_EN={
   ["Maksimal (\\d+) adegan per proyek","At most $1 scenes per project"],
   ["Hapus adegan \"(.+)\"\\? Isinya ikut terhapus\\.","Delete scene \"$1\"? Its contents are deleted too."],
   ["Hapus adegan (.+)","Delete scene $1"],
-  ["Adegan: (.+)","Scene: $1"]
+  ["Adegan: (.+)","Scene: $1"],
+  ["NPC ([FM]) muncul di depanmu","NPC $1 appears in front of you"]
  ],
  // frasaPola
  "frasaPola":[

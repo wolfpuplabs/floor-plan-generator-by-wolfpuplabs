@@ -5,11 +5,12 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 81 GO · 3 DEFER · 5 NO-GO dari 89 item.
+**Ringkasan:** 82 GO · 3 DEFER · 5 NO-GO dari 90 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | JEV-095 | Pemilih berkas di iPad: input sementara di atas tombol yang diketuk | terkirim | 0.65 | 96,5 jt | 0,2 jt | 1071.5× | 535.3× | 0.0 bln | 1 | **GO** |
+| JEV-107 | Menu mode jalan jadi dok ikon di sekitar tombol foto (Waktu & cuaca · Gaya & NPC · Langit · Pengaturan) + NPC dari mode jalan | terkirim | 0.65 | 190,1 jt | 0,4 jt | 1055.3× | 527.1× | 0.0 bln | 1 | **GO** |
 | JEV-104 | Lihat di AR per objek / model pustaka dalam ukuran asli | terkirim | 0.65 | 130,7 jt | 0,3 jt | 828.5× | 413.8× | 0.0 bln | 2 | **GO** |
 | JEV-092 | Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) | terkirim | 0.65 | 125,8 jt | 0,4 jt | 644.0× | 321.5× | 0.0 bln | 2 | **GO** |
 | JEV-101 | Cuaca Acak (hujan turun tiba-tiba lalu reda) + sakelar ikon Siklus waktu; bilah mode jalan lebih jelas | terkirim | 0.65 | 107,3 jt | 0,4 jt | 594.8× | 296.9× | 0.0 bln | 2 | **GO** |
@@ -104,6 +105,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 ## Alasan per item
 
 - **JEV-095 Pemilih berkas di iPad: input sementara di atas tombol yang diketuk — GO.** ROI 1071.5× ≥ 1, payback 0.0 bln.
+- **JEV-107 Menu mode jalan jadi dok ikon di sekitar tombol foto (Waktu & cuaca · Gaya & NPC · Langit · Pengaturan) + NPC dari mode jalan — GO.** ROI 1055.3× ≥ 1, payback 0.0 bln.
 - **JEV-104 Lihat di AR per objek / model pustaka dalam ukuran asli — GO.** ROI 828.5× ≥ 1, payback 0.0 bln.
 - **JEV-092 Tanah situs realistis: warna sRGB + foto Poly Haven (rumput, tanah, kerikil, paving, batu) — GO.** ROI 644.0× ≥ 1, payback 0.0 bln.
 - **JEV-101 Cuaca Acak (hujan turun tiba-tiba lalu reda) + sakelar ikon Siklus waktu; bilah mode jalan lebih jelas — GO.** ROI 594.8× ≥ 1, payback 0.0 bln.

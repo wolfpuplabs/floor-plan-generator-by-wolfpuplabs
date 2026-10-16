@@ -64,15 +64,15 @@ export const tes = {
   'menu Gaya di mode jalan: duduk di lantai menurunkan kamera & terkirim sebagai pose 2; joget terkirim lalu lepas saat berjalan': async (page) => {
     await muatProyekJSON(page, rumah);
     await page.evaluate(() => muatModul('lobi'));
-    const pilih = v => page.evaluate(v => { const e = $('#fpsGaya'); e.value = v; e.dispatchEvent(new Event('change')); }, v);
+    const pilih = v => page.evaluate(v => { $('#fpsDok [data-lembar="gaya"]').click(); document.querySelector('[data-gaya="' + v + '"]').click(); }, v);
     await page.evaluate(() => { enterFPS(); camera.position.set(3, FPS.feet + FPS.eye, 2.5); });
     await pilih('lantai');
     const a = await page.evaluate(() => { for (let i = 0; i < 20; i++) fpsStep(0.05); return { lantai: !!(FPS.duduk && FPS.duduk.lantai), mata: +(camera.position.y - FPS.feet).toFixed(2), pos: window.LOBI.gerak.posSaya().po, label: labelAksi({ jenis: 'berdiri' }) }; });
     assert.deepEqual([a.lantai, a.mata, a.pos], [true, 0.8, 2]);
     await page.evaluate(() => berdiri());
     await pilih('joget');
-    const b = await page.evaluate(() => { const po1 = window.LOBI.gerak.posSaya().po; camera.position.x += 1; const po2 = window.LOBI.gerak.posSaya().po; return [po1, po2, $('#fpsGaya').value]; });
-    assert.deepEqual(b, [3, undefined, ''], 'joget terkirim, lepas setelah berjalan, menu kembali ke judul');
+    const b = await page.evaluate(() => { const po1 = window.LOBI.gerak.posSaya().po; camera.position.x += 1; const po2 = window.LOBI.gerak.posSaya().po; return [po1, po2, $('#fpsLembar').hidden]; });
+    assert.deepEqual(b, [3, undefined, true], 'joget terkirim, lepas setelah berjalan, lembar menu tertutup');
     await page.evaluate(() => exitFPS());
   },
 };
