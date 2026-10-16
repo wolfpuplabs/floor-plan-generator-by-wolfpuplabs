@@ -1741,6 +1741,22 @@ window.KAMUS_EN={
   "— terlihat oleh teman di Main bareng":"— visible to friends in Play together",
   "— muncul di depanmu":"— appears in front of you",
   "Tambah NPC":"Add NPC",
+  "Obrolan NPC":"NPC chat",
+  "Tutup obrolan":"Close chat",
+  "👋 Sapa":"👋 Greet",
+  "🏠 Tentang rumah":"🏠 About the house",
+  "❓ Siapa kamu?":"❓ Who are you?",
+  "👍 Puji":"👍 Compliment",
+  "🎁 Beri hadiah":"🎁 Give a gift",
+  "🚪 Pamit":"🚪 Say goodbye",
+  "Ketik pesan…":"Type a message…",
+  "Pesan untuk NPC":"Message for the NPC",
+  "Ngobrol":"Talk",
+  "Kepribadian":"Personality",
+  "Kepribadian NPC":"NPC personality",
+  "Nama NPC":"NPC name",
+  "Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli":"NPC colours can't be randomised on this device — using the original colours",
+  "Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Di mode jalan bidik lalu Ngobrol untuk bercakap (kepribadian & ingatan per NPC), atau Sapa.":"In walk mode the NPC strolls within this radius of its spot, sits on the nearest chair / sofa, sits on the floor, dances, gets sleepy & waves. 0 = stays put. In walk mode aim, then Talk to chat (personality & memory per NPC), or Greet.",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1807,7 +1823,12 @@ window.KAMUS_EN={
   "Adegan baru":"New scene",
   "Acak penampilan":"Randomize look",
   "terlihat oleh teman di Main bareng":"visible to friends in Play together",
-  "muncul di depanmu":"appears in front of you"
+  "muncul di depanmu":"appears in front of you",
+  "Tentang rumah":"About the house",
+  "Siapa kamu?":"Who are you?",
+  "Puji":"Compliment",
+  "Beri hadiah":"Give a gift",
+  "Pamit":"Say goodbye"
  },
  // frasa
  "frasa":{
@@ -2107,7 +2128,18 @@ window.KAMUS_EN={
   ["Hapus adegan \"(.+)\"\\? Isinya ikut terhapus\\.","Delete scene \"$1\"? Its contents are deleted too."],
   ["Hapus adegan (.+)","Delete scene $1"],
   ["Adegan: (.+)","Scene: $1"],
-  ["NPC ([FM]) muncul di depanmu","NPC $1 appears in front of you"]
+  ["NPC ([FM]) muncul di depanmu","NPC $1 appears in front of you"],
+  ["Memuat karakter NPC ([FM])…","Loading NPC character $1…"],
+  ["NPC gagal dimuat — (.+)","NPC failed to load — $1"],
+  ["karakter ([FM]) tidak tersedia \\(HTTP (\\d+)\\)","character $1 not available (HTTP $2)"],
+  ["(💢|😒|🙂|😊|💛|💖) Benci","$1 Hostile"],
+  ["(💢|😒|🙂|😊|💛|💖) Kurang suka","$1 Wary"],
+  ["(💢|😒|🙂|😊|💛|💖) Netral","$1 Neutral"],
+  ["(💢|😒|🙂|😊|💛|💖) Suka","$1 Friendly"],
+  ["(💢|😒|🙂|😊|💛|💖) Sayang","$1 Close"],
+  ["(💢|😒|🙂|😊|💛|💖) Sangat dekat","$1 Best friends"],
+  ["Relasi (-?[\\d.]+) / 100","Relationship $1 / 100"],
+  ["NPC gagal ditampilkan — (.+)","NPC could not be shown — $1"]
  ],
  // frasaPola
  "frasaPola":[

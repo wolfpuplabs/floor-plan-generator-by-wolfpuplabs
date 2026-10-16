@@ -74,7 +74,7 @@ export const tes = {
       const urut = new Set(); for (let i = 0; i < 900; i++) { N.langkah(0.1); urut.add(n.mode); } hasil.siklus = [...urut].sort();
       // sapa lewat bidikan
       n.mode = 'diam'; n.t = 99; n.po = 0; n.p.set(3, 0, 4); camera.position.set(3, 1.6, 5.4); FPS.yaw = Math.PI; FPS.pitch = -0.35; N.langkah(0.05); fpsStep(0); scene.updateMatrixWorld();
-      AIM_T = 0; stepBidik(0.2); hasil.bidik = AIM && [AIM.jenis, labelAksi(AIM)]; if (AIM) pakai(AIM); hasil.sapa = [n.mode, n.po];
+      AIM_T = 0; stepBidik(0.2); hasil.bidik = AIM && [AIM.jenis, labelAksi(AIM), AIM.ekstra]; if (AIM) pakai({ ...AIM, jenis: 'sapa' }); hasil.sapa = [n.mode, n.po];
       exitFPS(); n = U.NPC.get(o.id); N.langkah(0.05); hasil.keluar = [n.mode, n.badan.position.length()];
       return hasil;
     });
@@ -88,7 +88,7 @@ export const tes = {
     assert.deepEqual(r.berdiri, ['diam', 0]);
     assert.ok(r.joget > 0.3, 'joget: ' + r.joget); assert.equal(r.sesudah, 'diam');
     assert.ok(r.siklus.includes('diam') && r.siklus.length >= 3, 'siklus diam → aktivitas / jalan: ' + r.siklus);
-    assert.deepEqual(r.bidik, ['sapa', 'Sapa']); assert.deepEqual(r.sapa, ['aktivitas', 5]);
+    assert.deepEqual(r.bidik, ['ngobrol', 'Ngobrol', ['sapa']]); assert.deepEqual(r.sapa, ['aktivitas', 5]);
     assert.deepEqual(r.keluar, [null, 0], 'keluar mode jalan: kembali ke tempatnya');
   },
 };

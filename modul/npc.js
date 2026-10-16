@@ -10,7 +10,7 @@
    Di editor NPC berdiri di tempatnya (bernapas & berkedip) agar mudah ditata. */
 /* global FPS, LIHAT, camera, levelGroups, PROJECT, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
    adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
-   renderInspector, addTransformFields */
+   renderInspector, addTransformFields, toast, BAHASA */
 (function () {
   'use strict';
   const UK = 512, SIMPAN_MAKS = 24, MAKS = 12;
@@ -47,7 +47,7 @@
   function bacaPiksel(tex) {
     const c = document.createElement('canvas'); c.width = c.height = UK;
     const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(tex.image, 0, 0, UK, UK);
-    return x.getImageData(0, 0, UK, UK).data;
+    const d = x.getImageData(0, 0, UK, UK).data; c.width = c.height = 0; return d;
   }
   const miripKulit = (r, g, b, ref) => { const rb = ref[0] - ref[2];
     return r >= g && g >= b - 4 && r - b > Math.max(8, rb * 0.45) && r - b < rb * 2.2 + 24 && lum(r, g, b) > lum(...ref) * 0.42; };
@@ -108,6 +108,7 @@
         const d = x.getImageData(0, 0, UK, UK).data;
         for (let i = 0; i < UK * UK; i++) if (d[i * 4 + 3] > 40) p.kelas[i] = k;
       }
+      c.width = c.height = 0;
       // kecerahan rata-rata tiap kelas: acuan pewarnaan yang mempertahankan bayangan & motif
       const jum = new Float64Array(6), n = new Float64Array(6);
       for (let i = 0; i < UK * UK; i++) { const k = p.kelas[i]; if (k < 2 || p.src[i * 4 + 3] < 128) continue; jum[k] += lum(p.src[i * 4], p.src[i * 4 + 1], p.src[i * 4 + 2]); n[k]++; }
@@ -157,8 +158,12 @@
   const TPL = {};
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
+  let PERINGATAN = false;
   function rakit(n, tpl, lama) {
-    const o = n.o, peta = materiUntuk(tpl, jenisAman(o.type) + ':' + benihAman(o), penampilan(o));
+    const o = n.o;
+    let peta;
+    try { peta = materiUntuk(tpl, jenisAman(o.type) + ':' + benihAman(o), penampilan(o)); }
+    catch (e) { peta = new Map(); console.warn('NPC warna', e); if (!PERINGATAN) { PERINGATAN = true; toast('Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli'); } }
     const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
     m.traverse(x => { if (x.isMesh) { if (peta.has(x.material)) x.material = peta.get(x.material); x.raycast = () => {}; x.userData.bersama = true; } });
     n.badan.add(m);
@@ -167,17 +172,37 @@
     if (n.mode && n.p) pasangBadan(n);
     kotor();
   }
+  // siluet tembus pandang selama karakter diunduh & disiapkan (unduhan ±12 MB pertama kali)
+  let SIL = null;
+  function siluet() {
+    if (!SIL) { const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, depthWrite: false });
+      const badan = new THREE.CylinderGeometry(0.19, 0.15, 1.05, 14).translate(0, 0.98, 0), kaki = new THREE.CylinderGeometry(0.13, 0.1, 0.5, 10).translate(0, 0.25, 0), kepala = new THREE.SphereGeometry(0.13, 14, 10).translate(0, 1.6, 0);
+      SIL = [badan, kaki, kepala].map(gm => [gm, m]); }
+    const s = new THREE.Group(); s.userData.siluet = true;
+    for (const [gm, m] of SIL) { const x = new THREE.Mesh(gm, m); x.userData.noExport = true; x.userData.bersama = true; x.raycast = () => {}; s.add(x); }
+    return s;
+  }
+  const MUAT = {};
+  function muatTpl(k) {
+    if (!MUAT[k]) {
+      const lama = setTimeout(() => toast('Memuat karakter NPC ' + k + '…'), 700);
+      MUAT[k] = muatModul('lobi').then(() => window.LOBI.muatAvatar3D({ bawaan: k })).then(tpl => { clearTimeout(lama); TPL[k] = tpl; return tpl; },
+        e => { clearTimeout(lama); delete MUAT[k]; toast('NPC gagal dimuat — ' + (e && e.message || e)); throw e; });
+    }
+    return MUAT[k];
+  }
   function pasang(g, o, lv) {
     const lama = NPC.get(o.id), n = { id: o.id, o, g, badan: g.userData.badan, li: Math.max(0, PROJECT.levels.indexOf(lv)), mode: null, po: 0 };
     if (lama && lama.mode && lama.o.x === o.x && lama.o.z === o.z && (lama.o.y || 0) === (o.y || 0) && lama.o.type === o.type && lama.li === n.li) for (const k of BAWA) n[k] = lama[k];
     NPC.set(o.id, n);
     const k = jenisAman(o.type);
     if (TPL[k] && window.LOBI) { rakit(n, TPL[k], lama); return Promise.resolve(); }
-    return muatModul('lobi').then(() => window.LOBI.muatAvatar3D({ bawaan: k })).then(tpl => {
-      TPL[k] = tpl;
+    const sil = siluet(); n.badan.add(sil);
+    return muatTpl(k).then(tpl => {
+      n.badan.remove(sil);
       if (NPC.get(o.id) !== n || !diDunia(g)) return;
-      rakit(n, tpl, lama);
-    }).catch(e => console.warn('NPC', e.message));
+      try { rakit(n, tpl, lama); } catch (e) { toast('NPC gagal ditampilkan — ' + (e && e.message || e)); throw e; }
+    }).catch(e => { n.badan.remove(sil); console.warn('NPC', e && e.message); });
   }
 
   /* ---------- PERILAKU ---------- */
@@ -266,6 +291,16 @@
     if (n.mode === 'jalan') { n.lanjut = null; lepasKursi(n); n.kursi = null; }
     sapaAuto(n); n.a.lambai = null; return true;
   }
+  // obrolan (modul/dialog.js): NPC berhenti & menghadap pengunjung; reaksi kecil menurut niat pesan
+  function ngobrol(id, ev) {
+    const n = NPC.get(id); if (!n || !n.a) return;
+    const G = window.LOBI.gerak;
+    if (ev === 'mulai') { n.obrol = true; if (n.mode !== 'duduk' && n.mode !== 'masuk') { if (n.mode === 'jalan') { lepasKursi(n); n.kursi = null; } n.mode = 'ngobrol'; n.po = 0; n.a.mikro = null; } return; }
+    if (ev === 'selesai') { n.obrol = false; if (n.mode === 'ngobrol') diam(n, 2 + Math.random() * 3); return; }
+    if (ev === 'salam' || ev === 'pamit') G.mulaiLambai(n.a);
+    else if (ev === 'puji' || ev === 'terimakasih') n.a.mikro = { k: 'bahu', t: 0, d: 1.2 };
+    else if (ev === 'hina') n.a.mikro = { k: 'jam', t: 0, d: 2.2 };
+  }
   function putarKe(n, yaw, dt, laju = 3) { const d = sudut(yaw - n.yaw); n.yaw += clamp(d, -laju * dt, laju * dt); return Math.abs(d); }
   function jalan(n, dt) {
     const dx = n.tuju.x - n.p.x, dz = n.tuju.z - n.p.z, d = Math.hypot(dx, dz);
@@ -325,13 +360,15 @@
       else if (n.mode === 'aktivitas') {
         n.t -= dt; if (n.yawTuju != null && n.po === 5) putarKe(n, n.yawTuju, dt, 2.5);
         if (n.t <= 0) { n.a.mikro = null; diam(n); }
+      } else if (n.mode === 'ngobrol') {
+        if (FPS.on) { hadapPengunjung(n); putarKe(n, n.yawTuju, dt, 3); }
       } else if (n.mode === 'masuk') {
         const k = n.kursi; n.t = Math.min(1, n.t + dt / 0.7); const e = n.t * n.t * (3 - 2 * n.t);
         n.p.set(n.dari.x + (k.s.pos.x - n.dari.x) * e, n.dari.y + (k.s.pos.y - 0.45 - n.dari.y) * e, n.dari.z + (k.s.pos.z - n.dari.z) * e);
         putarKe(n, n.yawTuju, dt, 5);
         if (n.t >= 1) { n.mode = 'duduk'; n.t = 10 + Math.random() * 14; }
       } else if (n.mode === 'duduk') {
-        n.t -= dt; if (n.t <= 0) { const k = n.kursi; n.mode = 'keluar'; n.t = 0; n.dari = { x: n.p.x, y: n.p.y, z: n.p.z }; n.po = 0; n.ke = { x: k.q.x, z: k.q.z, y: n.rumah.y }; }
+        if (!n.obrol) n.t -= dt; if (n.t <= 0) { const k = n.kursi; n.mode = 'keluar'; n.t = 0; n.dari = { x: n.p.x, y: n.p.y, z: n.p.z }; n.po = 0; n.ke = { x: k.q.x, z: k.q.z, y: n.rumah.y }; }
       } else if (n.mode === 'keluar') {
         n.t = Math.min(1, n.t + dt / 0.8); const e = n.t * n.t * (3 - 2 * n.t);
         n.p.set(n.dari.x + (n.ke.x - n.dari.x) * e, n.dari.y + (n.ke.y - n.dari.y) * e, n.dari.z + (n.ke.z - n.dari.z) * e);
@@ -356,12 +393,21 @@
     for (const [k, l] of [['kulit', 'Kulit'], ['rambut', 'Rambut'], ['atas', 'Atasan'], ['bawah', 'Bawahan'], ['sepatu', 'Sepatu']]) {
       const s = el('span'); s.title = l; s.setAttribute('aria-label', l); s.style.background = p[k] ? 'rgb(' + p[k].join(',') + ')' : '#f4f4f4'; w.appendChild(s); }
     ins.appendChild(w);
+    const KN = window.KARTU_NPC;
+    if (KN) {
+      fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...KN.URUT.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], typeof d.params.kartu === 'string' && KN.KARTU[d.params.kartu] ? d.params.kartu : '',
+        v => { if (v) d.params.kartu = v; else delete d.params.kartu; HIST.label = 'Kepribadian NPC'; rebuildScene(); renderInspector(); }));
+      const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 30; nm.value = typeof d.params.nama === 'string' ? d.params.nama : '';
+      const kk = KN.KARTU[d.params.kartu] || KN.KARTU[KN.URUT[benihAman(d) % 5]]; nm.placeholder = kk.nama;
+      nm.onchange = () => { const v = nm.value.trim().slice(0, 30); if (v) d.params.nama = v; else delete d.params.nama; HIST.label = 'Nama NPC'; rebuildScene(); };
+      fRow(ins, 'Nama', nm);
+    } else muatModul('kartunpc').then(() => { if (window.KARTU_NPC) renderInspector(); }, () => {});
     fRow(ins, 'Jelajah (m)', numInput(jelajahAman(d), 0.5, v => { d.params.jelajah = clamp(v, 0, 15); rebuildScene(); }, 0, 15));
-    ins.appendChild(el('p', 'hint', 'Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Bidik lalu Sapa untuk menyapanya.'));
+    ins.appendChild(el('p', 'hint', 'Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Di mode jalan bidik lalu Ngobrol untuk bercakap (kepribadian & ingatan per NPC), atau Sapa.'));
     ins.appendChild(el('div', 'section-title', 'Penempatan'));
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, penampilan, jumlah, inspektor, MAKS, keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
 })();

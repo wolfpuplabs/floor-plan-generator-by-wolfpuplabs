@@ -16,7 +16,7 @@
 /* global PROJECT, scene, camera, renderer, worldRoot, FPS, LIHAT, SEL, ATAP_TUTUP:writable, gizmo, $, el, toast, clamp,
    sanitasiProyek, selData, renderLevels, renderSitusUI, renderFinishUI, renderAtapUI, renderInspector, rebuildScene,
    buatTautanLihat, proyekKosong, setTool, FOTO_LOBI, pasangPilihFoto, AVATAR_LOBI, pasangPilihAvatar3D,
-   ambilLampiran, uriLuarGLTF, klonModel, bayangKotor, BAYANG_KOTOR:writable, rampingkanGLB, bgmMain, MEDIA_OBJ */
+   ambilLampiran, uriLuarGLTF, klonModel, bayangKotor, BAYANG_KOTOR:writable, bgmMain, MEDIA_OBJ */
 (function () {
   'use strict';
   const PEERJS = { src: 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js', sri: 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu' };
@@ -543,15 +543,29 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     });
   }
   L.cobaAvatar3D = buf => bacaAvatar3D(buf);
-  // karakter bawaan diambil dari situs sendiri (berkasnya tidak diubah); tekstur dibatasi 1024 px di memori saja
+  // karakter bawaan diambil dari situs sendiri (berkasnya tidak diubah). Teksturnya tidak dikodekan ulang
+  // (lambat: ±10 dtk untuk PNG 2048 px) — cukup digambar ulang ≤ 1024 px di kanvas setelah dibaca, di memori saja
   function ambilBawaan(k) {
-    return fetch('avatar/' + k + '.vrm').then(r => { if (!r.ok) throw new Error('karakter ' + k + ' tidak tersedia'); return r.arrayBuffer(); })
-      .then(b => rampingkanGLB(b, 1024)).then(o => o.buf);
+    return fetch('avatar/' + k + '.vrm').then(r => { if (!r.ok) throw new Error('karakter ' + k + ' tidak tersedia (HTTP ' + r.status + ')'); return r.arrayBuffer(); });
+  }
+  function kecilkanTekstur(root, maks) {
+    const sudah = new Set();
+    root.traverse(m => { if (!m.isMesh) return;
+      for (const mt of [].concat(m.material)) for (const k of ['map', 'emissiveMap', 'normalMap']) {
+        const t = mt && mt[k], im = t && t.image; if (!im || sudah.has(t)) continue; sudah.add(t);
+        const w = im.width, h = im.height, s = maks / Math.max(w, h); if (!(s < 1)) continue;
+        const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        if (typeof im.close === 'function') im.close();
+        t.image = c; t.needsUpdate = true;
+      } });
+    return root;
   }
   function muatAvatar3D(av) {
     const k = av.bawaan ? 'bawaan:' + av.bawaan : av.bagian.join();
-    if (!AV_MODEL.has(k)) AV_MODEL.set(k, (av.bawaan ? ambilBawaan(av.bawaan) : ambilLampiran(av.bagian, AV_MAKS).then(u8 => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)))
-      .then(buf => bacaAvatar3D(buf)).catch(e => { AV_MODEL.delete(k); throw e; }));
+    if (!AV_MODEL.has(k)) AV_MODEL.set(k, (av.bawaan ? ambilBawaan(av.bawaan).then(buf => bacaAvatar3D(buf)).then(r => kecilkanTekstur(r, 1024))
+      : ambilLampiran(av.bagian, AV_MAKS).then(u8 => bacaAvatar3D(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength))))
+      .catch(e => { AV_MODEL.delete(k); throw e; }));
     return AV_MODEL.get(k);
   }
   L.muatAvatar3D = muatAvatar3D;
