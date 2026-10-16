@@ -328,6 +328,7 @@ body{font-size:14px}
 #sidebar h1{font-size:1.05rem;text-transform:none;letter-spacing:.2px}
 /* foto profil main bareng: pratinjau bulat */
 .lobi-foto{align-items:center}
+.npc-baris .lobi-kartu{flex:1}.npc-dadu{display:flex;width:64px;height:64px;align-items:center;justify-content:center;font-size:2rem}.npc-warna{display:flex;gap:6px;margin:6px 0}.npc-warna span{width:22px;height:22px;border-radius:50%;border:1px solid var(--line)}
 .lobi-av3d{flex-wrap:wrap}.lobi-kartu-baris{display:flex;gap:8px;width:100%}.lobi-kartu{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--txt);font-size:.72rem;cursor:pointer}.lobi-kartu img{width:64px;height:64px;border-radius:8px;object-fit:cover}.lobi-kartu[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .lobi-av3d-nama{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.74rem;color:var(--muted)}
 .lobi-foto-lihat{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #fff;flex:none}
@@ -762,6 +763,9 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="cat-grid" id="cat-bentuk"></div>
       <p class="hint">Kotak, silinder, bola, dan kerucut 1 m — ubah ukuran dengan Skala, warnanya di inspector.</p>
       <p class="hint">Objek baru diletakkan di tengah pandangan pada lantai aktif. Klik objek di viewport untuk memindah / memutar / menskalakan.</p>
+      <div class="section-title">NPC (penghuni)</div>
+      <div class="lobi-kartu-baris npc-baris"><button class="lobi-kartu" type="button" data-npc="F"><img src="avatar/F.webp" alt="" loading="lazy"><span>NPC F</span></button><button class="lobi-kartu" type="button" data-npc="M"><img src="avatar/M.webp" alt="" loading="lazy"><span>NPC M</span></button><button class="lobi-kartu" type="button" data-npc="acak"><span class="npc-dadu" aria-hidden="true">🎲</span><span>Acak</span></button></div>
+      <p class="hint">Rambut, kulit &amp; pakaian tiap NPC diacak. Di mode jalan NPC hidup sendiri: diam, jalan-jalan, duduk di kursi / lantai, joget, mengantuk, melambai — dan bisa disapa. Maks 12 per proyek.</p>
       <div class="section-title">Model realistis &amp; model sendiri</div>
       <button class="btn" id="galeriBuka" title="Fotogrametri Poly Haven + furnitur produk nyata (Wayfair dkk.)"><svg class="ik" aria-hidden="true"><use href="#i-dunia"/></svg> Jelajahi model realistis</button>
       <p class="hint">Fotogrametri Poly Haven, produk nyata, dan <b>Sketchfab</b> — saring per ruangan: kamar tidur, sofa, kamar mandi, dapur. Juga tautan ke CGTrader, TurboSquid, Free3D, Poly Pizza, Smithsonian 3D, Fab.</p>
@@ -1884,7 +1888,7 @@ function aturResolusi(t){
   const mentah=clock.getDelta(), dt=Math.min(mentah,0.1);   // lompatan waktu dibatasi
   aturResolusi(mentah);
   if(FPS.on) fpsStep(dt); else orbit.update();
-  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt);
+  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt); if(window.NPC) window.NPC.langkah(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -7244,6 +7248,20 @@ function klonModel(tpl){
     d.skeleton.bones=n.skeleton.bones.map(t=>peta.get(t)); d.bind(d.skeleton,d.bindMatrix); });
   return c;
 }
+// NPC (JEV-106): kotak bidik tak tampak + badan; karakter, warna acak & perilakunya di modul/npc.js
+let NPC_KOTAK=null, NPC_TAK_TAMPAK=null;
+function bangunNPC(o,lv){
+  const g=new THREE.Group(), badan=new THREE.Group(); g.add(badan); Object.assign(g.userData,{badan, npc:true, perabot:true});
+  const hit=new THREE.Mesh(NPC_KOTAK||(NPC_KOTAK=new THREE.BoxGeometry(0.5,1.7,0.4).translate(0,0.85,0)),NPC_TAK_TAMPAK||(NPC_TAK_TAMPAK=new THREE.MeshBasicMaterial({visible:false})));
+  hit.userData={noExport:true, hit:true, bersama:true}; badan.add(hit);
+  muatModul('npc').then(()=>window.NPC.pasang(g,o,lv)).then(()=>{ if(SEL&&SEL.id===o.id&&!$('#inspector .npc-warna')) renderInspector(); },e=>console.warn(e.message));
+  return g;
+}
+function tambahNPC(k){
+  if(LIHAT.on) return;
+  if(PROJECT.levels.reduce((s,l)=>s+l.objects.filter(o=>o.kind==='npc').length,0)>=12){ toast('Maksimal 12 NPC per proyek'); return; }
+  addObject('npc',k==='M'||k==='F'?k:(Math.random()<0.5?'F':'M'));
+}
 function buildObject(o, lv){
   let g;
   if(o.kind==='stair') g=buildStair(o,lv);
@@ -7251,6 +7269,7 @@ function buildObject(o, lv){
   else if(o.kind==='void') g=buildVoid(o);
   else if(o.kind==='area') g=buildArea(o);
   else if(o.kind==='garis') g=buildGaris(o);
+  else if(o.kind==='npc') g=bangunNPC(o,lv);
   else if(o.kind==='model'){
     const tpl=ASSET_OBJ.get(o.type);
     g = tpl ? klonModel(tpl) : missingModelBox();
@@ -7357,7 +7376,7 @@ function updateHistUI(){
 
 /* geometri dibuat ulang tiap edit — bebaskan yang lama agar memori GPU tidak menumpuk
    (material sengaja tidak di-dispose karena dipakai bersama seluruh scene) */
-function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry) c.geometry.dispose(); }); }
+function disposeTree(o){ o.traverse(c=>{ if(c.isMesh&&c.geometry&&!c.userData.bersama) c.geometry.dispose(); }); }
 
 function rebuildScene(){
   ANIM.clear(); OPS.clear(); REG=true;
@@ -7735,6 +7754,18 @@ function renderInspector(){
     ins.appendChild(el('div','section-title','Penempatan'));
     addTransformFields(ins,d,false);
 
+  } else if(d.kind==='npc'){
+    const h=el('h3',null,'NPC'); h.appendChild(el('span','tag',d.type==='M'?'Karakter M':'Karakter F')); ins.appendChild(h);
+    fRow(ins,'Karakter',selInput([['F','Karakter F'],['M','Karakter M']],d.type==='M'?'M':'F',v=>{ d.type=v; HIST.label='Karakter NPC'; rebuildScene(); renderInspector(); }));
+    const ba=el('button','btn sm','🎲 Acak penampilan'); ba.onclick=()=>{ d.params.benih=Math.floor(Math.random()*4294967296); HIST.label='Acak penampilan NPC'; rebuildScene(); renderInspector(); }; ins.appendChild(ba);
+    if(window.NPC){ const p=window.NPC.penampilan(d), w=el('div','npc-warna');
+      for(const [k,l] of [['kulit','Kulit'],['rambut','Rambut'],['atas','Atasan'],['bawah','Bawahan'],['sepatu','Sepatu']]){ const s=el('span'); s.title=l; s.setAttribute('aria-label',l); s.style.background=p[k]?'rgb('+p[k].join(',')+')':'#f4f4f4'; w.appendChild(s); }
+      ins.appendChild(w); }
+    fRow(ins,'Jelajah (m)',numInput(d.params.jelajah??4,0.5,v=>{ d.params.jelajah=clamp(v,0,15); rebuildScene(); },0,15));
+    ins.appendChild(el('p','hint','Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Bidik lalu Sapa untuk menyapanya.'));
+    ins.appendChild(el('div','section-title','Penempatan'));
+    addTransformFields(ins,d,false);
+
   } else if(d.kind==='column'){
     const h=el('h3',null,'Kolom'); h.appendChild(el('span','tag',d.type==='round'?'bulat':'persegi'));
     ins.appendChild(h);
@@ -7967,6 +7998,7 @@ function duplicateSelection(){
   } else {
     const c=JSON.parse(JSON.stringify(d));
     c.id=uid('ob'); c.x+=0.6; c.z+=0.6;
+    if(c.kind==='npc') c.params.benih=Math.floor(Math.random()*4294967296);
     lv.objects.push(c); SEL={kind:'obj',id:c.id};
   }
   rebuildScene(); toast('Objek diduplikasi');
@@ -8257,6 +8289,7 @@ function snapToWall(o,walls,back,maxD){
 /* parameter awal tiap jenis objek — dipakai saat menambah objek dan saat
    menggambar thumbnail katalog, supaya keduanya selalu sama */
 function paramsAwal(kind,type){
+  if(kind==='npc') return {benih:Math.floor(Math.random()*4294967296), jelajah:4};
   if(kind==='stair')
     return { variant:type, width:1.0, tread:STD.treadTarget, riserTarget:STD.riserTarget,
              rise:0, steps:0, radius:type==='curved'?2.0:0.95, sweep:type==='curved'?180:270,
@@ -8292,6 +8325,7 @@ function addObject(kind,type){
   HIST.label='Tambah '+(kind==='stair' ? ('tangga '+(STAIRS[type]?.l||type))
                       : kind==='column'? 'kolom'
                       : kind==='void'  ? 'void'
+                      : kind==='npc'   ? 'NPC '+type
                       : kind==='model' ? (PROJECT.assets[type]?.name||'model')
                       : (FURN[type]?.l||type));
   rebuildScene();
@@ -8299,6 +8333,7 @@ function addObject(kind,type){
   const nm = kind==='stair' ? ('Tangga '+(STAIRS[type]?.l||type))
            : kind==='column'? (type==='round'?'Kolom bulat':'Kolom persegi')
            : kind==='void'  ? 'Void (lubang pelat)'
+           : kind==='npc'   ? 'NPC '+type
            : kind==='model' ? (PROJECT.assets[type]?.name||'Model')
            : (FURN[type]?.l||type);
   toast(nm+' ditambahkan ke '+lv.name+(menempel?' — menempel ke dinding terdekat':''));
@@ -15404,6 +15439,7 @@ function cariTarget(ray){
     let n=m;
     while(n && n!==worldRoot){
       if(n.userData.op){ const o=OPS.get(n.userData.op); return (o && BUKA_AWAL[o.type]!=null) ? {jenis:'bukaan', o} : null; }
+      if(n.userData.npc) return {jenis:'sapa', ekstra:[], id:n.userData.id, grp:n};
       if(n.userData.kind==='obj'){
         // satu objek bisa punya beberapa aksi: bawaan (duduk, lampu…) + detail / musik tambahan
         const ak=aksiObjek(cariObjek(n.userData.id)), ekstra=[];
@@ -15433,6 +15469,7 @@ function labelAksi(t){
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
   if(t.jenis==='detail') return 'Lihat detail';
+  if(t.jenis==='sapa') return 'Sapa';
   if(t.jenis==='bunyi') return aksiObjek(cariObjek(t.id))?.mediaOto ? (window.SUMBER&&window.SUMBER.aktif(t.id)?'Matikan suara':'Nyalakan suara') : aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : 'Bunyikan';
   if(t.jenis==='anim') return GERAK.main.has(t.id)?'Hentikan animasi':'Putar animasi';
   if(t.jenis==='musik') return MUSIK.main.has(t.id)?'Hentikan musik':'Putar musik';
@@ -15468,6 +15505,7 @@ function grupObjek(id){ const out=[]; worldRoot.traverse(n=>{ if(n.userData.kind
 function pakai(t){
   if(!t){ if(FPS.duduk) berdiri(); return; }
   if(t.jenis==='berdiri'){ berdiri(); return; }
+  if(t.jenis==='sapa'){ AIM_T=0; if(window.NPC) window.NPC.sapa(t.id); return; }
   // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
   if(t.id && aksiObjek(cariObjek(t.id))?.sfx){ sfxObjek(t.id); laporAksi('bunyi',t.id,true); }
   // media objek ikut diketuk seperti suara: putar / hentikan
@@ -15615,6 +15653,7 @@ $('#fpsGaya').onchange=e=>{ const v=e.target.value; e.target.value=''; e.target.
   if(v==='lantai') return dudukLantai();
   if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
   toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); };
+document.querySelectorAll('[data-npc]').forEach(b=>{ b.onclick=()=>tambahNPC(b.dataset.npc); });
 $('#fpsMood').onchange=e=>{ const v=e.target.value; e.target.blur(); if(window.CUACA) window.CUACA.pilihWaktu(v); else setSuasana(v); };
 // cuaca & siklus waktu (JEV-100): modul/cuaca.js dimuat begitu dipakai
 function segarkanCuaca(){ const c=PROJECT.cuaca||{};
