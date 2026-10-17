@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 85 GO · 3 DEFER · 5 NO-GO dari 93 item.
+**Ringkasan:** 86 GO · 3 DEFER · 5 NO-GO dari 94 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -40,6 +40,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-064 | Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak | terkirim | 0.80 | 83 jt | 1 jt | 169.3× | 84.1× | 0.1 bln | 6 | **GO** |
 | JEV-062 | Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL | terkirim | 0.80 | 113,1 jt | 1,4 jt | 166.6× | 82.8× | 0.1 bln | 6 | **GO** |
 | JEV-076 | Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek | terkirim | 0.65 | 109,7 jt | 1,4 jt | 161.5× | 80.3× | 0.1 bln | 7 | **GO** |
+| JEV-111 | Date sim: obrolan pilihan A–D, suasana hati NPC, kencan dengan cutscene, nyatakan perasaan & status pacaran | terkirim | 0.60 | 120,6 jt | 1,5 jt | 159.8× | 79.4× | 0.1 bln | 7 | **GO** |
 | JEV-071 | Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh | terkirim | 0.65 | 16,8 jt | 0,2 jt | 153.7× | 76.3× | 0.1 bln | 7 | **GO** |
 | JEV-086 | Musik latar (BGM) proyek; satu pilihan "Saat diketuk" (suara klik/swoosh/sendiri atau media audio/video) agar tidak bertabrakan; media diputar di pemutar bawah yang bisa disembunyikan; musik objek tidak sunyi di iOS | terkirim | 0.65 | 44,9 jt | 0,6 jt | 148.5× | 73.8× | 0.1 bln | 7 | **GO** |
 | JEV-078 | Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua | terkirim | 0.65 | 86,9 jt | 1,2 jt | 143.9× | 71.4× | 0.1 bln | 7 | **GO** |
@@ -138,6 +139,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-064 Atap menaungi semua lantai yang terbuka + galeri model semua kategori dengan Muat lebih banyak — GO.** ROI 169.3× ≥ 1, payback 0.1 bln.
 - **JEV-062 Rampingkan model unduhan (tekstur → 1024 px) + pulih dari hilangnya konteks WebGL — GO.** ROI 166.6× ≥ 1, payback 0.1 bln.
 - **JEV-076 Interaksi tambahan per objek: Detail (panel + buka tautan), Musik sendiri, Hadap kamera; beberapa aksi pada satu objek — GO.** ROI 161.5× ≥ 1, payback 0.1 bln.
+- **JEV-111 Date sim: obrolan pilihan A–D, suasana hati NPC, kencan dengan cutscene, nyatakan perasaan & status pacaran — GO.** ROI 159.8× ≥ 1, payback 0.1 bln.
 - **JEV-071 Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh — GO.** ROI 153.7× ≥ 1, payback 0.1 bln.
 - **JEV-086 Musik latar (BGM) proyek; satu pilihan "Saat diketuk" (suara klik/swoosh/sendiri atau media audio/video) agar tidak bertabrakan; media diputar di pemutar bawah yang bisa disembunyikan; musik objek tidak sunyi di iOS — GO.** ROI 148.5× ≥ 1, payback 0.1 bln.
 - **JEV-078 Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua — GO.** ROI 143.9× ≥ 1, payback 0.1 bln.

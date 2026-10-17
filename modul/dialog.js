@@ -6,7 +6,7 @@
    terima kasih, hinaan, pamit) + konteks rumah (jumlah lantai & perabot). Bila pemilik situs mengisi GROQ_API_KEY di
    Vercel, /api/npc menjawab dengan AI dalam karakter; gagal / lambat → kembali ke balasan kartu.
    Panel: nama & tingkat relasi, riwayat, tombol cepat, hadiah (disukai / biasa / dibenci kartu), kolom ketik. */
-/* global $, el, FPS, camera, PROJECT, BAHASA, toast */
+/* global $, el, FPS, camera, PROJECT, BAHASA, toast, muatModul */
 (function () {
   'use strict';
   const K = window.KARTU_NPC;
@@ -123,7 +123,8 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const sisaHari = m.h === hariIni() ? Math.max(0, 30 - (m.hg || 0)) : 30;
     P.skor.textContent = Math.round(m.s) + ' / 100';
     P.lagi.textContent = nx ? (id ? `${Math.ceil(nx[1] - m.s)} lagi ke ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}` : `${Math.ceil(nx[1] - m.s)} more to ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}`) : (id ? 'Tingkat tertinggi' : 'Highest level');
-    P.jatah.textContent = id ? `jatah hari ini +${Math.round(sisaHari)}` : `today +${Math.round(sisaHari)} left`; }
+    P.jatah.textContent = id ? `jatah hari ini +${Math.round(sisaHari)}` : `today +${Math.round(sisaHari)} left`;
+    if (window.KENCAN) window.KENCAN.segar(m); }
   function tandaSkor(m, d, minta) {
     if (!P || !KINI || INGAT[KINI.id] !== m || !minta) return;
     const id = L() === 'id', b = Math.round(Math.abs(d) * 10) / 10;
@@ -142,7 +143,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const kuis = el('div', 'no-kuis'); kuis.hidden = true;
     const log = el('div', 'no-log'); log.setAttribute('aria-live', 'polite');
     const chip = el('div', 'no-chip'), hadiah = el('div', 'no-chip'); hadiah.hidden = true;
-    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['pamit', '🚪 Pamit']]) {
+    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['pilih', '💬 Obrolan pilihan'], ['kencan', '💐 Ajak kencan'], ['pamit', '🚪 Pamit']]) {
       const b = el('button', 'btn sm ghost', l); b.dataset.cepat = k; b.onclick = () => cepat(k); chip.appendChild(b); }
     // interaksi berpasangan (JEV-109): butuh relasi cukup dekat; tidak untuk kartu anak
     const aksi = el('div', 'no-chip no-aksi');
@@ -191,6 +192,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     if (k === 'hadiah') return tampilHadiah();
     if (k === 'ikut') return ajakIkut();
     if (k === 'kuis') return tanyaKuis();
+    if (k === 'pilih' || k === 'kencan') return muatModul('kencan').then(() => (k === 'pilih' ? window.KENCAN.pilihan() : window.KENCAN.ajak()), e => toast(e.message));
     const t = TEKS_CEPAT[k][L() === 'id' ? 0 : 1];
     kirim(t, k === 'puji' ? null : k);
   }
@@ -292,6 +294,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     P.aksi.hidden = c.id === 'anak'; P.aksi.querySelector('[data-aksi="duduk"]').hidden = !(FPS.duduk && FPS.duduk.id && !FPS.duduk.lantai && !FPS.duduk.baring);
     if (window.NPC) window.NPC.ngobrol(id, 'mulai');
     ucap(m.k || m.r.length ? tx(c.k.relasi[K.tingkat(m.s)]) : tx(c.k.salam), 'salam');
+    muatModul('kencan').then(() => { if (KINI && KINI.id === id) window.KENCAN.buka(m); }, () => {});   // date sim: suasana hati, status, kenangan kencan
     cekAI().then(a => { if (P) P.ai.hidden = !a; });
     if (!('ontouchstart' in window)) setTimeout(() => P && !P.d.hidden && P.inp.focus(), 50);
     return true;
@@ -313,5 +316,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id && x.kind === 'npc'); if (!o) return 0;
     const m = ingatan(id); m.n = kartuNpc(o).nama; const n = ubahSkor(m, d); simpan(); if (KINI && KINI.id === id) segarRelasi(); return n;
   }
-  window.DIALOG = { buka, tambahRelasi, kuis: tanyaKuis, _ingat: id => ingatan(id), _kuisOtomatis: true, nama: id => { const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id); return o ? kartuNpc(o).nama : ''; }, tutup: tutupObrol, terbuka: () => !!KINI, kartuNpc, skor: id => ingatan(id).s, niat, balasKartu: (o, s, n) => { const c = kartuNpc(o); return balasKartu(c, { s, r: [] }, n); }, _ai: v => { AI = v; } };
+  // dipakai modul date sim (modul/kencan.js)
+  const DALAM = { ingatan, ubahSkor, ucap, tulis, simpan, segarRelasi, hariIni, L, tx, rumah, cekAI, kini: () => KINI, panel: () => P, tutup: tutupObrol, sibuk: v => (v === undefined ? SIBUK : (SIBUK = v)) };
+  window.DIALOG = { _dalam: DALAM, buka, tambahRelasi, kuis: tanyaKuis, _ingat: id => ingatan(id), _kuisOtomatis: true, nama: id => { const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id); return o ? kartuNpc(o).nama : ''; }, tutup: tutupObrol, terbuka: () => !!KINI, kartuNpc, skor: id => ingatan(id).s, niat, balasKartu: (o, s, n) => { const c = kartuNpc(o); return balasKartu(c, { s, r: [] }, n); }, _ai: v => { AI = v; } };
 })();
