@@ -124,7 +124,7 @@ export const tes = {
       await tunggu(400); const normal = U.ujiGambar(n); U.ujiDanPerbaiki(); const tetap = JSON.stringify(U.perbaikan());
       // tiru tekstur yang terbaca kosong: peta hasil pewarnaan diganti kanvas transparan + alphaTest (seperti potongan rambut/bulu mata)
       const kosong = document.createElement('canvas'); kosong.width = kosong.height = 8; const tk = new THREE.CanvasTexture(kosong);
-      n.a.model.traverse(x => { if (x.isMesh) { x.material.map = tk; x.material.alphaTest = 0.5; x.material.needsUpdate = true; } });
+      n.a.model.traverse(x => { if (x.isMesh) { x.material = x.material.clone(); x.material.map = tk; x.material.alphaTest = 0.5; } });
       const rusak = U.ujiGambar(n); U.ujiDanPerbaiki();
       const m = [...U.NPC.values()][0], pulih = U.ujiGambar(m), kanvas = []; m.a.model.traverse(x => { if (x.isMesh) kanvas.push(!!(x.material.map && x.material.map.isCanvasTexture)); });
       const d = N.diagnosa();
@@ -146,7 +146,7 @@ export const tes = {
       const o = L().objects.find(x => x.kind === 'npc'); o.rotY = 0; select('obj', o.id); orbit.target.set(o.x, 0, o.z); rebuildScene();
       enterFPS(); const d = Math.hypot(camera.position.x - o.x, camera.position.z - o.z), arah = Math.atan2(o.x - camera.position.x, o.z - camera.position.z);
       const beda = Math.abs(Math.atan2(Math.sin(arah - FPS.yaw), Math.cos(arah - FPS.yaw)));
-      AIM_T = 0; stepBidik(0.2); const bidik = AIM && AIM.jenis; exitFPS(); return { d, beda, bidik };
+      fpsStep(0); scene.updateMatrixWorld(); AIM_T = 0; stepBidik(0.2); const bidik = AIM && AIM.jenis; exitFPS(); return { d, beda, bidik };
     });
     assert.ok(r.d >= 1 && r.d < 2.2, 'jarak dari NPC ' + r.d);
     assert.ok(r.beda < 0.05, 'menghadap NPC ' + r.beda);
