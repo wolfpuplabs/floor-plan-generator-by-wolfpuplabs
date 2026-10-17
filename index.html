@@ -1742,7 +1742,9 @@ function fxHitungAO(W,H){
   // transparan & alpha-cutout (helai rambut/kerah avatar, daun) tidak ikut: material pengganti tak membaca
   // teksturnya, jadi bidang tembus pandang ikut menulis kedalaman dan AO menggambar noda gelap di belakangnya
   const tembus=m=>m&&(m.transparent||m.alphaTest>0);
-  scene.traverseVisible(o=>{ if(o.isSprite||o.isLine||o.isLineSegments||(o.isMesh&&(Array.isArray(o.material)?o.material.some(tembus):tembus(o.material)))) FX_SEMBUNYI.push(o); });
+  // karakter berkerangka (NPC, avatar VRM) tetap ikut walau bahannya alpha-cutout: tanpa kedalamannya AO dihitung dari dinding /
+  // perabot di belakangnya dan tergambar di wajah & badan sebagai noda / pita gelap (tampak "tembus pandang")
+  scene.traverseVisible(o=>{ if(o.isSprite||o.isLine||o.isLineSegments||(o.isMesh&&!o.isSkinnedMesh&&(Array.isArray(o.material)?o.material.some(tembus):tembus(o.material)))) FX_SEMBUNYI.push(o); });
   for(const o of FX_SEMBUNYI) o.visible=false;
   const giz=gizmo.visible; gizmo.visible=false;
   const bg=scene.background, perlu=renderer.shadowMap.needsUpdate;

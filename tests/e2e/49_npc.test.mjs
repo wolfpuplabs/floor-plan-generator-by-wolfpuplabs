@@ -151,11 +151,14 @@ export const tes = {
       fpsStep(0); scene.updateMatrixWorld(); AIM_T = 0; stepBidik(0.2); const bidik = AIM && AIM.jenis;
       // karakter sudah termuat → NPC dirakit seketika saat adegan dibangun ulang; badannya tetap tampak di mode jalan
       const n = [...window.NPC._uji.NPC.values()][0], tampak = []; n.a.model.traverse(x => { if (x.isMesh) tampak.push(x.visible); }); const uji = window.NPC._uji.ujiGambar(n);
-      exitFPS(); return { d, beda, bidik, tampak, uji };
+      // AO layar: badan NPC (bahan alpha-cutout) tetap ikut lintasan kedalaman — dulu AO dinding di belakangnya tergambar di wajahnya
+      const fx = FX.on; FX.on = true; renderFrame(); const aoSembunyi = FX_SEMBUNYI.filter(o => o.isSkinnedMesh).length, aoBahan = n.a.model.getObjectByProperty('isSkinnedMesh', true).material.alphaTest; FX.on = fx;
+      exitFPS(); return { d, beda, bidik, tampak, uji, aoSembunyi, aoBahan };
     });
     assert.ok(r.d >= 1 && r.d < 2.2, 'jarak dari NPC ' + r.d);
     assert.ok(r.beda < 0.05, 'menghadap NPC ' + r.beda);
     assert.equal(r.bidik, 'ngobrol', 'NPC di tengah bidikan');
     assert.ok(r.tampak.length && r.tampak.every(Boolean) && r.uji.A > 50, 'badan NPC tergambar di mode jalan: ' + JSON.stringify(r));
+    assert.ok(r.aoBahan > 0 && r.aoSembunyi === 0, 'NPC ikut kedalaman AO: ' + JSON.stringify([r.aoBahan, r.aoSembunyi]));
   },
 };
