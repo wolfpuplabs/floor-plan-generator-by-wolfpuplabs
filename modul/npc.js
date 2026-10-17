@@ -395,7 +395,7 @@
     return null;
   }
   // kasur: berbaring telentang (pose 9) di tengah ranjang, kepala ke arah sandaran (−Z lokal ranjang)
-  function cariKasur(n) {
+  function cariKasur(n, jauh) {
     const lg = levelGroups[n.li], lv = PROJECT.levels[n.li]; if (!lg || !lv) return null;
     const calon = [];
     for (const c of lg.children) {
@@ -404,7 +404,7 @@
       const kunci = 'kasur:' + o.id; if (KURSI_DIPAKAI.has(kunci) || (FPS.duduk && FPS.duduk.id === o.id)) continue;
       c.updateMatrixWorld(true);
       const f = FURN[o.type].f, h = c.userData.duduk.h || 0.55, tengah = c.localToWorld(new THREE.Vector3(0, h, 0.12));
-      if (Math.hypot(tengah.x - n.rumah.x, tengah.z - n.rumah.z) > n.jelajah + 2) continue;
+      if (!jauh && Math.hypot(tengah.x - n.rumah.x, tengah.z - n.rumah.z) > n.jelajah + 2) continue;   // diminta pengunjung: kasur mana pun di lantai ini
       const sisi = c.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * (Math.random() < 0.5 ? 1 : -1), 0, 0.2));
       const yaw = (o.rotY || 0), q = { x: sisi.x, z: sisi.z };
       if (!jalurBebas(n, q.x, q.z, o.id)) continue;
@@ -430,6 +430,16 @@
     return aktivitas(n, 0, 2.8, pilih(Math.random, ['regang', 'jam', 'bahu']));
   }
   function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = k.po || 1; n.yawTuju = k.yaw; if (k.sandar != null) n.a.sandar = k.sandar; }
+  // berbaring bareng: pengunjung rebahan di tengah kasur, NPC di sisi kasur yang lain
+  function kasurBareng(n, D) {
+    const lg = levelGroups[n.li], lv = PROJECT.levels[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), o = lv && lv.objects.find(x => x.id === D.id);
+    if (!g || !o || !/^bed_/.test(o.type) || !FURN[o.type] || !g.userData.duduk) return null;
+    g.updateMatrixWorld(true);
+    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, ki = g.localToWorld(new THREE.Vector3(-f[0] / 4, h, 0.12)), ka = g.localToWorld(new THREE.Vector3(f[0] / 4, h, 0.12));
+    const s = Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
+    const sisi = g.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * s, 0, 0.2));
+    return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, yaw: o.rotY || 0, po: 9, lama: 45, d: 0 };
+  }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
   function sapaAuto(n) { hadapPengunjung(n); aktivitas(n, 5, 2.8); }
@@ -453,7 +463,7 @@
   /* INTERAKSI BERPASANGAN dengan pengunjung (JEV-109): peluk, gandeng (mengikuti di sisi kanan), dansa berdua, duduk bareng */
   function aksiPasangan(id, k) {
     const n = NPC.get(id); if (!n || !n.a || !FPS.on || !n.mode) return false;
-    if (k === 'lepas') { if (n.mode === 'pangku') turunPangku(n); else if (/^(gandeng|dansa|peluk|cium|ikut|temani)$/.test(n.mode)) diam(n, 1.5); return true; }
+    if (k === 'lepas') { if (n.mode === 'duduk' && n.kursi && n.kursi.minta) { n.kursi.bareng = null; n.t = 0; return true; } if (n.mode === 'pangku') turunPangku(n); else if (/^(gandeng|dansa|peluk|cium|ikut|temani)$/.test(n.mode)) diam(n, 1.5); return true; }
     if (n.mode === 'duduk' || n.mode === 'masuk') { lepasKursi(n); n.kursi = null; }
     n.a.mikro = null; n.a.lambai = null;
     if (k === 'peluk' || k === 'dansa') { n.mode = k; n.po = k === 'peluk' ? 6 : 10; n.t = k === 'peluk' ? 4.5 : 18; n.jarak = k === 'peluk' ? 0.34 : 0.48; return true; }
@@ -461,6 +471,12 @@
     if (k === 'pangku') {                                 // NPC duduk menyamping di pangkuan pengunjung yang sedang duduk di kursi / sofa
       const D = FPS.duduk; if (!D || !D.id || D.lantai || D.baring || !D.mata) return false;
       n.pangku = { D, yaw: FPS.yaw, x: D.mata.x, z: D.mata.z, y: D.mata.y - 0.72 }; n.mode = 'pangku'; n.po = 16; hati(n); return true;
+    }
+    if (k === 'baring') {                                 // rebahan di kasur terdekat; bila pengunjung sedang berbaring: di sisi lain kasurnya
+      const D = FPS.duduk; let ks = D && D.baring && D.id ? kasurBareng(n, D) : null;
+      for (let i = 0; i < 12 && !ks; i++) ks = cariKasur(n, true);   // sisi kasur dipilih acak; sisi yang menempel dinding dibuang
+      if (!ks) return false;
+      ks.minta = true; ks.lama = 45; KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); return true;
     }
     if (k === 'gandeng') { n.mode = 'gandeng'; n.po = 7; n.a.sisi = -1; return true; }
     if (k === 'ikut') { n.mode = 'ikut'; n.po = 0; return true; }
@@ -660,8 +676,8 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && /^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) ? ['lepas'] : []; },
-    pasangan: () => { for (const n of NPC.values()) if (n.a && /^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode)) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
+    pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };
 })();
