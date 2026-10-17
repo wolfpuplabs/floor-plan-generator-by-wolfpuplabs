@@ -28,7 +28,7 @@ export const tes = {
     assert.ok(r[6].lenganKa > 0.6 && r[6].lenganKi > 0.6 && r[6].turun < 0.05, 'peluk: ' + JSON.stringify(r[6]));
     assert.ok(r[7].lenganKa > 0.35 && r[7].lenganKi < 0.2, 'gandeng satu tangan: ' + JSON.stringify(r[7]));
     assert.ok(Math.abs(r[8].turun - 0.42) < 0.05 && r[8].kepala > 0.3, 'duduk bersandar: ' + JSON.stringify(r[8]));
-    assert.ok(Math.abs(r[9].pinggul - Math.PI / 2) < 0.1 && Math.abs(r[9].turun - (r[9].tinggi - 0.13)) < 0.05 && r[9].tinggi > 0.7, 'berbaring: ' + JSON.stringify(r[9]));
+    assert.ok(Math.abs(r[9].pinggul - Math.PI / 2) < 0.1 && Math.abs(r[9].turun - (r[9].tinggi - 0.09)) < 0.05 && r[9].tinggi > 0.7, 'berbaring: ' + JSON.stringify(r[9]));
     assert.ok(r[10].lenganKa > 0.5 && r[10].lenganKi > 0.5, 'dansa: ' + JSON.stringify(r[10]));
     assert.ok(r[15].kepala > 0.3 && r[15].turun < 0.05 && r[15].lenganKa > 0.4, 'cium pipi: ' + JSON.stringify(r[15]));
     assert.ok(Math.abs(r[16].turun - 0.42) < 0.05 && r[16].lenganKi > 1.2, 'dipangku: ' + JSON.stringify(r[16]));

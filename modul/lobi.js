@@ -464,10 +464,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       tambah('spine', 0.02, 0, 0.1 * s, b); tambah('chest', 0, 0, 0.12 * s, b); tambah('neck', 0, 0, 0.16 * s, b); tambah('head', 0.05, 0.1 * s, 0.32 * s, b);
       tambah('leftUpperArm', 0.5, 0, 0.1, b); tambah('rightUpperArm', 0.5, 0, -0.1, b); tambah('leftLowerArm', 0.6, 0, 0, b); tambah('rightLowerArm', 0.6, 0, 0, b); turun += 0.42 * b; }
     if (pw[9] > 0.001) { const b = pw[9], napas = 0.025 * Math.sin(t * 1.3);
-      tambah('hips', -Math.PI / 2, 0, 0, b); tambah('chest', napas, 0, 0, b); tambah('head', 0.28, 0.15 * Math.sin(t * 0.13), 0, b);
+      tambah('hips', Math.PI / 2, 0, 0, b); tambah('chest', napas, 0, 0, b);   // pinggul: + = rebah ke belakang (telentang, kepala ke −Z) — diukur pada F.vrm & M.vrm tambah('head', 0.28, 0.15 * Math.sin(t * 0.13), 0, b);
       tambah('leftUpperArm', -0.08, 0, 0.12, b); tambah('rightUpperArm', -0.08, 0, -0.12, b); tambah('leftLowerArm', 0.25, 0, 0, b); tambah('rightLowerArm', 0.25, 0, 0, b);
       tambah('leftUpperLeg', 0.32, 0, 0.04, b); tambah('leftLowerLeg', -0.55, 0, 0, b); tambah('rightUpperLeg', 0.04, 0, -0.04, b);
-      turun += ((a.tinggiPinggul || 0.9) - 0.13) * b; }
+      turun += ((a.tinggiPinggul || 0.9) - 0.09) * b; }
     if (pw[10] > 0.001) { const b = pw[10], f = t * 2 * Math.PI * 0.42, p = Math.sin(f), naik = Math.max(0, p), turunK = Math.max(0, -p);
       tambah('leftUpperArm', 0.72, 0, 0.1, b); tambah('rightUpperArm', 0.72, 0, -0.1, b); tambah('leftLowerArm', 0.7, 0, 0, b); tambah('rightLowerArm', 0.7, 0, 0, b);
       tambah('hips', 0, 0.07 * p, 0.05 * p, b); tambah('spine', 0.03, -0.04 * p, -0.04 * p, b); tambah('head', 0.04, 0, 0.1 + 0.04 * p, b);
@@ -515,7 +515,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
         const u = ((f + geser) % TAU + TAU) % TAU, ayun = u > Math.PI ? Math.sin(u - Math.PI) : 0;   // u 0…π tarik, π…2π ayun di atas air
         tambah(k + 'UpperArm', Math.PI - u, 0, sisi * 0.35 * ayun, b); tambah(k + 'LowerArm', 0.25 + 1.0 * ayun, 0, 0, b);
       }
-      tambah('hips', Math.PI / 2 - 0.1, 0, 0, b); tambah('spine', -0.05, 0, 0, b); tambah('chest', 0, 0.16 * Math.sin(f), 0, b);
+      tambah('hips', -(Math.PI / 2 - 0.1), 0, 0, b);   // pinggul: − = telungkup, kepala ke arah renang (+Z) tambah('spine', -0.05, 0, 0, b); tambah('chest', 0, 0.16 * Math.sin(f), 0, b);
       tambah('neck', -0.35, 0, 0, b); tambah('head', -0.35, 0.2 * Math.sin(f), 0, b);
       tambah('leftUpperLeg', 0.22 * k4, 0, 0.04, b); tambah('rightUpperLeg', -0.22 * k4, 0, -0.04, b);
       tambah('leftLowerLeg', -0.12 - 0.18 * Math.max(0, -k4), 0, 0, b); tambah('rightLowerLeg', -0.12 - 0.18 * Math.max(0, k4), 0, 0, b);

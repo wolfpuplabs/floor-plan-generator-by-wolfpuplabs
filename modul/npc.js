@@ -47,10 +47,10 @@
   const katTulang = n => /hair/i.test(n) ? 'r' : /head|face|eye/i.test(n) ? 'k' : /foot|toe/i.test(n) ? 's'
     : /upperleg|lowerleg|hips|skirt|leg/i.test(n) ? 'b' : /hand|thumb|index|middle|ring|little/i.test(n) ? 't' : 'a';
   const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
-  function bacaPiksel(tex) {
-    const c = document.createElement('canvas'); c.width = c.height = UK;
-    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(tex.image, 0, 0, UK, UK);
-    const d = x.getImageData(0, 0, UK, UK).data; c.width = c.height = 0; return d;
+  function bacaPiksel(tex, uk) {
+    const c = document.createElement('canvas'); c.width = c.height = uk;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(tex.image, 0, 0, uk, uk);
+    const d = x.getImageData(0, 0, uk, uk).data; c.width = c.height = 0; return d;
   }
   const miripKulit = (r, g, b, ref) => { const rb = ref[0] - ref[2];
     return r >= g && g >= b - 4 && r - b > Math.max(8, rb * 0.45) && r - b < rb * 2.2 + 24 && lum(r, g, b) > lum(...ref) * 0.42; };
@@ -72,14 +72,15 @@
     for (const t of hasil) { t.pulau = m.id + ':' + akar(t.v0); delete t.v; delete t.v0; }
     return hasil;
   }
-  function petakan(tpl) {
+  // uk: sisi kanvas peta & pewarnaan — 512 untuk baju biasa; baju renang 1024 agar tepi kain yang tipis tidak bergerigi
+  function petakan(tpl, uk = UK) {
     if (tpl.userData.npcPeta) return tpl.userData.npcPeta;
     const meshes = []; tpl.traverse(m => { if (m.isMesh && m.material && !Array.isArray(m.material) && m.material.map && m.material.map.image) meshes.push(m); });
     const perPeta = new Map();
     for (const m of meshes) { const t = m.material.map; if (!perPeta.has(t)) perPeta.set(t, { tex: t, wajah: /face/i.test(m.name) || /face/i.test(m.material.name || ''), tri: [] }); perPeta.get(t).tri.push(...segitiga(m)); }
     const daftar = [...perPeta.values()];
-    for (const p of daftar) p.src = bacaPiksel(p.tex);
-    const ambil = (p, u, v, balik) => { const x = clamp(Math.floor(u * UK), 0, UK - 1), y = clamp(Math.floor((balik ? 1 - v : v) * UK), 0, UK - 1), i = (y * UK + x) * 4; return [p.src[i], p.src[i + 1], p.src[i + 2], p.src[i + 3]]; };
+    for (const p of daftar) { p.src = bacaPiksel(p.tex, uk); p.uk = uk; }
+    const ambil = (p, u, v, balik) => { const x = clamp(Math.floor(u * uk), 0, uk - 1), y = clamp(Math.floor((balik ? 1 - v : v) * uk), 0, uk - 1), i = (y * uk + x) * 4; return [p.src[i], p.src[i + 1], p.src[i + 2], p.src[i + 3]]; };
     const tengah = s => [(s.uv[0][0] + s.uv[1][0] + s.uv[2][0]) / 3, (s.uv[0][1] + s.uv[1][1] + s.uv[2][1]) / 3];
     // orientasi gambar (ImageBitmap Chrome vs <img> Safari bisa berbeda): pilih yang membuat segitiga tangan berwarna kulit
     const badan = daftar.find(p => !p.wajah) || daftar[0];
@@ -92,7 +93,7 @@
     ref = nr ? ref.map(v => v / nr) : [250, 230, 220];
     // kelas per piksel: segitiga digambar ke kanvas topeng (sedikit dilebarkan agar tepi tidak bocor)
     for (const p of daftar) {
-      p.kelas = new Uint8Array(UK * UK);
+      p.kelas = new Uint8Array(uk * uk);
       if (p.wajah) continue;
       const kel = { 1: [], 2: [], 3: [], 4: [], 5: [] }, suara = new Map(), sisa = [];
       for (const s of p.tri) {
@@ -102,19 +103,19 @@
         else { sisa.push(s); const u = suara.get(s.pulau) || { a: 0, b: 0, s: 0 }; u[s.kat === 's' ? 's' : s.kat === 'b' ? 'b' : 'a']++; suara.set(s.pulau, u); }
       }
       for (const s of sisa) { const u = suara.get(s.pulau), k = u.s >= u.a && u.s >= u.b ? KELAS.sepatu : u.b > u.a ? KELAS.bawah : KELAS.atas; kel[k].push(s); }
-      const c = document.createElement('canvas'); c.width = c.height = UK; const x = c.getContext('2d', { willReadFrequently: true });
+      const c = document.createElement('canvas'); c.width = c.height = uk; const x = c.getContext('2d', { willReadFrequently: true });
       for (const k of [1, 3, 4, 5, 2]) {
-        x.clearRect(0, 0, UK, UK); x.fillStyle = x.strokeStyle = '#fff'; x.lineWidth = 2; x.lineJoin = 'round';
+        x.clearRect(0, 0, uk, uk); x.fillStyle = x.strokeStyle = '#fff'; x.lineWidth = 2; x.lineJoin = 'round';
         x.beginPath();
-        for (const s of kel[k]) { const q = s.uv.map(([u, v]) => [u * UK, (balik ? 1 - v : v) * UK]); x.moveTo(q[0][0], q[0][1]); x.lineTo(q[1][0], q[1][1]); x.lineTo(q[2][0], q[2][1]); x.closePath(); }
+        for (const s of kel[k]) { const q = s.uv.map(([u, v]) => [u * uk, (balik ? 1 - v : v) * uk]); x.moveTo(q[0][0], q[0][1]); x.lineTo(q[1][0], q[1][1]); x.lineTo(q[2][0], q[2][1]); x.closePath(); }
         x.fill(); x.stroke();
-        const d = x.getImageData(0, 0, UK, UK).data;
-        for (let i = 0; i < UK * UK; i++) if (d[i * 4 + 3] > 40) p.kelas[i] = k;
+        const d = x.getImageData(0, 0, uk, uk).data;
+        for (let i = 0; i < uk * uk; i++) if (d[i * 4 + 3] > 40) p.kelas[i] = k;
       }
       c.width = c.height = 0;
       // kecerahan rata-rata tiap kelas: acuan pewarnaan yang mempertahankan bayangan & motif
       const jum = new Float64Array(6), n = new Float64Array(6);
-      for (let i = 0; i < UK * UK; i++) { const k = p.kelas[i]; if (k < 2 || p.src[i * 4 + 3] < 128) continue; jum[k] += lum(p.src[i * 4], p.src[i * 4 + 1], p.src[i * 4 + 2]); n[k]++; }
+      for (let i = 0; i < uk * uk; i++) { const k = p.kelas[i]; if (k < 2 || p.src[i * 4 + 3] < 128) continue; jum[k] += lum(p.src[i * 4], p.src[i * 4 + 1], p.src[i * 4 + 2]); n[k]++; }
       p.rata = [...jum].map((v, k) => (n[k] ? v / n[k] : 128));
       delete p.tri;
     }
@@ -124,28 +125,29 @@
 
   /* ---------- PEWARNAAN per benih (tembolok LRU) ---------- */
   const SIMPAN = new Map();
-  function warnai(p, ref, look) {
-    const out = new Uint8ClampedArray(p.src), rasio = look.kulit.map((v, i) => v / Math.max(1, ref[i]));
+  // kainAsli: kain (atasan / bawahan / sepatu) tetap berwarna asli — baju renang dirancang pemiliknya; kulit & rambut tetap ikut benih
+  function warnai(p, ref, look, kainAsli) {
+    const uk = p.uk, out = new Uint8ClampedArray(p.src), rasio = look.kulit.map((v, i) => v / Math.max(1, ref[i]));
     const tujuan = [null, null, look.rambut, look.atas, look.bawah, look.sepatu];
-    for (let i = 0; i < UK * UK; i++) {
+    for (let i = 0; i < uk * uk; i++) {
       const j = i * 4, r = p.src[j], g = p.src[j + 1], b = p.src[j + 2], k = p.kelas[i];
       if (k === 0 || k === 1) { if ((p.wajah || k === 1) && miripKulit(r, g, b, ref)) { out[j] = r * rasio[0]; out[j + 1] = g * rasio[1]; out[j + 2] = b * rasio[2]; } continue; }
-      const t = tujuan[k]; if (!t) continue;
+      const t = tujuan[k]; if (!t || (kainAsli && k !== 2)) continue;
       const l = lum(r, g, b), m = p.rata[k];
       if (k !== 2 && l > m * 1.7 && l > 150) continue;                    // lis / garis terang: tetap
       const f = clamp(l / Math.max(8, m), 0, 2.2);
       out[j] = t[0] * f; out[j + 1] = t[1] * f; out[j + 2] = t[2] * f;
     }
-    const c = document.createElement('canvas'); c.width = c.height = UK;
-    c.getContext('2d').putImageData(new ImageData(out, UK, UK), 0, 0);
+    const c = document.createElement('canvas'); c.width = c.height = uk;
+    c.getContext('2d').putImageData(new ImageData(out, uk, uk), 0, 0);
     const tex = new THREE.CanvasTexture(c), asal = p.tex;
     tex.flipY = asal.flipY; tex.encoding = asal.encoding; tex.wrapS = asal.wrapS; tex.wrapT = asal.wrapT; tex.anisotropy = asal.anisotropy || 1;
     return tex;
   }
-  function materiUntuk(tpl, kunci, look) {
+  function materiUntuk(tpl, kunci, look, baju = '') {
     if (SIMPAN.has(kunci)) { const s = SIMPAN.get(kunci); SIMPAN.delete(kunci); SIMPAN.set(kunci, s); return s.peta; }
-    const P = petakan(tpl), texs = new Map(), peta = new Map();
-    for (const p of P.daftar) texs.set(p.tex, warnai(p, P.ref, look));
+    const renang = /^_renang2?$/.test(baju), P = petakan(tpl, renang ? 1024 : UK), texs = new Map(), peta = new Map();
+    for (const p of P.daftar) texs.set(p.tex, warnai(p, P.ref, look, renang));
     tpl.traverse(m => { if (!m.isMesh || !m.material || Array.isArray(m.material) || !texs.has(m.material.map) || peta.has(m.material)) return;
       const b = m.material.clone(); b.map = texs.get(m.material.map); peta.set(m.material, b); });
     SIMPAN.set(kunci, { peta, texs });
@@ -168,7 +170,7 @@
   function rakit(n, tpl, lama, baju = '') {
     const o = n.o;
     let peta;
-    try { peta = materiUntuk(tpl, jenisAman(o.type) + baju + ':' + benihAman(o), penampilan(o)); }
+    try { peta = materiUntuk(tpl, jenisAman(o.type) + baju + ':' + benihAman(o), penampilan(o), baju); }
     catch (e) { peta = new Map(); console.warn('NPC warna', e); if (!PERINGATAN) { PERINGATAN = true; toast('Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli'); } }
     const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
     m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.peta === 'polos') x.material = bahanPolos(x, o); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; x.userData.tetapTampak = true; } });
@@ -199,7 +201,7 @@
   // sama di semua peserta, jadi tiap orang melihat warna yang sama (JEV-112)
   function warnaiAvatar(model, tpl, jenis, benih, baju = '') {
     const o = { type: jenisAman(jenis), params: { benih: benih >>> 0 } };
-    let peta; try { peta = materiUntuk(tpl, 'av:' + o.type + (/^_renang2?$/.test(baju) ? baju : '') + ':' + o.params.benih, penampilan(o)); } catch (e) { console.warn('avatar warna', e); return false; }
+    let peta; try { peta = materiUntuk(tpl, 'av:' + o.type + (/^_renang2?$/.test(baju) ? baju : '') + ':' + o.params.benih, penampilan(o), baju); } catch (e) { console.warn('avatar warna', e); return false; }
     model.traverse(x => { if (x.isMesh && peta.has(x.material)) x.material = peta.get(x.material); });
     return true;
   }
