@@ -22,7 +22,7 @@ export const tes = {
         const a = buat(ek); a.tuju = { po }; for (let i = 0; i < 60; i++) G.gerakAvatar(a, 0.05, 0);
         out[po] = { turun: +(a.dasarY - a.model.position.y).toFixed(2), pinggul: +sudut(a, 'hips').toFixed(2), lenganKa: +sudut(a, 'rightUpperArm').toFixed(2), lenganKi: +sudut(a, 'leftUpperArm').toFixed(2), kepala: +sudut(a, 'head').toFixed(2), tinggi: +(a.tinggiPinggul || 0).toFixed(2) };
         scene.remove(a.g); }
-      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 11 }).po];
+      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 15 }).po];
       return out;
     });
     assert.ok(r[6].lenganKa > 0.6 && r[6].lenganKi > 0.6 && r[6].turun < 0.05, 'peluk: ' + JSON.stringify(r[6]));
@@ -92,9 +92,16 @@ export const tes = {
     assert.ok(Math.abs(b.mata - 0.24) < 0.03 && b.y > 0.4, 'mata di bantal: ' + JSON.stringify(b));
     await page.evaluate(() => berdiri());
     // NPC tidur di kasur
-    const t = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(5, 0, 4); const k = U.cariKasur(n); if (!k) return null; n.kursi = k; U.mulaiJalan(n, k.q.x, k.q.z, 'kursi');
-      for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 20; i++) window.NPC.langkah(0.05);
-      return { mode: n.mode, po: n.po, y: +n.p.y.toFixed(2), kasur: k.id, baring: +n.a.pw[9].toFixed(2) }; });
+    // sisi kasur dipilih acak: sisi yang menempel dinding dibuang, sisi yang jalurnya macet membuat NPC memilih tempat lain — ulangi
+    const t = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); let r = null;
+      for (let coba = 0; coba < 3 && !(r && r.po === 9); coba++) {
+        U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(5, 0, 4);
+        let k = null; for (let i = 0; i < 12 && !k; i++) k = U.cariKasur(n); if (!k) continue;
+        n.kursi = k; U.mulaiJalan(n, k.q.x, k.q.z, 'kursi');
+        for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 20; i++) window.NPC.langkah(0.05);
+        r = { mode: n.mode, po: n.po, y: +n.p.y.toFixed(2), kasur: k.id, baring: +n.a.pw[9].toFixed(2) };
+      }
+      return r; });
     assert.ok(t, 'kasur ditemukan');
     assert.deepEqual([t.mode, t.po, t.kasur], ['duduk', 9, 'ranjang']); assert.ok(t.y > 0.4 && t.baring > 0.8, 'tidur di kasur: ' + JSON.stringify(t));
     await page.evaluate(() => exitFPS());
