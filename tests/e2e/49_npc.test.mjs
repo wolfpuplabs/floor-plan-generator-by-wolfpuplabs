@@ -100,7 +100,8 @@ export const tes = {
       const N = window.NPC, n = [...N._uji.NPC.values()][0], tunggu = () => new Promise(ok => setTimeout(ok, 400));
       await tunggu(); const awal = N.periksa();
       const rusak = () => n.a.model.traverse(x => { if (x.isMesh) { const pr = renderer.properties.get(x.material); if (pr.currentProgram) pr.currentProgram.diagnostics = { runnable: false, programLog: 'uji: link gagal' }; } });
-      rusak(); const teksGagal = N.diagnosa(); const t1 = N.periksa(); const bahan1 = []; n.a.model.traverse(x => { if (x.isMesh) bahan1.push([x.material.type, Object.prototype.hasOwnProperty.call(x.material, 'onBeforeCompile')]); });
+      // uji gambar di diagnosa bisa memasang program baru; kegagalan sungguhan tetap gagal
+      rusak(); const teksGagal = N.diagnosa(); rusak(); const t1 = N.periksa(); const bahan1 = []; n.a.model.traverse(x => { if (x.isMesh) bahan1.push([x.material.type, Object.prototype.hasOwnProperty.call(x.material, 'onBeforeCompile')]); });
       await tunggu(); rusak(); const t2 = N.periksa(); const bahan2 = []; n.a.model.traverse(x => { if (x.isMesh) bahan2.push(x.material.type); });
       return { awal, t1, t2, aman: N.aman(), simpan: localStorage.getItem('npcAman'), bahan1, bahan2, gagal: /GAGAL/.test(teksGagal) && /uji: link gagal/.test(teksGagal), webgl: /WebGL[12] · tekstur \d+/.test(teksGagal) };
     });

@@ -281,11 +281,12 @@
     baris.push('Mode aman: ' + AMAN + ' · perbaikan: ' + JSON.stringify(PERBAIKI) + ' · tulang tekstur float: ' + c.floatVertexTextures + ' · karakter termuat: ' + Object.keys(TPL).join(', '));
     for (const n of NPC.values()) {
       baris.push(`NPC ${n.id} (${jenisAman(n.o.type)}) siap=${!!n.a} mode=${n.mode} posisi=${n.p ? n.p.x.toFixed(1) + ',' + n.p.y.toFixed(2) + ',' + n.p.z.toFixed(1) : '-'} tampak=${(() => { for (let x = n.g; x; x = x.parent) if (!x.visible) return false; return true; })()}`);
-      if (n.a && n.a.model) { const u = ujiGambar(n), p = new THREE.Vector3(), sk = new THREE.Vector3(); n.badan.getWorldPosition(p); n.badan.getWorldScale(sk);
-        baris.push(`  uji gambar${u && u.sembunyi ? ' (' + u.sembunyi + ' mesh tersembunyi)' : ''} K=${u && u.K} A=${u && u.A} B=${u && u.B} C=${u && u.C} ukuran=${u && u.ukuran}${u && u.galat ? ' galat=' + u.galat : ''} · dunia ${p.toArray().map(v => v.toFixed(1)).join(',')} skala ${sk.x.toFixed(2)}`); }
       if (n.a && n.a.model) n.a.model.traverse(x => { if (!x.isMesh) return; const mt = x.material, im = mt.map && mt.map.image, pr = renderer.properties.get(mt), pg = pr && pr.currentProgram;
         baris.push(`  · ${x.name || 'mesh'}${x.visible ? '' : ' TERSEMBUNYI'} ${x.isSkinnedMesh ? 'berkulit ' + x.skeleton.bones.length + ' tulang' : ''} ${mt.type} peta=${im ? im.width + '×' + im.height + ' α' + rataAlfa(im) : '-'} transp=${!!mt.transparent} αuji=${mt.alphaTest} op=${mt.opacity} sisi=${mt.side} skin=${!!mt.skinning} morf=${!!mt.morphTargets} program=${!pg ? 'belum' : pg.diagnostics && pg.diagnostics.runnable === false ? 'GAGAL' : 'ok'}`);
         if (pg && pg.diagnostics && pg.diagnostics.runnable === false) baris.push('    ' + String(pg.diagnostics.programLog || '').slice(0, 300) + ' | ' + String((pg.diagnostics.vertexShader || {}).log || '').slice(0, 300) + ' | ' + String((pg.diagnostics.fragmentShader || {}).log || '').slice(0, 300)); });
+      // uji gambar SETELAH status program dicatat: menggambar ke target lain bisa memasang program baru
+      if (n.a && n.a.model) { const u = ujiGambar(n), p = new THREE.Vector3(), sk = new THREE.Vector3(); n.badan.getWorldPosition(p); n.badan.getWorldScale(sk);
+        baris.push(`  uji gambar${u && u.sembunyi ? ' (' + u.sembunyi + ' mesh tersembunyi)' : ''} K=${u && u.K} A=${u && u.A} B=${u && u.B} C=${u && u.C} ukuran=${u && u.ukuran}${u && u.galat ? ' galat=' + u.galat : ''} · dunia ${p.toArray().map(v => v.toFixed(1)).join(',')} skala ${sk.x.toFixed(2)}`); }
     }
     baris.push('Galat terakhir:'); for (const g of CATAT.slice(-12)) baris.push('  ' + g);
     return baris.join('\n');
