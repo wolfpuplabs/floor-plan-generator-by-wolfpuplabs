@@ -10,7 +10,7 @@
    Di editor NPC berdiri di tempatnya (bernapas & berkedip) agar mudah ditata. */
 /* global FPS, LIHAT, camera, levelGroups, PROJECT, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
    adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, MOOD, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
-   renderInspector, addTransformFields, toast, BAHASA, renderer */
+   renderInspector, addTransformFields, toast, BAHASA, renderer, scene */
 (function () {
   'use strict';
   const UK = 512, SIMPAN_MAKS = 24, MAKS = 12;
@@ -157,6 +157,8 @@
   // sudah dimuat, dan keadaannya (posisi, kegiatan, kursi, bobot pose) dibawa ke grup baru selama tempat asalnya sama
   let AMAN = 0; try { AMAN = Math.min(2, +localStorage.getItem('npcAman') || 0); } catch (e) { AMAN = 0; }
   const TPL = {};
+  // perbaikan hasil uji gambar (lihat ujiDanPerbaiki), diingat per perangkat
+  let PERBAIKI = {}; try { PERBAIKI = JSON.parse(localStorage.getItem('npcPerbaiki') || '{}') || {}; } catch (e) { PERBAIKI = {}; }
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
   let PERINGATAN = false;
@@ -166,7 +168,7 @@
     try { peta = materiUntuk(tpl, jenisAman(o.type) + ':' + benihAman(o), penampilan(o)); }
     catch (e) { peta = new Map(); console.warn('NPC warna', e); if (!PERINGATAN) { PERINGATAN = true; toast('Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli'); } }
     const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
-    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material)) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); x.raycast = () => {}; x.userData.bersama = true; } });
+    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.peta === 'polos') x.material = bahanPolos(x, o); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; } });
     n.badan.add(m);
     setTimeout(() => periksa(), 1500); setTimeout(() => periksa(), 4000);
     const a = { g: n.badan, tuju: { po: 0 } }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
@@ -193,26 +195,96 @@
       if (!pg) belum++; else if (pg.diagnostics && pg.diagnostics.runnable === false) gagal++; else ok++; });
     return { gagal, ok, belum };
   }
+  /* UJI GAMBAR: NPC digambar sendirian (lapisan 31) ke target kecil dalam 3 varian untuk memilah sebab NPC tak terlihat
+     padahal programnya sah — A normal, B tanpa tekstur, C tanpa tekstur & tanpa tulang (pose ikat). Nilai = piksel terisi. */
+  function ujiGambar(n) {
+    const m = n.a && n.a.model; if (!m || !renderer || typeof scene === 'undefined') return null;
+    m.updateMatrixWorld(true);
+    const kotak = new THREE.Box3().setFromObject(m), pusat = kotak.getCenter(new THREE.Vector3()), uk = kotak.getSize(new THREE.Vector3());
+    if (kotak.isEmpty() || !isFinite(pusat.x + pusat.y + pusat.z)) return { galat: 'kotak batas kosong / NaN' };
+    const cam = new THREE.PerspectiveCamera(35, 0.5, 0.05, 50), q = n.badan.getWorldQuaternion(new THREE.Quaternion());
+    cam.position.copy(pusat).add(new THREE.Vector3(0, 0, 1).applyQuaternion(q).multiplyScalar(Math.max(0.5, uk.y) * 1.9)); cam.lookAt(pusat); cam.layers.set(31); cam.updateMatrixWorld();
+    const rt = new THREE.WebGLRenderTarget(32, 64), buf = new Uint8Array(32 * 64 * 4), mesh = [], temp = [], hasil = { ukuran: uk.toArray().map(v => +v.toFixed(2)).join('×') };
+    m.traverse(x => { if (x.isMesh) { mesh.push([x, x.material, x.layers.mask]); x.layers.enable(31); } });
+    const latar = scene.background, kabut = scene.fog, warna = renderer.getClearColor(new THREE.Color()), alfa = renderer.getClearAlpha(), rtLama = renderer.getRenderTarget(), auto = renderer.autoClear;
+    try {
+      scene.background = null; scene.fog = null; renderer.setClearColor(0x000000, 0); renderer.autoClear = true; renderer.setRenderTarget(rt);
+      // K = pembanding: kotak biasa di tempat NPC (NPC dikeluarkan dari lapisan uji) — 0 berarti uji ini tak berlaku di perangkat
+      const kotakUji = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      kotakUji.position.copy(pusat); kotakUji.layers.set(31); scene.add(kotakUji); kotakUji.updateMatrixWorld(true);
+      for (const [x, , mask] of mesh) x.layers.mask = mask;
+      renderer.clear(); renderer.render(scene, cam); renderer.readRenderTargetPixels(rt, 0, 0, 32, 64, buf);
+      let kk = 0; for (let i = 0; i < buf.length; i += 4) if (buf[i] | buf[i + 1] | buf[i + 2] | buf[i + 3]) kk++; hasil.K = kk;
+      scene.remove(kotakUji); kotakUji.geometry.dispose(); kotakUji.material.dispose();
+      for (const [x] of mesh) x.layers.enable(31);
+      for (const v of ['A', 'B', 'C']) {
+        for (const [x, mt] of mesh) { if (v === 'A') { x.material = mt; continue; }
+          const b = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, skinning: v === 'B' && !!x.isSkinnedMesh, morphTargets: v === 'B' && !!mt.morphTargets }); temp.push(b); x.material = b; }
+        renderer.clear(); renderer.render(scene, cam); renderer.readRenderTargetPixels(rt, 0, 0, 32, 64, buf);
+        let k = 0; for (let i = 0; i < buf.length; i += 4) if (buf[i] | buf[i + 1] | buf[i + 2] | buf[i + 3]) k++; hasil[v] = k;
+      }
+    } catch (e) { hasil.galat = (e && e.message) || String(e); }
+    finally {
+      for (const [x, mt, mask] of mesh) { x.material = mt; x.layers.mask = mask; }
+      scene.background = latar; scene.fog = kabut; renderer.setClearColor(warna, alfa); renderer.autoClear = auto; renderer.setRenderTarget(rtLama);
+      rt.dispose(); for (const b of temp) b.dispose();
+    }
+    return hasil;
+  }
+  // perbaikan menurut uji gambar, diingat per perangkat: tekstur kosong → tekstur asli (tanpa pewarnaan) → warna polos;
+  // tulang tak terbaca (B = 0, C > 0) → matriks tulang lewat uniform, bukan tekstur float
+  const simpanPerbaiki = () => { try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } };
+  function tulangUniform() { if (!renderer.capabilities.floatVertexTextures) return; renderer.capabilities.floatVertexTextures = false;
+    scene.traverse(x => { if (x.isSkinnedMesh) { x.skeleton.boneTexture = null; for (const mt of [].concat(x.material)) mt.needsUpdate = true; } }); }
+  if (PERBAIKI.tulang && renderer) tulangUniform();
+  const SIMPAN_POLOS = new Map();
+  function bahanPolos(x, o) {
+    const lk = penampilan(o), w = /face|wajah|head/i.test(x.name) ? lk.kulit : lk.atas, kunci = x.material.uuid + ':' + w.join(',');
+    if (!SIMPAN_POLOS.has(kunci)) SIMPAN_POLOS.set(kunci, new THREE.MeshBasicMaterial({ color: new THREE.Color(w[0] / 255, w[1] / 255, w[2] / 255), skinning: true, morphTargets: !!x.material.morphTargets }));
+    return SIMPAN_POLOS.get(kunci);
+  }
+  function terapkanPerbaikan() {
+    for (const n of NPC.values()) if (n.badan) { const lama = n.a && n.a.model; if (lama) { n.badan.remove(lama); n.a = null; } }
+    for (const n of NPC.values()) { const t = TPL[jenisAman(n.o.type)]; if (t && n.badan) rakit(n, t, n); }
+  }
+  let UJI_T = -1e9;
+  function ujiDanPerbaiki() {
+    if (performance.now() - UJI_T < 8000) return;
+    const n = [...NPC.values()].find(x => x.a && x.a.model && x.badan && x.badan.visible); if (!n) return;
+    UJI_T = performance.now();
+    const r = ujiGambar(n); n.uji = r; if (!r || r.galat || r.A > 0 || !r.K) return;
+    if (r.C === 0 && !PERBAIKI.kul) { PERBAIKI.kul = 1; simpanPerbaiki(); for (const m of NPC.values()) if (m.a && m.a.model) m.a.model.traverse(x => { if (x.isMesh) x.frustumCulled = false; }); toast('NPC selalu digambar (tanpa pemangkasan pandang) di perangkat ini'); }
+    else if (r.B === 0 && r.C > 0 && !PERBAIKI.tulang) { PERBAIKI.tulang = 1; simpanPerbaiki(); tulangUniform(); toast('NPC memakai jalur tulang cadangan di perangkat ini'); }
+    else if (r.B > 0 && PERBAIKI.peta !== 'polos') { PERBAIKI.peta = PERBAIKI.peta ? 'polos' : 'asli'; simpanPerbaiki(); terapkanPerbaikan(); toast(PERBAIKI.peta === 'asli' ? 'NPC memakai tekstur asli di perangkat ini' : 'NPC memakai warna polos di perangkat ini'); }
+    else return;
+    UJI_T = -1e9; kotor(); setTimeout(() => ujiDanPerbaiki(), 1500);
+  }
   function periksa() {
     let gagal = false;
     for (const n of NPC.values()) if (n.a && n.a.model && statusProgram(n.a.model).gagal) gagal = true;
-    if (!gagal || AMAN >= 2) return false;
+    if (!gagal) { try { ujiDanPerbaiki(); } catch (e) { console.warn('NPC uji', e && e.message); } return false; }
+    if (AMAN >= 2) return false;
     AMAN++; try { localStorage.setItem('npcAman', String(AMAN)); } catch (e) { /* mode privat */ }
     for (const n of NPC.values()) if (n.a && n.a.model) n.a.model.traverse(x => { if (x.isMesh) x.material = bahanAman(x.material, AMAN); });
     toast(AMAN >= 2 ? 'NPC memakai tampilan sederhana di perangkat ini' : 'NPC memakai tampilan aman di perangkat ini');
     kotor(); setTimeout(() => periksa(), 2500);
     return true;
   }
+  // rata-rata alfa tekstur (0–255) dari salinan 8×8 — 0 berarti tekstur kosong / tak terbaca
+  function rataAlfa(im) { try { const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 8, 8);
+    const d = x.getImageData(0, 0, 8, 8).data; let j = 0; for (let i = 3; i < d.length; i += 4) j += d[i]; c.width = c.height = 0; return Math.round(j / 64); } catch (e) { return '?'; } }
   function diagnosa() {
     const c = renderer.capabilities, gl = renderer.getContext(), baris = [];
     baris.push('Plan23D · diagnosa NPC · ' + new Date().toISOString());
     baris.push('Peramban: ' + navigator.userAgent);
     baris.push(`WebGL${c.isWebGL2 ? '2' : '1'} · tekstur ${c.maxTextures} · tekstur verteks ${c.maxVertexTextures} · uniform verteks ${c.maxVertexUniforms} · uniform fragmen ${gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)} · atribut ${c.maxAttributes} · varying ${c.maxVaryings} · float verteks ${c.floatVertexTextures} · ukuran ${c.maxTextureSize} · presisi ${c.precision}`);
-    baris.push('Mode aman: ' + AMAN + ' · karakter termuat: ' + Object.keys(TPL).join(', '));
+    baris.push('Mode aman: ' + AMAN + ' · perbaikan: ' + JSON.stringify(PERBAIKI) + ' · tulang tekstur float: ' + c.floatVertexTextures + ' · karakter termuat: ' + Object.keys(TPL).join(', '));
     for (const n of NPC.values()) {
       baris.push(`NPC ${n.id} (${jenisAman(n.o.type)}) siap=${!!n.a} mode=${n.mode} posisi=${n.p ? n.p.x.toFixed(1) + ',' + n.p.y.toFixed(2) + ',' + n.p.z.toFixed(1) : '-'} tampak=${(() => { for (let x = n.g; x; x = x.parent) if (!x.visible) return false; return true; })()}`);
+      if (n.a && n.a.model) { const u = ujiGambar(n), p = new THREE.Vector3(), sk = new THREE.Vector3(); n.badan.getWorldPosition(p); n.badan.getWorldScale(sk);
+        baris.push(`  uji gambar K=${u && u.K} A=${u && u.A} B=${u && u.B} C=${u && u.C} ukuran=${u && u.ukuran}${u && u.galat ? ' galat=' + u.galat : ''} · dunia ${p.toArray().map(v => v.toFixed(1)).join(',')} skala ${sk.x.toFixed(2)}`); }
       if (n.a && n.a.model) n.a.model.traverse(x => { if (!x.isMesh) return; const mt = x.material, im = mt.map && mt.map.image, pr = renderer.properties.get(mt), pg = pr && pr.currentProgram;
-        baris.push(`  · ${x.name || 'mesh'} ${x.isSkinnedMesh ? 'berkulit ' + x.skeleton.bones.length + ' tulang' : ''} ${mt.type} peta=${im ? im.width + '×' + im.height : '-'} skin=${!!mt.skinning} morf=${!!mt.morphTargets} program=${!pg ? 'belum' : pg.diagnostics && pg.diagnostics.runnable === false ? 'GAGAL' : 'ok'}`);
+        baris.push(`  · ${x.name || 'mesh'} ${x.isSkinnedMesh ? 'berkulit ' + x.skeleton.bones.length + ' tulang' : ''} ${mt.type} peta=${im ? im.width + '×' + im.height + ' α' + rataAlfa(im) : '-'} transp=${!!mt.transparent} αuji=${mt.alphaTest} op=${mt.opacity} sisi=${mt.side} skin=${!!mt.skinning} morf=${!!mt.morphTargets} program=${!pg ? 'belum' : pg.diagnostics && pg.diagnostics.runnable === false ? 'GAGAL' : 'ok'}`);
         if (pg && pg.diagnostics && pg.diagnostics.runnable === false) baris.push('    ' + String(pg.diagnostics.programLog || '').slice(0, 300) + ' | ' + String((pg.diagnostics.vertexShader || {}).log || '').slice(0, 300) + ' | ' + String((pg.diagnostics.fragmentShader || {}).log || '').slice(0, 300)); });
     }
     baris.push('Galat terakhir:'); for (const g of CATAT.slice(-12)) baris.push('  ' + g);
@@ -560,5 +632,5 @@
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
   window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && /^(gandeng|dansa|ikut|temani)$/.test(n.mode) ? ['lepas'] : []; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
-    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
+    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };
 })();

@@ -15792,6 +15792,13 @@ function enterFPS(opsi){
   const depan=opsi&&opsi.depan===true&&PROJECT.active===0&&!tanahSaja?titikDepan(lv):null;
   if(depan){ sx=depan.x; sz=depan.z; FPS.yaw=depan.yaw; }
   let [px,pz]=fpsResolveWalls(sx,sz,FPS.feet);
+  // NPC yang sedang dipilih = titik target orbit: jangan muncul DI DALAM badannya (kamera di dalam model → NPC tak
+  // terlihat & bidikan selalu mengenainya). Berdiri ±1,6 m di depannya (atau samping/belakang bila terhalang), menghadapnya
+  for(const o of lv.objects){ if(o.kind!=='npc'||Math.hypot(o.x-px,o.z-pz)>0.9) continue;
+    const a0=o.rotY||0;
+    for(const da of [0,Math.PI/2,-Math.PI/2,Math.PI]){ const [qx,qz]=fpsResolveWalls(o.x+Math.sin(a0+da)*1.6,o.z+Math.cos(a0+da)*1.6,FPS.feet);
+      if(Math.hypot(o.x-qx,o.z-qz)>=1){ px=qx; pz=qz; break; } }
+    FPS.yaw=Math.atan2(o.x-px,o.z-pz); break; }
   // di atas bukit hasil kuas tanah: berdiri di permukaannya, bukan terkubur
   const g=fpsGround(px,pz,FPS.feet+(tanahSaja?3.5:0.5));
   if(g!=null && Math.abs(g-FPS.feet)<(tanahSaja?4:1.5)) FPS.feet=g;
