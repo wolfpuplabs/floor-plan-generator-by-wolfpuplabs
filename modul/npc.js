@@ -10,7 +10,7 @@
    Di editor NPC berdiri di tempatnya (bernapas & berkedip) agar mudah ditata. */
 /* global FPS, LIHAT, camera, levelGroups, PROJECT, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
    adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, MOOD, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
-   renderInspector, addTransformFields, toast, BAHASA */
+   renderInspector, addTransformFields, toast, BAHASA, renderer */
 (function () {
   'use strict';
   const UK = 512, SIMPAN_MAKS = 24, MAKS = 12;
@@ -155,6 +155,7 @@
   const kotor = () => { BAYANG_KOTOR = Math.max(BAYANG_KOTOR, 1); };
   // bangun ulang adegan (edit, masuk mode jalan, pintu…) membuat grup baru: NPC dipasang seketika bila karakternya
   // sudah dimuat, dan keadaannya (posisi, kegiatan, kursi, bobot pose) dibawa ke grup baru selama tempat asalnya sama
+  let AMAN = 0; try { AMAN = Math.min(2, +localStorage.getItem('npcAman') || 0); } catch (e) { AMAN = 0; }
   const TPL = {};
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
@@ -165,12 +166,67 @@
     try { peta = materiUntuk(tpl, jenisAman(o.type) + ':' + benihAman(o), penampilan(o)); }
     catch (e) { peta = new Map(); console.warn('NPC warna', e); if (!PERINGATAN) { PERINGATAN = true; toast('Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli'); } }
     const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
-    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material)) x.material = peta.get(x.material); x.raycast = () => {}; x.userData.bersama = true; } });
+    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material)) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); x.raycast = () => {}; x.userData.bersama = true; } });
     n.badan.add(m);
+    setTimeout(() => periksa(), 1500); setTimeout(() => periksa(), 4000);
     const a = { g: n.badan, tuju: { po: 0 } }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
     if (lama && lama.a) { for (const k of ['pw', 'w', 'v', 'mikro', 'lambai', 'diam']) if (lama.a[k] != null) a[k] = Array.isArray(lama.a[k]) ? lama.a[k].slice() : lama.a[k]; }
     if (n.mode && n.p) pasangBadan(n);
     kotor();
+  }
+  /* MODE TAMPIL AMAN (iPad / WebKit): program shader NPC (berkulit + morf + sisipan GI per ruang) bisa gagal
+     dikompilasi di sebagian GPU sehingga karakter tidak tergambar sama sekali. Program diperiksa setelah tampil;
+     bila gagal: 1 = bahan sama tanpa sisipan GI, 2 = bahan Lambert sederhana. Tingkat diingat per perangkat. */
+  const CATAT = [];
+  for (const [k, t] of [['error', 'E'], ['warn', 'W']]) { const asli = console[k]; console[k] = function (...a) { try { CATAT.push(t + ': ' + a.map(x => (x && x.message) || String(x)).join(' ').replace(/\s+/g, ' ').slice(0, 400)); if (CATAT.length > 30) CATAT.shift(); } catch (e) { /* abaikan */ } return asli.apply(console, a); }; }
+  const SIMPAN_AMAN = new Map();
+  function bahanAman(mt, t) {
+    const kunci = mt.uuid + ':' + t; if (SIMPAN_AMAN.has(kunci)) return SIMPAN_AMAN.get(kunci);
+    let b;
+    if (t >= 2) b = new THREE.MeshLambertMaterial({ map: mt.map || null, color: mt.color ? mt.color.clone() : 0xffffff, transparent: !!mt.transparent, opacity: mt.opacity, alphaTest: mt.alphaTest || 0, side: mt.side, skinning: true, morphTargets: !!mt.morphTargets });
+    else { b = mt.clone(); b.onBeforeCompile = function () { /* tanpa sisipan GI */ }; }
+    b.name = (mt.name || '') + ' (aman ' + t + ')'; SIMPAN_AMAN.set(kunci, b); return b;
+  }
+  function statusProgram(m) {
+    let gagal = 0, ok = 0, belum = 0;
+    m.traverse(x => { if (!x.isMesh) return; const pr = renderer.properties.get(x.material), pg = pr && pr.currentProgram;
+      if (!pg) belum++; else if (pg.diagnostics && pg.diagnostics.runnable === false) gagal++; else ok++; });
+    return { gagal, ok, belum };
+  }
+  function periksa() {
+    let gagal = false;
+    for (const n of NPC.values()) if (n.a && n.a.model && statusProgram(n.a.model).gagal) gagal = true;
+    if (!gagal || AMAN >= 2) return false;
+    AMAN++; try { localStorage.setItem('npcAman', String(AMAN)); } catch (e) { /* mode privat */ }
+    for (const n of NPC.values()) if (n.a && n.a.model) n.a.model.traverse(x => { if (x.isMesh) x.material = bahanAman(x.material, AMAN); });
+    toast(AMAN >= 2 ? 'NPC memakai tampilan sederhana di perangkat ini' : 'NPC memakai tampilan aman di perangkat ini');
+    kotor(); setTimeout(() => periksa(), 2500);
+    return true;
+  }
+  function diagnosa() {
+    const c = renderer.capabilities, gl = renderer.getContext(), baris = [];
+    baris.push('Plan23D · diagnosa NPC · ' + new Date().toISOString());
+    baris.push('Peramban: ' + navigator.userAgent);
+    baris.push(`WebGL${c.isWebGL2 ? '2' : '1'} · tekstur ${c.maxTextures} · tekstur verteks ${c.maxVertexTextures} · uniform verteks ${c.maxVertexUniforms} · uniform fragmen ${gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)} · atribut ${c.maxAttributes} · varying ${c.maxVaryings} · float verteks ${c.floatVertexTextures} · ukuran ${c.maxTextureSize} · presisi ${c.precision}`);
+    baris.push('Mode aman: ' + AMAN + ' · karakter termuat: ' + Object.keys(TPL).join(', '));
+    for (const n of NPC.values()) {
+      baris.push(`NPC ${n.id} (${jenisAman(n.o.type)}) siap=${!!n.a} mode=${n.mode} posisi=${n.p ? n.p.x.toFixed(1) + ',' + n.p.y.toFixed(2) + ',' + n.p.z.toFixed(1) : '-'} tampak=${(() => { for (let x = n.g; x; x = x.parent) if (!x.visible) return false; return true; })()}`);
+      if (n.a && n.a.model) n.a.model.traverse(x => { if (!x.isMesh) return; const mt = x.material, im = mt.map && mt.map.image, pr = renderer.properties.get(mt), pg = pr && pr.currentProgram;
+        baris.push(`  · ${x.name || 'mesh'} ${x.isSkinnedMesh ? 'berkulit ' + x.skeleton.bones.length + ' tulang' : ''} ${mt.type} peta=${im ? im.width + '×' + im.height : '-'} skin=${!!mt.skinning} morf=${!!mt.morphTargets} program=${!pg ? 'belum' : pg.diagnostics && pg.diagnostics.runnable === false ? 'GAGAL' : 'ok'}`);
+        if (pg && pg.diagnostics && pg.diagnostics.runnable === false) baris.push('    ' + String(pg.diagnostics.programLog || '').slice(0, 300) + ' | ' + String((pg.diagnostics.vertexShader || {}).log || '').slice(0, 300) + ' | ' + String((pg.diagnostics.fragmentShader || {}).log || '').slice(0, 300)); });
+    }
+    baris.push('Galat terakhir:'); for (const g of CATAT.slice(-12)) baris.push('  ' + g);
+    return baris.join('\n');
+  }
+  function tampilDiagnosa() {
+    let d = document.getElementById('npcDiagnosa');
+    if (!d) { d = el('div', 'float'); d.id = 'npcDiagnosa'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Diagnosa NPC');
+      d.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%);z-index:80;width:min(560px,calc(100% - 24px));max-height:80%;display:flex;flex-direction:column;gap:8px;padding:12px';
+      const pre = el('pre'); pre.style.cssText = 'margin:0;overflow:auto;white-space:pre-wrap;font-size:.7rem;max-height:60vh;user-select:text;-webkit-user-select:text';
+      const r = el('div', 'row'), salin = el('button', 'btn sm', 'Salin'), tutup = el('button', 'btn sm ghost', 'Tutup');
+      salin.onclick = () => { try { navigator.clipboard.writeText(pre.textContent).then(() => toast('Diagnosa disalin'), () => toast('Tidak bisa menyalin — ambil tangkapan layar saja')); } catch (e) { toast('Tidak bisa menyalin — ambil tangkapan layar saja'); } };
+      tutup.onclick = () => d.remove(); r.append(salin, tutup); d.append(pre, r); document.body.appendChild(d); }
+    d.querySelector('pre').textContent = diagnosa();
   }
   // siluet tembus pandang selama karakter diunduh & disiapkan (unduhan ±12 MB pertama kali)
   let SIL = null;
@@ -475,10 +531,12 @@
     } else muatModul('kartunpc').then(() => { if (window.KARTU_NPC) renderInspector(); }, () => {});
     fRow(ins, 'Jelajah (m)', numInput(jelajahAman(d), 0.5, v => { d.params.jelajah = clamp(v, 0, 15); rebuildScene(); }, 0, 15));
     ins.appendChild(el('p', 'hint', 'Di mode jalan NPC berjalan-jalan dalam radius ini dari tempatnya, duduk di kursi / sofa terdekat, duduk di lantai, joget, mengantuk & melambai. 0 = tetap di tempat. Di mode jalan bidik lalu Ngobrol untuk bercakap (kepribadian & ingatan per NPC), atau Sapa.'));
+    const bd = el('button', 'btn sm ghost', '🩺 Diagnosa tampilan'); bd.title = 'Bila NPC tidak terlihat di perangkat ini'; bd.onclick = () => { periksa(); tampilDiagnosa(); }; ins.appendChild(bd);
     ins.appendChild(el('div', 'section-title', 'Penempatan'));
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
   window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, ekstra: id => { const n = NPC.get(id); return n && (n.mode === 'gandeng' || n.mode === 'dansa') ? ['lepas'] : []; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+    diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
 })();
