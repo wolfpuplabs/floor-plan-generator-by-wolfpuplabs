@@ -58,11 +58,19 @@ export const tes = {
       const jenis = [...document.querySelectorAll('#npcObrol .no-pilih button')].map(x => x.textContent);
       [...document.querySelectorAll('#npcObrol .no-pilih button')].find(x => /BBQ/.test(x.textContent)).click();
       let layar = false; for (let i = 0; i < 100 && !layar; i++) { layar = !!document.getElementById('kencanLayar'); await new Promise(r => setTimeout(r, 20)); }
+      // ilustrasi adegan (bukan emoji): kanvas berisi latar BBQ + NPC itu sendiri (model 3D berwarna sama)
+      const kan = $('#kencanLayar .kl-gambar canvas'); await new Promise(r => setTimeout(r, 300));
+      const gambar = kan ? { w: kan.width, h: kan.height, tokoh: kan.dataset.tokoh, bingkai: kan.dataset.bingkai, hidup: +(kan.dataset.t || 0) > 0.1, emoji: !!$('#kencanLayar .kl-ikon'),
+        ragam: (() => { const d = kan.getContext('2d').getImageData(0, 0, kan.width, kan.height).data, w = new Set(); for (let i = 0; i < d.length; i += 4 * 997) w.add(d[i] >> 4 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4) << 8); return w.size; })(),
+        tokohPx: (() => { const d = kan.getContext('2d').getImageData(560, 120, 1, 1).data; return [d[0], d[1], d[2]]; })() } : null;
       const teks = []; for (let i = 0; i < 200 && document.getElementById('kencanLayar'); i++) { const p = $('#kencanLayar p'); if (p && p.textContent && teks.at(-1) !== p.textContent) teks.push(p.textContent); await new Promise(r => setTimeout(r, 10)); }
       for (let i = 0; i < 60 && !window.DIALOG.terbuka(); i++) await new Promise(r => setTimeout(r, 50)); await new Promise(r => setTimeout(r, 800));
       const st = window.NPC.keadaan('nA'), jarak = Math.hypot(st.p.x - camera.position.x, st.p.z - camera.position.z);
-      return { jenis, layar, teks, naik: m.s - s0, kh: m.kh, kencan: m.kencan.length, jarak: +jarak.toFixed(2), suasana: MOOD, log: [...document.querySelectorAll('#npcObrol .no-m')].map(x => x.textContent).slice(-2), lagi: null }; });
+      return { jenis, layar, gambar, teks, naik: m.s - s0, kh: m.kh, kencan: m.kencan.length, jarak: +jarak.toFixed(2), suasana: MOOD, log: [...document.querySelectorAll('#npcObrol .no-m')].map(x => x.textContent).slice(-2), lagi: null }; });
     assert.equal(c.jenis.length, 5); assert.ok(c.jenis.some(t => /BBQ.*⭐/.test(t)), 'favorit ditandai: ' + c.jenis);
+    assert.ok(c.gambar && c.gambar.w === 960 && c.gambar.h === 540 && !c.gambar.emoji && c.gambar.ragam > 40, 'ilustrasi kencan: ' + JSON.stringify(c.gambar));
+    assert.equal(c.gambar.tokoh, '1', 'NPC tampil di ilustrasi');
+    assert.deepEqual([c.gambar.bingkai, c.gambar.hidup], ['20', true], 'ilustrasi bergerak: NPC 20 bingkai, dilukis ulang tiap bingkai');
     assert.ok(c.layar && c.teks.some(t => /BBQ|arang|charcoal/i.test(t)) && c.teks.some(t => /favorit|favourite/i.test(t)) && /Malam pun tiba|Night fell/.test(c.teks.at(-1)), 'cutscene: ' + JSON.stringify(c.teks));
     assert.ok(c.naik >= 10 && c.kencan === 1 && c.jarak < 1.6 && c.suasana === 'malam', 'sesudah kencan: ' + JSON.stringify(c));
     assert.ok(c.log.some(t => /BBQ/.test(t)), 'NPC mengingat kencan: ' + c.log);

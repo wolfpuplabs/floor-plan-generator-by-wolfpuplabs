@@ -35,7 +35,7 @@ export const tes = {
       out.selamY = +camera.position.y.toFixed(2); out.biru = +$('#aktHud .ak-air').style.opacity;
       K._uji.tekan(1, false); for (let i = 0; i < 60; i++) K.langkah(0.05);
       out.naikY = +camera.position.y.toFixed(2); out.biru2 = +$('#aktHud .ak-air').style.opacity;
-      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 17 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 18 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 19 }).po];
+      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 17 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 18 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 20 }).po];
       return out; });
     assert.deepEqual([r.kunci, r.renang, r.hud, r.airY, r.feet, r.masuk], [true, true, true, -0.12, -0.12, true]);
     assert.ok(Math.abs(r.camY - (-0.01)) < 0.06, 'kepala tepat di atas air: ' + r.camY);

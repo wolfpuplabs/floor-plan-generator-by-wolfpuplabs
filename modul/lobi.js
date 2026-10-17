@@ -377,8 +377,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       a.ly = (Math.random() * 2 - 1) * (jauh ? 0.55 : 0.2); a.lp = (Math.random() * 2 - 1) * 0.1 - 0.03; a.lr = (Math.random() * 2 - 1) * 0.07; }
     const kh = Math.min(1, dt * 2.4); a.cy += (a.ly - a.cy) * kh; a.cp += (a.lp - a.cp) * kh; a.cr += (a.lr - a.cr) * kh;
     // pose (JEV-103): bobot halus tiap pose menuju pose yang diminta peserta atau varian diam otomatis
-    const P = pilihPose(a, dt), pw = a.pw && a.pw.length > 18 ? a.pw : (a.pw = Array.from({ length: 19 }, (_, i) => (a.pw && a.pw[i]) || 0)), duduk = Math.max(pw[1], pw[2], pw[8], pw[9], pw[16], pw[17], pw[18]);
-    for (let i = 1; i <= 18; i++) if (i !== 5) pw[i] += ((P === i ? 1 : 0) - pw[i]) * Math.min(1, dt * (i <= 2 || i >= 8 ? 3.2 : 2));
+    const P = pilihPose(a, dt), pw = a.pw && a.pw.length > 19 ? a.pw : (a.pw = Array.from({ length: 20 }, (_, i) => (a.pw && a.pw[i]) || 0)), duduk = Math.max(pw[1], pw[2], pw[8], pw[9], pw[16], pw[17], pw[18], pw[19]);
+    for (let i = 1; i <= 19; i++) if (i !== 5) pw[i] += ((P === i ? 1 : 0) - pw[i]) * Math.min(1, dt * (i <= 2 || i >= 8 ? 3.2 : 2));
     const bebas = 1 - duduk, wd = w * bebas, dd = d * bebas;          // kaki jalan/diam memudar saat duduk
     // kaki
     const pahaL = 0.42 * wd * s, pahaR = -0.42 * wd * s;
@@ -409,7 +409,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const po = (a.tuju && a.tuju.po) | 0;
     if (po === 5 && a.poLalu !== 5) mulaiLambai(a);
     a.poLalu = po;
-    if ((po >= 1 && po <= 4) || (po >= 6 && po <= 18)) { a.mikro = null; return po; }
+    if ((po >= 1 && po <= 4) || (po >= 6 && po <= 19)) { a.mikro = null; return po; }
     a.diam = a.v < 0.05 ? (a.diam || 0) + dt : 0;
     if (a.diam > 45) return 4;                                        // lama diam: mengantuk
     if (a.diam > 4 && adaMusik()) return 3;                           // musik: joget pelan
@@ -464,7 +464,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       tambah('spine', 0.02, 0, 0.1 * s, b); tambah('chest', 0, 0, 0.12 * s, b); tambah('neck', 0, 0, 0.16 * s, b); tambah('head', 0.05, 0.1 * s, 0.32 * s, b);
       tambah('leftUpperArm', 0.5, 0, 0.1, b); tambah('rightUpperArm', 0.5, 0, -0.1, b); tambah('leftLowerArm', 0.6, 0, 0, b); tambah('rightLowerArm', 0.6, 0, 0, b); turun += 0.42 * b; }
     if (pw[9] > 0.001) { const b = pw[9], napas = 0.025 * Math.sin(t * 1.3);
-      tambah('hips', Math.PI / 2, 0, 0, b); tambah('chest', napas, 0, 0, b);   // pinggul: + = rebah ke belakang (telentang, kepala ke −Z) — diukur pada F.vrm & M.vrm tambah('head', 0.28, 0.15 * Math.sin(t * 0.13), 0, b);
+      tambah('hips', Math.PI / 2, 0, 0, b); tambah('spine', -0.16, 0, 0, b); tambah('neck', -0.42, 0, 0, b); tambah('chest', napas, 0, 0, b);   // tulang belakang & leher menekuk: kepala naik ke bantal (tanda diukur)   // pinggul: + = rebah ke belakang (telentang, kepala ke −Z) — diukur pada F.vrm & M.vrm tambah('head', 0.28, 0.15 * Math.sin(t * 0.13), 0, b);
       tambah('leftUpperArm', -0.08, 0, 0.12, b); tambah('rightUpperArm', -0.08, 0, -0.12, b); tambah('leftLowerArm', 0.25, 0, 0, b); tambah('rightLowerArm', 0.25, 0, 0, b);
       tambah('leftUpperLeg', 0.32, 0, 0.04, b); tambah('leftLowerLeg', -0.55, 0, 0, b); tambah('rightUpperLeg', 0.04, 0, -0.04, b);
       turun += ((a.tinggiPinggul || 0.9) - 0.09) * b; }
@@ -521,6 +521,15 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       tambah('leftLowerLeg', -0.12 - 0.18 * Math.max(0, -k4), 0, 0, b); tambah('rightLowerLeg', -0.12 - 0.18 * Math.max(0, k4), 0, 0, b);
       tambah('leftFoot', 0.6, 0, 0, b); tambah('rightFoot', 0.6, 0, 0, b);
       turun += ((a.tinggiPinggul || 0.9) + 0.06) * b; }
+    /* 19 berbaring miring memeluk (ranjang, ramah semua umur): badan rebah ke samping menghadap pasangan — a.sisi 1 kepala
+       ke kiri avatar, −1 ke kanan; lengan atas merangkul ke depan, lengan bawah menekuk di bawah kepala, lutut sedikit ditekuk */
+    if (pw[19] > 0.001) { const b = pw[19], s = a.sisi === -1 ? -1 : 1, atas = s === 1 ? 'right' : 'left', bawah = s === 1 ? 'left' : 'right', napas = 0.02 * Math.sin(t * 1.3);
+      tambah('hips', 0, 0, -s * Math.PI / 2, b); tambah('spine', 0.08, 0, 0, b); tambah('chest', 0.06 + napas, 0, 0, b);
+      tambah('spine', 0, 0, 0.1 * s, b); tambah('neck', 0.1, 0, 0.45 * s, b); tambah('head', 0.12, 0, 0.35 * s, b);   // leher menekuk ke atas: kepala di bantal
+      tambah(atas + 'UpperArm', 1.05, 0, 0.65 * s, b); tambah(atas + 'LowerArm', 0.5, 0, 0, b);   // lengan atas menjulur ke depan & turun: merangkul pasangan
+      tambah(bawah + 'UpperArm', 1.0, 0, 0, b); tambah(bawah + 'LowerArm', 1.5, 0, 0, b);
+      tambah('leftUpperLeg', 0.55, 0, 0, b); tambah('rightUpperLeg', 0.42, 0, 0, b); tambah('leftLowerLeg', -0.85, 0, 0, b); tambah('rightLowerLeg', -0.7, 0, 0, b);
+      turun += ((a.tinggiPinggul || 0.9) - 0.14) * b; }
     // gerak kecil saat diam
     const M = a.mikro;
     if (M) { const e = amplop(M.t, M.d);
@@ -722,10 +731,10 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   const hapusSemuaAvatar = () => { for (const id of [...L.avatar.keys()]) hapusAvatar(id); };
   function posAman(d) {
     if (!d || !d.jalan) return null;
-    // po: pose (JEV-103 0–5, JEV-109 6–10, JEV-110 11–14 aktivitas, 15–16 kasih sayang, JEV-113 17–18 berenang); ad: adegan/area tempat peserta berada (JEV-105) — avatar hanya tampil di area yang sama
+    // po: pose (JEV-103 0–5, JEV-109 6–10, JEV-110 11–14 aktivitas, 15–16 kasih sayang, JEV-113 17–18 berenang, 19 berbaring miring memeluk); ad: adegan/area tempat peserta berada (JEV-105) — avatar hanya tampil di area yang sama
     const po = Math.round(+d.po) || 0, ad = typeof d.ad === 'string' && /^[A-Za-z0-9_-]{1,24}$/.test(d.ad) ? d.ad : '';
     return { x: angkaAman(d.x, -1e4, 1e4), y: angkaAman(d.y, -100, 500), z: angkaAman(d.z, -1e4, 1e4), yaw: angkaAman(d.yaw, -100, 100),
-      ...(po >= 1 && po <= 18 ? { po } : {}), ...(ad ? { ad } : {}) };
+      ...(po >= 1 && po <= 19 ? { po } : {}), ...(ad ? { ad } : {}) };
   }
   function perbaruiPos(id, pos) {
     if (L.saya && id === L.saya.id) return;
