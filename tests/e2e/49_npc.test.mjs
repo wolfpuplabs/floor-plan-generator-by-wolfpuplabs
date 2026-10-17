@@ -128,10 +128,10 @@ export const tes = {
       const rusak = U.ujiGambar(n); U.ujiDanPerbaiki();
       const m = [...U.NPC.values()][0], pulih = U.ujiGambar(m), kanvas = []; m.a.model.traverse(x => { if (x.isMesh) kanvas.push(!!(x.material.map && x.material.map.isCanvasTexture)); });
       const d = N.diagnosa();
-      return { normal, tetap, rusak, pulih, kanvas, simpan: localStorage.getItem('npcPerbaiki'), diag: /uji gambar A=\d+ B=\d+ C=\d+/.test(d) && /perbaikan: \{"peta":"asli"\}/.test(d) };
+      return { normal, tetap, rusak, pulih, kanvas, simpan: localStorage.getItem('npcPerbaiki'), diag: /uji gambar K=\d+ A=\d+ B=\d+ C=\d+/.test(d) && /perbaikan: \{"peta":"asli"\}/.test(d) };
     });
     await page.evaluate(() => localStorage.removeItem('npcPerbaiki'));
-    assert.ok(r.normal.A > 50 && r.normal.B > 50 && r.normal.C > 50, 'normal: ' + JSON.stringify(r.normal));
+    assert.ok(r.normal.K > 20 && r.normal.A > 50 && r.normal.B > 50 && r.normal.C > 50, 'normal: ' + JSON.stringify(r.normal));
     assert.equal(r.tetap, '{}', 'tanpa perbaikan bila tergambar');
     assert.ok(r.rusak.A === 0 && r.rusak.B > 50, 'tekstur kosong: ' + JSON.stringify(r.rusak));
     assert.ok(r.pulih.A > 50, 'pulih dengan tekstur asli: ' + JSON.stringify(r.pulih));
