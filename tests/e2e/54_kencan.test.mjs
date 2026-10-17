@@ -36,8 +36,12 @@ export const tes = {
       for (let i = 0; i < 100 && !window.KENCAN; i++) await new Promise(r => setTimeout(r, 50)); window.KENCAN._uji.laju(40); return !$('#npcObrol').hidden; }, id);
     assert.equal(await buka('nA'), true);
     // mulai obrolan pilihan: 4 opsi (A–D), D = akhiri; suasana tampil
-    const a = await page.evaluate(async () => { $('#npcObrol [data-cepat="pilih"]').click(); for (let i = 0; i < 60 && $('#npcObrol .no-pilih').hidden; i++) await new Promise(r => setTimeout(r, 50));
-      return { opsi: [...document.querySelectorAll('#npcObrol .no-pilih button')].map(b => [b.textContent.slice(0, 2), b.dataset.efek]), mood: $('#npcObrol .no-mood').textContent }; });
+    // obrolan pilihan tampil langsung (obrolan utama) tanpa tombol; laci Sosial / Aktivitas tertutup
+    const a = await page.evaluate(async () => { for (let i = 0; i < 60 && (!$('#npcObrol .no-pilih') || $('#npcObrol .no-pilih').hidden); i++) await new Promise(r => setTimeout(r, 50));
+      const laci = [...document.querySelectorAll('#npcObrol .no-laci')].map(x => x.hidden), ketik = $('#npcObrol .no-form').hidden;
+      $('#npcObrol [data-tab="sosial"]').click(); const sosial = [!$('#npcObrol .no-laci').hidden, document.querySelectorAll('#npcObrol .no-laci')[1].hidden]; $('#npcObrol [data-tab="sosial"]').click();
+      return { laci, ketik, sosial, opsi: [...document.querySelectorAll('#npcObrol .no-pilih button')].map(b => [b.textContent.slice(0, 2), b.dataset.efek]), mood: $('#npcObrol .no-mood').textContent }; });
+    assert.deepEqual([a.laci, a.ketik, a.sosial], [[true, true], true, [true, true]]);
     assert.deepEqual(a.opsi.map(x => x[0]), ['A.', 'B.', 'C.', 'D.']); assert.equal(a.opsi[3][1], 'akhir');
     assert.match(a.mood, /Senang|Happy/); assert.match(a.mood, /Kesal|Annoyed/);
     // pilih ucapan yang menambah "nyaman" sampai 2 → relasi naik; pilihan "Mau kencan sama aku?" muncul (relasi ≥ 20)

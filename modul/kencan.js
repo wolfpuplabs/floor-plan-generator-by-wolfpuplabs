@@ -72,7 +72,6 @@
     const s = document.createElement('style'); s.id = 'kencanGaya';
     s.textContent = `.no-mood{display:flex;gap:10px;flex-wrap:wrap;font-size:.74rem;color:var(--muted);margin-top:-4px}.no-mood b{color:var(--txt);font-weight:600}
 .no-status{font-size:.68rem;color:#e86a8a;border:1px solid #e86a8a;border-radius:999px;padding:1px 6px;white-space:nowrap}
-#npcObrol{overflow-y:auto}#npcObrol.memilih .no-chip:not(.no-kuis){display:none}
 .no-pilih{display:flex;flex-direction:column;gap:6px}.no-pilih button{text-align:left;justify-content:flex-start;white-space:normal;min-height:38px;line-height:1.3}
 #kencanLayar{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transition:opacity .6s;color:#f1f1f1;text-align:center;padding:24px}
 #kencanLayar.masuk{opacity:1}#kencanLayar.keluar{opacity:0}#kencanLayar .kl-ikon{font-size:2.4rem}
@@ -86,7 +85,7 @@
       gaya();
       P.mood = el('div', 'no-mood'); P.info.after(P.mood);
       P.status = el('span', 'no-status', '💞 ' + T('Pacaran', 'Dating')); P.status.hidden = true; P.relasi.before(P.status);
-      P.pilih = el('div', 'no-pilih'); P.pilih.hidden = true; P.chip.before(P.pilih);
+      P.pilih = el('div', 'no-pilih'); P.pilih.hidden = true; P.kuis.after(P.pilih);
     }
     return P;
   }
@@ -109,6 +108,8 @@
       m.ksebut = kc.length; setTimeout(() => { if (kini()) D.ucap(tx2(JENIS[akhir.j].sesudah), 'salam'); }, 700);
     }
     D.simpan(); segar(m);
+    // obrolan pilihan = obrolan utama: pilihan A–D langsung tersedia setelah salam
+    setTimeout(() => { if (kini() && !PIL && !D.sibuk() && suasana(m).kesal < 3) tampil(opsiBawaan(m)); }, 400);
   }
 
   /* ---------- obrolan pilihan ---------- */
@@ -151,11 +152,12 @@
       }).finally(() => clearTimeout(t));
   }
   function tampil(opsi) {
-    const P = siapkanUI(); PIL = opsi; P.pilih.textContent = ''; P.pilih.hidden = false; P.d.classList.add('memilih');   // tombol cepat & aksi disembunyikan selama memilih
+    const P = siapkanUI(); PIL = opsi; P.pilih.textContent = ''; P.pilih.hidden = false;
     opsi.forEach((o, i) => { const b = el('button', 'btn sm ghost', 'ABCDE'[i] + '. ' + o.t); b.dataset.pilih = String(i);
       b.dataset.efek = o.aksi || (o.akhir ? 'akhir' : Object.keys(o.efek || {}).map(k => k + (o.efek[k] > 0 ? '+' : '-')).join(',')); b.onclick = () => pilih(o); P.pilih.appendChild(b); });
+    if (P.isi) P.isi.scrollTop = P.isi.scrollHeight;
   }
-  function sembunyikan() { const P = D.panel(); if (P && P.pilih) { P.pilih.hidden = true; P.pilih.textContent = ''; P.d.classList.remove('memilih'); } PIL = null; }
+  function sembunyikan() { const P = D.panel(); if (P && P.pilih) { P.pilih.hidden = true; P.pilih.textContent = ''; } PIL = null; }
   async function giliran(teks, efek, akhir) {
     const K = kini(); if (!K || D.sibuk()) return;
     const m = D.ingatan(K.id);
@@ -163,7 +165,7 @@
     sembunyikan();
     const s = suasana(m);
     if (s.kesal >= 3) return marah(m);
-    if (akhir) { D.ucap(tx2(BALAS.pamit[0]), 'salam'); return; }
+    if (akhir) { D.ucap(tx2(BALAS.pamit[0]), 'salam'); setTimeout(() => { if (kini() && kini().id === K.id) D.tutup(); }, 1300); return; }
     D.sibuk(true); const ketik = D.tulis('n', '…'); ketik.classList.add('no-ketik');
     let r = null;
     if (await D.cekAI()) { try { r = await tanyaAI(m, teks || T('(mengajak ngobrol)', '(starts a conversation)')); } catch (e) { r = null; } }
