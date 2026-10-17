@@ -91,7 +91,9 @@
   }
 
   /* ---------- panel ---------- */
-  let SUARA = false; try { SUARA = localStorage.getItem('npcSuara') === '1'; } catch (e) { SUARA = false; }
+  // suara NPC (modul/npc.js): 'gumam' gumaman sintetis (bawaan) · 'tts' suara bacaan peramban · 'mati'
+  let SUARA = 'gumam'; try { const v = localStorage.getItem('npcSuara'); SUARA = v === '1' ? 'tts' : v === 'mati' ? 'mati' : 'gumam'; } catch (e) { SUARA = 'gumam'; }
+  const IKON_SUARA = { gumam: ['💬', 'Suara NPC: gumaman'], tts: ['🗣️', 'Suara NPC: dibacakan'], mati: ['🔇', 'Suara NPC: mati'] };
   let P = null, KINI = null, KUIS = null;
   function gaya() {
     if (document.getElementById('npcObrolGaya')) return;
@@ -140,7 +142,10 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const d = el('div', 'float'); d.id = 'npcObrol'; d.hidden = true; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Obrolan NPC');
     const kepala = el('div', 'no-kepala'), nama = el('b'), peran = el('span', 'tag'), ai = el('span', 'no-ai', 'AI'), relasi = el('span', 'no-relasi'), tutup = el('button', 'btn ghost sm', '×');
     ai.hidden = true; tutup.setAttribute('aria-label', 'Tutup obrolan'); tutup.title = 'Tutup obrolan'; tutup.onclick = () => tutupObrol();
-    const suara = el('button', 'btn ghost sm no-suara', '🔊'); suara.title = 'Suara NPC'; suara.setAttribute('aria-label', 'Suara NPC'); suara.setAttribute('aria-pressed', String(SUARA)); suara.onclick = () => { SUARA = !SUARA; suara.setAttribute('aria-pressed', String(SUARA)); try { localStorage.setItem('npcSuara', SUARA ? '1' : '0'); } catch (e) { /* mode privat */ } if (!SUARA && window.speechSynthesis) speechSynthesis.cancel(); };
+    const suara = el('button', 'btn ghost sm no-suara'), tampilSuara = () => { const [i, t] = IKON_SUARA[SUARA]; suara.textContent = i; suara.title = t; suara.setAttribute('aria-label', t); suara.setAttribute('aria-pressed', String(SUARA !== 'mati')); suara.dataset.mode = SUARA; };
+    tampilSuara(); if (window.NPC && window.NPC.suara) window.NPC.suara.mode(SUARA);
+    suara.onclick = () => { SUARA = { gumam: 'tts', tts: 'mati', mati: 'gumam' }[SUARA]; tampilSuara(); if (window.NPC && window.NPC.suara) window.NPC.suara.mode(SUARA);   // gumam → dibacakan → mati
+      try { localStorage.setItem('npcSuara', SUARA === 'tts' ? '1' : SUARA === 'mati' ? 'mati' : 'gumam'); } catch (e) { /* mode privat */ } if (SUARA !== 'tts' && window.speechSynthesis) speechSynthesis.cancel(); };
     kepala.append(nama, peran, ai, relasi, suara, tutup);
     const batangL = el('div', 'no-batang'), batang = el('i'); batangL.appendChild(batang);
     const info = el('div', 'no-info'), skor = el('b'), lagi = el('span'), jatah = el('span'); jatah.style.marginLeft = 'auto'; info.append(skor, lagi, jatah);
@@ -178,12 +183,14 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     saatSkor = tandaSkor;
   }
   function bicara(teks) {
-    if (!SUARA || !window.speechSynthesis || !KINI) return;
+    if (SUARA !== 'tts' || !window.speechSynthesis || !KINI) return;
     try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(teks.replace(/\*[^*]*\*/g, ' ').trim()); if (!u.text) return;
       u.lang = L() === 'id' ? 'id-ID' : 'en-US'; u.pitch = KINI.o.type === 'M' ? 0.9 : 1.25; u.rate = KINI.c.id === 'anak' ? 1.15 : 1; speechSynthesis.speak(u); } catch (e) { /* tanpa suara */ }
   }
-  function ucap(teks, n) {                                                 // NPC berbicara: tulis + gerak kecil
+  function ucap(teks, n) {                                                 // NPC berbicara: tulis + gerak kecil + suara
     tulis('n', teks); bicara(teks);
+    const S = window.NPC && window.NPC.suara;
+    if (S && KINI) { const lama = SUARA === 'gumam' ? S.gumam(KINI.id, teks, n) : 0; if (n === 'hina') S.huft(KINI.id, lama + 0.15); }   // kesal / menolak: "huft" 
     const m = ingatan(KINI.id); m.r.push({ d: 'n', t: teks.slice(0, 300) }); m.r = m.r.slice(-20); simpan(); segarRelasi();
     if (window.NPC && n !== 'diam') window.NPC.ngobrol(KINI.id, n);
   }
@@ -237,6 +244,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     tulis('u', o); m.r.push({ d: 'u', t: o }); m.r = m.r.slice(-20);
     ubahSkor(m, ok ? 6 : -3);
     ucap(ok ? (id ? 'Betul! Ternyata kamu memperhatikan, ya. 😊' : 'Right! You really pay attention. 😊') : (id ? 'Salah… kamu belum benar-benar kenal aku, ya.' : 'Wrong… you don\'t really know me yet, huh.'), ok ? 'puji' : 'hina');
+    if (ok && window.NPC && window.NPC.suara) window.NPC.suara.sorak(KINI.id, 0.9);                        // jawaban benar: bersorak
   }
   function tampilHadiah() {
     const h = P.hadiah; if (!h.hidden) { h.hidden = true; return; }

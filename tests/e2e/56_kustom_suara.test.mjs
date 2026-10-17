@@ -1,0 +1,108 @@
+import assert from 'node:assert/strict';
+import { muatProyekJSON } from './harness.mjs';
+
+// JEV-116: kustom tampilan karakter (warna per bagian & pakaian) untuk NPC & avatar Main bareng; suara NPC sintetis —
+// gumaman saat bicara, sorakan, "huft"
+const rumah = { v: 1, levels: [{ name: 'L1', height: 3, walls: [[0, 0, 8, 0], [8, 0, 8, 6], [8, 6, 0, 6], [0, 6, 0, 0]].map(([x1, z1, x2, z2], i) => ({ id: 'w' + i, x1, z1, x2, z2, thickness: 0.15, openings: [] })),
+  objects: [{ id: 'nF', kind: 'npc', type: 'F', x: 3, y: 0, z: 3, rotY: 0, sx: 1, sy: 1, sz: 1, params: { benih: 5, jelajah: 0 } }] }] };
+const siap = page => page.waitForFunction(() => window.NPC && window.NPC.keadaan('nF') && window.NPC.keadaan('nF').siap, undefined, { timeout: 90000 });
+
+export const tes = {
+  'kustom NPC: pilih warna per bagian & pakaian di inspector → model diwarnai ulang, pakaian renang dipakai terus; warna otomatis mengembalikan': async (page) => {
+    await muatProyekJSON(page, rumah);
+    await siap(page);
+    await page.evaluate(() => { select('obj', 'nF'); renderInspector(); });
+    const r = await page.evaluate(async () => {
+      const N = window.NPC, n = () => N._uji.NPC.get('nF'), peta = () => { const t = []; n().a.model.traverse(m => { if (m.isMesh && m.material.map) t.push(m.material.map); }); return t; };
+      const inp = [...document.querySelectorAll('#inspector .npc-warna input[type=color]')], out = { bagian: inp.map(i => i.dataset.bagian), pakaian: [...document.querySelectorAll('#inspector .npc-sunting-bar option')].map(o => o.value) };
+      const t0 = peta();
+      const atas = document.querySelector('#inspector .npc-warna input[data-bagian="atas"]'); atas.value = '#ff0000'; atas.dispatchEvent(new Event('change'));
+      for (let i = 0; i < 40 && peta()[0] === t0[0]; i++) await new Promise(r => setTimeout(r, 50));
+      const o = L().objects.find(x => x.id === 'nF');
+      out.warna = o.params.warna; out.penampilan = N.penampilan(o).atas; out.berubah = peta().some((t, i) => t !== t0[i]); out.ulang = !document.querySelector('#inspector .npc-sunting-bar button').hidden;
+      // pakaian: bikini dipakai terus (bukan hanya saat berenang)
+      const sel = document.querySelector('#inspector .npc-sunting-bar select'); sel.value = 'renang'; sel.dispatchEvent(new Event('change'));
+      enterFPS(); for (let i = 0; i < 200 && (n().a.baju || '') !== '_renang'; i++) { await new Promise(r => setTimeout(r, 50)); N.langkah(0.05); }
+      out.baju = n().a.baju; out.paramBaju = o.params.baju; exitFPS();
+      // warna otomatis: warna pilihan dihapus
+      select('obj', 'nF'); renderInspector(); document.querySelector('#inspector .npc-sunting-bar button').click();
+      out.sesudahUlang = L().objects.find(x => x.id === 'nF').params.warna || null;
+      out.aman = [N.warnaAman({ atas: '#ABCDEF', rambut: 'red', kulit: '#12345g', lain: '#000000' }), N.bajuAman('M', 'renang2'), N.bajuAman('F', 'renang2'), N.bajuAman('F', '../x')];
+      return out; });
+    assert.deepEqual(r.bagian, ['kulit', 'rambut', 'atas', 'bawah', 'sepatu']);
+    assert.deepEqual(r.pakaian, ['', 'renang', 'renang2']);
+    assert.deepEqual([r.warna, r.penampilan, r.berubah, r.ulang], [{ atas: '#ff0000' }, [255, 0, 0], true, true], JSON.stringify(r));
+    assert.deepEqual([r.baju, r.paramBaju], ['_renang', 'renang'], 'pakaian renang dipakai terus');
+    assert.equal(r.sesudahUlang, null, 'warna otomatis');
+    assert.deepEqual(r.aman, [{ atas: '#abcdef' }, '', 'renang2', '']);
+  },
+
+  'kustom avatar Main bareng: warna & pakaian dipilih di panel, diingat, terkirim tersaring (avAman)': async (page) => {
+    await muatProyekJSON(page, rumah);
+    await page.evaluate(() => document.querySelectorAll('#lobiSiap .lobi-kartu')[0].click());
+    const r = await page.evaluate(async () => {
+      for (let i = 0; i < 100 && document.querySelectorAll('#lobiSiap .lobi-av-contoh input[type=color]').length < 5; i++) await new Promise(r => setTimeout(r, 50));
+      const out = { jumlah: document.querySelectorAll('#lobiSiap .lobi-av-contoh input[type=color]').length };
+      const rb = document.querySelector('#lobiSiap .lobi-av-contoh input[data-bagian="rambut"]'); rb.value = '#3366ff'; rb.dispatchEvent(new Event('change'));
+      await new Promise(r => setTimeout(r, 300));
+      const sel = document.querySelector('#lobiSiap .lobi-av-contoh select'); sel.value = 'renang2'; sel.dispatchEvent(new Event('change'));
+      await new Promise(r => setTimeout(r, 300));
+      out.d = { warna: AVATAR_LOBI.d.warna, baju: AVATAR_LOBI.d.baju }; out.simpan = JSON.parse(localStorage.getItem('lobiAvatar3D'));
+      await muatModul('lobi'); const A = window.LOBI.avAman;
+      out.aman = [A({ bawaan: 'F', benih: 1, warna: { rambut: '#3366FF', atas: 'javascript:1' }, baju: 'renang2' }), A({ bawaan: 'M', benih: 1, warna: 'x', baju: 'renang2' }), A({ bawaan: 'M', baju: 'renang' })];
+      // Ganti warna: benih baru, warna pilihan dilepas, pakaian tetap
+      [...document.querySelectorAll('#lobiSiap .lobi-av-warna > button')].find(b => /Ganti warna/.test(b.textContent)).click();
+      out.ganti = { warna: AVATAR_LOBI.d.warna || null, baju: AVATAR_LOBI.d.baju };
+      return out; });
+    assert.equal(r.jumlah, 5);
+    assert.deepEqual(r.d, { warna: { rambut: '#3366ff' }, baju: 'renang2' });
+    assert.deepEqual([r.simpan.warna, r.simpan.baju], [{ rambut: '#3366ff' }, 'renang2']);
+    assert.deepEqual(r.aman, [{ bawaan: 'F', benih: 1, warna: { rambut: '#3366ff' }, baju: 'renang2' }, { bawaan: 'M', benih: 1 }, { bawaan: 'M', baju: 'renang' }]);
+    assert.deepEqual(r.ganti, { warna: null, baju: 'renang2' });
+  },
+
+  'NPC tetap tergambar: tanda "tulang cadangan" lama dibuang saat dimuat; NPC berenang / berbaring tidak ikut uji gambar (dulu salah deteksi → badan meledak / hilang di iPad)': async (page) => {
+    await page.evaluate(() => localStorage.setItem('npcPerbaiki', JSON.stringify({ tulang: 1, kul: 1 })));
+    await muatProyekJSON(page, rumah);
+    await siap(page);
+    const r = await page.evaluate(() => {
+      const U = window.NPC._uji, n = U.NPC.get('nF');
+      const out = { simpan: JSON.parse(localStorage.getItem('npcPerbaiki')), perbaikan: { ...U.perbaikan() }, fvt: renderer.capabilities.floatVertexTextures };
+      n.renang = { airY: 0 }; n.uji = undefined; U.ujiDanPerbaiki(); out.renang = n.uji === undefined; n.renang = null;
+      const pw = n.a.pw.slice(); n.a.pw[9] = 1; U.ujiDanPerbaiki(); out.baring = n.uji === undefined; n.a.pw = pw;
+      U.ujiDanPerbaiki(); out.tegak = !!n.uji && n.uji.A > 50;
+      localStorage.removeItem('npcPerbaiki');
+      return out; });
+    assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1 }, { kul: 1 }, true]);
+    assert.deepEqual([r.renang, r.baring, r.tegak], [true, true, true], JSON.stringify(r));
+  },
+
+  'suara NPC: gumaman sepanjang teks (mati = diam), huft saat kesal, sorakan; tombol suara gumam → dibacakan → mati': async (page) => {
+    await muatProyekJSON(page, rumah);
+    await siap(page);
+    const r = await page.evaluate(async () => {
+      // hitung simpul audio yang dibuat (tanpa mendengarkan)
+      const H = { osc: 0, buf: 0 }, P = (window.AudioContext || window.webkitAudioContext).prototype, o1 = P.createOscillator, o2 = P.createBufferSource;
+      P.createOscillator = function () { H.osc++; return o1.call(this); }; P.createBufferSource = function () { H.buf++; return o2.call(this); };
+      enterFPS(); camera.position.set(3, 1.6, 4.5); for (let i = 0; i < 3; i++) window.NPC.langkah(0.05);
+      const S = window.NPC.suara, out = {}; S.mode('gumam');
+      out.pendek = +S.gumam('nF', 'Halo!', 'salam').toFixed(2); out.oscPendek = H.osc;
+      out.panjang = +S.gumam('nF', 'Hari ini cuacanya cerah sekali, ya. Kamu mau jalan-jalan ke taman?', 'tanya').toFixed(2);
+      H.osc = H.buf = 0; S.huft('nF'); out.huft = { ...H }; H.osc = H.buf = 0; S.sorak('nF'); out.sorak = { ...H };
+      S.mode('mati'); H.osc = H.buf = 0; out.mati = S.gumam('nF', 'Halo!', 'salam'); S.huft('nF'); S.sorak('nF'); out.matiNode = H.osc + H.buf; S.mode('gumam');
+      camera.position.set(3, 1.6, 40); out.jauh = S.gumam('nF', 'Halo!', 'salam');                  // terlalu jauh: tidak terdengar
+      // obrolan: tombol suara berputar & tersimpan; ucapan kesal memicu huft
+      await muatModul('kartunpc'); await muatModul('dialog'); window.DIALOG._ai(false); camera.position.set(3, 1.6, 4.5);
+      window.DIALOG.buka('nF'); const b = document.querySelector('#npcObrol .no-suara'); out.mode = [b.dataset.mode];
+      b.click(); out.mode.push(b.dataset.mode, localStorage.getItem('npcSuara')); b.click(); out.mode.push(b.dataset.mode, localStorage.getItem('npcSuara')); b.click(); out.mode.push(b.dataset.mode);
+      H.osc = H.buf = 0; window.DIALOG._dalam.ucap('Hmm. Itu kurang sopan.', 'hina'); out.ucapHina = { ...H };
+      P.createOscillator = o1; P.createBufferSource = o2; exitFPS();
+      return out; });
+    assert.ok(r.pendek > 0.1 && r.panjang > r.pendek * 3 && r.oscPendek >= 2, 'gumaman mengikuti panjang teks: ' + JSON.stringify(r));
+    assert.ok(r.huft.buf >= 2 && r.huft.osc >= 1, 'huft: desah derau + "hu": ' + JSON.stringify(r.huft));
+    assert.ok(r.sorak.osc >= 2 && r.sorak.buf >= 3, 'sorakan "ye-aay" + tepuk tangan: ' + JSON.stringify(r.sorak));
+    assert.deepEqual([r.mati, r.matiNode, r.jauh], [0, 0, 0]);
+    assert.deepEqual(r.mode, ['gumam', 'tts', '1', 'mati', 'mati', 'gumam']);
+    assert.ok(r.ucapHina.buf >= 2 && r.ucapHina.osc >= 3, 'ucapan kesal: gumaman + huft: ' + JSON.stringify(r.ucapHina));
+  }
+};

@@ -229,7 +229,7 @@
         s.senang = Math.min(3, s.senang + 1); s.nyaman = Math.min(3, s.nyaman + 1); s.tertarik = Math.min(3, s.tertarik + 1);
         m.kh = D.hariIni(); m.kencan = (Array.isArray(m.kencan) ? m.kencan : []).concat([{ j, h: D.hariIni() }]).slice(-8); m.ksebut = m.kencan.length;
         const naik = D.ubahSkor(m, bonus); D.simpan();
-        if (window.NPC) { window.NPC.hadirkan(K.id); window.NPC.hati(K.id); }
+        if (window.NPC) { window.NPC.hadirkan(K.id); window.NPC.hati(K.id); if (window.NPC.suara) window.NPC.suara.sorak(K.id, 0.3); }
         if (typeof toast === 'function') toast('💐 ' + T('Kencan selesai', 'Date finished') + ' · +' + Math.round(naik) + ' ❤');
         if (window.DIALOG.buka(K.id)) setTimeout(() => { if (kini() && kini().id === K.id) D.ucap(tx2(J.sesudah), 'puji'); }, 600);
       });
@@ -442,7 +442,7 @@
     if (terima) {
       m.status = 'pacaran'; m.jadian = D.hariIni(); D.ubahSkor(m, 10); D.simpan();
       D.ucap(ucapan || T('Yay! Mulai hari ini kita pacaran, ya. 💞', 'Yay! From today we\'re together. 💞'), 'puji');
-      if (window.NPC) window.NPC.hati(K.id);
+      if (window.NPC) { window.NPC.hati(K.id); if (window.NPC.suara) window.NPC.suara.sorak(K.id, 0.6); }
       if (typeof toast === 'function') toast('💞 ' + T(`Kamu dan ${K.c.nama} sekarang berpacaran!`, `You and ${K.c.nama} are now dating!`));
     } else {
       s.tertarik = 1; D.ubahSkor(m, -4); D.simpan();

@@ -33,13 +33,47 @@
     [232, 150, 170], [170, 150, 212], [210, 190, 156], [116, 78, 52], [40, 92, 60], [232, 120, 52], [70, 96, 140], [244, 232, 206], [60, 62, 68], [238, 120, 108]];
   const BAWAH = [[62, 84, 120], [40, 52, 82], [30, 30, 34], [120, 124, 130], [196, 176, 140], [92, 72, 52], [72, 86, 58], [236, 234, 228], [140, 40, 46]];
   const SEPATU = [null, null, [28, 28, 30], [92, 62, 42], [150, 150, 156], [178, 42, 48], [44, 64, 120]];
+  const BAGIAN = [['kulit', 'Kulit'], ['rambut', 'Rambut'], ['atas', 'Atasan'], ['bawah', 'Bawahan'], ['sepatu', 'Sepatu']];
+  const HEX = /^#[0-9a-f]{6}$/i, keRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
   function penampilan(o) {
     const r = rng(benihAman(o) ^ (jenisAman(o.type) === 'M' ? 0x5bd1e995 : 0x27d4eb2f));
     for (let i = 0; i < 3; i++) r();
     const kulit = pilih(r, KULIT), rambut = r() < 0.14 ? pilih(r, RAMBUT_WARNA) : pilih(r, RAMBUT), atas = pilih(r, BAJU);
     let bawah = r() < 0.35 ? BAWAH[0] : pilih(r, r() < 0.5 ? BAWAH : BAJU);
     for (let i = 0; i < 4 && Math.abs(bawah[0] - atas[0]) + Math.abs(bawah[1] - atas[1]) + Math.abs(bawah[2] - atas[2]) < 60; i++) bawah = pilih(r, BAWAH);
-    return { kulit, rambut, atas, bawah, sepatu: pilih(r, SEPATU) };
+    const hasil = { kulit, rambut, atas, bawah, sepatu: pilih(r, SEPATU) }, w = warnaAman(o.params && o.params.warna);
+    if (w) for (const k in w) hasil[k] = keRgb(w[k]);                   // warna pilihan sendiri menimpa warna acak dari benih
+    return hasil;
+  }
+  /* ---------- KUSTOM TAMPILAN: warna per bagian (params.warna {kulit, rambut, atas, bawah, sepatu: '#rrggbb'}) & pakaian
+     (params.baju: '' biasa, 'renang' / 'renang2' = berkas avatar/*_renang*.vrm). Dipakai NPC & avatar Main bareng. ---------- */
+  function warnaAman(w) { if (!w || typeof w !== 'object') return null; const o = {}; for (const [k] of BAGIAN) if (typeof w[k] === 'string' && HEX.test(w[k])) o[k] = w[k].toLowerCase(); return Object.keys(o).length ? o : null; }
+  const keHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+  const kunciWarna = w => { const a = warnaAman(w); return a ? ':' + BAGIAN.map(([k]) => a[k] || '-').join(',') : ''; };
+  const PAKAIAN = { F: [['', 'Baju biasa'], ['renang', 'Bikini'], ['renang2', 'Baju renang bandeau']], M: [['', 'Baju biasa'], ['renang', 'Celana renang']] };
+  const bajuAman = (jenis, b) => ((PAKAIAN[jenis] || []).some(([k]) => k && k === b) ? b : '');
+  let GAYA_SUNTING = false;
+  // penyunting tampilan: 5 pemilih warna + pakaian + kembali ke warna otomatis; ubah(jenisPerubahan) dipanggil sesudah d.params diubah
+  function penyunting(akar, d, ubah) {
+    if (!GAYA_SUNTING) { GAYA_SUNTING = true; const st = document.createElement('style');
+      st.textContent = `.npc-warna{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.npc-warna label{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.66rem;color:var(--muted);cursor:pointer}
+.npc-warna input[type=color]{width:30px;height:30px;padding:0;border:1px solid var(--line);border-radius:50%;background:none;cursor:pointer;-webkit-appearance:none;appearance:none}
+.npc-warna input[type=color]::-webkit-color-swatch-wrapper{padding:0}.npc-warna input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
+.npc-sunting-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.74rem}.npc-sunting-bar select{flex:1;min-width:120px}`;
+      document.head.appendChild(st); }
+    d.params = d.params || {};
+    const jenis = jenisAman(d.type), p = penampilan(d), w = el('div', 'npc-warna');
+    for (const [k, l] of BAGIAN) {
+      const lb = el('label'), inp = document.createElement('input'); inp.type = 'color'; inp.value = p[k] ? keHex(p[k]) : '#f4f4f4'; inp.dataset.bagian = k; inp.title = l; inp.setAttribute('aria-label', 'Warna ' + l.toLowerCase());
+      inp.onchange = () => { d.params.warna = { ...(warnaAman(d.params.warna) || {}), [k]: inp.value.toLowerCase() }; ubah('warna'); };
+      lb.append(inp, el('span', null, l)); w.appendChild(lb);
+    }
+    const bar = el('div', 'npc-sunting-bar'), pakai = document.createElement('select'); pakai.setAttribute('aria-label', 'Pakaian');
+    for (const [v, l] of PAKAIAN[jenis]) { const op = document.createElement('option'); op.value = v; op.textContent = l; pakai.appendChild(op); }
+    pakai.value = bajuAman(jenis, d.params.baju); pakai.onchange = () => { if (pakai.value) d.params.baju = pakai.value; else delete d.params.baju; ubah('baju'); };
+    const ulang = el('button', 'btn sm ghost', '↺ Warna otomatis'); ulang.type = 'button'; ulang.hidden = !warnaAman(d.params.warna);
+    ulang.onclick = () => { delete d.params.warna; ubah('warna'); };
+    bar.append(el('span', null, 'Pakaian'), pakai, ulang); akar.append(w, bar);
   }
 
   /* ---------- PETA ATLAS (sekali per karakter) ---------- */
@@ -164,13 +198,16 @@
   const TPL = {};
   // perbaikan hasil uji gambar (lihat ujiDanPerbaiki), diingat per perangkat
   let PERBAIKI = {}; try { PERBAIKI = JSON.parse(localStorage.getItem('npcPerbaiki') || '{}') || {}; } catch (e) { PERBAIKI = {}; }
+  // 'tulang' (jalur tulang lewat uniform) dulu bisa terpasang keliru saat NPC berenang dan merusak tampilan (badan meledak /
+  // hilang): three r128 mengunci pilihan tekstur tulang saat renderer dibuat. Tanda lama dibuang.
+  if (PERBAIKI.tulang) { delete PERBAIKI.tulang; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } }
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg', 'jarak', 'pangku', 'renang', 'kolamTuju'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
   let PERINGATAN = false;
   function rakit(n, tpl, lama, baju = '') {
     const o = n.o;
     let peta;
-    try { peta = materiUntuk(tpl, jenisAman(o.type) + baju + ':' + benihAman(o), penampilan(o), baju); }
+    try { peta = materiUntuk(tpl, jenisAman(o.type) + baju + ':' + benihAman(o) + kunciWarna(o.params && o.params.warna), penampilan(o), baju); }
     catch (e) { peta = new Map(); console.warn('NPC warna', e); if (!PERINGATAN) { PERINGATAN = true; toast('Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli'); } }
     const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
     m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.peta === 'polos') x.material = bahanPolos(x, o); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; x.userData.tetapTampak = true; } });
@@ -179,7 +216,7 @@
     const a = { g: n.badan, tuju: { po: 0 }, baju, tpl }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
     if (lama && lama.a) { for (const k of ['pw', 'w', 'v', 'mikro', 'lambai', 'diam']) if (lama.a[k] != null) a[k] = Array.isArray(lama.a[k]) ? lama.a[k].slice() : lama.a[k]; }
     if (n.mode && n.p) pasangBadan(n);
-    if (n.renang && !baju) pakaiBaju(n, true);         // adegan dibangun ulang saat NPC sedang berenang
+    if ((n.renang || bajuTetap(n)) && !baju) pakaiBaju(n, true);   // sedang berenang / pakaian renang dipilih di inspector
     kotor();
   }
   // baju renang: model karakter diganti utuh (klon baru, warna dari benih yang sama); bobot pose & keadaan gerak dibawa
@@ -189,9 +226,10 @@
     if (!(kk in BAJU_RENANG)) BAJU_RENANG[kk] = muatModul('lobi').then(() => window.LOBI.muatAvatar3D({ bawaan: kk })).then(t => t, () => null);
     return BAJU_RENANG[kk];
   }
+  function bajuTetap(n) { return bajuAman(jenisAman(n.o.type), n.o.params && n.o.params.baju); }   // pakaian pilihan di inspector: dipakai terus
   function pakaiBaju(n, renang) {
     if (!n.a) return;
-    const k = jenisAman(n.o.type), suf = window.LOBI.sufiksRenang(k, benihAman(n.o)), mau = renang ? suf : '';
+    const k = jenisAman(n.o.type), tetap = bajuTetap(n), suf = tetap ? '_' + tetap : window.LOBI.sufiksRenang(k, benihAman(n.o)), mau = renang || tetap ? suf : '';
     n.bajuMau = mau;
     if ((n.a.baju || '') === mau) return;
     const ganti = tpl => { if (!tpl || !n.a || n.bajuMau !== mau || (n.a.baju || '') === mau || !diDunia(n.g)) return; n.badan.remove(n.a.model); rakit(n, tpl, { a: n.a }, mau); };
@@ -199,9 +237,9 @@
   }
   // avatar Main bareng (karakter bawaan + benih warna): klon model diwarnai sama seperti NPC — penampilan dari benih yang
   // sama di semua peserta, jadi tiap orang melihat warna yang sama (JEV-112)
-  function warnaiAvatar(model, tpl, jenis, benih, baju = '') {
-    const o = { type: jenisAman(jenis), params: { benih: benih >>> 0 } };
-    let peta; try { peta = materiUntuk(tpl, 'av:' + o.type + (/^_renang2?$/.test(baju) ? baju : '') + ':' + o.params.benih, penampilan(o), baju); } catch (e) { console.warn('avatar warna', e); return false; }
+  function warnaiAvatar(model, tpl, jenis, benih, baju = '', warna = null) {
+    const o = { type: jenisAman(jenis), params: { benih: benih >>> 0, ...(warnaAman(warna) ? { warna: warnaAman(warna) } : {}) } };
+    let peta; try { peta = materiUntuk(tpl, 'av:' + o.type + (/^_renang2?$/.test(baju) ? baju : '') + ':' + o.params.benih + kunciWarna(o.params.warna), penampilan(o), baju); } catch (e) { console.warn('avatar warna', e); return false; }
     model.traverse(x => { if (x.isMesh && peta.has(x.material)) x.material = peta.get(x.material); });
     return true;
   }
@@ -261,11 +299,8 @@
     return hasil;
   }
   // perbaikan menurut uji gambar, diingat per perangkat: tekstur kosong → tekstur asli (tanpa pewarnaan) → warna polos;
-  // tulang tak terbaca (B = 0, C > 0) → matriks tulang lewat uniform, bukan tekstur float
+  // (B = 0, C > 0 hanya dicatat di diagnosa: tulang tidak bisa dipindah ke uniform setelah renderer dibuat)
   const simpanPerbaiki = () => { try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } };
-  function tulangUniform() { if (!renderer.capabilities.floatVertexTextures) return; renderer.capabilities.floatVertexTextures = false;
-    scene.traverse(x => { if (x.isSkinnedMesh) { x.skeleton.boneTexture = null; for (const mt of [].concat(x.material)) mt.needsUpdate = true; } }); }
-  if (PERBAIKI.tulang && renderer) tulangUniform();
   const SIMPAN_POLOS = new Map();
   function bahanPolos(x, o) {
     const lk = penampilan(o), w = /face|wajah|head/i.test(x.name) ? lk.kulit : lk.atas, kunci = x.material.uuid + ':' + w.join(',');
@@ -279,11 +314,12 @@
   let UJI_T = -1e9;
   function ujiDanPerbaiki() {
     if (performance.now() - UJI_T < 8000) return;
-    const n = [...NPC.values()].find(x => x.a && x.a.model && x.badan && x.badan.visible); if (!n) return;
+    // hanya NPC yang berdiri biasa: berenang / berbaring / duduk menggeser badan keluar kotak ikat → bingkai uji meleset
+    const tegak = x => !x.renang && x.mode !== 'renang' && !(x.a.pw || []).some((w, i) => i > 0 && w > 0.05);
+    const n = [...NPC.values()].find(x => x.a && x.a.model && x.badan && x.badan.visible && tegak(x)); if (!n) return;
     UJI_T = performance.now();
     const r = ujiGambar(n); n.uji = r; if (!r || r.galat || r.A > 0 || !r.K || r.sembunyi) return;   // mesh disembunyikan kode lain: bukan soal perangkat
     if (r.C === 0 && !PERBAIKI.kul) { PERBAIKI.kul = 1; simpanPerbaiki(); for (const m of NPC.values()) if (m.a && m.a.model) m.a.model.traverse(x => { if (x.isMesh) x.frustumCulled = false; }); toast('NPC selalu digambar (tanpa pemangkasan pandang) di perangkat ini'); }
-    else if (r.B === 0 && r.C > 0 && !PERBAIKI.tulang) { PERBAIKI.tulang = 1; simpanPerbaiki(); tulangUniform(); toast('NPC memakai jalur tulang cadangan di perangkat ini'); }
     else if (r.B > 0 && PERBAIKI.peta !== 'polos') { PERBAIKI.peta = PERBAIKI.peta ? 'polos' : 'asli'; simpanPerbaiki(); terapkanPerbaikan(); toast(PERBAIKI.peta === 'asli' ? 'NPC memakai tekstur asli di perangkat ini' : 'NPC memakai warna polos di perangkat ini'); }
     else return;
     UJI_T = -1e9; kotor(); setTimeout(() => ujiDanPerbaiki(), 1500);
@@ -463,7 +499,7 @@
     if (k === 'kursi') { const ks = cariKursi(n); if (ks) { KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; return ks.d < 0.3 ? masukKursi(n) : mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); } k = 'lantai'; }
     if (k === 'lantai') return aktivitas(n, 2, 8 + Math.random() * 10);
     if (k === 'joget') return aktivitas(n, 3, 5 + Math.random() * 6);
-    if (k === 'ngantuk') return aktivitas(n, 4, 7 + Math.random() * 7);
+    if (k === 'ngantuk') { if (jarakPengunjung(n) < 6) huft(n.id, 1.2); return aktivitas(n, 4, 7 + Math.random() * 7); }
     return aktivitas(n, 0, 2.8, pilih(Math.random, ['regang', 'jam', 'bahu']));
   }
   function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = k.po || 1; n.yawTuju = k.yaw; if (k.sandar != null) n.a.sandar = k.sandar; if (k.sisi != null) n.a.sisi = k.sisi; }
@@ -606,7 +642,77 @@
     return daftar;
   }
   function selesaiTemani() { for (const n of NPC.values()) if (n.mode === 'temani') { n.mode = 'ikut'; n.po = 0; } }
-  function sorak() { for (const n of NPC.values()) if (n.mode === 'temani' && n.a) { n.sorak = 1.8; window.LOBI.gerak.mulaiLambai(n.a); } }
+  function sorak() { let i = 0; for (const n of NPC.values()) if (n.mode === 'temani' && n.a) { n.sorak = 1.8; window.LOBI.gerak.mulaiLambai(n.a); suaraSorak(n.id, 0.12 * i++); } }
+  /* ---------- SUARA NPC: disintesis WebAudio (tanpa berkas) — gumaman saat bicara (suku kata pendek bergaya "Animal Crossing":
+     nada dasar menurut karakter F / M / anak & benih, vokal dari teks, lengkung nada menurut niat: tanya naik, puji / salam
+     ceria, hina datar & rendah), sorakan "yay!" + tepuk tangan, dan "huft" (hembusan napas) saat kesal / menolak / mengantuk.
+     Volume & kiri-kanan mengikuti jarak NPC dari pengunjung. Mode (tombol suara di obrolan): gumam (bawaan), tts, mati. */
+  let MODE_SUARA = 'gumam'; try { const v = localStorage.getItem('npcSuara'); MODE_SUARA = v === '1' ? 'tts' : v === 'mati' ? 'mati' : 'gumam'; } catch (e) { MODE_SUARA = 'gumam'; }
+  let AC = null, DERAU = null;
+  const ac = () => { try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; } return AC; };
+  const FORMAN = { a: [800, 1200], i: [300, 2300], u: [350, 800], e: [500, 1900], o: [500, 900] };
+  function nadaDasar(n) {                                              // Hz: F ± 300, M ± 150, anak ± 400; ±8 % menurut benih
+    const anak = n.o.params && n.o.params.kartu === 'anak', b = (benihAman(n.o) % 1000) / 1000 - 0.5;
+    return (anak ? 390 : jenisAman(n.o.type) === 'M' ? 145 : 285) * (1 + 0.16 * b);
+  }
+  function keluaran(c, n, vol) {
+    let v = vol;
+    if (n && n.p && FPS.on) { const d = Math.hypot(camera.position.x - n.p.x, camera.position.z - n.p.z); if (d > 20) return null; v *= clamp(2 / Math.max(2, d), 0.08, 1); }
+    const g = c.createGain(); g.gain.value = v;
+    if (c.createStereoPanner && n && n.p && FPS.on) { const dx = n.p.x - camera.position.x, dz = n.p.z - camera.position.z, pn = c.createStereoPanner();
+      pn.pan.value = clamp((-Math.cos(FPS.yaw) * dx + Math.sin(FPS.yaw) * dz) / Math.max(1, Math.hypot(dx, dz)), -0.8, 0.8); g.connect(pn).connect(c.destination); }
+    else g.connect(c.destination);
+    return g;
+  }
+  function suku(c, ke, t, dur, f0, f1, vokal, skala, vol) {          // satu suku kata: gelombang gergaji → dua formant → amplop
+    const o = c.createOscillator(), g = c.createGain(), [F1, F2] = FORMAN[vokal] || FORMAN.a;
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f1, t + dur);
+    for (const [f, q, a] of [[F1 * skala, 6, 1], [F2 * skala, 9, 0.55]]) { const bp = c.createBiquadFilter(), ga = c.createGain(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q; ga.gain.value = a; o.connect(bp).connect(ga).connect(g); }
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.02, dur / 3)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.connect(ke); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function derau(c) { if (!DERAU) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; DERAU = b; } const s = c.createBufferSource(); s.buffer = DERAU; s.loop = true; return s; }
+  // gumaman: kembalikan lama (detik) agar "huft" bisa menyusul
+  function gumam(id, teks, niat) {
+    const n = NPC.get(id), c = MODE_SUARA === 'gumam' && ac(); if (!c || !n || !n.o) return 0;
+    const bersih = String(teks || '').replace(/\*[^*]*\*/g, ' ').replace(/[\u{1F000}-\u{1FFFF}\u2600-\u27BF]/gu, '').trim(); if (!bersih) return 0;
+    const ke = keluaran(c, n, 0.32); if (!ke) return 0;
+    const f = nadaDasar(n) * (niat === 'hina' ? 0.86 : niat === 'puji' || niat === 'salam' ? 1.08 : 1), skala = jenisAman(n.o.type) === 'M' ? 1 : 1.15;
+    const vok = (bersih.toLowerCase().match(/[aiueo]/g) || ['a', 'e', 'o']), tanya = /\?\s*$/.test(bersih), n0 = clamp(Math.round(bersih.replace(/\s+/g, '').length / 2.6), 2, 28);
+    let t = c.currentTime + 0.03, j = 0;
+    const jeda = []; bersih.replace(/[.,!?…;:]/g, (m, i) => { jeda.push(Math.round(i / bersih.length * n0)); return m; });
+    for (let i = 0; i < n0; i++) {
+      const dur = 0.07 + Math.random() * 0.045, akhir = i === n0 - 1, u = i / Math.max(1, n0 - 1);
+      const kontur = niat === 'hina' ? 1 - 0.06 * u : tanya && akhir ? 1.28 : 1 + 0.1 * Math.sin(i * 1.7 + u * 2) + (niat === 'puji' ? 0.12 * u : 0);
+      const f0 = f * kontur * (0.94 + Math.random() * 0.12);
+      suku(c, ke, t, dur, f0, f0 * (tanya && akhir ? 1.25 : 0.97), vok[j++ % vok.length], skala, 0.9);
+      t += dur + 0.012 + Math.random() * 0.02 + (jeda.includes(i + 1) ? 0.14 : 0);
+    }
+    return t - c.currentTime;
+  }
+  // sorakan: "ye-aay!" naik + tiga tepukan
+  function suaraSorak(id, tunda = 0) {
+    const n = NPC.get(id), c = MODE_SUARA !== 'mati' && ac(); if (!c || !n || !n.o) return;
+    const ke = keluaran(c, n, 0.4); if (!ke) return;
+    const f = nadaDasar(n) * 1.15, skala = jenisAman(n.o.type) === 'M' ? 1 : 1.15, t = c.currentTime + 0.03 + tunda;
+    suku(c, ke, t, 0.13, f, f * 1.1, 'e', skala, 0.9); suku(c, ke, t + 0.14, 0.38, f * 1.2, f * 1.55, 'a', skala, 1);
+    for (let i = 0; i < 3; i++) { const s = derau(c), bp = c.createBiquadFilter(), g = c.createGain(), tt = t + 0.1 + i * 0.13;
+      bp.type = 'bandpass'; bp.frequency.value = 1400 + Math.random() * 600; bp.Q.value = 1.2; g.gain.setValueAtTime(0.0001, tt); g.gain.exponentialRampToValueAtTime(0.7, tt + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.06);
+      s.connect(bp).connect(g).connect(ke); s.start(tt, Math.random() * 0.5); s.stop(tt + 0.08); }
+  }
+  // "huft": hembusan napas — derau melewati filter yang turun, diawali "hu" bersuara pelan, diakhiri desis "ft"
+  function huft(id, tunda = 0) {
+    const n = NPC.get(id), c = MODE_SUARA !== 'mati' && ac(); if (!c || !n || !n.o) return;
+    const ke = keluaran(c, n, 0.45); if (!ke) return;
+    const t = c.currentTime + 0.03 + tunda, s = derau(c), lp = c.createBiquadFilter(), g = c.createGain();
+    lp.type = 'bandpass'; lp.Q.value = 0.9; lp.frequency.setValueAtTime(1600, t); lp.frequency.exponentialRampToValueAtTime(420, t + 0.55);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55, t + 0.09); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.62);
+    s.connect(lp).connect(g).connect(ke); s.start(t, Math.random() * 0.3); s.stop(t + 0.65);
+    suku(c, ke, t + 0.01, 0.16, nadaDasar(n) * 0.82, nadaDasar(n) * 0.72, 'u', jenisAman(n.o.type) === 'M' ? 1 : 1.15, 0.18);
+    const s2 = derau(c), hp = c.createBiquadFilter(), g2 = c.createGain(), t2 = t + 0.6;
+    hp.type = 'highpass'; hp.frequency.value = 4200; g2.gain.setValueAtTime(0.0001, t2); g2.gain.exponentialRampToValueAtTime(0.35, t2 + 0.01); g2.gain.exponentialRampToValueAtTime(0.0001, t2 + 0.09);
+    s2.connect(hp).connect(g2).connect(ke); s2.start(t2, Math.random() * 0.3); s2.stop(t2 + 0.1);
+  }
   // NPC dalam jarak tertentu dari pengunjung (bonus kedekatan saat beraktivitas di dekatnya)
   const dekat = r => [...NPC.values()].filter(n => n.a && n.p && Math.hypot(n.p.x - camera.position.x, n.p.z - camera.position.z) <= r).map(n => n.id);
   /* ---------- BERENANG (JEV-113) ---------- geometri kolam dari modul aktivitas (window.AKT.kolam) */
@@ -825,12 +931,9 @@
     d.params = d.params || {};
     const h = el('h3', null, 'NPC'); h.appendChild(el('span', 'tag', d.type === 'M' ? 'Karakter M' : 'Karakter F')); ins.appendChild(h);
     fRow(ins, 'Karakter', selInput([['F', 'Karakter F'], ['M', 'Karakter M']], jenisAman(d.type), v => { d.type = v; HIST.label = 'Karakter NPC'; rebuildScene(); renderInspector(); }));
-    const ba = el('button', 'btn sm', '🎲 Acak penampilan'); ba.onclick = () => { d.params.benih = Math.floor(Math.random() * 4294967296); HIST.label = 'Acak penampilan NPC'; rebuildScene(); renderInspector(); };
+    const ba = el('button', 'btn sm', '🎲 Acak penampilan'); ba.onclick = () => { d.params.benih = Math.floor(Math.random() * 4294967296); delete d.params.warna; HIST.label = 'Acak penampilan NPC'; rebuildScene(); renderInspector(); };
     ins.appendChild(ba);
-    const p = penampilan(d), w = el('div', 'npc-warna');
-    for (const [k, l] of [['kulit', 'Kulit'], ['rambut', 'Rambut'], ['atas', 'Atasan'], ['bawah', 'Bawahan'], ['sepatu', 'Sepatu']]) {
-      const s = el('span'); s.title = l; s.setAttribute('aria-label', l); s.style.background = p[k] ? 'rgb(' + p[k].join(',') + ')' : '#f4f4f4'; w.appendChild(s); }
-    ins.appendChild(w);
+    penyunting(ins, d, k => { HIST.label = k === 'baju' ? 'Pakaian NPC' : 'Warna NPC'; rebuildScene(); renderInspector(); });
     const KN = window.KARTU_NPC;
     if (KN) {
       fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...KN.URUT.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], typeof d.params.kartu === 'string' && KN.KARTU[d.params.kartu] ? d.params.kartu : '',
@@ -848,7 +951,8 @@
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
   window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, renang: renangBareng, selesaiRenang, potret, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
-    warnaiAvatar, hadirkan, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
+    warnaiAvatar, penyunting, warnaAman, bajuAman, hadirkan,
+    suara: { gumam, sorak: suaraSorak, huft, mode: m => { if (m) MODE_SUARA = m; return MODE_SUARA; } }, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, kolamDekat: id => kolamDekat(NPC.get(id)), masukKolam: (id, K) => masukKolam(NPC.get(id), K), bajuRenang, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };

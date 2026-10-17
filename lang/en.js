@@ -1821,6 +1821,22 @@ window.KAMUS_EN={
   "Peluk berbaring":"Cuddle",
   "💤 Bersandar di dada":"💤 Head on chest",
   "Bersandar di dada":"Head on chest",
+  "Pakaian":"Outfit",
+  "Baju biasa":"Everyday clothes",
+  "Bikini":"Bikini",
+  "Baju renang bandeau":"Bandeau swimsuit",
+  "Celana renang":"Swim trunks",
+  "↺ Warna otomatis":"↺ Auto colors",
+  "Warna kulit":"Skin color",
+  "Warna rambut":"Hair color",
+  "Warna atasan":"Top color",
+  "Warna bawahan":"Bottom color",
+  "Warna sepatu":"Shoe color",
+  "Pakaian NPC":"NPC outfit",
+  "Warna NPC":"NPC colors",
+  "Suara NPC: gumaman":"NPC voice: mumble",
+  "Suara NPC: dibacakan":"NPC voice: read aloud",
+  "Suara NPC: mati":"NPC voice: off",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1910,7 +1926,8 @@ window.KAMUS_EN={
   "Obrolan pilihan":"Choice chat",
   "Ajak kencan":"Ask on a date",
   "Ketik":"Type",
-  "Ganti warna":"New colours"
+  "Ganti warna":"New colours",
+  "Warna otomatis":"Auto colors"
  },
  // frasa
  "frasa":{

@@ -15,9 +15,9 @@ export const tes = {
     assert.deepEqual([r.d.nama, r.d.bawaan, r.simpan.bawaan, r.simpan.benih, r.tekan], ['Karakter M', 'M', 'M', r.d.benih, ['false', 'true', null]]);
     assert.ok(Number.isInteger(r.d.benih) && r.d.benih >= 0 && r.d.benih <= 0xffffffff, 'benih warna acak: ' + r.d.benih);
     // warna acak seperti NPC (JEV-112): 5 contoh warna; Ganti warna = benih baru; Acak = F/M acak + benih baru
-    const w = await page.evaluate(async () => { for (let i = 0; i < 100 && document.querySelectorAll('#lobiSiap .lobi-av-contoh i').length < 5; i++) await new Promise(r => setTimeout(r, 50));
-      const contoh = document.querySelectorAll('#lobiSiap .lobi-av-contoh i').length, b0 = AVATAR_LOBI.d.benih;
-      [...document.querySelectorAll('#lobiSiap .lobi-av-warna button')][0].click(); const b1 = AVATAR_LOBI.d.benih;
+    const w = await page.evaluate(async () => { for (let i = 0; i < 100 && document.querySelectorAll('#lobiSiap .lobi-av-contoh input[type=color]').length < 5; i++) await new Promise(r => setTimeout(r, 50));
+      const contoh = document.querySelectorAll('#lobiSiap .lobi-av-contoh input[type=color]').length, b0 = AVATAR_LOBI.d.benih;
+      [...document.querySelectorAll('#lobiSiap .lobi-av-warna > button')][0].click(); const b1 = AVATAR_LOBI.d.benih;
       document.querySelector('#lobiSiap [data-av="acak"]').click(); const acak = AVATAR_LOBI.d;
       const L = window.LOBI; await muatModul('lobi');
       return { contoh, ganti: b1 !== b0 && AVATAR_LOBI.d.bawaan !== undefined, acak: /^(F|M)$/.test(acak.bawaan) && acak.benih !== b1,
