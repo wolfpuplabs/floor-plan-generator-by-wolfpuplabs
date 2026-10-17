@@ -62,7 +62,9 @@ export const tes = {
       return { mode: s.mode, po: s.po, samping: +(dx * kx + dz * kz).toFixed(2), depan: +Math.abs(dx * Math.sin(yaw) + dz * Math.cos(yaw)).toFixed(2), lepas: window.NPC.ekstra('nA') }; });
     assert.deepEqual([g.mode, g.po, g.lepas], ['gandeng', 7, ['lepas']]);
     assert.ok(Math.abs(g.samping - 0.55) < 0.15 && g.depan < 0.25, 'di sisi kanan: ' + JSON.stringify(g));
-    await page.evaluate(() => pakai({ jenis: 'lepas', id: 'nA' }));
+    // NPC di samping tak bisa dibidik: bidik ke langit → tombol utama = Lepas untuk NPC itu
+    const lp = await page.evaluate(() => { FPS.pitch = 1.2; fpsStep(0); scene.updateMatrixWorld(); AIM_T = 0; stepBidik(0.2); const a = AIM && { jenis: AIM.jenis, id: AIM.id, label: labelAksi(AIM), tampil: !$('#fpsAct').hidden }; if (AIM) pakai(AIM); FPS.pitch = 0; return a; });
+    assert.deepEqual(lp, { jenis: 'lepas', id: 'nA', label: 'Lepas', tampil: true });
     assert.equal(await page.evaluate(() => window.NPC.keadaan('nA').mode), 'diam');
     // dansa berdua
     await ngobrol('nA'); await aksi('dansa');
