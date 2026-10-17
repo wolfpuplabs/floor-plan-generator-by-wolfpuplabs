@@ -6,7 +6,7 @@
    terima kasih, hinaan, pamit) + konteks rumah (jumlah lantai & perabot). Bila pemilik situs mengisi GROQ_API_KEY di
    Vercel, /api/npc menjawab dengan AI dalam karakter; gagal / lambat → kembali ke balasan kartu.
    Panel: nama & tingkat relasi, riwayat, tombol cepat, hadiah (disukai / biasa / dibenci kartu), kolom ketik. */
-/* global $, el, FPS, camera, PROJECT, BAHASA, toast, muatModul */
+/* global $, el, FPS, camera, PROJECT, BAHASA, toast, muatModul, HARI_GAME */
 (function () {
   'use strict';
   const K = window.KARTU_NPC;
@@ -25,7 +25,7 @@
   const ingatan = id => { const m = INGAT[id]; if (m && typeof m === 'object' && Array.isArray(m.r)) { m.s = clamp(+m.s || 0, -100, 100); return m; } return (INGAT[id] = { s: 0, r: [], k: 0 }); };
   /* BONDING (JEV-110): kenaikan relasi per NPC dibatasi ±30 poin / hari — kedekatan tumbuh dari interaksi yang sering,
      bukan satu sesi panjang; naik tingkat (netral → suka → sayang → sangat dekat) diumumkan */
-  const hariIni = () => new Date().toISOString().slice(0, 10);
+  const hariIni = () => (typeof HARI_GAME !== 'undefined' ? 'H' + HARI_GAME.n : new Date().toISOString().slice(0, 10));   // hari dalam game (siklus siang–malam)
   let saatSkor = null;                                                     // panel obrolan: tampilkan +/− di dekat bilah relasi
   function ubahSkor(m, d) {
     const minta = d;
@@ -123,7 +123,8 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const sisaHari = m.h === hariIni() ? Math.max(0, 30 - (m.hg || 0)) : 30;
     P.skor.textContent = Math.round(m.s) + ' / 100';
     P.lagi.textContent = nx ? (id ? `${Math.ceil(nx[1] - m.s)} lagi ke ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}` : `${Math.ceil(nx[1] - m.s)} more to ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}`) : (id ? 'Tingkat tertinggi' : 'Highest level');
-    P.jatah.textContent = id ? `jatah hari ini +${Math.round(sisaHari)}` : `today +${Math.round(sisaHari)} left`;
+    const ke = typeof HARI_GAME !== 'undefined' ? HARI_GAME.n : 0;
+    P.jatah.textContent = id ? `hari ke-${ke} · jatah +${Math.round(sisaHari)}` : `day ${ke} · +${Math.round(sisaHari)} left`;
     if (window.KENCAN) window.KENCAN.segar(m); }
   function tandaSkor(m, d, minta) {
     if (!P || !KINI || INGAT[KINI.id] !== m || !minta) return;

@@ -109,4 +109,18 @@ export const tes = {
     assert.ok(!r.efekAnak.some(e => /tertarik|kencan|nyatakan/.test(e)), 'anak tanpa romansa: ' + r.efekAnak);
     assert.match(r.kencanAnak, /main sama teman|play with my friends/);
   },
+  'hari dalam game: malam → siang = hari baru (jatah relasi +30 pulih, toast Hari ke-n); senja → siang tanpa malam tidak; tersimpan': async (page) => {
+    await muatProyekJSON(page, rumah);
+    const r = await page.evaluate(async () => {
+      await muatModul('kartunpc'); await muatModul('dialog'); window.DIALOG._ai(false);
+      const D = window.DIALOG._dalam, m = D.ingatan('nA'), n0 = HARI_GAME.n;
+      setSuasana('siang'); m.h = D.hariIni(); m.hg = 30; const habis = D.ubahSkor(m, 5);
+      setSuasana('senja'); setSuasana('siang'); const tanpaMalam = HARI_GAME.n - n0;
+      setSuasana('malam'); setSuasana('malam'); const masihSama = HARI_GAME.n - n0;
+      setSuasana('siang'); const naik = HARI_GAME.n - n0, pulih = D.ubahSkor(m, 5);
+      return { habis, tanpaMalam, masihSama, naik, pulih, hari: D.hariIni(), simpan: localStorage.getItem('hariGame') };
+    });
+    assert.deepEqual([r.habis, r.tanpaMalam, r.masihSama, r.naik, r.pulih], [0, 0, 0, 1, 5], JSON.stringify(r));
+    assert.match(r.hari, /^H\d+$/); assert.equal(r.simpan, r.hari.slice(1));
+  },
 };

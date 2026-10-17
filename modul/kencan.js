@@ -63,6 +63,8 @@
     return s;
   }
   const tx2 = p => p[D.L() === 'id' ? 0 : 1];
+  // hari dalam game 'H12' (atau tanggal lama 'YYYY-MM-DD' dari versi sebelumnya)
+  const selisihHari = (a, b) => (/^H\d+$/.test(a) && /^H\d+$/.test(b) ? +a.slice(1) - +b.slice(1) : (Date.parse(a) - Date.parse(b)) / 864e5);
 
   /* ---------- tampilan di panel obrolan ---------- */
   function gaya() {
@@ -103,7 +105,7 @@
     m.md = h;
     // kenangan kencan terakhir (≤ 3 hari) diungkit sekali
     const kc = Array.isArray(m.kencan) ? m.kencan : (m.kencan = []), akhir = kc[kc.length - 1];
-    if (akhir && m.ksebut !== kc.length && (Date.parse(h) - Date.parse(akhir.h)) / 864e5 <= 3 && JENIS[akhir.j]) {
+    if (akhir && m.ksebut !== kc.length && selisihHari(h, akhir.h) <= 3 && JENIS[akhir.j]) {
       m.ksebut = kc.length; setTimeout(() => { if (kini()) D.ucap(tx2(JENIS[akhir.j].sesudah), 'salam'); }, 700);
     }
     D.simpan(); segar(m);

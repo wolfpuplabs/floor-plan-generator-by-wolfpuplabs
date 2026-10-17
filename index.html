@@ -14208,6 +14208,20 @@ const SUASANA={
    studio terang untuk semua waktu, sehingga PBR malah membanjiri ruang dengan
    cahaya sekitar, apalagi di malam hari */
 let MOOD='siang', RQ_KINI='halus';
+/* HARI DALAM GAME (JEV-111): hari baru dimulai saat langit kembali siang setelah sempat malam — lewat siklus waktu,
+   pilihan waktu, atau cutscene kencan "Keesokan paginya…". Ganti tanggal di dunia nyata juga menambah satu hari, agar
+   pemain yang mematikan siklus tetap maju. Dipakai jatah relasi harian & kencan NPC (modul/dialog.js, modul/kencan.js). */
+const HARI_GAME={n:1, malam:false};
+{ const tgl=new Date().toLocaleDateString('sv');
+  try{ HARI_GAME.n=Math.max(1,Math.min(1e6,parseInt(localStorage.getItem('hariGame'),10)||1)); HARI_GAME.malam=localStorage.getItem('hariGameMalam')==='1';
+    const lalu=localStorage.getItem('hariGameTgl'); if(lalu && lalu!==tgl){ HARI_GAME.n++; HARI_GAME.malam=false; }
+    localStorage.setItem('hariGameTgl',tgl); localStorage.setItem('hariGame',String(HARI_GAME.n)); }catch(e){} }
+function catatHariGame(){
+  if(MOOD==='malam'||MOOD==='gelap'){ if(HARI_GAME.malam) return; HARI_GAME.malam=true; }
+  else if(MOOD==='siang'&&HARI_GAME.malam){ HARI_GAME.malam=false; HARI_GAME.n++; if(FPS.on) toast('🌅 Hari ke-'+HARI_GAME.n); }
+  else return;
+  try{ localStorage.setItem('hariGame',String(HARI_GAME.n)); localStorage.setItem('hariGameMalam',HARI_GAME.malam?'1':'0'); }catch(e){}
+}
 function langitTex(k){
   const s=SUASANA[k];
   return decoTex('langit_'+k,256,(c,S)=>{ const g=c.createLinearGradient(0,0,0,S); g.addColorStop(0,s.langit[0]); g.addColorStop(1,s.langit[1]); c.fillStyle=g; c.fillRect(0,0,S,S); });
@@ -14276,7 +14290,7 @@ function setSuasana(k){
   sun.color.setHex(s.sun[0]); sun.intensity=s.sun[1]; sun.position.set(...s.sunPos);
   hemiL.color.setHex(s.hemi[0]); hemiL.groundColor.setHex(s.hemi[1]); terapkanPantulan();
   hemiL.userData.base=s.hemi[2]; ambL.userData.base=s.amb;
-  const sebelumnya=setSuasana.last; setSuasana.last=MOOD;
+  const sebelumnya=setSuasana.last; setSuasana.last=MOOD; catatHariGame();
   if(s.padam){ for(const L of LAMPU_PASANG) if(L.jenis==='lampu') MATI.add(L.id); }
   else if(sebelumnya && (SUASANA[sebelumnya]||{}).padam) MATI.clear();
   for(const L of LAMPU_PASANG) terapkanNyala(L.grp,!MATI.has(L.id));
