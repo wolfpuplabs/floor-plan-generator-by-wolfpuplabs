@@ -5261,6 +5261,68 @@
     "target": "≥1 obrolan pilihan per sesi yang membuka panel NPC",
     "tinjau": "2027-01-17"
    }
+  },
+  {
+   "id": "JEV-112",
+   "judul": "Avatar Main bareng: karakter F / M / 🎲 Acak dengan warna acak seperti NPC (benih terkirim ke peserta)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Peserta Main bareng yang memilih karakter bawaan tampil identik (warna asli VRM) sehingga sulit dibedakan; NPC sudah punya pewarnaan acak dari benih.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-17: \"buat yg join bisa milih avatar vrm F/M/random, trus warna digenerate random kaya npc\"",
+    "alternatif": [
+     "warna dipilih manual per bagian",
+     "tetap warna asli karakter"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "benih disaring di setiap penerima (bilangan bulat 0…2³²−1, selain itu dibuang); kode karakter tetap F/M saja"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya angka benih yang ikut data peserta; tidak ada data pribadi baru"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "berkas VRM karya wolfpuplabs tidak diubah — pewarnaan hanya di memori (sama seperti NPC)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pewarnaan memakai tembolok LRU yang sama dengan NPC; modul npc dimuat malas hanya bila ada avatar berwarna"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kartu berteks (Karakter F / M / Acak), contoh 5 warna dengan judul bagian, tombol Ganti warna"
+    }
+   },
+   "metrik": {
+    "nama": "peserta Main bareng memakai karakter berwarna acak",
+    "target": "mayoritas peserta karakter bawaan",
+    "tinjau": "2027-01-17"
+   }
   }
  ]
 }

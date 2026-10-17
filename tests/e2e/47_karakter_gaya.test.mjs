@@ -8,11 +8,30 @@ const rumah = { v: 1, levels: [{ name: 'L1', height: 3, walls: [[0, 0, 6, 0], [6
 export const tes = {
   'karakter bawaan: kartu F & M di panel Main bareng, pilihan diingat, VRM dimuat dari situs dengan kerangka humanoid & kedip': async (page) => {
     await muatProyekJSON(page, rumah);
-    const kartu = await page.evaluate(() => [...document.querySelectorAll('#lobiSiap .lobi-kartu')].map(b => [b.textContent.trim(), b.querySelector('img').getAttribute('src')]));
-    assert.deepEqual(kartu, [['Karakter F', 'avatar/F.webp'], ['Karakter M', 'avatar/M.webp']]);
+    const kartu = await page.evaluate(() => [...document.querySelectorAll('#lobiSiap .lobi-kartu')].map(b => [b.textContent.trim(), b.querySelector('img') && b.querySelector('img').getAttribute('src')]));
+    assert.deepEqual(kartu, [['Karakter F', 'avatar/F.webp'], ['Karakter M', 'avatar/M.webp'], ['🎲Acak', null]]);
     await page.evaluate(() => document.querySelectorAll('#lobiSiap .lobi-kartu')[1].click());
     const r = await page.evaluate(() => ({ d: AVATAR_LOBI.d, simpan: JSON.parse(localStorage.getItem('lobiAvatar3D')), tekan: [...document.querySelectorAll('#lobiSiap .lobi-kartu')].map(b => b.getAttribute('aria-pressed')) }));
-    assert.deepEqual(r, { d: { nama: 'Karakter M', bawaan: 'M' }, simpan: { nama: 'Karakter M', bawaan: 'M' }, tekan: ['false', 'true'] });
+    assert.deepEqual([r.d.nama, r.d.bawaan, r.simpan.bawaan, r.simpan.benih, r.tekan], ['Karakter M', 'M', 'M', r.d.benih, ['false', 'true', null]]);
+    assert.ok(Number.isInteger(r.d.benih) && r.d.benih >= 0 && r.d.benih <= 0xffffffff, 'benih warna acak: ' + r.d.benih);
+    // warna acak seperti NPC (JEV-112): 5 contoh warna; Ganti warna = benih baru; Acak = F/M acak + benih baru
+    const w = await page.evaluate(async () => { for (let i = 0; i < 100 && document.querySelectorAll('#lobiSiap .lobi-av-contoh i').length < 5; i++) await new Promise(r => setTimeout(r, 50));
+      const contoh = document.querySelectorAll('#lobiSiap .lobi-av-contoh i').length, b0 = AVATAR_LOBI.d.benih;
+      [...document.querySelectorAll('#lobiSiap .lobi-av-warna button')][0].click(); const b1 = AVATAR_LOBI.d.benih;
+      document.querySelector('#lobiSiap [data-av="acak"]').click(); const acak = AVATAR_LOBI.d;
+      const L = window.LOBI; await muatModul('lobi');
+      return { contoh, ganti: b1 !== b0 && AVATAR_LOBI.d.bawaan !== undefined, acak: /^(F|M)$/.test(acak.bawaan) && acak.benih !== b1,
+        aman: [window.LOBI.avAman({ bawaan: 'F', benih: 5 }), window.LOBI.avAman({ bawaan: 'M', benih: -1 }), window.LOBI.avAman({ bawaan: 'F', benih: 2 ** 33 }), window.LOBI.avAman({ bawaan: 'X', benih: 1 })], ada: !!L }; });
+    assert.deepEqual([w.contoh, w.ganti, w.acak], [5, true, true], JSON.stringify(w));
+    assert.deepEqual(w.aman, [{ bawaan: 'F', benih: 5 }, { bawaan: 'M' }, { bawaan: 'F' }, null]);
+    // klon karakter diwarnai dari benih (sama di semua peserta): tekstur kanvas hasil pewarnaan, benih sama = warna sama
+    const p = await page.evaluate(async () => { await muatModul('npc'); const tpl = await window.LOBI.muatAvatar3D({ bawaan: 'M' });
+      const warnai = b => { const m = klonModel(tpl); window.NPC.warnaiAvatar(m, tpl, 'M', b); const t = []; m.traverse(x => { if (x.isMesh && x.material.map) t.push(x.material.map); }); return t; };
+      const petaTpl = () => { const t = []; tpl.traverse(x => { if (x.isMesh) t.push(x.material.map); }); return t; }, asli = petaTpl();
+      const a = warnai(77), b = warnai(77), c = warnai(78), sesudah = petaTpl();
+      return { kanvas: a.length > 0 && a.every(t => t.isCanvasTexture), sama: a.every((t, i) => t === b[i]), beda: a.some((t, i) => t !== c[i]), asliUtuh: asli.every((t, i) => t === sesudah[i]) && a.every(t => !asli.includes(t)) }; });
+    assert.deepEqual(p, { kanvas: true, sama: true, beda: true, asliUtuh: true });
+    await page.evaluate(() => { const b = [...document.querySelectorAll('#lobiSiap .lobi-kartu')].find(x => x.getAttribute('aria-pressed') === 'true'); b.click(); });
     // ketuk lagi = batal pilih
     await page.evaluate(() => document.querySelectorAll('#lobiSiap .lobi-kartu')[1].click());
     assert.equal(await page.evaluate(() => AVATAR_LOBI.d), null);

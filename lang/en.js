@@ -1815,6 +1815,7 @@ window.KAMUS_EN={
   "⌨️ Ketik":"⌨️ Type",
   "Sosial":"Social",
   "Aktivitas":"Activities",
+  "🎲 Ganti warna":"🎲 New colours",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1903,7 +1904,8 @@ window.KAMUS_EN={
   "Tebak-tebakan":"Guessing game",
   "Obrolan pilihan":"Choice chat",
   "Ajak kencan":"Ask on a date",
-  "Ketik":"Type"
+  "Ketik":"Type",
+  "Ganti warna":"New colours"
  },
  // frasa
  "frasa":{
