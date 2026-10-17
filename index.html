@@ -15452,9 +15452,10 @@ function cariTarget(ray){
   }
   return null;
 }
-// AKTIVITAS (JEV-110): mancing di kolam ikan, panggang / masak, potong kayu, angkat & taruh barang kecil — modul/aktivitas.js
-const LABEL_AKT={mancing:'Mancing', panggang:'Panggang', masak:'Masak', potong:'Potong kayu', angkat:'Angkat', taruh:'Taruh'};
+// AKTIVITAS (JEV-110): mancing di kolam ikan, panggang / masak, potong kayu, angkat & taruh barang kecil, berenang — modul/aktivitas.js
+const LABEL_AKT={mancing:'Mancing', panggang:'Panggang', masak:'Masak', potong:'Potong kayu', angkat:'Angkat', taruh:'Taruh', renang:'Berenang'};
 function aksiAktivitas(o){
+  if(o&&o.kind==='area'&&o.params&&o.params.jenis==='kolam_renang') return 'renang';   // berenang (JEV-113): juga di tautan lihat / Main bareng
   if(!o||LIHAT.on) return null;
   if(o.kind==='area'&&o.params&&o.params.jenis==='kolam_ikan') return 'mancing';
   if(o.kind!=='furn') return null;

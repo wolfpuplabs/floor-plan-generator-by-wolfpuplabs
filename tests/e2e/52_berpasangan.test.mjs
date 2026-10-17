@@ -22,7 +22,7 @@ export const tes = {
         const a = buat(ek); a.tuju = { po }; for (let i = 0; i < 60; i++) G.gerakAvatar(a, 0.05, 0);
         out[po] = { turun: +(a.dasarY - a.model.position.y).toFixed(2), pinggul: +sudut(a, 'hips').toFixed(2), lenganKa: +sudut(a, 'rightUpperArm').toFixed(2), lenganKi: +sudut(a, 'leftUpperArm').toFixed(2), kepala: +sudut(a, 'head').toFixed(2), tinggi: +(a.tinggiPinggul || 0).toFixed(2) };
         scene.remove(a.g); }
-      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 17 }).po];
+      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 19 }).po];
       return out;
     });
     assert.ok(r[6].lenganKa > 0.6 && r[6].lenganKi > 0.6 && r[6].turun < 0.05, 'peluk: ' + JSON.stringify(r[6]));

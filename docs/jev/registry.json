@@ -5323,6 +5323,69 @@
     "target": "mayoritas peserta karakter bawaan",
     "tinjau": "2027-01-17"
    }
+  },
+  {
+   "id": "JEV-113",
+   "judul": "Berenang di kolam renang: gerak di air, menyelam, pose mengapung / gaya bebas, NPC ikut berenang, ganti baju renang",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Kolam renang hanya pajangan: mode jalan tertahan di tepi kolam, tidak ada interaksi air untuk pengunjung, peserta Main bareng maupun NPC.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-17: \"tambah interaksi dan animasi swimming sama bisa tambahin ini buat ganti baju pas interaksi swimming?\"; 2026-10-17: \"kalo aktifitas swimming karakter berubah jadi ini\" (F_swimming.vrm, M_swimming.vrm) + \"opsi baju\" (F_renang.vrm)",
+    "alternatif": [
+     "kolam tetap pajangan",
+     "animasi berenang dari berkas klip (perlu aset animasi berlisensi)",
+     "item .vroidcustomitem dimuat langsung di peramban (tidak mungkin: format editor VRoid Studio, bukan model)"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.2,
+      "pakaiPerTahun": 10,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.2,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kode pose baru 17–18 disaring di setiap penerima (posAman); nama berkas karakter dibatasi F/M(+_renang) — tidak ada nama dari jaringan yang menjadi URL"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tidak ada data baru yang dikirim selain kode pose"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "animasi prosedural buatan sendiri; baju renang = berkas VRM karya wolfpuplabs (pemilik proyek) dari VRoid Studio, disalin apa adanya ke avatar/F_renang.vrm, F_renang2.vrm, M_renang.vrm (meta: allowExcessivelySexualUsage false) — pewarnaan hanya di memori. Item kulit telanjang (set / set_2) tidak dipakai: konten tetap untuk semua umur"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "berenang di modul aktivitas yang dimuat malas; baju renang (±11 MB per karakter) baru diunduh saat karakter itu pertama kali masuk air, sekali per sesi, gagal-muat diingat"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Selam besar (sentuh), Spasi/E di papan ketik, Selesai untuk naik; info jarak & keadaan berupa teks"
+    }
+   },
+   "metrik": {
+    "nama": "sesi mode jalan yang memakai Berenang di proyek berkolam renang",
+    "target": "≥ 30% sesi di proyek berkolam",
+    "tinjau": "2027-01-17"
+   }
   }
  ]
 }
