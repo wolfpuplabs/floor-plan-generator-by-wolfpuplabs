@@ -72,7 +72,7 @@ export const tes = {
       document.querySelector('#npcObrol .no-kuis [data-jawab="1"]').click(); const benar = D.skor('nB') - s0, tutup1 = $('#npcObrol .no-kuis').hidden;
       s0 = D.skor('nB'); D.kuis(); document.querySelector('#npcObrol .no-kuis [data-jawab="0"]').click(); const salah = D.skor('nB') - s0;
       m.hg = 30; s0 = D.skor('nB'); n = jumlah(); document.querySelector('#npcObrol [data-cepat="puji"]').click(); await tunggu(n + 2);
-      const habis = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent).at(-1), tetap = D.skor('nB') - s0;
+      const habis = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent).at(-1), tetap = D.skor('nB') - s0; m.hg = 0;   // jatah dipulihkan untuk pemeriksaan AI di bawah
       return { info0, info1: $('#npcObrol .no-info').textContent, puji, delta, tanya, opsi, benar, tutup1, salah, habis, tetap }; });
     assert.match(k.info0, /^\d+ \/ 100.*(lagi ke|more to)/, 'skor & progres: ' + k.info0);
     assert.ok(k.puji >= 5 && k.delta.some(t => /^\+5 ❤/.test(t)), 'pujian +5 tampil: ' + JSON.stringify(k));
