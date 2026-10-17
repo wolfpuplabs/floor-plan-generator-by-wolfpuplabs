@@ -115,4 +115,27 @@ export const tes = {
       localStorage.removeItem('npcAman'); return { t, d: /Mode aman: 2/.test(d) }; });
     assert.ok(b.t.every(t => t === 'MeshLambertMaterial') && b.d, JSON.stringify(b));
   },
+  'uji gambar: NPC normal tergambar (tanpa perbaikan); tekstur kosong (iPad) → tekstur asli tanpa pewarnaan, diingat; diagnosa memuat hasil uji': async (page) => {
+    await muatProyekJSON(page, rumah);
+    await page.evaluate(() => { localStorage.removeItem('npcAman'); localStorage.removeItem('npcPerbaiki'); orbit.target.set(2, 0, 3); addObject('npc', 'F'); });
+    await siap(page);
+    const r = await page.evaluate(async () => {
+      const N = window.NPC, U = N._uji, n = [...U.NPC.values()][0], tunggu = ms => new Promise(ok => setTimeout(ok, ms));
+      await tunggu(400); const normal = U.ujiGambar(n); U.ujiDanPerbaiki(); const tetap = JSON.stringify(U.perbaikan());
+      // tiru tekstur yang terbaca kosong: peta hasil pewarnaan diganti kanvas transparan + alphaTest (seperti potongan rambut/bulu mata)
+      const kosong = document.createElement('canvas'); kosong.width = kosong.height = 8; const tk = new THREE.CanvasTexture(kosong);
+      n.a.model.traverse(x => { if (x.isMesh) { x.material.map = tk; x.material.alphaTest = 0.5; x.material.needsUpdate = true; } });
+      const rusak = U.ujiGambar(n); U.ujiDanPerbaiki();
+      const m = [...U.NPC.values()][0], pulih = U.ujiGambar(m), kanvas = []; m.a.model.traverse(x => { if (x.isMesh) kanvas.push(!!(x.material.map && x.material.map.isCanvasTexture)); });
+      const d = N.diagnosa();
+      return { normal, tetap, rusak, pulih, kanvas, simpan: localStorage.getItem('npcPerbaiki'), diag: /uji gambar A=\d+ B=\d+ C=\d+/.test(d) && /perbaikan: \{"peta":"asli"\}/.test(d) };
+    });
+    await page.evaluate(() => localStorage.removeItem('npcPerbaiki'));
+    assert.ok(r.normal.A > 50 && r.normal.B > 50 && r.normal.C > 50, 'normal: ' + JSON.stringify(r.normal));
+    assert.equal(r.tetap, '{}', 'tanpa perbaikan bila tergambar');
+    assert.ok(r.rusak.A === 0 && r.rusak.B > 50, 'tekstur kosong: ' + JSON.stringify(r.rusak));
+    assert.ok(r.pulih.A > 50, 'pulih dengan tekstur asli: ' + JSON.stringify(r.pulih));
+    assert.ok(r.kanvas.every(k => !k), 'tekstur asli, bukan kanvas pewarnaan');
+    assert.equal(r.simpan, '{"peta":"asli"}'); assert.ok(r.diag, 'diagnosa');
+  },
 };
