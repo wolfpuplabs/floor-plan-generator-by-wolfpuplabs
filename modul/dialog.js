@@ -6,7 +6,7 @@
    terima kasih, hinaan, pamit) + konteks rumah (jumlah lantai & perabot). Bila pemilik situs mengisi GROQ_API_KEY di
    Vercel, /api/npc menjawab dengan AI dalam karakter; gagal / lambat → kembali ke balasan kartu.
    Panel: nama & tingkat relasi, riwayat, tombol cepat, hadiah (disukai / biasa / dibenci kartu), kolom ketik. */
-/* global $, el, FPS, camera, PROJECT, BAHASA, toast, muatModul */
+/* global $, el, FPS, camera, PROJECT, BAHASA, toast, muatModul, HARI_GAME */
 (function () {
   'use strict';
   const K = window.KARTU_NPC;
@@ -25,7 +25,7 @@
   const ingatan = id => { const m = INGAT[id]; if (m && typeof m === 'object' && Array.isArray(m.r)) { m.s = clamp(+m.s || 0, -100, 100); return m; } return (INGAT[id] = { s: 0, r: [], k: 0 }); };
   /* BONDING (JEV-110): kenaikan relasi per NPC dibatasi ±30 poin / hari — kedekatan tumbuh dari interaksi yang sering,
      bukan satu sesi panjang; naik tingkat (netral → suka → sayang → sangat dekat) diumumkan */
-  const hariIni = () => new Date().toISOString().slice(0, 10);
+  const hariIni = () => (typeof HARI_GAME !== 'undefined' ? 'H' + HARI_GAME.n : new Date().toISOString().slice(0, 10));   // hari dalam game (siklus siang–malam)
   let saatSkor = null;                                                     // panel obrolan: tampilkan +/− di dekat bilah relasi
   function ubahSkor(m, d) {
     const minta = d;
@@ -96,7 +96,7 @@
   function gaya() {
     if (document.getElementById('npcObrolGaya')) return;
     const s = document.createElement('style'); s.id = 'npcObrolGaya';
-    s.textContent = `#npcObrol{left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 88px);z-index:39;width:min(420px,calc(100% - 24px));max-height:min(60%,520px);display:flex;flex-direction:column;gap:8px;padding:12px 14px;font-size:.84rem}
+    s.textContent = `#npcObrol{left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 88px);z-index:39;width:min(420px,calc(100% - 24px));max-height:min(64%,560px);display:flex;flex-direction:column;gap:8px;padding:12px 14px;font-size:.84rem;overflow:hidden}
 @media (min-width:900px){#npcObrol{left:16px;transform:none;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 16px);width:380px}}
 #npcObrol[hidden]{display:none}.no-kepala{display:flex;align-items:center;gap:8px}.no-kepala b{color:var(--txt);font-size:.95rem}.no-kepala .tag{font-size:.7rem}
 .no-batang{height:4px;border-radius:2px;background:var(--panel2);overflow:hidden}.no-batang i{display:block;height:100%;background:linear-gradient(90deg,#e86a8a,#f3b24a);transition:width .4s}
@@ -106,16 +106,19 @@
 @keyframes noDelta{0%{opacity:0;transform:translateY(6px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
 .no-kuis{display:flex;flex-wrap:wrap;gap:6px}.no-kuis button{flex:1 1 30%;min-height:36px}
 .no-relasi{margin-left:auto;font-size:.74rem;color:var(--muted);white-space:nowrap}.no-ai{font-size:.66rem;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 6px}
-.no-log{overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:60px;max-height:200px}.no-m{padding:7px 10px;border-radius:12px;max-width:88%;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}
+.no-isi{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}.no-isi>*{flex-shrink:0}
+.no-log{display:flex;flex-direction:column;gap:6px;min-height:40px}.no-m{padding:7px 10px;border-radius:12px;max-width:88%;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}
 .no-n{background:var(--panel2);color:var(--txt);align-self:flex-start;border-bottom-left-radius:4px}.no-u{background:rgba(78,201,176,.18);color:var(--txt);align-self:flex-end;border-bottom-right-radius:4px}
 .no-m i{color:var(--muted)}.no-ketik{color:var(--muted);font-style:italic}.no-chip{display:flex;flex-wrap:wrap;gap:6px}.no-chip button{flex:1 1 auto;min-height:36px}
+.no-laci{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}.no-laci[hidden],.no-form[hidden]{display:none}.no-laci h4{margin:0;font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.no-tab{display:flex;gap:6px}.no-tab button{flex:1 1 0;min-height:38px}.no-tab button[aria-pressed="true"]{background:var(--accent);color:#06261f;border-color:var(--accent)}
 .no-form{display:flex;gap:6px}.no-form input{flex:1;min-height:40px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit}
 body.jalan.ngobrol #fpsLembar{display:none}`;
     document.head.appendChild(s);
   }
   // teks *aksi* (gaya SillyTavern) tampil miring; selebihnya teks biasa (tanpa innerHTML)
   function isiPesan(d, t) { t.split(/(\*[^*]{1,200}\*)/).forEach(b => { if (!b) return; if (/^\*.*\*$/.test(b)) d.appendChild(el('i', null, b.slice(1, -1))); else d.appendChild(document.createTextNode(b)); }); }
-  function tulis(d, t) { const x = el('div', 'no-m ' + (d === 'u' ? 'no-u' : 'no-n')); isiPesan(x, t); P.log.appendChild(x); P.log.scrollTop = P.log.scrollHeight; return x; }
+  function tulis(d, t) { const x = el('div', 'no-m ' + (d === 'u' ? 'no-u' : 'no-n')); isiPesan(x, t); P.log.appendChild(x); P.isi.scrollTop = P.isi.scrollHeight; return x; }
   function segarRelasi() { const m = ingatan(KINI.id), lv = K.tingkat(m.s), i = K.TINGKAT.findIndex(x => x[0] === lv), r = K.TINGKAT[i], nx = K.TINGKAT[i + 1], id = L() === 'id';
     P.relasi.textContent = IKON_TINGKAT[lv] + ' ' + NAMA_TINGKAT[lv]; P.relasi.title = 'Relasi ' + Math.round(m.s) + ' / 100';
     P.batang.style.width = Math.round(clamp((m.s - r[1]) / (Math.min(100, r[2]) - r[1]), 0, 1) * 100) + '%';
@@ -123,7 +126,8 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const sisaHari = m.h === hariIni() ? Math.max(0, 30 - (m.hg || 0)) : 30;
     P.skor.textContent = Math.round(m.s) + ' / 100';
     P.lagi.textContent = nx ? (id ? `${Math.ceil(nx[1] - m.s)} lagi ke ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}` : `${Math.ceil(nx[1] - m.s)} more to ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}`) : (id ? 'Tingkat tertinggi' : 'Highest level');
-    P.jatah.textContent = id ? `jatah hari ini +${Math.round(sisaHari)}` : `today +${Math.round(sisaHari)} left`;
+    const ke = typeof HARI_GAME !== 'undefined' ? HARI_GAME.n : 0;
+    P.jatah.textContent = id ? `hari ke-${ke} · jatah +${Math.round(sisaHari)}` : `day ${ke} · +${Math.round(sisaHari)} left`;
     if (window.KENCAN) window.KENCAN.segar(m); }
   function tandaSkor(m, d, minta) {
     if (!P || !KINI || INGAT[KINI.id] !== m || !minta) return;
@@ -142,23 +146,35 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const info = el('div', 'no-info'), skor = el('b'), lagi = el('span'), jatah = el('span'); jatah.style.marginLeft = 'auto'; info.append(skor, lagi, jatah);
     const kuis = el('div', 'no-kuis'); kuis.hidden = true;
     const log = el('div', 'no-log'); log.setAttribute('aria-live', 'polite');
-    const chip = el('div', 'no-chip'), hadiah = el('div', 'no-chip'); hadiah.hidden = true;
-    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['pilih', '💬 Obrolan pilihan'], ['kencan', '💐 Ajak kencan'], ['pamit', '🚪 Pamit']]) {
-      const b = el('button', 'btn sm ghost', l); b.dataset.cepat = k; b.onclick = () => cepat(k); chip.appendChild(b); }
+    const hadiah = el('div', 'no-chip'); hadiah.hidden = true;
+    /* obrolan pilihan A–D (modul/kencan.js) tampil langsung sebagai obrolan utama; aksi lain di dua laci bawah:
+       Sosial (ucapan & interaksi berpasangan) dan Aktivitas (hadiah, ajak, permainan, kencan, duduk / berbaring) */
+    const chipDari = (daftar, kelas, f, kunci) => { const c = el('div', kelas); for (const [k, l] of daftar) { const b = el('button', 'btn sm ghost', l); b.dataset[kunci] = k; b.onclick = () => f(k); c.appendChild(b); } return c; };
+    const laciSosial = el('div', 'no-laci'), laciAktivitas = el('div', 'no-laci'); laciSosial.hidden = laciAktivitas.hidden = true;
+    const chip = chipDari([['salam', '👋 Sapa'], ['puji', '👍 Puji'], ['siapa', '❓ Siapa kamu?'], ['rumah', '🏠 Tentang rumah'], ['pamit', '🚪 Pamit']], 'no-chip', cepat, 'cepat');
     // interaksi berpasangan (JEV-109): butuh relasi cukup dekat; tidak untuk kartu anak
-    const aksi = el('div', 'no-chip no-aksi');
-    for (const [k, l] of [['peluk', '🤗 Peluk'], ['gandeng', '🤝 Gandeng'], ['dansa', '💞 Dansa'], ['duduk', '🛋️ Duduk bareng'], ['baring', '🛏️ Berbaring'], ['cium', '😘 Cium pipi'], ['pangku', '🫶 Pangku']]) {
-      const b = el('button', 'btn sm ghost', l); b.dataset.aksi = k; b.onclick = () => aksiPasangan(k); aksi.appendChild(b); }
+    const aksi = chipDari([['peluk', '🤗 Peluk'], ['gandeng', '🤝 Gandeng'], ['dansa', '💞 Dansa'], ['cium', '😘 Cium pipi'], ['pangku', '🫶 Pangku']], 'no-chip no-aksi', k => aksiPasangan(k), 'aksi');
+    laciSosial.append(el('h4', null, 'Sosial'), chip, aksi);
+    const chip2 = chipDari([['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['kencan', '💐 Ajak kencan']], 'no-chip', cepat, 'cepat');
+    const aksi2 = chipDari([['duduk', '🛋️ Duduk bareng'], ['baring', '🛏️ Berbaring']], 'no-chip no-aksi2', k => aksiPasangan(k), 'aksi');
+    laciAktivitas.append(el('h4', null, 'Aktivitas'), chip2, aksi2);
     const form = el('form', 'no-form'), inp = document.createElement('input'), kirimB = el('button', 'btn sm', 'Kirim');
     inp.type = 'text'; inp.maxLength = 300; inp.placeholder = 'Ketik pesan…'; inp.setAttribute('aria-label', 'Pesan untuk NPC'); inp.autocomplete = 'off'; kirimB.type = 'submit';
     // ketikan tidak menggerakkan pemain (WASD / E) — Esc menutup obrolan saja
     inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); tutupObrol(); } });
     inp.addEventListener('keyup', e => e.stopPropagation());
     form.onsubmit = e => { e.preventDefault(); const t = inp.value.trim(); if (!t) return; inp.value = ''; kirim(t); };
-    form.append(inp, kirimB);
-    d.append(kepala, batangL, info, log, kuis, chip, aksi, hadiah, form);
+    form.append(inp, kirimB); form.hidden = true;
+    // bilah bawah: buka / tutup laci & kolom ketik bebas (satu terbuka sekali waktu)
+    const tab = el('div', 'no-tab'), tombolTab = {}, isi = el('div', 'no-isi');
+    const bukaTab = k => { for (const [x, b] of Object.entries(tombolTab)) { const on = x === k && b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(on));
+        ({ sosial: laciSosial, aktivitas: laciAktivitas, ketik: form })[x].hidden = !on; if (on && x === 'ketik') setTimeout(() => inp.focus(), 30); }
+      isi.scrollTop = isi.scrollHeight; };
+    for (const [k, l] of [['sosial', '💞 Sosial'], ['aktivitas', '🎈 Aktivitas'], ['ketik', '⌨️ Ketik']]) { const b = el('button', 'btn sm ghost', l); b.dataset.tab = k; b.setAttribute('aria-pressed', 'false'); b.onclick = () => bukaTab(k); tombolTab[k] = b; tab.appendChild(b); }
+    isi.append(log, kuis, hadiah, laciSosial, laciAktivitas);
+    d.append(kepala, batangL, info, isi, form, tab);
     ($('#viewport') || document.body).appendChild(d);
-    P = { d, nama, peran, ai, relasi, batang, info, skor, lagi, jatah, kuis, log, chip, aksi, hadiah, inp };
+    P = { d, nama, peran, ai, relasi, batang, info, skor, lagi, jatah, kuis, log, isi, chip, aksi, aksi2, hadiah, inp, tutupLaci: () => bukaTab(null) };
     saatSkor = tandaSkor;
   }
   function bicara(teks) {
@@ -291,12 +307,12 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     P.nama.textContent = c.nama; P.peran.textContent = tx(c.k.peran); P.log.textContent = ''; P.hadiah.hidden = true;
     for (const x of m.r.slice(-6)) tulis(x.d, x.t);                       // ingatan percakapan sebelumnya
     segarRelasi(); P.d.hidden = false; document.body.classList.add('ngobrol');
-    P.aksi.hidden = c.id === 'anak'; P.aksi.querySelector('[data-aksi="duduk"]').hidden = !(FPS.duduk && FPS.duduk.id && !FPS.duduk.lantai && !FPS.duduk.baring);
+    P.aksi.hidden = P.aksi2.hidden = c.id === 'anak'; P.aksi2.querySelector('[data-aksi="duduk"]').hidden = !(FPS.duduk && FPS.duduk.id && !FPS.duduk.lantai && !FPS.duduk.baring);
+    P.tutupLaci();
     if (window.NPC) window.NPC.ngobrol(id, 'mulai');
     ucap(m.k || m.r.length ? tx(c.k.relasi[K.tingkat(m.s)]) : tx(c.k.salam), 'salam');
     muatModul('kencan').then(() => { if (KINI && KINI.id === id) window.KENCAN.buka(m); }, () => {});   // date sim: suasana hati, status, kenangan kencan
     cekAI().then(a => { if (P) P.ai.hidden = !a; });
-    if (!('ontouchstart' in window)) setTimeout(() => P && !P.d.hidden && P.inp.focus(), 50);
     return true;
   }
   function tutupObrol(berlanjut) {

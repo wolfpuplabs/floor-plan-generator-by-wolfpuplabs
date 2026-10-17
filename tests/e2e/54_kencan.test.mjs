@@ -36,8 +36,12 @@ export const tes = {
       for (let i = 0; i < 100 && !window.KENCAN; i++) await new Promise(r => setTimeout(r, 50)); window.KENCAN._uji.laju(40); return !$('#npcObrol').hidden; }, id);
     assert.equal(await buka('nA'), true);
     // mulai obrolan pilihan: 4 opsi (A–D), D = akhiri; suasana tampil
-    const a = await page.evaluate(async () => { $('#npcObrol [data-cepat="pilih"]').click(); for (let i = 0; i < 60 && $('#npcObrol .no-pilih').hidden; i++) await new Promise(r => setTimeout(r, 50));
-      return { opsi: [...document.querySelectorAll('#npcObrol .no-pilih button')].map(b => [b.textContent.slice(0, 2), b.dataset.efek]), mood: $('#npcObrol .no-mood').textContent }; });
+    // obrolan pilihan tampil langsung (obrolan utama) tanpa tombol; laci Sosial / Aktivitas tertutup
+    const a = await page.evaluate(async () => { for (let i = 0; i < 60 && (!$('#npcObrol .no-pilih') || $('#npcObrol .no-pilih').hidden); i++) await new Promise(r => setTimeout(r, 50));
+      const laci = [...document.querySelectorAll('#npcObrol .no-laci')].map(x => x.hidden), ketik = $('#npcObrol .no-form').hidden;
+      $('#npcObrol [data-tab="sosial"]').click(); const sosial = [!$('#npcObrol .no-laci').hidden, document.querySelectorAll('#npcObrol .no-laci')[1].hidden]; $('#npcObrol [data-tab="sosial"]').click();
+      return { laci, ketik, sosial, opsi: [...document.querySelectorAll('#npcObrol .no-pilih button')].map(b => [b.textContent.slice(0, 2), b.dataset.efek]), mood: $('#npcObrol .no-mood').textContent }; });
+    assert.deepEqual([a.laci, a.ketik, a.sosial], [[true, true], true, [true, true]]);
     assert.deepEqual(a.opsi.map(x => x[0]), ['A.', 'B.', 'C.', 'D.']); assert.equal(a.opsi[3][1], 'akhir');
     assert.match(a.mood, /Senang|Happy/); assert.match(a.mood, /Kesal|Annoyed/);
     // pilih ucapan yang menambah "nyaman" sampai 2 → relasi naik; pilihan "Mau kencan sama aku?" muncul (relasi ≥ 20)
@@ -108,5 +112,19 @@ export const tes = {
     assert.doesNotMatch(r.moodAnak, /Tertarik|Attracted/);
     assert.ok(!r.efekAnak.some(e => /tertarik|kencan|nyatakan/.test(e)), 'anak tanpa romansa: ' + r.efekAnak);
     assert.match(r.kencanAnak, /main sama teman|play with my friends/);
+  },
+  'hari dalam game: malam → siang = hari baru (jatah relasi +30 pulih, toast Hari ke-n); senja → siang tanpa malam tidak; tersimpan': async (page) => {
+    await muatProyekJSON(page, rumah);
+    const r = await page.evaluate(async () => {
+      await muatModul('kartunpc'); await muatModul('dialog'); window.DIALOG._ai(false);
+      const D = window.DIALOG._dalam, m = D.ingatan('nA'), n0 = HARI_GAME.n;
+      setSuasana('siang'); m.h = D.hariIni(); m.hg = 30; const habis = D.ubahSkor(m, 5);
+      setSuasana('senja'); setSuasana('siang'); const tanpaMalam = HARI_GAME.n - n0;
+      setSuasana('malam'); setSuasana('malam'); const masihSama = HARI_GAME.n - n0;
+      setSuasana('siang'); const naik = HARI_GAME.n - n0, pulih = D.ubahSkor(m, 5);
+      return { habis, tanpaMalam, masihSama, naik, pulih, hari: D.hariIni(), simpan: localStorage.getItem('hariGame') };
+    });
+    assert.deepEqual([r.habis, r.tanpaMalam, r.masihSama, r.naik, r.pulih], [0, 0, 0, 1, 5], JSON.stringify(r));
+    assert.match(r.hari, /^H\d+$/); assert.equal(r.simpan, r.hari.slice(1));
   },
 };
