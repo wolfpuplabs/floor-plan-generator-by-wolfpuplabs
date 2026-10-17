@@ -1802,6 +1802,9 @@ window.KAMUS_EN={
   "NPC memakai tekstur asli di perangkat ini":"NPCs use their original textures on this device",
   "NPC memakai warna polos di perangkat ini":"NPCs use plain colours on this device",
   "NPC selalu digambar (tanpa pemangkasan pandang) di perangkat ini":"NPCs are always drawn (no view culling) on this device",
+  "😘 Cium pipi":"😘 Cheek kiss",
+  "🫶 Pangku":"🫶 Lap sit",
+  "😘 Kamu mencium pipi":"😘 You give a cheek kiss",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1883,7 +1886,10 @@ window.KAMUS_EN={
   "Kamu bergandengan tangan":"You hold hands",
   "Kamu berdansa":"You're dancing",
   "Diagnosa tampilan":"Display diagnostics",
-  "Ajak ikut":"Ask to come along"
+  "Ajak ikut":"Ask to come along",
+  "Cium pipi":"Cheek kiss",
+  "Pangku":"Lap sit",
+  "Kamu mencium pipi":"You give a cheek kiss"
  },
  // frasa
  "frasa":{
