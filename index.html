@@ -13983,7 +13983,7 @@ function pasangPilihAvatar3D(akar){
   const isiWarna=()=>{ const d=AVATAR_LOBI.d; warna.hidden=!(d&&d.bawaan); contoh.textContent=''; if(warna.hidden) return;
     if(d.benih==null){ d.benih=benihBaru(); simpanAv(); }
     muatModul('npc').then(()=>{ if(AVATAR_LOBI.d!==d) return; const p=window.NPC.penampilan({type:d.bawaan, params:{benih:d.benih}});
-      for(const k of ['kulit','rambut','atas','bawah','sepatu']){ const s=el('i'); s.title=k; s.style.background='rgb('+p[k].map(v=>Math.round(v)).join(',')+')'; contoh.appendChild(s); } },()=>{}); };
+      for(const k of ['kulit','rambut','atas','bawah','sepatu']){ const s=el('i'); s.title=k; s.style.background=p[k]?'rgb('+p[k].map(v=>Math.round(v)).join(',')+')':'#f4f4f4';   /* sepatu null = warna asli */ contoh.appendChild(s); } },()=>{}); };
   const baris=el('div','lobi-kartu-baris'), kartu={}, isi=()=>{ nama.textContent=AVATAR_LOBI.d&&!AVATAR_LOBI.d.bawaan?AVATAR_LOBI.d.nama:''; hapus.hidden=!AVATAR_LOBI.d;
     for(const [k,b] of Object.entries(kartu)) b.setAttribute('aria-pressed',String(!!AVATAR_LOBI.d&&AVATAR_LOBI.d.bawaan===k)); isiWarna(); };
   // karakter F / M diwarnai acak seperti NPC (JEV-112): benih ikut terkirim, semua peserta melihat warna yang sama
