@@ -5199,6 +5199,68 @@
     "target": "≥1 mini game per sesi yang memakai NPC",
     "tinjau": "2027-01-17"
    }
+  },
+  {
+   "id": "JEV-111",
+   "judul": "Date sim: obrolan pilihan A–D, suasana hati NPC, kencan dengan cutscene, nyatakan perasaan & status pacaran",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Relasi NPC hanya naik lewat obrolan bebas & hadiah; pengguna ingin alur date sim: pilihan ucapan yang berdampak, kencan, dan status hubungan. Gagasan obrolan pilihan diambil dari open-ai-npc (Jack Le Hamster, MIT) — ditulis ulang untuk kartu & /api/npc (Groq) yang sudah ada. Permintaan aktivitas seksual (termasuk versi suara / cutscene) ditolak; semua konten tetap ramah semua umur.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-17: \"https://github.com/jacklehamster/open-ai-npc.git bisa bikin semacam ini date simnya?\" → \"merge, bikin semua date sim features\"",
+    "alternatif": [
+     "hanya obrolan bebas + skor relasi",
+     "menyalin server Bun + OpenAI dari open-ai-npc (biaya & kunci baru)"
+    ]
+   },
+   "E": {
+    "peluang": 0.6,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "mode pilihan /api/npc: suasana disaring 0–3, maks 4 pilihan ≤ 90 huruf, efek hanya ±1 pada 4 perasaan, pilihan yang lolos saringan TERLARANG saja; gagal → kumpulan ucapan bawaan"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "suasana hati, kencan & status hanya di localStorage perangkat (npcIngat)"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "open-ai-npc MIT — hanya gagasan (pilihan A–D + atribut ambang), kode ditulis ulang; kredit di modul/kencan.js & api/npc.js"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul kencan.js dimuat malas saat panel obrolan dibuka; cutscene = satu elemen DOM"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pilihan berteks A–D; cutscene bisa diketuk / Lewati; konten ramah semua umur — tanpa unsur seksual, kartu anak tanpa rayuan/kencan/pacaran"
+    }
+   },
+   "metrik": {
+    "nama": "kencan & obrolan pilihan per sesi jalan",
+    "target": "≥1 obrolan pilihan per sesi yang membuka panel NPC",
+    "tinjau": "2027-01-17"
+   }
   }
  ]
 }

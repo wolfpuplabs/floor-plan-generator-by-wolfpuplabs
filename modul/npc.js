@@ -524,6 +524,14 @@
     s.scale.set(0.22, 0.22, 1); s.position.set(n.p.x, n.p.y + 1.75, n.p.z); s.userData.noExport = true; s.raycast = () => {};
     scene.add(s); HATI.push({ s, t: 0 });
   }
+  // setelah cutscene kencan: NPC berdiri ±1,2 m di depan pengunjung, menghadapnya
+  function hadirkan(id) {
+    const n = NPC.get(id); if (!n || !n.a || !FPS.on || !n.mode) return false;
+    if (n.mode === 'duduk' || n.mode === 'masuk') lepasKursi(n); n.kursi = null; n.pangku = null;
+    const fx = Math.sin(FPS.yaw), fz = Math.cos(FPS.yaw);
+    const [px, pz] = fpsResolveWalls(camera.position.x + fx * 1.2, camera.position.z + fz * 1.2, n.p.y), t = tanahDi(n, px, pz);
+    n.p.set(px, t != null ? t : n.p.y, pz); n.yaw = Math.atan2(camera.position.x - px, camera.position.z - pz); diam(n, 4); n.menoleh = true; return true;
+  }
   function langkahHati(dt) {
     for (let i = HATI.length - 1; i >= 0; i--) { const h = HATI[i]; h.t += dt; h.s.position.y += dt * 0.3; h.s.material.opacity = Math.max(0, 1 - h.t / 1.8);
       if (h.t > 1.8) { scene.remove(h.s); h.s.material.dispose(); HATI.splice(i, 1); } }
@@ -677,6 +685,7 @@
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
   window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
+    hadirkan, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };
