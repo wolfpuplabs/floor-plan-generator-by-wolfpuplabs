@@ -7388,7 +7388,8 @@ function rebuildScene0(){
     lg.traverse(m=>{ if(m.isMesh && m.userData.wallPanel) for(const x of [].concat(m.material)) x.shadowSide=THREE.FrontSide; });
     // penanda void hanya alat bantu editor; saat berjalan ia tampil seperti
     // kaca hijau yang melayang di atas tangga, jadi disembunyikan
-    if(FPS.on) lg.traverse(m=>{ if(m.userData.noExport && !m.userData.halo && !m.userData.garis) m.visible=false; });
+    // (badan NPC juga noExport karena dari avatar VRM, tapi harus tetap tampak: tetapTampak)
+    if(FPS.on) lg.traverse(m=>{ if(m.userData.noExport && !m.userData.halo && !m.userData.garis && !m.userData.tetapTampak) m.visible=false; });
     worldRoot.add(lg);
     levelGroups[idx]=lg;
   });

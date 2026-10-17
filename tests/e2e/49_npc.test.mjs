@@ -139,7 +139,7 @@ export const tes = {
     assert.ok(r.kanvas.every(k => !k), 'tekstur asli, bukan kanvas pewarnaan');
     assert.equal(r.simpan, '{"peta":"asli"}'); assert.ok(r.diag, 'diagnosa');
   },
-  'masuk mode jalan saat NPC terpilih (target orbit di NPC): pemain berdiri di depan NPC & menghadapnya, bukan di dalam badannya': async (page) => {
+  'masuk mode jalan saat NPC terpilih (target orbit di NPC): pemain berdiri di depan NPC & menghadapnya, bukan di dalam badannya; badan NPC tetap tampak (tidak ikut disembunyikan sebagai penanda editor)': async (page) => {
     await muatProyekJSON(page, rumah);
     await page.evaluate(() => { orbit.target.set(2, 0, 3); addObject('npc', 'F'); });
     await siap(page);
@@ -147,10 +147,14 @@ export const tes = {
       const o = L().objects.find(x => x.kind === 'npc'); o.rotY = 0; select('obj', o.id); orbit.target.set(o.x, 0, o.z); rebuildScene();
       enterFPS(); const d = Math.hypot(camera.position.x - o.x, camera.position.z - o.z), arah = Math.atan2(o.x - camera.position.x, o.z - camera.position.z);
       const beda = Math.abs(Math.atan2(Math.sin(arah - FPS.yaw), Math.cos(arah - FPS.yaw)));
-      fpsStep(0); scene.updateMatrixWorld(); AIM_T = 0; stepBidik(0.2); const bidik = AIM && AIM.jenis; exitFPS(); return { d, beda, bidik };
+      fpsStep(0); scene.updateMatrixWorld(); AIM_T = 0; stepBidik(0.2); const bidik = AIM && AIM.jenis;
+      // karakter sudah termuat → NPC dirakit seketika saat adegan dibangun ulang; badannya tetap tampak di mode jalan
+      const n = [...window.NPC._uji.NPC.values()][0], tampak = []; n.a.model.traverse(x => { if (x.isMesh) tampak.push(x.visible); }); const uji = window.NPC._uji.ujiGambar(n);
+      exitFPS(); return { d, beda, bidik, tampak, uji };
     });
     assert.ok(r.d >= 1 && r.d < 2.2, 'jarak dari NPC ' + r.d);
     assert.ok(r.beda < 0.05, 'menghadap NPC ' + r.beda);
     assert.equal(r.bidik, 'ngobrol', 'NPC di tengah bidikan');
+    assert.ok(r.tampak.length && r.tampak.every(Boolean) && r.uji.A > 50, 'badan NPC tergambar di mode jalan: ' + JSON.stringify(r));
   },
 };
