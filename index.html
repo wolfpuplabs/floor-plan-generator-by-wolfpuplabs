@@ -15612,6 +15612,8 @@ function stepBidik(dt){
   aimRay.setFromCamera({x:0,y:0},camera);
   AIM=window.AKT&&window.AKT.membawa()?{jenis:'taruh'}:cariTarget(aimRay);
   if(!AIM && FPS.duduk) AIM={jenis:'berdiri'};
+  // NPC yang ikut / bergandengan / berdansa ada di samping atau belakang — tak bisa dibidik: Lepas selalu tersedia
+  if(!AIM && window.NPC && window.NPC.pasangan){ const id=window.NPC.pasangan(); if(id) AIM={jenis:'lepas', id}; }
   const lbl=labelAksi(AIM), b=$('#fpsAct');
   $('#fpsAim').classList.toggle('on',!!AIM);
   if(!AIM){ b.hidden=true; $('#fpsAksiLain').hidden=true; return; }
@@ -15633,7 +15635,9 @@ $('#fpsAct').addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventD
 $('#mood').onchange=e=>{ setSuasana(e.target.value); toast('Suasana: '+SUASANA[MOOD].l); };
 for(const [id,f] of [['#adeganBaru','baru'],['#adeganDuplikat','duplikat']]) $(id).onclick=()=>muatModul('adegan').then(()=>window.ADEGAN[f](),e=>toast(e.message));
 function pilihGaya(v){ if(!v||!FPS.on) return; tutupLembar();
-  if(FPS.gaya&&FPS.gaya.k===v){ FPS.gaya=null; toast('Gaya selesai'); return; }   // ketuk lagi = berhenti (gandeng, dansa…)
+  if(FPS.gaya&&FPS.gaya.k===v){ FPS.gaya=null; toast('Gaya selesai');      // ketuk lagi = berhenti (gandeng, dansa…) — NPC pasangannya ikut lepas
+    if(window.NPC&&window.NPC.pasangan) for(let id=window.NPC.pasangan(), i=0; id&&i<12; id=window.NPC.pasangan(), i++) window.NPC.aksiPasangan(id,'lepas');
+    return; }
   if(v==='lantai') return dudukLantai();
   if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
   toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai',peluk:'🤗 Kamu memeluk',gandeng:'🤝 Kamu bergandengan tangan',dansa:'💞 Kamu berdansa'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
