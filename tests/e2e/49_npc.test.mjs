@@ -126,7 +126,8 @@ export const tes = {
       const kosong = document.createElement('canvas'); kosong.width = kosong.height = 8; const tk = new THREE.CanvasTexture(kosong);
       n.a.model.traverse(x => { if (x.isMesh) { x.material = x.material.clone(); x.material.map = tk; x.material.alphaTest = 0.5; } });
       const rusak = U.ujiGambar(n); U.ujiDanPerbaiki();
-      const m = [...U.NPC.values()][0], pulih = U.ujiGambar(m), kanvas = []; m.a.model.traverse(x => { if (x.isMesh) kanvas.push(!!(x.material.map && x.material.map.isCanvasTexture)); });
+      const m = [...U.NPC.values()][0], pulih = U.ujiGambar(m), kanvas = []; const tpl = await window.LOBI.muatAvatar3D({ bawaan: 'F' }), asli = new Set(); tpl.traverse(x => { if (x.isMesh && x.material.map) asli.add(x.material.map); });
+      m.a.model.traverse(x => { if (x.isMesh) kanvas.push(!asli.has(x.material.map)); });
       const d = N.diagnosa();
       return { normal, tetap, rusak, pulih, kanvas, simpan: localStorage.getItem('npcPerbaiki'), diag: /uji gambar K=\d+ A=\d+ B=\d+ C=\d+/.test(d) && /perbaikan: \{"peta":"asli"\}/.test(d) };
     });
