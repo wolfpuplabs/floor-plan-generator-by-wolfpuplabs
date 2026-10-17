@@ -8,9 +8,10 @@
    · Panggang / masak: pilih bahan (ikan hasil mancing, jagung, sate, sosis / telur), balik saat matang, angkat sebelum gosong.
      Panggangan arang butuh kayu bakar dari tunggul kayu.
    Hasil masuk tas (perangkat ini) dan bisa dihadiahkan ke NPC lewat obrolan. NPC yang ikut / berada dekat ikut menemani,
-   bersorak saat berhasil, dan kedekatannya naik. Pose avatar (membawa, memancing, mengapak, memasak) terlihat di Main bareng. */
+   bersorak saat berhasil, dan kedekatannya naik. Pose avatar (membawa, memancing, mengapak, memasak) terlihat di Main bareng.
+   · Berenang (JEV-113): bidik kolam renang → Berenang; joystick / WASD di air, tahan Selam untuk menyelam, Selesai = naik ke tepi. */
 /* global $, el, toast, FPS, camera, scene, PROJECT, levelGroups, cariObjek, areaDunia, pointInPoly, rebuildScene, HIST, worldRoot,
-   levelElevation, BAHASA, MOOD, muatModul, berdiri, FURN */
+   levelElevation, BAHASA, MOOD, muatModul, berdiri, FURN, fpsPijakan, adaTanahSitus, tinggiTanah */
 (function () {
   'use strict';
   const T = (id, en) => (BAHASA && BAHASA.kode === 'id' ? id : en);
@@ -70,6 +71,7 @@
 .ak-pilih{position:absolute;left:50%;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 130px);transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;gap:8px;pointer-events:auto;width:min(480px,calc(100% - 24px))}
 .ak-pilih:empty{display:none}.ak-kartu{position:absolute;left:50%;top:24%;transform:translateX(-50%);background:rgba(14,16,20,.82);border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:12px 18px;text-align:center;font:600 1rem/1.35 inherit}
 .ak-kartu[hidden]{display:none}.ak-kartu big{display:block;font-size:1.6rem}
+.ak-air{position:absolute;inset:0;opacity:0;pointer-events:none;background:radial-gradient(ellipse at 50% 28%,rgba(70,180,215,.32),rgba(6,48,88,.8));transition:opacity .12s}
 body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktivitas #fpsLembar{display:none!important}`;
     document.head.appendChild(s);
     const d = el('div'); d.id = 'aktHud'; d.hidden = true;
@@ -167,7 +169,7 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
 
   /* ---------- keadaan aktivitas ---------- */
   let A = null, B = null, TEKAN = [false, false, false];
-  const KODE = { mancing: 'mancing', potong: 'kapak', panggang: 'masak', masak: 'masak' };
+  const KODE = { mancing: 'mancing', potong: 'kapak', panggang: 'masak', masak: 'masak', renang: 'renang' };
   function mulai(jenis, t) {
     if (A) selesai(); if (B) taruh(); if (!FPS.on) return null;
     if (FPS.duduk && typeof berdiri === 'function') berdiri();
@@ -192,6 +194,101 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
   // Spasi / E = tombol utama, Q = tombol kedua (tangkapan lebih dulu agar tidak memicu aksi mode jalan)
   addEventListener('keydown', e => { if (!A || e.repeat) return; const k = e.key.toLowerCase(); if (k === ' ' || k === 'e') { tekan(1, true); e.preventDefault(); e.stopImmediatePropagation(); } else if (k === 'q') { tekan(2, true); e.preventDefault(); e.stopImmediatePropagation(); } else if (k === 'escape') { selesai(); e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   addEventListener('keyup', e => { if (!A) return; const k = e.key.toLowerCase(); if (k === ' ' || k === 'e') tekan(1, false); else if (k === 'q') tekan(2, false); }, true);
+
+  /* =================== BERENANG (JEV-113) ===================
+     Kolam renang: masuk di titik air yang dibidik, berenang bebas di permukaan (joystick / WASD, Shift lebih cepat),
+     tahan Selam untuk menyelam (layar membiru, suara teredam). Selesai = naik ke tepi terdekat. Pose terkirim:
+     17 mengapung (diam), 18 gaya bebas (bergerak). NPC yang ikut ikut berenang; tiap 25 m bersama menambah kedekatan. */
+  // titik terdekat pada keliling poligon + normal keluar
+  function tepiKolam(poli, x, z) {
+    let best = null;
+    for (let i = 0; i < poli.length; i++) {
+      const [ax, az] = poli[i], [bx, bz] = poli[(i + 1) % poli.length], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz; if (l2 < 1e-6) continue;
+      const u = clamp(((x - ax) * dx + (z - az) * dz) / l2, 0, 1), px = ax + dx * u, pz = az + dz * u, d = Math.hypot(x - px, z - pz);
+      if (!best || d < best.d) best = { x: px, z: pz, d, dx: dx / Math.sqrt(l2), dz: dz / Math.sqrt(l2) };
+    }
+    if (!best) return null;
+    // normal yang menjauhi bagian dalam
+    let nx = best.dz, nz = -best.dx; if (pointInPoly(best.x + nx * 0.05, best.z + nz * 0.05, poli)) { nx = -nx; nz = -nz; }
+    best.nx = nx; best.nz = nz; return best;
+  }
+  const dalamKolam = (poli, x, z, sisa) => { if (!pointInPoly(x, z, poli)) return false; const t = tepiKolam(poli, x, z); return !t || t.d >= sisa; };
+  function keDalam(poli, x, z, sisa) {
+    if (dalamKolam(poli, x, z, sisa)) return { x, z };
+    const t = tepiKolam(poli, x, z); if (!t) return null;
+    for (let d = sisa; d < sisa + 3; d += 0.1) { const px = t.x - t.nx * d, pz = t.z - t.nz * d; if (dalamKolam(poli, px, pz, sisa)) return { x: px, z: pz }; }
+    let cx = 0, cz = 0; for (const [a, b] of poli) { cx += a; cz += b; } cx /= poli.length; cz /= poli.length;
+    return pointInPoly(cx, cz, poli) ? { x: cx, z: cz } : null;
+  }
+  function airKolam(o) {
+    const g = grupObjek(o.id); if (!g) return null; g.updateMatrixWorld(true);
+    return { poli: areaDunia(o), airY: g.localToWorld(vA.set(0, -0.12, 0)).y, dalam: clamp(+o.params.kedalaman || 1.4, 0.2, 3) };
+  }
+  function lapisanAir() {
+    if (H.air) return H.air;
+    const d = el('div', 'ak-air'); H.d.prepend(d); H.air = d; return d;
+  }
+  function mulaiRenang(t) {
+    const o = cariObjek(t.id); if (!o || o.kind !== 'area' || (o.params || {}).jenis !== 'kolam_renang') return;
+    const K = airKolam(o); if (!K) return;
+    const p = keDalam(K.poli, t.titik ? t.titik.x : camera.position.x, t.titik ? t.titik.z : camera.position.z, 0.4); if (!p) return;
+    const a = mulai('renang', t); if (!a) return;
+    Object.assign(a, K, { x: p.x, z: p.z, vx: 0, vz: 0, selam: 0, fase: 0, jarak: 0, bonusM: 0, asal: { x: camera.position.x, z: camera.position.z, feet: FPS.feet } });
+    hud(T('🏊 Berenang', '🏊 Swimming'), T('Joystick / WASD untuk berenang · tahan Selam untuk menyelam', 'Joystick / WASD to swim · hold Dive to go under'));
+    tombol(T('Selam', 'Dive')); lapisanAir().style.opacity = 0;
+    FPS.feet = a.airY; FPS.vy = 0; FPS.pitch = Math.max(FPS.pitch, -0.2);
+    BUNYI.cebur(); percik(vB.set(a.x, a.airY, a.z), 40, 0xe8f6ff, 1.3);
+    a.langkah = dt => langkahRenang(a, dt);
+    a.tekan = k => { if (k === 1) { derau(0.5, 380, 0.8, 0.35); percik(vB.set(a.x, a.airY, a.z), 14, 0xe8f6ff, 0.9); } };
+    a.akhir = () => naikKolam(a);
+    if (window.NPC && window.NPC.renang) window.NPC.renang(a.poli, a.airY);
+  }
+  function langkahRenang(a, dt) {
+    let f = 0, s = 0;
+    if (FPS.keys.has('w') || FPS.keys.has('arrowup')) f += 1;
+    if (FPS.keys.has('s') || FPS.keys.has('arrowdown')) f -= 1;
+    if (FPS.keys.has('a') || FPS.keys.has('arrowleft')) s -= 1;
+    if (FPS.keys.has('d') || FPS.keys.has('arrowright')) s += 1;
+    if (FPS.move) { f += FPS.move.f; s += FPS.move.s; }
+    const mag = Math.hypot(f, s); if (mag > 1) { f /= mag; s /= mag; }
+    const v = FPS.keys.has('shift') ? 1.8 : 1.1, fx = Math.sin(FPS.yaw), fz = Math.cos(FPS.yaw);
+    const tx = (fx * f - fz * s) * v, tz = (fz * f + fx * s) * v, k = Math.min(1, dt * 2.5);
+    a.vx += (tx - a.vx) * k; a.vz += (tz - a.vz) * k;                // air: percepatan & perlambatan lembut
+    let px = a.x + a.vx * dt, pz = a.z + a.vz * dt;
+    if (!dalamKolam(a.poli, px, pz, 0.3)) {                         // dinding kolam: menyusuri tepi
+      if (dalamKolam(a.poli, px, a.z, 0.3)) { pz = a.z; a.vz *= 0.3; } else if (dalamKolam(a.poli, a.x, pz, 0.3)) { px = a.x; a.vx *= 0.3; } else { px = a.x; pz = a.z; a.vx = a.vz = 0; }
+    }
+    const laju = Math.hypot(px - a.x, pz - a.z) / Math.max(dt, 1e-4); a.jarak += laju * dt; a.x = px; a.z = pz;
+    // kayuhan: percikan & suara tiap ayunan tangan
+    const lalu = a.fase; a.fase += dt * (0.8 + laju * 1.1) * Math.PI;
+    if (laju > 0.3 && a.selam < 0.3 && Math.floor(a.fase / Math.PI) !== Math.floor(lalu / Math.PI)) {
+      derau(0.16, 1500, 0.6, 0.14); percik(vB.set(a.x + fx * 0.55 + (Math.floor(a.fase / Math.PI) % 2 ? 0.25 : -0.25) * fz, a.airY, a.z + fz * 0.55), 6, 0xe8f6ff, 0.7);
+    }
+    // menyelam: tahan tombol utama
+    const dasar = Math.min(a.dalam - 0.3, 1.3);
+    a.selam += ((TEKAN[1] ? 1 : 0) - a.selam) * Math.min(1, dt * 2.2);
+    if (TEKAN[1] && Math.random() < dt * 1.5) nada(140 + Math.random() * 120, 0.12, 0.05);   // gelembung
+    const ayun = 0.035 * Math.sin(a.t * 2.1) * (1 - a.selam);
+    a.t += dt;
+    camera.position.set(a.x, a.airY + 0.11 + ayun - a.selam * dasar, a.z);
+    FPS.feet = a.airY;
+    if (H.air) H.air.style.opacity = clamp((a.selam * dasar - 0.08) / 0.25, 0, 1).toFixed(2);
+    FPS.gaya = { k: laju > 0.25 ? 'bebas' : 'renang', x: a.x, z: a.z, t: performance.now() };
+    H.info.textContent = T('Jarak ', 'Distance ') + a.jarak.toFixed(0) + ' m · ' + (a.selam > 0.5 ? T('menyelam', 'diving') : T('tahan Selam untuk menyelam', 'hold Dive to go under'));
+    if (a.jarak - a.bonusM >= 25) { a.bonusM += 25; bonus(3, T('berenang bareng', 'swimming together')); }
+  }
+  function naikKolam(a) {
+    const t = tepiKolam(a.poli, a.x, a.z);
+    let x = a.asal.x, z = a.asal.z, feet = a.asal.feet;
+    if (t) { x = t.x + t.nx * 0.55; z = t.z + t.nz * 0.55;
+      const g = fpsPijakan(x, z, a.airY + 0.8), tanah = levelElevation(0) + (adaTanahSitus() ? tinggiTanah(x, z) : 0);
+      feet = Math.max(g == null ? -1e9 : g, tanah); if (!Number.isFinite(feet) || Math.abs(feet - a.airY) > 1.5) { x = a.asal.x; z = a.asal.z; feet = a.asal.feet; } }
+    FPS.feet = feet; FPS.vy = 0; camera.position.set(x, feet + FPS.eye, z);
+    if (t) FPS.yaw = Math.atan2(t.nx, t.nz);
+    if (H.air) H.air.style.opacity = 0;
+    derau(0.3, 700, 0.7, 0.25);
+    if (window.NPC && window.NPC.selesaiRenang) window.NPC.selesaiRenang();
+  }
 
   /* =================== MANCING =================== */
   const IKAN = [
@@ -485,10 +582,14 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     if (t.jenis === 'taruh') return taruh();
     if (t.jenis === 'angkat') return angkat(t);
     if (t.jenis === 'mancing') return mulaiMancing(t);
+    if (t.jenis === 'renang') return mulaiRenang(t);
     if (t.jenis === 'potong') return mulaiPotong(t);
     if (t.jenis === 'panggang') return mulaiMasak(t, false);
     if (t.jenis === 'masak') return mulaiMasak(t, true);
   }
   window.AKT = { pakai, langkah, selesai, kunci: () => !!A, membawa: () => !!B, tas: () => JSON.parse(JSON.stringify(TAS)), ambil,
+    renang: () => !!A && A.jenis === 'renang',
+    // geometri kolam untuk NPC (modul/npc.js): tepi terdekat, titik di dalam, permukaan air; cebur = suara + percikan
+    kolam: { tepi: tepiKolam, keDalam, dalam: dalamKolam, air: airKolam, cebur: p => { BUNYI.cebur(); percik(p, 30, 0xe8f6ff, 1.2); } },
     _uji: { A: () => A, tekan, lempar: k => A && lempar(A, k), TAS: () => TAS, pilihIkan, dapat: () => A && dapat(A) } };
 })();
