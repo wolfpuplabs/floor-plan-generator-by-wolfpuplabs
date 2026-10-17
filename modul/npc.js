@@ -176,6 +176,14 @@
     if (n.mode && n.p) pasangBadan(n);
     kotor();
   }
+  // avatar Main bareng (karakter bawaan + benih warna): klon model diwarnai sama seperti NPC — penampilan dari benih yang
+  // sama di semua peserta, jadi tiap orang melihat warna yang sama (JEV-112)
+  function warnaiAvatar(model, tpl, jenis, benih) {
+    const o = { type: jenisAman(jenis), params: { benih: benih >>> 0 } };
+    let peta; try { peta = materiUntuk(tpl, 'av:' + o.type + ':' + o.params.benih, penampilan(o)); } catch (e) { console.warn('avatar warna', e); return false; }
+    model.traverse(x => { if (x.isMesh && peta.has(x.material)) x.material = peta.get(x.material); });
+    return true;
+  }
   /* MODE TAMPIL AMAN (iPad / WebKit): program shader NPC (berkulit + morf + sisipan GI per ruang) bisa gagal
      dikompilasi di sebagian GPU sehingga karakter tidak tergambar sama sekali. Program diperiksa setelah tampil;
      bila gagal: 1 = bahan sama tanpa sisipan GI, 2 = bahan Lambert sederhana. Tingkat diingat per perangkat. */
@@ -685,7 +693,7 @@
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
   window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
-    hadirkan, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
+    warnaiAvatar, hadirkan, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };

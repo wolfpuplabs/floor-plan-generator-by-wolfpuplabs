@@ -16,7 +16,7 @@
 /* global PROJECT, scene, camera, renderer, worldRoot, FPS, LIHAT, SEL, ATAP_TUTUP:writable, gizmo, $, el, toast, clamp,
    sanitasiProyek, selData, renderLevels, renderSitusUI, renderFinishUI, renderAtapUI, renderInspector, rebuildScene,
    buatTautanLihat, proyekKosong, setTool, FOTO_LOBI, pasangPilihFoto, AVATAR_LOBI, pasangPilihAvatar3D,
-   ambilLampiran, uriLuarGLTF, klonModel, bayangKotor, BAYANG_KOTOR:writable, bgmMain, MEDIA_OBJ */
+   ambilLampiran, uriLuarGLTF, klonModel, bayangKotor, BAYANG_KOTOR:writable, bgmMain, MEDIA_OBJ, muatModul */
 (function () {
   'use strict';
   const PEERJS = { src: 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js', sri: 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu' };
@@ -47,7 +47,9 @@
   // avatar 3D sendiri (JEV-089): hanya daftar sidik potongan di api/tautan — berkasnya diunduh & diperiksa penerima
   // avatar 3D: unggahan sendiri (sidik bagian di api/tautan) atau karakter bawaan situs (JEV-102: avatar/F.vrm, avatar/M.vrm)
   const AV_BAWAAN = /^(F|M)$/;
-  const avAman = v => (v && typeof v === 'object' && typeof v.bawaan === 'string' && AV_BAWAAN.test(v.bawaan) ? { bawaan: v.bawaan }
+  // benih warna (JEV-112): karakter bawaan diwarnai acak seperti NPC — kulit, rambut, atasan, bawahan, sepatu
+  const benihOk = b => Number.isInteger(b) && b >= 0 && b <= 0xffffffff;
+  const avAman = v => (v && typeof v === 'object' && typeof v.bawaan === 'string' && AV_BAWAAN.test(v.bawaan) ? { bawaan: v.bawaan, ...(benihOk(v.benih) ? { benih: v.benih } : {}) }
     : v && typeof v === 'object' && Array.isArray(v.bagian) && v.bagian.length >= 1 && v.bagian.length <= 3 &&
     v.bagian.every(h => typeof h === 'string' && /^[0-9a-f]{64}$/.test(h)) ? { bagian: v.bagian.slice() } : null);
   const publik = p => ({ id: p.id, nama: p.nama, warna: p.warna, pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, ...(p.foto ? { foto: p.foto } : {}), ...(p.av ? { av: p.av } : {}) });
@@ -616,12 +618,13 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       .catch(e => { AV_MODEL.delete(k); throw e; }));
     return AV_MODEL.get(k);
   }
-  L.muatAvatar3D = muatAvatar3D;
+  L.muatAvatar3D = muatAvatar3D; L.avAman = avAman;
   function pasang3D(a, p) {
     if (!p.av) return;
     muatAvatar3D(p.av).then(tpl => {
       if (L.avatar.get(p.id) !== a) return;              // peserta sudah keluar
       const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx;
+      if (p.av.bawaan && p.av.benih != null) muatModul('npc').then(() => { if (L.avatar.get(p.id) === a) { window.NPC.warnaiAvatar(m, tpl, p.av.bawaan, p.av.benih); bayangKotor(); } }, () => {});
       a.g.add(m); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d'); siapkanGerak(a, m); bayangKotor();
     }).catch(e => console.warn('avatar 3D', p.nama, e.message));
   }
