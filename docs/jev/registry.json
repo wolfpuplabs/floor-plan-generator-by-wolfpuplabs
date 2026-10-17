@@ -5511,6 +5511,68 @@
     "target": "≥ 60%",
     "tinjau": "2027-01-18"
    }
+  },
+  {
+   "id": "JEV-116",
+   "judul": "Kustom tampilan karakter (warna per bagian & pakaian) untuk NPC & avatar Main bareng; suara NPC sintetis: gumaman, sorakan, huft",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Warna NPC & avatar F/M hanya bisa diacak dari benih — tidak bisa memilih warna kulit/rambut/baju sendiri atau memakai baju renang di luar kolam; NPC bicara tanpa suara kecuali TTS (yang terdengar kaku), tidak ada reaksi suara saat senang atau kesal.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18: \"bikin karakter bisa di custom outfit sama looksnya, kasih sfx mumbling, cheers, “huft”\"",
+    "alternatif": [
+     "hanya tombol acak ulang warna (sudah ada)",
+     "sampel audio rekaman per suara (menambah unduhan & lisensi)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.4,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "warna disaring hanya #rrggbb per bagian yang dikenal, pakaian hanya dari daftar per jenis (F: renang/renang2, M: renang) di penyunting dan di avAman tiap penerima; nama berkas model tetap dibatasi F|M(_renang2?)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "pilihan disimpan di proyek / localStorage perangkat; avatar Main bareng hanya mengirim kode warna & pakaian"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "suara disintesis WebAudio (kode sendiri), tanpa sampel; model VRM karya wolfpuplabs, pewarnaan di memori"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tekstur hasil pewarnaan di-cache per kombinasi warna; simpul audio pendek, tidak dibuat bila suara mati atau NPC > 20 m"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "input warna berlabel per bagian, select pakaian berlabel; tombol suara tiga keadaan dengan label & ikon; mode mati tersedia"
+    }
+   },
+   "metrik": {
+    "nama": "proyek dengan NPC yang warnanya / pakaiannya diubah",
+    "target": "≥ 25%",
+    "tinjau": "2027-01-18"
+   }
   }
  ]
 }

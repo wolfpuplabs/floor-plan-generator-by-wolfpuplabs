@@ -49,7 +49,12 @@
   const AV_BAWAAN = /^(F|M)$/;
   // benih warna (JEV-112): karakter bawaan diwarnai acak seperti NPC — kulit, rambut, atasan, bawahan, sepatu
   const benihOk = b => Number.isInteger(b) && b >= 0 && b <= 0xffffffff;
-  const avAman = v => (v && typeof v === 'object' && typeof v.bawaan === 'string' && AV_BAWAAN.test(v.bawaan) ? { bawaan: v.bawaan, ...(benihOk(v.benih) ? { benih: v.benih } : {}) }
+  // kustom tampilan: warna per bagian ('#rrggbb', bagian yang dikenal saja) & pakaian (renang / renang2 untuk F, renang untuk M)
+  const BAGIAN_AV = ['kulit', 'rambut', 'atas', 'bawah', 'sepatu'];
+  const warnaAvAman = w => { if (!w || typeof w !== 'object') return null; const o = {}; for (const k of BAGIAN_AV) if (typeof w[k] === 'string' && /^#[0-9a-f]{6}$/i.test(w[k])) o[k] = w[k].toLowerCase(); return Object.keys(o).length ? o : null; };
+  const bajuAvAman = (k, b) => (b === 'renang' || (b === 'renang2' && k === 'F') ? b : '');
+  const avAman = v => (v && typeof v === 'object' && typeof v.bawaan === 'string' && AV_BAWAAN.test(v.bawaan) ? { bawaan: v.bawaan, ...(benihOk(v.benih) ? { benih: v.benih } : {}),
+    ...(warnaAvAman(v.warna) ? { warna: warnaAvAman(v.warna) } : {}), ...(bajuAvAman(v.bawaan, v.baju) ? { baju: bajuAvAman(v.bawaan, v.baju) } : {}) }
     : v && typeof v === 'object' && Array.isArray(v.bagian) && v.bagian.length >= 1 && v.bagian.length <= 3 &&
     v.bagian.every(h => typeof h === 'string' && /^[0-9a-f]{64}$/.test(h)) ? { bagian: v.bagian.slice() } : null);
   const publik = p => ({ id: p.id, nama: p.nama, warna: p.warna, pemilik: !!p.pemilik, pusat: !!p.pusat, urut: p.urut | 0, ...(p.foto ? { foto: p.foto } : {}), ...(p.av ? { av: p.av } : {}) });
@@ -653,12 +658,15 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   L.muatAvatar3D = muatAvatar3D; L.avAman = avAman;
   function pasang3D(a, p) {
     if (!p.av) return;
-    muatAvatar3D(p.av).then(tpl => {
+    const baju = p.av.bawaan && p.av.baju ? '_' + p.av.baju : '';   // pakaian pilihan (mis. baju renang) dipakai sejak awal
+    const tampil = tpl => {
       if (L.avatar.get(p.id) !== a) return;              // peserta sudah keluar
       const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx;
-      if (p.av.bawaan && p.av.benih != null) muatModul('npc').then(() => { if (L.avatar.get(p.id) === a) { window.NPC.warnaiAvatar(m, tpl, p.av.bawaan, p.av.benih); bayangKotor(); } }, () => {});
+      if (p.av.bawaan && p.av.benih != null) muatModul('npc').then(() => { if (L.avatar.get(p.id) === a) { window.NPC.warnaiAvatar(m, tpl, p.av.bawaan, p.av.benih, a.baju || '', p.av.warna); bayangKotor(); } }, () => {});
       a.g.add(m); a.kepala = AV_TINGGI + 0.28; a.d.classList.add('lb-3d'); siapkanGerak(a, m); bayangKotor();
-    }).catch(e => console.warn('avatar 3D', p.nama, e.message));
+    };
+    (baju ? muatAvatar3D({ bawaan: p.av.bawaan + baju }).then(t => { a.baju = baju; return t; }, () => muatAvatar3D(p.av)) : muatAvatar3D(p.av)).then(tampil)
+      .catch(e => console.warn('avatar 3D', p.nama, e.message));
   }
   // baju renang (JEV-113): karakter bawaan berganti ke versinya yang berpakaian renang (avatar/F_renang.vrm, F_renang2.vrm,
   // M_renang.vrm — karakter yang sama diekspor dari VRoid Studio) selama berpose berenang; tanpa berkas itu tetap berbaju biasa.
@@ -667,15 +675,15 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   L.sufiksRenang = sufiksRenang;
   const BAJU_TIADA = new Set();
   function bajuAvatar(a, p) {
-    const po = a.tuju && a.tuju.po, bw = p.av && p.av.bawaan, suf = bw ? sufiksRenang(bw, p.av.benih || 0) : '';
-    const mau = (po === 17 || po === 18) && bw && !BAJU_TIADA.has(bw + suf) ? suf : '';
+    const po = a.tuju && a.tuju.po, bw = p.av && p.av.bawaan, tetap = bw && p.av.baju ? '_' + p.av.baju : '', suf = tetap || (bw ? sufiksRenang(bw, p.av.benih || 0) : '');
+    const mau = (tetap || po === 17 || po === 18) && bw && !BAJU_TIADA.has(bw + suf) ? suf : '';
     if (!bw || !a.model || (a.baju || '') === mau || a.bajuMuat === mau) return;
     a.bajuMuat = mau;
     muatAvatar3D({ bawaan: bw + mau }).then(tpl => {
       a.bajuMuat = null;
       if (L.avatar.get(p.id) !== a) return;
       const m = klonModel(tpl); m.userData.klip = tpl.userData.klip; m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx;
-      if (p.av.benih != null) muatModul('npc').then(() => { if (a.model === m) { window.NPC.warnaiAvatar(m, tpl, bw, p.av.benih, mau); bayangKotor(); } }, () => {});
+      if (p.av.benih != null) muatModul('npc').then(() => { if (a.model === m) { window.NPC.warnaiAvatar(m, tpl, bw, p.av.benih, mau, p.av.warna); bayangKotor(); } }, () => {});
       if (a.model) a.g.remove(a.model);
       a.g.add(m); siapkanGerak(a, m); a.baju = mau; bayangKotor();
     }, () => { a.bajuMuat = null; if (mau) BAJU_TIADA.add(bw + mau); });
