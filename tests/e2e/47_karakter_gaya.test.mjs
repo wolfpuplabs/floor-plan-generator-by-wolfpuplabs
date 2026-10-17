@@ -28,7 +28,7 @@ export const tes = {
     assert.ok(m.kedip >= 1, 'kedip VRM');
     assert.ok(Math.abs(m.tinggi - 1.7) < 0.05, 'tinggi disamakan 1,7 m: ' + m.tinggi);
     // data peserta: hanya kode bawaan yang dikirim, kode lain ditolak
-    assert.deepEqual(await page.evaluate(() => [window.LOBI.gerak.posAman({ jalan: 1, x: 1, y: 0, z: 2, yaw: 0, po: 2, ad: 'aRumah' }), window.LOBI.gerak.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 11, ad: '<x>' })]),
+    assert.deepEqual(await page.evaluate(() => [window.LOBI.gerak.posAman({ jalan: 1, x: 1, y: 0, z: 2, yaw: 0, po: 2, ad: 'aRumah' }), window.LOBI.gerak.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 15, ad: '<x>' })]),
       [{ x: 1, y: 0, z: 2, yaw: 0, po: 2, ad: 'aRumah' }, { x: 0, y: 0, z: 0, yaw: 0 }]);
   },
 
