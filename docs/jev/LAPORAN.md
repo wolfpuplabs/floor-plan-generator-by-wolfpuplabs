@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 91 GO · 3 DEFER · 5 NO-GO dari 99 item.
+**Ringkasan:** 92 GO · 3 DEFER · 5 NO-GO dari 100 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -86,6 +86,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-001 | Generator denah gambar → model 3D | terkirim | 0.65 | 351 jt | 36 jt | 18.5× | 8.8× | 0.8 bln | 52 | **GO** |
 | JEV-048 | Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K | terkirim | 0.65 | 12,1 jt | 1,4 jt | 17.0× | 8.0× | 1.1 bln | 56 | **GO** |
 | JEV-010 | Atap dak beton | terkirim | 0.60 | 23,6 jt | 3 jt | 14.8× | 6.9× | 1.2 bln | 64 | **GO** |
+| JEV-117 | NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang | terkirim | 0.65 | 2,6 jt | 0,4 jt | 13.6× | 6.3× | 1.4 bln | 0 | **GO** |
 | JEV-009 | Ekspor GLB/OBJ/USDZ + AR maket | terkirim | 0.55 | 64,4 jt | 9,9 jt | 12.0× | 5.5× | 1.4 bln | 77 | **GO** |
 | JEV-002 | Editor dinding, bukaan, multi-lantai, undo | terkirim | 0.65 | 131,6 jt | 21 jt | 11.5× | 5.3× | 1.4 bln | 80 | **GO** |
 | JEV-020 | Pantulan probe untuk kaca, logam, air | terkirim | 0.50 | 19,7 jt | 4,2 jt | 8.4× | 3.7× | 2.1 bln | 107 | **GO** |
@@ -190,6 +191,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-001 Generator denah gambar → model 3D — GO.** ROI 18.5× ≥ 1, payback 0.8 bln.
 - **JEV-048 Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K — GO.** ROI 17.0× ≥ 1, payback 1.1 bln.
 - **JEV-010 Atap dak beton — GO.** ROI 14.8× ≥ 1, payback 1.2 bln.
+- **JEV-117 NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-009 Ekspor GLB/OBJ/USDZ + AR maket — GO.** ROI 12.0× ≥ 1, payback 1.4 bln.
 - **JEV-002 Editor dinding, bukaan, multi-lantai, undo — GO.** ROI 11.5× ≥ 1, payback 1.4 bln.
 - **JEV-020 Pantulan probe untuk kaca, logam, air — GO.** ROI 8.4× ≥ 1, payback 2.1 bln.

@@ -61,6 +61,22 @@ export const tes = {
     assert.deepEqual(r.ganti, { warna: null, baju: 'renang2' });
   },
 
+  'NPC tetap tergambar: tanda "tulang cadangan" lama dibuang saat dimuat; NPC berenang / berbaring tidak ikut uji gambar (dulu salah deteksi → badan meledak / hilang di iPad)': async (page) => {
+    await page.evaluate(() => localStorage.setItem('npcPerbaiki', JSON.stringify({ tulang: 1, kul: 1 })));
+    await muatProyekJSON(page, rumah);
+    await siap(page);
+    const r = await page.evaluate(() => {
+      const U = window.NPC._uji, n = U.NPC.get('nF');
+      const out = { simpan: JSON.parse(localStorage.getItem('npcPerbaiki')), perbaikan: { ...U.perbaikan() }, fvt: renderer.capabilities.floatVertexTextures };
+      n.renang = { airY: 0 }; n.uji = undefined; U.ujiDanPerbaiki(); out.renang = n.uji === undefined; n.renang = null;
+      const pw = n.a.pw.slice(); n.a.pw[9] = 1; U.ujiDanPerbaiki(); out.baring = n.uji === undefined; n.a.pw = pw;
+      U.ujiDanPerbaiki(); out.tegak = !!n.uji && n.uji.A > 50;
+      localStorage.removeItem('npcPerbaiki');
+      return out; });
+    assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1 }, { kul: 1 }, true]);
+    assert.deepEqual([r.renang, r.baring, r.tegak], [true, true, true], JSON.stringify(r));
+  },
+
   'suara NPC: gumaman sepanjang teks (mati = diam), huft saat kesal, sorakan; tombol suara gumam → dibacakan → mati': async (page) => {
     await muatProyekJSON(page, rumah);
     await siap(page);

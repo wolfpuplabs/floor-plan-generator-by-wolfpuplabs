@@ -198,6 +198,9 @@
   const TPL = {};
   // perbaikan hasil uji gambar (lihat ujiDanPerbaiki), diingat per perangkat
   let PERBAIKI = {}; try { PERBAIKI = JSON.parse(localStorage.getItem('npcPerbaiki') || '{}') || {}; } catch (e) { PERBAIKI = {}; }
+  // 'tulang' (jalur tulang lewat uniform) dulu bisa terpasang keliru saat NPC berenang dan merusak tampilan (badan meledak /
+  // hilang): three r128 mengunci pilihan tekstur tulang saat renderer dibuat. Tanda lama dibuang.
+  if (PERBAIKI.tulang) { delete PERBAIKI.tulang; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } }
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg', 'jarak', 'pangku', 'renang', 'kolamTuju'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
   let PERINGATAN = false;
@@ -296,11 +299,8 @@
     return hasil;
   }
   // perbaikan menurut uji gambar, diingat per perangkat: tekstur kosong → tekstur asli (tanpa pewarnaan) → warna polos;
-  // tulang tak terbaca (B = 0, C > 0) → matriks tulang lewat uniform, bukan tekstur float
+  // (B = 0, C > 0 hanya dicatat di diagnosa: tulang tidak bisa dipindah ke uniform setelah renderer dibuat)
   const simpanPerbaiki = () => { try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } };
-  function tulangUniform() { if (!renderer.capabilities.floatVertexTextures) return; renderer.capabilities.floatVertexTextures = false;
-    scene.traverse(x => { if (x.isSkinnedMesh) { x.skeleton.boneTexture = null; for (const mt of [].concat(x.material)) mt.needsUpdate = true; } }); }
-  if (PERBAIKI.tulang && renderer) tulangUniform();
   const SIMPAN_POLOS = new Map();
   function bahanPolos(x, o) {
     const lk = penampilan(o), w = /face|wajah|head/i.test(x.name) ? lk.kulit : lk.atas, kunci = x.material.uuid + ':' + w.join(',');
@@ -314,11 +314,12 @@
   let UJI_T = -1e9;
   function ujiDanPerbaiki() {
     if (performance.now() - UJI_T < 8000) return;
-    const n = [...NPC.values()].find(x => x.a && x.a.model && x.badan && x.badan.visible); if (!n) return;
+    // hanya NPC yang berdiri biasa: berenang / berbaring / duduk menggeser badan keluar kotak ikat → bingkai uji meleset
+    const tegak = x => !x.renang && x.mode !== 'renang' && !(x.a.pw || []).some((w, i) => i > 0 && w > 0.05);
+    const n = [...NPC.values()].find(x => x.a && x.a.model && x.badan && x.badan.visible && tegak(x)); if (!n) return;
     UJI_T = performance.now();
     const r = ujiGambar(n); n.uji = r; if (!r || r.galat || r.A > 0 || !r.K || r.sembunyi) return;   // mesh disembunyikan kode lain: bukan soal perangkat
     if (r.C === 0 && !PERBAIKI.kul) { PERBAIKI.kul = 1; simpanPerbaiki(); for (const m of NPC.values()) if (m.a && m.a.model) m.a.model.traverse(x => { if (x.isMesh) x.frustumCulled = false; }); toast('NPC selalu digambar (tanpa pemangkasan pandang) di perangkat ini'); }
-    else if (r.B === 0 && r.C > 0 && !PERBAIKI.tulang) { PERBAIKI.tulang = 1; simpanPerbaiki(); tulangUniform(); toast('NPC memakai jalur tulang cadangan di perangkat ini'); }
     else if (r.B > 0 && PERBAIKI.peta !== 'polos') { PERBAIKI.peta = PERBAIKI.peta ? 'polos' : 'asli'; simpanPerbaiki(); terapkanPerbaikan(); toast(PERBAIKI.peta === 'asli' ? 'NPC memakai tekstur asli di perangkat ini' : 'NPC memakai warna polos di perangkat ini'); }
     else return;
     UJI_T = -1e9; kotor(); setTimeout(() => ujiDanPerbaiki(), 1500);

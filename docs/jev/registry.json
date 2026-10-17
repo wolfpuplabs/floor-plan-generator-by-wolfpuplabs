@@ -5573,6 +5573,57 @@
     "target": "≥ 25%",
     "tinjau": "2027-01-18"
    }
+  },
+  {
+   "id": "JEV-117",
+   "judul": "NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Di iPad NPC tiba-tiba tergambar sebagai segitiga besar memanjang lalu tidak tampak sama sekali, dan tetap begitu setelah dimuat ulang. Uji gambar otomatis menilai NPC yang sedang berenang (badan mendatar di bawah air, di luar bingkai uji) sebagai 'tulang tak terbaca' lalu mengingat perbaikan 'jalur tulang lewat uniform'; three r128 mengunci pilihan tekstur tulang saat renderer dibuat, jadi shader tetap membaca tekstur tulang yang tak pernah diisi.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar pengguna 2026-10-18 (iPad Chrome): NPC jadi segitiga di dekat kolam & ranjang, lalu \"npc jadi ilang\"",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.9,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 5000000,
+      "reduksi": 0.9
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "uji gambar hanya untuk NPC yang berdiri; tanpa beban tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "laporan NPC tidak tampil / rusak di iPad",
+    "target": "0 per bulan",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }
