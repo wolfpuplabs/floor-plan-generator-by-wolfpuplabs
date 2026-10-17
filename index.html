@@ -312,6 +312,7 @@ body.jalan #mediaDock{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 96px)}
 #fpsFoto{display:none;position:absolute;left:50%;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 10px);transform:translateX(-50%);z-index:37;width:62px;height:62px;border-radius:50%;
   place-items:center;padding:0;color:#fff;background:rgba(18,20,24,.45);border:3px solid rgba(255,255,255,.92);box-shadow:0 2px 12px rgba(0,0,0,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer}
 #fpsFoto .ik{width:24px;height:24px}
+#fpsFoto.siap{box-shadow:0 0 0 4px #ffd54a;animation:fotoSiap 1s ease-in-out infinite}@keyframes fotoSiap{50%{box-shadow:0 0 0 9px rgba(255,213,74,.35)}}@media (prefers-reduced-motion:reduce){#fpsFoto.siap{animation:none}}
 #fpsFoto:active{transform:translateX(-50%) scale(.92);background:rgba(255,255,255,.3)}
 body.jalan #fpsFoto{display:grid}
 body.jalan #toast{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 84px)}
@@ -1019,7 +1020,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       </div>
       <div class="fl" data-lembar="gaya" hidden>
         <div class="fl-judul">Gaya <small>— terlihat oleh teman di Main bareng</small></div>
-        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button><button class="btn sm ghost" data-gaya="peluk">🤗 Peluk</button><button class="btn sm ghost" data-gaya="gandeng">🤝 Gandeng</button><button class="btn sm ghost" data-gaya="dansa">💞 Dansa berdua</button><button class="btn sm ghost" data-gaya="cium">😘 Cium pipi</button></div>
+        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button><button class="btn sm ghost" data-gaya="peluk">🤗 Peluk</button><button class="btn sm ghost" data-gaya="gandeng">🤝 Gandeng</button><button class="btn sm ghost" data-gaya="dansa">💞 Dansa berdua</button><button class="btn sm ghost" data-gaya="cium">😘 Cium pipi</button><button class="btn sm ghost" data-gaya="peace">✌️ Pose peace</button><button class="btn sm ghost" data-gaya="pinggang">💁 Tangan di pinggang</button><button class="btn sm ghost" data-gaya="hati">🫶 Pose hati</button></div>
         <div class="fl-npc"><div class="fl-judul">NPC <small>— muncul di depanmu</small></div>
         <div class="fl-chip"><button class="btn sm ghost" data-npc-jalan="F">NPC F</button><button class="btn sm ghost" data-npc-jalan="M">NPC M</button><button class="btn sm ghost" data-npc-jalan="acak">🎲 Acak</button></div></div>
       </div>
@@ -4247,19 +4248,30 @@ function apiLangkah(){
   c.filter='blur(3px)'; c.drawImage(API.sim,0,0,API.cv.width,API.cv.height); c.filter='none';
   if(API.tex) API.tex.needsUpdate=true;
 }
+/* kayu bakar (JEV-118): api perapian / tungku / unggun membesar sesudah ditambah kayu (≤ 1,8×), susut ke 1× dalam ±3 menit;
+   api yang padam dinyalakan. Besarnya mengatur lidah api & kuat cahayanya */
+const API_KUAT=new Map();
+function kuatkanApi(id,v){ for(const g of grupObjek(id)){ g.userData.apiKuat=v; g.traverse(x=>{ if(x.name==='lidahApi') x.scale.set(0.75+0.25*v,0.6+0.4*v,0.75+0.25*v); }); } }
 function stepApi(dt){
   if(!API.tex) return;
   API.t+=dt; if(API.t<1/30) return; API.t=0;
+  for(const [id,v] of API_KUAT){ const b=Math.max(1,v-0.8/(180*30)); if(b<=1.001){ API_KUAT.delete(id); kuatkanApi(id,1); } else { API_KUAT.set(id,b); kuatkanApi(id,b); } }
   apiLangkah();
   const m=DECOTEX.get('m_api'); if(m) m.emissiveIntensity=1.5*(0.82+0.18*Math.random());
   if(API.lidah) API.lidah.opacity=0.75+0.25*Math.random();
+  if(API.lidahPudar) API.lidahPudar.opacity=API.lidah.opacity;
 }
 /* lidah api 3D di depan dinding tungku: dua bidang bersilang, cahaya aditif
    (hitam = tak terlihat); ikut padam bersama halo */
-function lidahApi(w,h){
+function lidahApi(w,h,pudar){
   if(!API.lidah) API.lidah=new THREE.MeshBasicMaterial({map:apiTex(), transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, toneMapped:false});
-  const g=new THREE.Group();
-  for(const a of [-0.45,0.45]){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),API.lidah); m.rotation.y=a; m.position.y=h/2;
+  // api terbuka (api unggun): ujung atas & sisi lidah api memudar — tanpa dinding tungku tepi bidangnya akan terlihat
+  if(pudar && !API.lidahPudar){ const c=document.createElement('canvas'); c.width=32; c.height=64; const x=c.getContext('2d'), gr=x.createLinearGradient(0,0,0,64);
+    gr.addColorStop(0,'#000'); gr.addColorStop(0.45,'#888'); gr.addColorStop(1,'#fff'); x.fillStyle=gr; x.fillRect(0,0,32,64);
+    const gs=x.createLinearGradient(0,0,32,0); gs.addColorStop(0,'rgba(0,0,0,1)'); gs.addColorStop(0.25,'rgba(0,0,0,0)'); gs.addColorStop(0.75,'rgba(0,0,0,0)'); gs.addColorStop(1,'rgba(0,0,0,1)');
+    x.fillStyle=gs; x.fillRect(0,0,32,64); API.lidahPudar=API.lidah.clone(); API.lidahPudar.alphaMap=new THREE.CanvasTexture(c); }
+  const g=new THREE.Group(); g.name='lidahApi';
+  for(const a of [-0.45,0.45]){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),pudar?API.lidahPudar:API.lidah); m.rotation.y=a; m.position.y=h/2;
     m.userData.halo=true; m.userData.noExport=true; m.raycast=()=>{}; m.castShadow=false; m.receiveShadow=false; g.add(m); }
   return g;
 }
@@ -5447,6 +5459,22 @@ function tunggulKayu(){ const g=new THREE.Group();
   g.add(cyl(0.3,0.34,0.45,MAT.woodDark,0,0.225,0,18)); const k=cyl(0.12,0.12,0.38,MAT.wood,0,0.64,0,12); k.name='kayu'; g.add(k);
   for(let i=0;i<5;i++){ const p=cyl(0.065,0.065,0.42,MAT.wood,0.5+(i%3)*0.14,0.065+Math.floor(i/3)*0.12,0.05,8); p.rotation.x=Math.PI/2; g.add(p); }
   return g; }
+/* api unggun & tumpukan kayu bakar (JEV-118): lingkaran batu, bara menyala (titik cahaya + halo seperti perapian), kayu
+   bersandar membentuk kerucut, lidah api hidup; tumpukan kayu bakar = sumber kayu (Ambil kayu bakar) */
+function apiUnggun(){ const g=new THREE.Group();
+  for(let i=0;i<13;i++){ const a=i/13*Math.PI*2, b=sph(0.1,MAT.stone,Math.cos(a)*0.5,0.06,Math.sin(a)*0.5,1,8); b.scale.set(1.25,0.7,1); b.rotation.y=a; g.add(b); }
+  g.add(cyl(0.42,0.44,0.025,MAT.dark,0,0.0125,0,20));
+  g.add(cyl(0.2,0.24,0.04,fireMat(),0,0.04,0,14));                    // bara: titik cahaya & halo api
+  const kayu=new THREE.Group(); kayu.name='kayu';
+  for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+0.3, l=cyl(0.035,0.045,0.62,MAT.bark,Math.cos(a)*0.13,0.25,Math.sin(a)*0.13,8);
+    l.rotation.order='YXZ'; l.rotation.y=-a+Math.PI/2; l.rotation.x=0.42; kayu.add(l); }
+  g.add(kayu);
+  { const f=lidahApi(0.55,0.95,true); f.position.y=0.03; g.add(f); }
+  return g; }
+function tumpukanKayu(){ const g=new THREE.Group();
+  for(const sx of [-0.45,0.45]) for(const sz of [-0.2,0.2]) g.add(box(0.06,0.5,0.06,MAT.woodDark,sx,0.25,sz));
+  for(let r=0;r<3;r++) for(let i=0;i<6-r;i++){ const l=cyl(0.055,0.055,0.5,MAT.bark,-0.33+i*0.13+r*0.065,0.06+r*0.1,0,8); l.rotation.x=Math.PI/2; g.add(l); }
+  return g; }
 function bangkuTaman(){ const g=new THREE.Group(), w=1.5;
   for(let i=0;i<4;i++) g.add(box(w,0.03,0.09,MAT.wood,0,0.44,-0.17+i*0.11));
   for(let i=0;i<3;i++){ const s=box(w,0.09,0.025,MAT.wood,0,0.62+i*0.12,-0.27); s.rotation.x=-0.18; g.add(s); }
@@ -5732,6 +5760,8 @@ const FURN={
   pergola     :{l:'Pergola',            i:'🏗️', c:'taman',   f:[3.2,3.4],   b:pergola},
   panggangan  :{l:'Panggangan BBQ',     i:'🍢', c:'taman',   f:[0.8,0.45],  b:panggangan},
   tunggul_kayu:{l:'Tunggul Kayu Bakar', i:'🪓', c:'taman',   f:[1.0,0.7],   b:tunggulKayu},
+  api_unggun  :{l:'Api Unggun',         i:'🔥', c:'taman',   f:[1.2,1.2],   b:apiUnggun},
+  kayu_bakar  :{l:'Tumpukan Kayu Bakar',i:'🪵', c:'taman',   f:[1.0,0.5],   b:tumpukanKayu},
   ayunan      :{l:'Ayunan',             i:'🎠', c:'taman',   f:[2.2,1.0],   b:ayunan},
   kursi_jemur :{l:'Kursi Berjemur',     i:'🏖️', c:'taman',   f:[0.65,2.0],  b:kursiJemur},
   payung_taman:{l:'Payung Taman',       i:'⛱️', c:'taman',   f:[2.8,2.8],   b:payungTaman},
@@ -5795,7 +5825,7 @@ function buildColumn(o,lv){
 const NYALA_JENIS={pendant:'lampu',pendant_trio:'lampu',chandelier:'lampu',table_lamp:'lampu',night_lamp:'lampu',
   arc_lamp:'lampu',wall_sconce:'lampu',floor_lamp:'lampu',downlight:'lampu',ceiling_flush:'lampu',ceiling_panel:'lampu',
   kitchen_line:'lampu',kitchen_l2:'lampu',kitchen_u:'lampu',kitchen_par:'lampu',kitchen_isl:'lampu',
-  fire_modern:'api',fire_classic:'api',wood_stove:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
+  fire_modern:'api',fire_classic:'api',wood_stove:'api',api_unggun:'api', tv_set:'tv',tv_wall:'tv', curtain:'gorden',
   music_box:'audio', vinyl_player:'audio', cassette_player:'audio', cd_player:'audio', piano:'piano', gitar:'gitar', lampu_taman:'lampu'};
 /* TEMPAT DUDUK (mode jalan): tinggi dudukan (m), jumlah dudukan berjajar
    sepanjang x lokal, geser z dudukan. Semua perabot menghadap +z lokal
@@ -7192,7 +7222,7 @@ function stepLampu(dt){
   for(const l of KOLAM){ const L=l.userData.L; if(!L){ l.intensity=0; continue; }
     const u=l.userData; u.f=clamp((u.f??1)+(u.tuju?1:-1)*dt*3.5,0,1);        // redup/nyala ±0,3 dtk
     const kedip = L.jenis==='api' ? 0.82+0.18*Math.sin(tk*11+L.pos.x)*Math.sin(tk*7.3+L.pos.z) : 1;
-    l.intensity=L.kuat*s.lamp*kedip*u.f*u.f; }
+    l.intensity=L.kuat*s.lamp*kedip*u.f*u.f*(L.jenis==='api'&&L.grp&&L.grp.userData.apiKuat?L.grp.userData.apiKuat:1); }
   stepGI(s);
 }
 
@@ -15441,7 +15471,7 @@ function cariTarget(ray){
         if(ak&&ak.pindah) ekstra.unshift('pindah');
         if(ak&&ak.anim) ekstra.push('anim');
         if(n.userData.nyalaJenis==='duduk'&&/^bed_/.test((cariObjek(n.userData.id)||{}).type||'')) ekstra.push('baring');
-        { const ob=cariObjek(n.userData.id), ak=aksiAktivitas(ob); if(ak) ekstra.unshift(ak); if(bisaDiangkat(ob)) ekstra.push('angkat'); }
+        { const ob=cariObjek(n.userData.id), ak=aksiAktivitas(ob); if(ak) ekstra.unshift(...[].concat(ak)); if(bisaDiangkat(ob)) ekstra.push('angkat'); }
         if(ak&&(ak.sfx||ak.media)&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
         return {jenis:n.userData.nyalaJenis||ekstra.shift(), ekstra, id:n.userData.id, grp:n, titik:h.point.clone()};
@@ -15454,15 +15484,18 @@ function cariTarget(ray){
   return null;
 }
 // AKTIVITAS (JEV-110): mancing di kolam ikan, panggang / masak, potong kayu, angkat & taruh barang kecil, berenang — modul/aktivitas.js
-const LABEL_AKT={mancing:'Mancing', panggang:'Panggang', masak:'Masak', potong:'Potong kayu', angkat:'Angkat', taruh:'Taruh', renang:'Berenang'};
+const LABEL_AKT={mancing:'Mancing', panggang:'Panggang', masak:'Masak', potong:'Potong kayu', angkat:'Angkat', taruh:'Taruh', renang:'Berenang',
+  ambilkayu:'Ambil kayu bakar', kayu:'Tambah kayu bakar', hangat:'Hangatkan diri', marshmallow:'Bakar marshmallow'};
 function aksiAktivitas(o){
   if(o&&o.kind==='area'&&o.params&&o.params.jenis==='kolam_renang') return 'renang';   // berenang (JEV-113): juga di tautan lihat / Main bareng
   if(!o||LIHAT.on) return null;
   if(o.kind==='area'&&o.params&&o.params.jenis==='kolam_ikan') return 'mancing';
   if(o.kind!=='furn') return null;
-  return o.type==='panggangan'?'panggang':o.type==='tunggul_kayu'?'potong':/^kitchen_/.test(o.type)?'masak':null;
+  if(o.type==='api_unggun') return ['kayu','hangat','marshmallow'];                // api (JEV-118): Berinteraksi = nyala / padam
+  if(NYALA_JENIS[o.type]==='api') return ['kayu','hangat'];
+  return o.type==='panggangan'?'panggang':o.type==='tunggul_kayu'?'potong':o.type==='kayu_bakar'?'ambilkayu':/^kitchen_/.test(o.type)?'masak':null;
 }
-function bisaDiangkat(o){ const d=o&&o.kind==='furn'&&FURN[o.type]; return !!d&&!LIHAT.on&&!d.wall&&d.c!=='bentuk'&&d.f[0]*d.f[1]<=1.1&&(o.y||0)<1.2&&!/^(panggangan|tunggul_kayu)$/.test(o.type); }
+function bisaDiangkat(o){ const d=o&&o.kind==='furn'&&FURN[o.type]; return !!d&&!LIHAT.on&&!d.wall&&d.c!=='bentuk'&&d.f[0]*d.f[1]<=1.1&&(o.y||0)<1.2&&!/^(panggangan|tunggul_kayu|api_unggun|kayu_bakar)$/.test(o.type); }
 function labelAksi(t){
   if(!t) return '';
   if(LABEL_AKT[t.jenis]) return LABEL_AKT[t.jenis];
@@ -15471,7 +15504,7 @@ function labelAksi(t){
     return (buka?'Tutup ':'Buka ')+nm;
   }
   if(t.jenis==='lampu') return MATI.has(t.id)?'Nyalakan lampu':'Matikan lampu';
-  if(t.jenis==='api')   return MATI.has(t.id)?'Nyalakan api':'Padamkan api';
+  if(t.jenis==='api')   return apiMenyala(t.id)?'Padamkan api':'Nyalakan api';
   if(t.jenis==='tv')    return TV_NYALA.has(t.id)?'Matikan TV':'Nyalakan TV';
   if(t.jenis==='gorden')return GORDEN_BUKA.has(t.id)?'Tutup gorden':'Buka gorden';
   if(t.jenis==='audio') return aksiObjek(cariObjek(t.id))?.media ? (MEDIA_OBJ.has(t.id)?'Hentikan media':'Putar media') : (AUDIO.main.has(t.id)?'Hentikan ':'Putar ')+AUDIO_JENIS[t.grp.userData.audioJenis];
@@ -15552,7 +15585,15 @@ function pakai(t){
 }
 /* MAIN BARENG (JEV-078): aksi & suasana dibagi ke peserta lain lewat modul lobi. Yang dikirim
    KEADAAN AKHIR (nyala/mati, buka/tutup), bukan sakelar — pesan ganda/terlambat tidak membalik. */
-const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi','anim','media'];
+const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi','anim','media','kayu'];
+// kayu bakar (JEV-118; modul/aktivitas.js): api yang padam dinyalakan, lalu membesar — ikut terlihat oleh peserta Main bareng
+function apiMenyala(id){ return !MATI.has(id); }
+function tambahKayuApi(id,luar){
+  if(MATI.has(id)){ MATI.delete(id); for(const g of grupObjek(id)) terapkanNyala(g,true); LAMPU_T=0; if(!luar) laporAksi('api',id,true); try{ sfx('apiNyala'); }catch(e){ /* tanpa bunyi */ } bayangKotor(); }
+  const v=Math.min(1.8,(API_KUAT.get(id)||1)+0.4); API_KUAT.set(id,v); kuatkanApi(id,v);
+  if(!luar) laporAksi('kayu',id,true);
+  return v;
+}
 function laporAksi(j,id,on){ if(window.LOBI && window.LOBI.aktif) window.LOBI.aksi(j,id,!!on); }
 function cariBukaanId(id){
   for(let i=0;i<PROJECT.levels.length;i++) for(const w of PROJECT.levels[i].walls) for(const o of w.openings||[]) if(o.id===id) return {o,w,lv:i};
@@ -15574,6 +15615,7 @@ function titikGrup(g){ return new THREE.Box3().setFromObject(g).getCenter(new TH
 function terapkanAksiLuar(j,id,on){
   if(!JENIS_AKSI_BAGI.includes(j) || typeof id!=='string' || !ID_AMAN.test(id)) return false;
   if(j==='bunyi'){ if(!aksiObjek(cariObjek(id))?.sfx) return false; sfxObjek(id); return true; }   // sesaat, bukan keadaan
+  if(j==='kayu'){ const o=cariObjek(id); if(!o||NYALA_JENIS[o.type]!=='api') return false; tambahKayuApi(id,true); return true; }
   on=!!on; if(keadaanSatu(j,id)===on) return false;
   if(j==='bukaan'){
     const b=cariBukaanId(id); if(!b) return false;
@@ -15672,7 +15714,7 @@ function pilihGaya(v){ if(!v||!FPS.on) return; tutupLembar();
     return; }
   if(v==='lantai') return dudukLantai();
   if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
-  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai',peluk:'🤗 Kamu memeluk',gandeng:'🤝 Kamu bergandengan tangan',dansa:'💞 Kamu berdansa',cium:'😘 Kamu mencium pipi'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
+  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai',peluk:'🤗 Kamu memeluk',gandeng:'🤝 Kamu bergandengan tangan',dansa:'💞 Kamu berdansa',cium:'😘 Kamu mencium pipi',peace:'✌️ Kamu berpose peace',pinggang:'💁 Kamu berpose',hati:'🫶 Kamu berpose hati'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
 // dok mode jalan (JEV-107): satu lembar terbuka sekali waktu; ketuk ikon yang sama / layar = tutup
 function tutupLembar(){ $('#fpsLembar').hidden=true; for(const b of document.querySelectorAll('#fpsDok .fps-ik')) b.setAttribute('aria-expanded','false'); }
 function bukaLembar(k){
@@ -16014,7 +16056,21 @@ function fotoJalan(){
   else { download(file,nama); toast('Foto diunduh: '+nama); }
   return {nama, ukuran:u8.length, lebar:c.width, tinggi:c.height, bagikan:!!janji};
 }
-$('#fpsFoto').onclick=()=>fotoJalan();
+/* pose foto (JEV-118): ketukan pertama — NPC yang tampak di bingkai menoleh & berpose (✌️, tangan di pinggang, 🫶, melambai),
+   tombol berdenyut; ketukan kedua (≤ 10 dtk) memotret. Tanpa NPC di bingkai: langsung memotret. Dua ketukan, karena berbagi
+   ke galeri (navigator.share) harus terjadi tepat dari ketukan, tidak bisa ditunda */
+let FOTO_SIAP=0;
+function tombolFoto(){
+  const b=$('#fpsFoto');
+  if(FOTO_SIAP && performance.now()-FOTO_SIAP<10000){ FOTO_SIAP=0; b.classList.remove('siap'); const r=fotoJalan(); if(window.NPC&&window.NPC.selesaiFoto) window.NPC.selesaiFoto(); return r; }
+  const n=window.NPC&&window.NPC.poseFoto?window.NPC.poseFoto(10):0;
+  if(!n){ FOTO_SIAP=0; b.classList.remove('siap'); return fotoJalan(); }
+  FOTO_SIAP=performance.now(); b.classList.add('siap');
+  setTimeout(()=>{ if(FOTO_SIAP && performance.now()-FOTO_SIAP>=9900){ FOTO_SIAP=0; b.classList.remove('siap'); } },10000);
+  toast(n>1?`📸 ${n} NPC berpose — ketuk kamera lagi untuk memotret`:'📸 NPC berpose — ketuk kamera lagi untuk memotret');
+  return null;
+}
+$('#fpsFoto').onclick=()=>tombolFoto();
 { let v=null; try{ v=localStorage.getItem('fps_ciut'); }catch(e){ /* mode privat */ }
   const c=v==='1'; $('#fpsbar').classList.toggle('ciut',c); document.body.classList.toggle('menu-ciut',c); }
 /* Pointer lock bisa lepas karena banyak hal — Esc pertama, pindah jendela,

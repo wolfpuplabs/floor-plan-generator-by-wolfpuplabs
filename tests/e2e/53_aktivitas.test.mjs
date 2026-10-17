@@ -108,7 +108,7 @@ export const tes = {
     assert.ok(Math.abs(t.x - 8) < 0.3 && t.z > 4.5 && t.z < 7, 'ditaruh di depan: ' + t.x + ',' + t.z);
     assert.notEqual(t.sesudah, 11);
     // pose aktivitas diterima lobi
-    assert.deepEqual(await page.evaluate(() => [window.LOBI.gerak.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 14 }).po, window.LOBI.gerak.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 20 }).po]), [14, undefined]);
+    assert.deepEqual(await page.evaluate(() => [window.LOBI.gerak.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 14 }).po, window.LOBI.gerak.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 27 }).po]), [14, undefined]);
     await page.evaluate(() => exitFPS());
   },
 };
