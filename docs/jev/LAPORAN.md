@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 89 GO · 3 DEFER · 5 NO-GO dari 97 item.
+**Ringkasan:** 90 GO · 3 DEFER · 5 NO-GO dari 98 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -44,6 +44,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-111 | Date sim: obrolan pilihan A–D, suasana hati NPC, kencan dengan cutscene, nyatakan perasaan & status pacaran | terkirim | 0.60 | 120,6 jt | 1,5 jt | 159.8× | 79.4× | 0.1 bln | 7 | **GO** |
 | JEV-071 | Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh | terkirim | 0.65 | 16,8 jt | 0,2 jt | 153.7× | 76.3× | 0.1 bln | 7 | **GO** |
 | JEV-086 | Musik latar (BGM) proyek; satu pilihan "Saat diketuk" (suara klik/swoosh/sendiri atau media audio/video) agar tidak bertabrakan; media diputar di pemutar bawah yang bisa disembunyikan; musik objek tidak sunyi di iOS | terkirim | 0.65 | 44,9 jt | 0,6 jt | 148.5× | 73.8× | 0.1 bln | 7 | **GO** |
+| JEV-115 | Ilustrasi adegan kencan (latar + NPC asli), peluk berbaring di ranjang, bantal tidur rebah | terkirim | 0.65 | 53,6 jt | 0,7 jt | 148.0× | 73.5× | 0.1 bln | 7 | **GO** |
 | JEV-078 | Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua | terkirim | 0.65 | 86,9 jt | 1,2 jt | 143.9× | 71.4× | 0.1 bln | 7 | **GO** |
 | JEV-070 | Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata | terkirim | 0.80 | 57,6 jt | 0,8 jt | 138.6× | 68.8× | 0.1 bln | 8 | **GO** |
 | JEV-080 | Tab Taman terpisah (rumput 6 × 6 m bawaan, bisa disembunyikan), objek lingkungan (pohon, semak, batu, jalan), bentuk dasar berwarna, suara interaksi (klik / swoosh / audio sendiri), perbaikan unggah audio & gambar | terkirim | 0.65 | 89 jt | 1,4 jt | 130.8× | 64.9× | 0.1 bln | 8 | **GO** |
@@ -146,6 +147,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-111 Date sim: obrolan pilihan A–D, suasana hati NPC, kencan dengan cutscene, nyatakan perasaan & status pacaran — GO.** ROI 159.8× ≥ 1, payback 0.1 bln.
 - **JEV-071 Merek "Plan23D" dengan logo ikon denah; bilah jalan tidak tertutup tombol X layar penuh — GO.** ROI 153.7× ≥ 1, payback 0.1 bln.
 - **JEV-086 Musik latar (BGM) proyek; satu pilihan "Saat diketuk" (suara klik/swoosh/sendiri atau media audio/video) agar tidak bertabrakan; media diputar di pemutar bawah yang bisa disembunyikan; musik objek tidak sunyi di iOS — GO.** ROI 148.5× ≥ 1, payback 0.1 bln.
+- **JEV-115 Ilustrasi adegan kencan (latar + NPC asli), peluk berbaring di ranjang, bantal tidur rebah — GO.** ROI 148.0× ≥ 1, payback 0.1 bln.
 - **JEV-078 Main bareng: pengaturan suasana & langit host diikuti semua peserta; interaksi (lampu, pintu, TV, gorden, musik, piano) terasa oleh semua — GO.** ROI 143.9× ≥ 1, payback 0.1 bln.
 - **JEV-070 Ruang dobel tinggi (void) bercahaya menyatu antar-lantai; atap lantai bawah tidak menumpuk balkon, tepi atap halus & tritisan rata — GO.** ROI 138.6× ≥ 1, payback 0.1 bln.
 - **JEV-080 Tab Taman terpisah (rumput 6 × 6 m bawaan, bisa disembunyikan), objek lingkungan (pohon, semak, batu, jalan), bentuk dasar berwarna, suara interaksi (klik / swoosh / audio sendiri), perbaikan unggah audio & gambar — GO.** ROI 130.8× ≥ 1, payback 0.1 bln.

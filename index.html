@@ -3655,11 +3655,11 @@ function bed(w,l){
   g.add(msh(geoJuntai(wK+0.01,panjang,tK+tB-0.06,tK+tB-0.06,0.035,0.012,7),MAT.selimut,0,yK+0.024,z0));            // di atas gembungan kasur (+1,2 cm)
   g.add(bulat(wK+0.04,0.035,0.24,0.015,MAT.selimut,0,yK+0.04,z0+0.1,{gembung:0.01}));            // lipatan atas selimut
   g.add(msh(geoJuntai(wK+0.07,0.42,0.3,0.0,0.03,0.016,11),MAT.selendang,0,yK+0.046,zc+lK/2-0.46)); // selendang di kaki
-  // bantal: tidur (bersandar ke headboard) + hias di depannya
+  // bantal tidur rebah di kasur (kepala orang berbaring di atasnya); bantal hias bersandar ke headboard di belakangnya
   const n=w>1.15?2:1, pw=Math.min(0.66,(wK-0.12)/n);
   for(let i=0;i<n;i++){ const x=n===1?0:(i-0.5)*(pw+0.05);
-    const b=bulat(pw,0.17,0.44,0.05,MAT.sprei,x,yK+0.12,zA+0.24,{bantal:1}); b.rotation.x=-0.55; g.add(b);
-    const h=bulat(0.44,0.14,0.44,0.05,MAT.kainAksen,x*0.85,yK+0.2,zA+0.4,{bantal:1}); h.rotation.x=-1.05; h.rotation.y=(i-0.5)*0.2; g.add(h); }
+    const b=bulat(pw,0.13,0.42,0.05,MAT.sprei,x,yK+0.07,zA+0.27,{bantal:1}); b.rotation.x=-0.06; g.add(b);
+    const h=bulat(0.42,0.13,0.4,0.05,MAT.kainAksen,x*0.85,yK+0.33,zA+0.08,{bantal:1}); h.rotation.x=-1.32; h.rotation.y=(i-0.5)*0.16; g.add(h); }
   return g;
 }
 /* Sofa: rangka & lengan bertepi bulat di atas kaki kayu meruncing, bantal duduk
@@ -15159,7 +15159,7 @@ function duduk(t){
 function baring(t){
   const g=t.grp, o=cariObjek(t.id), D=g.userData.duduk||{h:0.55}, f=(FURN[o&&o.type]||{f:[1.6,2]}).f; g.updateMatrixWorld(true);
   if(FPS.duduk) berdiri(); FPS.gaya=null;
-  const tengah=g.localToWorld(new THREE.Vector3(0,D.h,0.12)), mata=g.localToWorld(new THREE.Vector3(0,D.h+0.24,-(f[1]/2-0.42))), yaw=(o&&o.rotY)||0;
+  const tengah=g.localToWorld(new THREE.Vector3(0,D.h,-0.05)), mata=g.localToWorld(new THREE.Vector3(0,D.h+0.3,-(f[1]/2-0.4))), yaw=(o&&o.rotY)||0;
   FPS.duduk={id:t.id, baring:{x:tengah.x, y:tengah.y, z:tengah.z, yaw}, dari:camera.position.clone(), mata, t:0, asal:{x:camera.position.x, z:camera.position.z, feet:FPS.feet}};
   FPS.yaw=yaw; FPS.pitch=0.45; FPS.keys.clear(); if(FPS.move){ FPS.move.f=0; FPS.move.s=0; }
   FPS.info='<b>Berbaring</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk bangun'); $('#fpsinfo').innerHTML=FPS.info;

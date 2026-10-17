@@ -75,6 +75,10 @@
 .no-pilih{display:flex;flex-direction:column;gap:6px}.no-pilih button{text-align:left;justify-content:flex-start;white-space:normal;min-height:38px;line-height:1.3}
 #kencanLayar{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transition:opacity .6s;color:#f1f1f1;text-align:center;padding:24px}
 #kencanLayar.masuk{opacity:1}#kencanLayar.keluar{opacity:0}#kencanLayar .kl-ikon{font-size:2.4rem}
+#kencanLayar .kl-gambar{width:min(92vw,880px,calc((100vh - 200px) * 16 / 9));aspect-ratio:16/9;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#kencanLayar .kl-gambar canvas{width:100%;height:100%;display:block;animation:klZoom 14s ease-out forwards}
+@keyframes klZoom{from{transform:scale(1.08)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){#kencanLayar .kl-gambar canvas{animation:none}}
 #kencanLayar p{font-size:1.15rem;max-width:560px;margin:0;opacity:0;transition:opacity .45s;line-height:1.5}#kencanLayar p.on{opacity:1}
 #kencanLayar button{position:absolute;right:16px;bottom:calc(16px + env(safe-area-inset-bottom))}`;
     document.head.appendChild(s);
@@ -220,7 +224,7 @@
     D.ucap(T('Ayo!', 'Let\'s go!'), 'puji');
     setTimeout(() => {
       D.tutup(true);
-      cutscene(J.ikon, baris, tx2(J.akhir), () => { if (typeof setSuasana === 'function') setSuasana(J.langit); }).then(() => {
+      cutscene(J.ikon, baris, tx2(J.akhir), () => { if (typeof setSuasana === 'function') setSuasana(J.langit); }, ilustrasi(j, K.id)).then(() => {
         const bonus = 6 + (fav ? 4 : 0) + (pas ? 3 : 0) + (m.status === 'pacaran' ? 2 : 0);
         s.senang = Math.min(3, s.senang + 1); s.nyaman = Math.min(3, s.nyaman + 1); s.tertarik = Math.min(3, s.tertarik + 1);
         m.kh = D.hariIni(); m.kencan = (Array.isArray(m.kencan) ? m.kencan : []).concat([{ j, h: D.hariIni() }]).slice(-8); m.ksebut = m.kencan.length;
@@ -231,12 +235,111 @@
       });
     }, 500);
   }
-  // layar gelap ala cutscene: baris muncul bergantian; ketuk = baris berikutnya, Lewati = selesai
-  function cutscene(ikon, baris, akhir, saatGelap) {
+  /* ---------- ILUSTRASI ADEGAN ----------
+     Latar dilukis di kanvas per jenis kencan (restoran malam berlilin, nonton di sofa, taman senja, BBQ malam berlampu),
+     tokohnya NPC itu sendiri — model 3D berwarna & berbaju sama (NPC.potret) dengan pose sesuai adegan — lalu benda latar
+     depan (meja, sandaran sofa, bunga, panggangan) menutup bagian bawah badan. Tanpa model (belum dimuat) latar tetap tampil. */
+  const IW = 960, IH = 540;
+  const ADEGAN = {
+    makan: { po: 1, cahaya: { kunci: 0xffc890, isi: 0xffe0c0, tepi: 0xff9a60 }, arah: 0.3, turun: 0.36 },
+    nonton: { po: 1, cahaya: { kunci: 0x9cc0ff, isi: 0xc8d4ff, tepi: 0xffb070 }, arah: -0.35, turun: 0.36 },
+    taman: { po: 0, cahaya: { kunci: 0xffc08a, isi: 0xffe4c4, tepi: 0xffd090 }, arah: 0.32, turun: 0.42 },
+    bbq: { po: 14, cahaya: { kunci: 0xffa060, isi: 0x9fb0e0, tepi: 0x7f9cff }, arah: 0.5, turun: 0.4 },
+  };
+  function acakTetap(benih) { let s = benih >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+  function gradien(x, x0, y0, x1, y1, stop) { const g = x.createLinearGradient(x0, y0, x1, y1); stop.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
+  function cahaya(x, cx, cy, r, warna, a = 1) { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, warna); g.addColorStop(1, 'rgba(0,0,0,0)'); x.globalAlpha = a; x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2); x.globalAlpha = 1; }
+  function bulat(x, cx, cy, r, warna) { x.fillStyle = warna; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); }
+  function kotakBulat(x, X, Y, W, H, r, warna) { x.fillStyle = warna; x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.fill(); }
+  const LATAR = {
+    makan(x, R) {
+      x.fillStyle = gradien(x, 0, 0, 0, IH, [[0, '#24150f'], [1, '#4a2b1b']]); x.fillRect(0, 0, IW, IH);
+      x.fillStyle = '#0d1630'; x.fillRect(60, 50, 330, 260);                               // jendela: kota malam
+      x.fillStyle = gradien(x, 0, 50, 0, 310, [[0, '#101a3c'], [1, '#2a2350']]); x.fillRect(66, 56, 318, 248);
+      for (let i = 0; i < 9; i++) { const bx = 70 + i * 36, bh = 60 + R() * 150; x.fillStyle = '#151a2e'; x.fillRect(bx, 304 - bh, 30, bh);
+        for (let j = 0; j < bh / 18; j++) for (let k = 0; k < 3; k++) if (R() < 0.45) { x.fillStyle = R() < 0.7 ? '#ffd27a' : '#9fd0ff'; x.fillRect(bx + 4 + k * 9, 308 - bh + j * 18, 5, 7); } }
+      bulat(x, 330, 95, 18, '#f4ecd0'); x.strokeStyle = '#3a2416'; x.lineWidth = 8; x.strokeRect(62, 52, 326, 256); x.fillRect(222, 52, 6, 256);
+      x.strokeStyle = '#2a1a10'; x.lineWidth = 3; x.beginPath(); x.moveTo(470, 0); x.lineTo(470, 40); x.stroke();      // lampu gantung di atas meja
+      kotakBulat(x, 436, 36, 68, 28, 12, '#c98a3c'); cahaya(x, 480, 120, 380, 'rgba(255,190,110,0.5)');
+      for (let i = 0; i < 16; i++) cahaya(x, R() * IW, 60 + R() * 260, 10 + R() * 26, 'rgba(255,200,130,0.5)', 0.6);   // bokeh
+    },
+    makanDepan(x) {
+      x.fillStyle = gradien(x, 0, 380, 0, IH, [[0, '#f3ede4'], [1, '#cfc4b4']]); x.beginPath(); x.ellipse(IW / 2, 470, 560, 120, 0, Math.PI, 0); x.lineTo(IW, IH); x.lineTo(0, IH); x.fill();
+      for (const [px, s] of [[330, 1], [640, 0.9]]) { x.fillStyle = '#ffffff'; x.beginPath(); x.ellipse(px, 448, 92 * s, 26 * s, 0, 0, Math.PI * 2); x.fill();
+        x.fillStyle = '#e9e2d6'; x.beginPath(); x.ellipse(px, 448, 62 * s, 16 * s, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#c0702e'; x.beginPath(); x.ellipse(px - 8, 444, 30 * s, 9 * s, 0, 0, Math.PI * 2); x.fill(); }
+      for (const gx of [450, 540]) { x.fillStyle = 'rgba(220,235,255,0.55)'; x.fillRect(gx - 12, 362, 24, 52); x.fillStyle = 'rgba(160,30,60,0.75)'; x.fillRect(gx - 11, 384, 22, 26); x.fillStyle = 'rgba(220,235,255,0.7)'; x.fillRect(gx - 2, 414, 4, 26); x.fillRect(gx - 16, 438, 32, 4); }
+      x.fillStyle = '#f5efe0'; x.fillRect(486, 372, 14, 62); cahaya(x, 493, 360, 120, 'rgba(255,190,90,0.85)'); x.fillStyle = '#ffd36a'; x.beginPath(); x.ellipse(493, 360, 6, 13, 0, 0, Math.PI * 2); x.fill();
+    },
+    nonton(x, R) {
+      x.fillStyle = gradien(x, 0, 0, IW, 0, [[0, '#0a0e1c'], [1, '#141a2c']]); x.fillRect(0, 0, IW, IH);
+      kotakBulat(x, 40, 70, 360, 214, 8, '#05060a');                                          // TV menyala
+      x.fillStyle = gradien(x, 48, 78, 392, 276, [[0, '#2b4c9a'], [0.5, '#8a5ac8'], [1, '#e08a6a']]); x.fillRect(48, 78, 344, 198);
+      x.fillStyle = '#1d2a55'; x.beginPath(); x.moveTo(48, 276); x.quadraticCurveTo(160, 190, 260, 240); x.quadraticCurveTo(330, 210, 392, 250); x.lineTo(392, 276); x.fill();
+      bulat(x, 300, 130, 22, '#ffe2a8'); cahaya(x, 220, 180, 430, 'rgba(110,150,255,0.35)');
+      x.fillStyle = '#20263a'; x.fillRect(120, 284, 200, 10); x.fillRect(60, 294, 320, 18);
+      kotakBulat(x, 360, 250, 600, 230, 40, '#2c4a52'); kotakBulat(x, 380, 270, 560, 60, 30, '#35585f');   // sandaran sofa
+      for (let i = 0; i < 40; i++) bulat(x, R() * IW, R() * 60, 1, 'rgba(255,255,255,0.15)');
+    },
+    nontonDepan(x, R) {
+      kotakBulat(x, 330, 430, 680, 140, 40, '#3a6068'); kotakBulat(x, 300, 380, 110, 200, 40, '#2f5158');   // dudukan & lengan sofa
+      x.fillStyle = '#c8302c'; x.beginPath(); x.moveTo(170, 400); x.lineTo(270, 400); x.lineTo(255, 530); x.lineTo(185, 530); x.fill();   // popcorn
+      for (let i = 0; i < 4; i++) { x.fillStyle = '#f4f0e8'; x.beginPath(); x.moveTo(184 + i * 25, 400); x.lineTo(196 + i * 25, 400); x.lineTo(192 + i * 21, 530); x.lineTo(184 + i * 21, 530); x.fill(); }
+      for (let i = 0; i < 22; i++) bulat(x, 175 + R() * 90, 392 - R() * 26, 9 + R() * 5, R() < 0.5 ? '#fff6dc' : '#ffe9a8');
+    },
+    taman(x, R) {
+      x.fillStyle = gradien(x, 0, 0, 0, IH, [[0, '#6f8fd0'], [0.45, '#ffb47a'], [0.7, '#ffd9a0'], [1, '#ffe7c0']]); x.fillRect(0, 0, IW, IH);
+      cahaya(x, 240, 300, 260, 'rgba(255,230,170,0.9)'); bulat(x, 240, 300, 46, '#fff1c8');
+      x.fillStyle = '#9c86b8'; x.beginPath(); x.moveTo(0, 330); for (let i = 0; i <= 12; i++) x.lineTo(i * 80, 300 + Math.sin(i * 1.3) * 26); x.lineTo(IW, IH); x.lineTo(0, IH); x.fill();
+      x.fillStyle = '#6f9c5c'; x.beginPath(); x.moveTo(0, 360); for (let i = 0; i <= 12; i++) x.lineTo(i * 80, 350 + Math.sin(i * 0.9 + 1) * 18); x.lineTo(IW, IH); x.lineTo(0, IH); x.fill();
+      for (const [tx, s] of [[90, 1.1], [720, 1.3], [860, 0.9], [420, 0.8]]) { x.fillStyle = '#4a3423'; x.fillRect(tx - 7 * s, 300 - 60 * s, 14 * s, 120 * s);
+        for (let k = 0; k < 6; k++) bulat(x, tx + (R() - 0.5) * 80 * s, 230 - 70 * s + R() * 60 * s, (34 + R() * 22) * s, R() < 0.5 ? '#3f7a3f' : '#4f8e47'); }
+      x.fillStyle = '#e9d2a8'; x.beginPath(); x.moveTo(400, IH); x.quadraticCurveTo(520, 420, 600, 360); x.lineTo(640, 360); x.quadraticCurveTo(600, 440, 640, IH); x.fill();   // jalan setapak
+    },
+    tamanDepan(x, R) {
+      x.fillStyle = gradien(x, 0, 440, 0, IH, [[0, 'rgba(80,130,70,0)'], [1, '#3f6e3a']]); x.fillRect(0, 420, IW, 120);
+      for (let i = 0; i < 70; i++) { const fx = R() * IW, fy = 470 + R() * 70; x.strokeStyle = '#3d6a35'; x.lineWidth = 2; x.beginPath(); x.moveTo(fx, fy + 20); x.lineTo(fx, fy); x.stroke();
+        const w = ['#ff8fb1', '#ffd45c', '#ffffff', '#c79bff', '#ff6f6f'][Math.floor(R() * 5)]; for (let k = 0; k < 5; k++) bulat(x, fx + Math.cos(k * 1.26) * 5, fy + Math.sin(k * 1.26) * 5, 4, w); bulat(x, fx, fy, 3, '#ffb000'); }
+    },
+    bbq(x, R) {
+      x.fillStyle = gradien(x, 0, 0, 0, IH, [[0, '#070b22'], [0.6, '#1b2148'], [1, '#2a2440']]); x.fillRect(0, 0, IW, IH);
+      for (let i = 0; i < 90; i++) bulat(x, R() * IW, R() * 300, R() * 1.4 + 0.3, 'rgba(255,255,255,' + (0.4 + R() * 0.6).toFixed(2) + ')');
+      bulat(x, 800, 80, 30, '#f2efe0'); cahaya(x, 800, 80, 120, 'rgba(220,230,255,0.35)');
+      x.strokeStyle = '#1a1a1a'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, 60); x.quadraticCurveTo(480, 190, IW, 70); x.stroke();   // lampu untai
+      for (let i = 1; i < 16; i++) { const t = i / 16, bx = t * IW, by = (1 - t) * (1 - t) * 60 + 2 * (1 - t) * t * 190 + t * t * 70; const w = ['#ffd36a', '#ff7f6a', '#8fd0ff', '#b6ff8a'][i % 4]; cahaya(x, bx, by + 8, 30, w, 0.7); bulat(x, bx, by + 8, 5, w); }
+      x.fillStyle = '#141420'; for (let i = 0; i < 24; i++) x.fillRect(i * 42, 330, 34, 120); x.fillRect(0, 350, IW, 8); x.fillRect(0, 410, IW, 8);   // pagar
+      x.fillStyle = '#20301f'; x.fillRect(0, 450, IW, 90);
+    },
+    bbqDepan(x, R) {
+      x.fillStyle = '#121212'; x.beginPath(); x.ellipse(250, 420, 170, 46, 0, 0, Math.PI * 2); x.fill();                // panggangan
+      x.fillStyle = '#1e1e1e'; x.beginPath(); x.moveTo(80, 420); x.quadraticCurveTo(250, 560, 420, 420); x.fill(); x.fillRect(150, 470, 10, 70); x.fillRect(340, 470, 10, 70);
+      cahaya(x, 250, 420, 190, 'rgba(255,120,40,0.9)'); for (let i = 0; i < 26; i++) bulat(x, 120 + R() * 260, 410 + R() * 22, 6 + R() * 6, R() < 0.5 ? '#ff7a2a' : '#ffb347');
+      for (let i = 0; i < 6; i++) { x.strokeStyle = '#8a6a44'; x.lineWidth = 3; x.beginPath(); x.moveTo(140 + i * 40, 432); x.lineTo(200 + i * 40, 396); x.stroke(); for (let k = 0; k < 3; k++) bulat(x, 155 + i * 40 + k * 14, 424 - k * 8, 6, '#9a4a22'); }
+      x.globalAlpha = 0.25; x.strokeStyle = '#e8e8f0'; x.lineCap = 'round'; for (let i = 0; i < 4; i++) { x.lineWidth = 18 - i * 3; x.beginPath(); x.moveTo(230 + i * 12, 380); x.bezierCurveTo(180 + i * 30, 300, 300 + i * 20, 260, 250 + i * 25, 160); x.stroke(); } x.globalAlpha = 1;
+      for (let i = 0; i < 14; i++) bulat(x, 160 + R() * 200, 300 + R() * 90, 1.6, '#ffd080');
+    },
+  };
+  // ilustrasi satu adegan kencan → kanvas 960 × 540 (null bila kanvas tidak tersedia)
+  function ilustrasi(j, idNpc) {
+    try {
+      const c = document.createElement('canvas'); c.width = IW; c.height = IH; const x = c.getContext('2d'); if (!x || !LATAR[j]) return null;
+      const A = ADEGAN[j], R = acakTetap([...j].reduce((s, ch) => s * 31 + ch.charCodeAt(0), 7));
+      LATAR[j](x, R);
+      const p = window.NPC && window.NPC.potret ? window.NPC.potret(idNpc, A.po, { w: 480, h: 560, cahaya: A.cahaya, arah: A.arah, turun: A.turun }) : null;
+      if (p) { x.save(); x.shadowColor = 'rgba(0,0,0,0.45)'; x.shadowBlur = 24; x.drawImage(p, j === 'nonton' ? 430 : 400, 24, 480 * 0.92, 560 * 0.92); x.restore(); }
+      if (LATAR[j + 'Depan']) LATAR[j + 'Depan'](x, R);
+      const v = x.createRadialGradient(IW / 2, IH / 2, IH * 0.35, IW / 2, IH / 2, IW * 0.65); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+      x.fillStyle = v; x.fillRect(0, 0, IW, IH);                                                    // vinyet
+      c.dataset.tokoh = p ? '1' : '0';
+      return c;
+    } catch (e) { console.warn('ilustrasi kencan', e); return null; }
+  }
+  // layar gelap ala cutscene: ilustrasi adegan + baris muncul bergantian; ketuk = baris berikutnya, Lewati = selesai
+  function cutscene(ikon, baris, akhir, saatGelap, gambar) {
     return new Promise(selesai => {
       gaya(); FPS.keys.clear(); if (FPS.move) { FPS.move.f = 0; FPS.move.s = 0; }
       const L = el('div'); L.id = 'kencanLayar'; L.setAttribute('role', 'dialog'); L.setAttribute('aria-label', T('Adegan kencan', 'Date scene'));
-      const ik = el('div', 'kl-ikon', ikon), p = el('p'), lewat = el('button', 'btn sm ghost', T('Lewati', 'Skip'));
+      const ik = gambar ? el('div', 'kl-gambar') : el('div', 'kl-ikon', ikon), p = el('p'), lewat = el('button', 'btn sm ghost', T('Lewati', 'Skip'));
+      if (gambar) { gambar.setAttribute('role', 'img'); gambar.setAttribute('aria-label', baris[0] || ''); ik.appendChild(gambar); }
       L.append(ik, p, lewat); document.body.appendChild(L);
       const urut = baris.concat([akhir]); let i = 0, t = null, beres = false;
       const tutup = () => { if (beres) return; beres = true; clearTimeout(t); L.classList.remove('masuk'); L.classList.add('keluar'); setTimeout(() => { L.remove(); selesai(); }, Math.min(700, LAJU)); };
@@ -284,5 +387,5 @@
   }
 
   window.KENCAN = { pilihan: () => giliran(null), ajak, buka, segar, suasana, cutscene,
-    _uji: { laju: v => { LAJU = v; }, pilih: i => PIL && PIL[i] && pilih(PIL[i]), opsi: () => PIL, terapkan } };
+    _uji: { ilustrasi, laju: v => { LAJU = v; }, pilih: i => PIL && PIL[i] && pilih(PIL[i]), opsi: () => PIL, terapkan } };
 })();

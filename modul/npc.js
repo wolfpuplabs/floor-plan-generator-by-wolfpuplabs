@@ -176,7 +176,7 @@
     m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.peta === 'polos') x.material = bahanPolos(x, o); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; x.userData.tetapTampak = true; } });
     n.badan.add(m);
     setTimeout(() => periksa(), 1500); setTimeout(() => periksa(), 4000);
-    const a = { g: n.badan, tuju: { po: 0 }, baju }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
+    const a = { g: n.badan, tuju: { po: 0 }, baju, tpl }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
     if (lama && lama.a) { for (const k of ['pw', 'w', 'v', 'mikro', 'lambai', 'diam']) if (lama.a[k] != null) a[k] = Array.isArray(lama.a[k]) ? lama.a[k].slice() : lama.a[k]; }
     if (n.mode && n.p) pasangBadan(n);
     if (n.renang && !baju) pakaiBaju(n, true);         // adegan dibangun ulang saat NPC sedang berenang
@@ -439,7 +439,7 @@
       const o = lv.objects.find(x => x.id === c.userData.id); if (!o || !/^bed_/.test(o.type) || !FURN[o.type]) continue;
       const kunci = 'kasur:' + o.id; if (KURSI_DIPAKAI.has(kunci) || (FPS.duduk && FPS.duduk.id === o.id)) continue;
       c.updateMatrixWorld(true);
-      const f = FURN[o.type].f, h = c.userData.duduk.h || 0.55, tengah = c.localToWorld(new THREE.Vector3(0, h, 0.12));
+      const f = FURN[o.type].f, h = c.userData.duduk.h || 0.55, tengah = c.localToWorld(new THREE.Vector3(0, h, -0.05));
       if (!jauh && Math.hypot(tengah.x - n.rumah.x, tengah.z - n.rumah.z) > n.jelajah + 2) continue;   // diminta pengunjung: kasur mana pun di lantai ini
       const sisi = c.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * (Math.random() < 0.5 ? 1 : -1), 0, 0.2));
       const yaw = (o.rotY || 0), q = { x: sisi.x, z: sisi.z };
@@ -466,16 +466,19 @@
     if (k === 'ngantuk') return aktivitas(n, 4, 7 + Math.random() * 7);
     return aktivitas(n, 0, 2.8, pilih(Math.random, ['regang', 'jam', 'bahu']));
   }
-  function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = k.po || 1; n.yawTuju = k.yaw; if (k.sandar != null) n.a.sandar = k.sandar; }
-  // berbaring bareng: pengunjung rebahan di tengah kasur, NPC di sisi kasur yang lain
-  function kasurBareng(n, D) {
+  function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = k.po || 1; n.yawTuju = k.yaw; if (k.sandar != null) n.a.sandar = k.sandar; if (k.sisi != null) n.a.sisi = k.sisi; }
+  // berbaring bareng: pengunjung rebahan di tengah kasur, NPC di sisi kasur yang lain. peluk: meringkuk rapat menghadap
+  // pengunjung (pose 19) — miring, lengan merangkul; a.sisi = arah kepala (1 kiri avatar, −1 kanan) agar kepala tetap di bantal
+  function kasurBareng(n, D, peluk) {
     const lg = levelGroups[n.li], lv = PROJECT.levels[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), o = lv && lv.objects.find(x => x.id === D.id);
     if (!g || !o || !/^bed_/.test(o.type) || !FURN[o.type] || !g.userData.duduk) return null;
     g.updateMatrixWorld(true);
-    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, ki = g.localToWorld(new THREE.Vector3(-f[0] / 4, h, 0.12)), ka = g.localToWorld(new THREE.Vector3(f[0] / 4, h, 0.12));
+    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, jx = peluk ? 0.36 : f[0] / 4;
+    const ki = g.localToWorld(new THREE.Vector3(-jx, h, -0.05)), ka = g.localToWorld(new THREE.Vector3(jx, h, -0.05));
     const s = Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
-    const sisi = g.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * s, 0, 0.2));
-    return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, yaw: o.rotY || 0, po: 9, lama: 45, d: 0 };
+    const sisi = g.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * s, 0, 0.2)), rot = o.rotY || 0;
+    return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, lama: 45, d: 0,
+      ...(peluk ? { po: 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: g.localToWorld(new THREE.Vector3(s * jx, h + 0.22, -0.58)) } : { po: 9, yaw: rot }) };
   }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
@@ -508,6 +511,15 @@
     if (k === 'pangku') {                                 // NPC duduk menyamping di pangkuan pengunjung yang sedang duduk di kursi / sofa
       const D = FPS.duduk; if (!D || !D.id || D.lantai || D.baring || !D.mata) return false;
       n.pangku = { D, yaw: FPS.yaw, x: D.mata.x, z: D.mata.z, y: D.mata.y - 0.72 }; n.mode = 'pangku'; n.po = 16; hati(n); return true;
+    }
+    if (k === 'meringkuk') {                              // peluk sambil berbaring: pengunjung harus sedang berbaring di ranjang
+      const D = FPS.duduk; if (!D || !D.baring || !D.id) return false;
+      const ks = kasurBareng(n, D, true); if (!ks) return false;
+      ks.minta = true; ks.lama = 60; KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks;
+      FPS.yaw = Math.atan2(ks.wajah.x - D.mata.x, ks.wajah.z - D.mata.z); FPS.pitch = -0.25;   // pengunjung menoleh ke wajah NPC
+      if ((n.mode === 'duduk' || n.mode === 'masuk') && Math.hypot(n.p.x - ks.x, n.p.z - ks.z) < 1.2) masukKursi(n);   // sudah rebahan di kasur ini: bergeser merapat
+      else mulaiJalan(n, ks.q.x, ks.q.z, 'kursi');
+      hati(n); return true;
     }
     if (k === 'baring') {                                 // rebahan di kasur terdekat; bila pengunjung sedang berbaring: di sisi lain kasurnya
       const D = FPS.duduk; let ks = D && D.baring && D.id ? kasurBareng(n, D) : null;
@@ -658,6 +670,40 @@
     } else if (R.bareng) putarKe(n, FPS.yaw, dt, 1.5);
     n.p.y = R.airY; n.po = v > 0.2 ? 18 : 17;
   }
+  /* POTRET untuk ilustrasi (kencan): klon model karakter dengan bahan berwarna NPC ini, diberi pose, dirender sendirian ke
+     kanvas transparan memakai renderer yang sama (render target, keadaan renderer dikembalikan). cahaya: {kunci, isi, tepi}
+     warna; arah: sudut pandang kamera dari depan (rad). Gagal → null (ilustrasi tetap tampil tanpa tokoh). */
+  function potret(id, po = 0, opsi = {}) {
+    const n = NPC.get(id); if (!n || !n.a || !n.a.tpl || !n.a.model || !window.LOBI) return null;
+    const w = opsi.w || 480, h = opsi.h || 560, G = window.LOBI.gerak;
+    try {
+      const m = klonModel(n.a.tpl); m.userData.rigIdx = n.a.tpl.userData.rigIdx; m.userData.kedipIdx = []; m.userData.klip = [];
+      const asli = []; n.a.model.traverse(x => { if (x.isMesh) asli.push(x.material); }); let i = 0;
+      m.traverse(x => { if (x.isMesh) { if (asli[i]) x.material = asli[i]; i++; x.frustumCulled = false; } });
+      const sc = new THREE.Scene(), g = new THREE.Group(); g.add(m); sc.add(g);
+      const a = { g, tuju: { po }, sisi: 1 }; G.siapkanGerak(a, m);
+      for (let k = 0; k < 70; k++) G.gerakAvatar(a, 0.05, 0);
+      g.updateMatrixWorld(true);
+      const kepala = a.rig && a.rig.head ? a.rig.head.b.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.45, 0);
+      const C = opsi.cahaya || {};
+      sc.add(new THREE.HemisphereLight(C.isi || 0xdfe6ff, 0x3a3030, 0.38));
+      const kunci = new THREE.DirectionalLight(C.kunci || 0xffffff, 0.72); kunci.position.set(-1.5, 2.5, 2.5); sc.add(kunci);
+      const tepi = new THREE.DirectionalLight(C.tepi || 0xaac4ff, 0.35); tepi.position.set(2, 1.8, -2.5); sc.add(tepi);
+      const arah = opsi.arah != null ? opsi.arah : 0.38, jarak = opsi.jarak || 2.6, turun = opsi.turun != null ? opsi.turun : 0.32;
+      const cam = new THREE.PerspectiveCamera(30, w / h, 0.05, 20);
+      cam.position.set(kepala.x + Math.sin(arah) * jarak, kepala.y - 0.05, kepala.z + Math.cos(arah) * jarak); cam.lookAt(kepala.x, kepala.y - turun, kepala.z);
+      const rt = new THREE.WebGLRenderTarget(w, h); rt.texture.encoding = THREE.sRGBEncoding;
+      const lama = renderer.getRenderTarget(), cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), ac = renderer.autoClear, tm = renderer.toneMapping, ek = renderer.toneMappingExposure;
+      renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;   // eksposur otomatis adegan (mis. malam) tidak ikut: kulit (bahan tanpa cahaya) tidak memutih
+      renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.autoClear = true; renderer.clear(); renderer.render(sc, cam);
+      const px = new Uint8Array(w * h * 4); renderer.readRenderTargetPixels(rt, 0, 0, w, h, px);
+      renderer.setRenderTarget(lama); renderer.setClearColor(cc, ca); renderer.autoClear = ac; renderer.toneMapping = tm; renderer.toneMappingExposure = ek; rt.dispose();
+      const kan = document.createElement('canvas'); kan.width = w; kan.height = h; const x = kan.getContext('2d'), im = x.createImageData(w, h);
+      for (let y = 0; y < h; y++) im.data.set(px.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);   // WebGL membaca dari bawah
+      x.putImageData(im, 0, 0);
+      return kan;
+    } catch (e) { console.warn('potret NPC', e); return null; }
+  }
   // aktivitas.js: pengunjung masuk kolam → NPC yang ikut / menemani / bergandengan ikut berenang
   function renangBareng(poli, airY) {
     const ids = [];
@@ -792,7 +838,7 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, renang: renangBareng, selesaiRenang, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, renang: renangBareng, selesaiRenang, potret, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
     warnaiAvatar, hadirkan, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,

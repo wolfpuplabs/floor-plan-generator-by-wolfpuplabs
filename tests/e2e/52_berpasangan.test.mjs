@@ -22,7 +22,7 @@ export const tes = {
         const a = buat(ek); a.tuju = { po }; for (let i = 0; i < 60; i++) G.gerakAvatar(a, 0.05, 0);
         out[po] = { turun: +(a.dasarY - a.model.position.y).toFixed(2), pinggul: +sudut(a, 'hips').toFixed(2), lenganKa: +sudut(a, 'rightUpperArm').toFixed(2), lenganKi: +sudut(a, 'leftUpperArm').toFixed(2), kepala: +sudut(a, 'head').toFixed(2), tinggi: +(a.tinggiPinggul || 0).toFixed(2) };
         scene.remove(a.g); }
-      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 19 }).po];
+      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 20 }).po];
       return out;
     });
     assert.ok(r[6].lenganKa > 0.6 && r[6].lenganKi > 0.6 && r[6].turun < 0.05, 'peluk: ' + JSON.stringify(r[6]));
@@ -107,7 +107,7 @@ export const tes = {
       const pos = window.LOBI.gerak.posSaya(); return { ek, baring: !!(FPS.duduk && FPS.duduk.baring), mata: +(camera.position.y - FPS.duduk.baring.y).toFixed(2), po: pos.po, y: +pos.y.toFixed(2), label: labelAksi({ jenis: 'baring' }) }; });
     assert.ok(b.ek.includes('baring'), 'aksi Berbaring: ' + b.ek);
     assert.deepEqual([b.baring, b.po, b.label], [true, 9, 'Berbaring']);
-    assert.ok(Math.abs(b.mata - 0.24) < 0.03 && b.y > 0.4, 'mata di bantal: ' + JSON.stringify(b));
+    assert.ok(Math.abs(b.mata - 0.3) < 0.03 && b.y > 0.4, 'mata di atas bantal tidur yang rebah: ' + JSON.stringify(b));
     // NPC diminta berbaring saat pemain rebahan: berbaring di sisi lain kasur yang sama (pose 9); Lepas = NPC bangun
     const bb = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(6, 0, 4.5);
       const ok = window.NPC.aksiPasangan('nA', 'baring'); for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 20; i++) window.NPC.langkah(0.05);
@@ -115,7 +115,16 @@ export const tes = {
       pakai({ jenis: 'lepas', id: 'nA' }); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05); r.bangun = n.mode; return r; });
     assert.deepEqual([bb.ok, bb.mode, bb.po, bb.bareng, bb.lepas], [true, 'duduk', 9, 'ranjang', ['lepas']], JSON.stringify(bb));
     assert.ok(bb.jarak > 0.25 && bb.jarak < 0.6 && Math.abs(bb.y) < 0.05 && bb.bangun !== 'duduk', 'berbaring di sebelah: ' + JSON.stringify(bb));
+    // peluk berbaring (meringkuk): NPC rebah miring rapat di sebelah pemain menghadapnya (pose 19), pemain menoleh ke wajahnya
+    const mk = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(6, 0, 4.5);
+      const yaw0 = FPS.yaw, ok = window.NPC.aksiPasangan('nA', 'meringkuk'); for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05);
+      const D = FPS.duduk.baring, ke = Math.atan2(D.x - n.p.x, D.z - n.p.z), hadap = Math.cos(ke - n.yaw);
+      const r = { ok, mode: n.mode, po: n.po, sisi: Math.abs(n.a.sisi), jarak: +Math.hypot(n.p.x - D.x, n.p.z - D.z).toFixed(2), hadap: +hadap.toFixed(2), noleh: Math.abs(FPS.yaw - yaw0) > 0.5, lepas: window.NPC.ekstra('nA'), bobot: +n.a.pw[19].toFixed(2) };
+      pakai({ jenis: 'lepas', id: 'nA' }); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05); r.bangun = n.mode; return r; });
+    assert.deepEqual([mk.ok, mk.mode, mk.po, mk.sisi, mk.lepas, mk.noleh], [true, 'duduk', 19, 1, ['lepas'], true], JSON.stringify(mk));
+    assert.ok(mk.jarak > 0.25 && mk.jarak < 0.5 && mk.hadap > 0.9 && mk.bobot > 0.8 && mk.bangun !== 'duduk', 'meringkuk rapat menghadap pemain: ' + JSON.stringify(mk));
     await page.evaluate(() => berdiri());
+    assert.equal(await page.evaluate(() => window.NPC.aksiPasangan('nA', 'meringkuk')), false, 'tanpa rebahan: ditolak');
     // NPC tidur di kasur
     // sisi kasur dipilih acak: sisi yang menempel dinding dibuang, sisi yang jalurnya macet membuat NPC memilih tempat lain — ulangi
     const t = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); let r = null;
