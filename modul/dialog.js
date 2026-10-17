@@ -26,9 +26,12 @@
   /* BONDING (JEV-110): kenaikan relasi per NPC dibatasi ±30 poin / hari — kedekatan tumbuh dari interaksi yang sering,
      bukan satu sesi panjang; naik tingkat (netral → suka → sayang → sangat dekat) diumumkan */
   const hariIni = () => new Date().toISOString().slice(0, 10);
+  let saatSkor = null;                                                     // panel obrolan: tampilkan +/− di dekat bilah relasi
   function ubahSkor(m, d) {
+    const minta = d;
     if (d > 0) { const h = hariIni(); if (m.h !== h) { m.h = h; m.hg = 0; } d = Math.min(d, Math.max(0, 30 - (m.hg || 0))); m.hg = (m.hg || 0) + d; }
     const lv0 = K.tingkat(m.s); m.s = clamp(Math.round((m.s + d) * 10) / 10, -100, 100); const lv1 = K.tingkat(m.s);
+    if (saatSkor) saatSkor(m, d, minta);
     if (lv1 !== lv0 && m.n && typeof toast === 'function') toast((m.s > 0 && K.TINGKAT.findIndex(x => x[0] === lv1) > K.TINGKAT.findIndex(x => x[0] === lv0) ? '❤️ ' : '💔 ') + m.n + ' · ' + NAMA_TINGKAT[lv1]);
     return d;
   }
@@ -89,7 +92,7 @@
 
   /* ---------- panel ---------- */
   let SUARA = false; try { SUARA = localStorage.getItem('npcSuara') === '1'; } catch (e) { SUARA = false; }
-  let P = null, KINI = null;
+  let P = null, KINI = null, KUIS = null;
   function gaya() {
     if (document.getElementById('npcObrolGaya')) return;
     const s = document.createElement('style'); s.id = 'npcObrolGaya';
@@ -98,6 +101,10 @@
 #npcObrol[hidden]{display:none}.no-kepala{display:flex;align-items:center;gap:8px}.no-kepala b{color:var(--txt);font-size:.95rem}.no-kepala .tag{font-size:.7rem}
 .no-batang{height:4px;border-radius:2px;background:var(--panel2);overflow:hidden}.no-batang i{display:block;height:100%;background:linear-gradient(90deg,#e86a8a,#f3b24a);transition:width .4s}
 .no-suara[aria-pressed="true"]{color:var(--accent)}
+.no-info{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);margin-top:-4px;position:relative}.no-info b{color:var(--txt);font-weight:600}
+.no-delta{position:absolute;right:0;top:-2px;font-weight:700;font-size:.8rem;pointer-events:none;animation:noDelta 1.6s ease-out forwards}.no-delta.naik{color:#e86a8a}.no-delta.turun{color:#8aa0b8}.no-delta.batas{color:var(--muted);font-weight:500}
+@keyframes noDelta{0%{opacity:0;transform:translateY(6px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
+.no-kuis{display:flex;flex-wrap:wrap;gap:6px}.no-kuis button{flex:1 1 30%;min-height:36px}
 .no-relasi{margin-left:auto;font-size:.74rem;color:var(--muted);white-space:nowrap}.no-ai{font-size:.66rem;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 6px}
 .no-log{overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:60px;max-height:200px}.no-m{padding:7px 10px;border-radius:12px;max-width:88%;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}
 .no-n{background:var(--panel2);color:var(--txt);align-self:flex-start;border-bottom-left-radius:4px}.no-u{background:rgba(78,201,176,.18);color:var(--txt);align-self:flex-end;border-bottom-right-radius:4px}
@@ -109,8 +116,20 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
   // teks *aksi* (gaya SillyTavern) tampil miring; selebihnya teks biasa (tanpa innerHTML)
   function isiPesan(d, t) { t.split(/(\*[^*]{1,200}\*)/).forEach(b => { if (!b) return; if (/^\*.*\*$/.test(b)) d.appendChild(el('i', null, b.slice(1, -1))); else d.appendChild(document.createTextNode(b)); }); }
   function tulis(d, t) { const x = el('div', 'no-m ' + (d === 'u' ? 'no-u' : 'no-n')); isiPesan(x, t); P.log.appendChild(x); P.log.scrollTop = P.log.scrollHeight; return x; }
-  function segarRelasi() { const m = ingatan(KINI.id), lv = K.tingkat(m.s), r = K.TINGKAT.find(x => x[0] === lv); P.relasi.textContent = IKON_TINGKAT[lv] + ' ' + NAMA_TINGKAT[lv]; P.relasi.title = 'Relasi ' + Math.round(m.s) + ' / 100';
-    P.batang.style.width = Math.round(clamp((m.s - r[1]) / (Math.min(100, r[2]) - r[1]), 0, 1) * 100) + '%'; }
+  function segarRelasi() { const m = ingatan(KINI.id), lv = K.tingkat(m.s), i = K.TINGKAT.findIndex(x => x[0] === lv), r = K.TINGKAT[i], nx = K.TINGKAT[i + 1], id = L() === 'id';
+    P.relasi.textContent = IKON_TINGKAT[lv] + ' ' + NAMA_TINGKAT[lv]; P.relasi.title = 'Relasi ' + Math.round(m.s) + ' / 100';
+    P.batang.style.width = Math.round(clamp((m.s - r[1]) / (Math.min(100, r[2]) - r[1]), 0, 1) * 100) + '%';
+    // skor & progres ke tingkat berikutnya, plus sisa jatah kenaikan hari ini
+    const sisaHari = m.h === hariIni() ? Math.max(0, 30 - (m.hg || 0)) : 30;
+    P.skor.textContent = Math.round(m.s) + ' / 100';
+    P.lagi.textContent = nx ? (id ? `${Math.ceil(nx[1] - m.s)} lagi ke ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}` : `${Math.ceil(nx[1] - m.s)} more to ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}`) : (id ? 'Tingkat tertinggi' : 'Highest level');
+    P.jatah.textContent = id ? `jatah hari ini +${Math.round(sisaHari)}` : `today +${Math.round(sisaHari)} left`; }
+  function tandaSkor(m, d, minta) {
+    if (!P || !KINI || INGAT[KINI.id] !== m || !minta) return;
+    const id = L() === 'id', b = Math.round(Math.abs(d) * 10) / 10;
+    const x = el('span', 'no-delta ' + (d > 0 ? 'naik' : d < 0 ? 'turun' : 'batas'), d > 0 ? '+' + b + ' ❤' : d < 0 ? '−' + b + ' 💔' : (id ? 'jatah ❤ hari ini habis' : 'daily ❤ limit reached'));
+    P.info.appendChild(x); setTimeout(() => x.remove(), 1700);
+  }
   function bangunPanel() {
     gaya();
     const d = el('div', 'float'); d.id = 'npcObrol'; d.hidden = true; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Obrolan NPC');
@@ -119,13 +138,15 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const suara = el('button', 'btn ghost sm no-suara', '🔊'); suara.title = 'Suara NPC'; suara.setAttribute('aria-label', 'Suara NPC'); suara.setAttribute('aria-pressed', String(SUARA)); suara.onclick = () => { SUARA = !SUARA; suara.setAttribute('aria-pressed', String(SUARA)); try { localStorage.setItem('npcSuara', SUARA ? '1' : '0'); } catch (e) { /* mode privat */ } if (!SUARA && window.speechSynthesis) speechSynthesis.cancel(); };
     kepala.append(nama, peran, ai, relasi, suara, tutup);
     const batangL = el('div', 'no-batang'), batang = el('i'); batangL.appendChild(batang);
+    const info = el('div', 'no-info'), skor = el('b'), lagi = el('span'), jatah = el('span'); jatah.style.marginLeft = 'auto'; info.append(skor, lagi, jatah);
+    const kuis = el('div', 'no-kuis'); kuis.hidden = true;
     const log = el('div', 'no-log'); log.setAttribute('aria-live', 'polite');
     const chip = el('div', 'no-chip'), hadiah = el('div', 'no-chip'); hadiah.hidden = true;
-    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['pamit', '🚪 Pamit']]) {
+    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['pamit', '🚪 Pamit']]) {
       const b = el('button', 'btn sm ghost', l); b.dataset.cepat = k; b.onclick = () => cepat(k); chip.appendChild(b); }
     // interaksi berpasangan (JEV-109): butuh relasi cukup dekat; tidak untuk kartu anak
     const aksi = el('div', 'no-chip no-aksi');
-    for (const [k, l] of [['peluk', '🤗 Peluk'], ['gandeng', '🤝 Gandeng'], ['dansa', '💞 Dansa'], ['duduk', '🛋️ Duduk bareng'], ['cium', '😘 Cium pipi'], ['pangku', '🫶 Pangku']]) {
+    for (const [k, l] of [['peluk', '🤗 Peluk'], ['gandeng', '🤝 Gandeng'], ['dansa', '💞 Dansa'], ['duduk', '🛋️ Duduk bareng'], ['baring', '🛏️ Berbaring'], ['cium', '😘 Cium pipi'], ['pangku', '🫶 Pangku']]) {
       const b = el('button', 'btn sm ghost', l); b.dataset.aksi = k; b.onclick = () => aksiPasangan(k); aksi.appendChild(b); }
     const form = el('form', 'no-form'), inp = document.createElement('input'), kirimB = el('button', 'btn sm', 'Kirim');
     inp.type = 'text'; inp.maxLength = 300; inp.placeholder = 'Ketik pesan…'; inp.setAttribute('aria-label', 'Pesan untuk NPC'); inp.autocomplete = 'off'; kirimB.type = 'submit';
@@ -134,9 +155,10 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     inp.addEventListener('keyup', e => e.stopPropagation());
     form.onsubmit = e => { e.preventDefault(); const t = inp.value.trim(); if (!t) return; inp.value = ''; kirim(t); };
     form.append(inp, kirimB);
-    d.append(kepala, batangL, log, chip, aksi, hadiah, form);
+    d.append(kepala, batangL, info, log, kuis, chip, aksi, hadiah, form);
     ($('#viewport') || document.body).appendChild(d);
-    P = { d, nama, peran, ai, relasi, batang, log, chip, aksi, hadiah, inp };
+    P = { d, nama, peran, ai, relasi, batang, info, skor, lagi, jatah, kuis, log, chip, aksi, hadiah, inp };
+    saatSkor = tandaSkor;
   }
   function bicara(teks) {
     if (!SUARA || !window.speechSynthesis || !KINI) return;
@@ -161,14 +183,42 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     ubahSkor(m, balas ? rasa * 6 + 0.5 : d);
     ucap(balas || balasKartu(c, m, n), n);
     if (n === 'pamit') setTimeout(() => { if (KINI && KINI.c === c) tutupObrol(); }, 1200);
+    else if (window.DIALOG._kuisOtomatis && !KUIS && m.k >= 3 && m.k - (m.kq || 0) >= 4 && Math.random() < 0.35) setTimeout(() => { if (KINI && KINI.c === c && !KUIS) tanyaKuis(); }, 900);   // sesekali NPC balik bertanya
   }
   const TEKS_CEPAT = { salam: ['Halo!', 'Hello!'], rumah: ['Ceritakan soal rumah ini, dong.', 'Tell me about this house.'], siapa: ['Kamu siapa?', 'Who are you?'],
     puji: ['Kamu baik sekali!', 'You\'re really nice!'], pamit: ['Aku pamit dulu, ya.', 'I\'ll be going now.'] };
   function cepat(k) {
     if (k === 'hadiah') return tampilHadiah();
     if (k === 'ikut') return ajakIkut();
+    if (k === 'kuis') return tanyaKuis();
     const t = TEKS_CEPAT[k][L() === 'id' ? 0 : 1];
     kirim(t, k === 'puji' ? null : k);
+  }
+  /* TEBAK-TEBAKAN: NPC bertanya soal dirinya (pekerjaan, hadiah favorit, barang yang tak disukai) — jawabannya bisa
+     dipelajari dari obrolan & reaksi hadiah. Benar +6, salah −3 (pengurangan tidak dibatasi jatah harian). */
+  const acakDari = a => a[Math.floor(Math.random() * a.length)];
+  function tanyaKuis() {
+    if (!KINI || KUIS) return;
+    const k = KINI.c.k, id = L() === 'id', lain = K.URUT.filter(x => x !== KINI.c.id).map(x => K.KARTU[x]), suka = tx(k.hadiah.suka), benci = tx(k.hadiah.benci);
+    const sukaLain = lain.flatMap(x => tx(x.hadiah.suka)).filter(x => !suka.includes(x));
+    const jenis = acakDari(['peran', 'suka', 'benci']);
+    let tanya, benar, salah;
+    if (jenis === 'peran') { tanya = id ? 'Coba tebak, apa pekerjaanku?' : 'Guess what I do for a living?'; benar = tx(k.peran); salah = [...new Set(lain.map(x => tx(x.peran)))].filter(x => x !== benar); }
+    else if (jenis === 'suka') { tanya = id ? 'Kira-kira hadiah apa yang paling kusuka?' : 'What gift do you think I like most?'; benar = acakDari(suka); salah = [...benci, ...sukaLain]; }
+    else { tanya = id ? 'Nah, barang apa yang paling tidak kusuka?' : 'So, what\'s the one thing I don\'t like?'; benar = acakDari(benci); salah = [...suka, ...sukaLain]; }
+    const opsi = [benar]; for (const x of salah.sort(() => Math.random() - 0.5)) { if (opsi.length >= 3) break; if (!opsi.includes(x)) opsi.push(x); }
+    opsi.sort(() => Math.random() - 0.5);
+    KUIS = { benar }; const m = ingatan(KINI.id); m.kq = m.k || 0;
+    ucap('🎯 ' + tanya, 'salam');
+    P.kuis.textContent = ''; P.kuis.hidden = false;
+    for (const o of opsi) { const b = el('button', 'btn sm ghost', o); b.dataset.jawab = o === benar ? '1' : '0'; b.onclick = () => jawabKuis(o); P.kuis.appendChild(b); }
+  }
+  function jawabKuis(o) {
+    if (!KINI || !KUIS) return;
+    const m = ingatan(KINI.id), id = L() === 'id', ok = o === KUIS.benar; KUIS = null; P.kuis.hidden = true; P.kuis.textContent = '';
+    tulis('u', o); m.r.push({ d: 'u', t: o }); m.r = m.r.slice(-20);
+    ubahSkor(m, ok ? 6 : -3);
+    ucap(ok ? (id ? 'Betul! Ternyata kamu memperhatikan, ya. 😊' : 'Right! You really pay attention. 😊') : (id ? 'Salah… kamu belum benar-benar kenal aku, ya.' : 'Wrong… you don\'t really know me yet, huh.'), ok ? 'puji' : 'hina');
   }
   function tampilHadiah() {
     const h = P.hadiah; if (!h.hidden) { h.hidden = true; return; }
@@ -209,21 +259,23 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     else { d = c.id === 'tukang' || c.id === 'pandai_besi' ? 8 : 1; t = d > 1 ? (id ? 'Kayu bakar kering, pas buat tungku. Makasih!' : 'Dry firewood, perfect for the forge. Thanks!') : (id ? 'Kayu bakar? Oh… terima kasih.' : 'Firewood? Oh… thanks.'); }
     ubahSkor(m, d); ucap(t, d > 0 ? 'puji' : 'hina');
   }
-  const SYARAT = { peluk: 20, gandeng: 20, dansa: 20, duduk: -20, cium: 50, pangku: 50 };   // cium pipi & pangku: relasi Sayang ke atas
+  const SYARAT = { peluk: 20, gandeng: 20, dansa: 20, duduk: -20, baring: -20, cium: 50, pangku: 50 };   // cium pipi & pangku: relasi Sayang ke atas
   function aksiPasangan(k) {
     if (!KINI) return;
     const c = KINI.c, m = ingatan(KINI.id), id = L() === 'id';
     if (c.id === 'anak') { ucap(id ? 'Hehe, aku main bola aja yuk, Kak!' : 'Hehe, let\'s just play football!', 'salam'); return; }
-    if (m.s < SYARAT[k]) { ubahSkor(m, -1); ucap(id ? 'Eh… kita belum seakrab itu, ya.' : 'Uh… we\'re not that close yet.', 'hina'); return; }
+    const bareng = k === 'baring' && typeof FPS !== 'undefined' && FPS.duduk && FPS.duduk.baring;   // rebahan di kasur yang sama: relasi Sayang
+    if (m.s < (bareng ? 50 : SYARAT[k])) { ubahSkor(m, -1); ucap(id ? 'Eh… kita belum seakrab itu, ya.' : 'Uh… we\'re not that close yet.', 'hina'); return; }
     const npcId = KINI.id;
     if (!(window.NPC && window.NPC.aksiPasangan(npcId, k))) {
       if (k === 'pangku') ucap(id ? 'Duduk dulu di kursi atau sofa, ya.' : 'Sit on a chair or sofa first.', 'diam');
+      else if (k === 'baring') ucap(id ? 'Hmm, tidak ada kasur yang bisa dipakai di lantai ini.' : 'Hmm, there\'s no free bed on this floor.', 'diam');
       else ucap(id ? 'Hmm, di sini tidak ada tempat duduk di sebelahmu.' : 'Hmm, there\'s no seat next to you here.', 'diam');
       return; }
     ubahSkor(m, 2);
-    const kata = { peluk: ['Sini, peluk dulu!', 'Come here, a hug!'], gandeng: ['Ayo, jalan bareng!', 'Let\'s walk together!'], dansa: ['Pelan-pelan, ya…', 'Nice and slow…'], duduk: ['Boleh duduk di sebelahmu?', 'Mind if I sit next to you?'], cium: ['Mwah! 💕', 'Mwah! 💕'], pangku: ['Hehe, aku duduk di sini ya…', 'Hehe, I\'ll sit right here…'] }[k];
+    const kata = { peluk: ['Sini, peluk dulu!', 'Come here, a hug!'], gandeng: ['Ayo, jalan bareng!', 'Let\'s walk together!'], dansa: ['Pelan-pelan, ya…', 'Nice and slow…'], duduk: ['Boleh duduk di sebelahmu?', 'Mind if I sit next to you?'], cium: ['Mwah! 💕', 'Mwah! 💕'], baring: bareng ? ['Geser sedikit, ya… 😊', 'Scoot over a little… 😊'] : ['Hoaam… aku rebahan sebentar, ya.', 'Yawn… I\'ll lie down for a bit.'], pangku: ['Hehe, aku duduk di sini ya…', 'Hehe, I\'ll sit right here…'] }[k];
     tulis('n', kata[id ? 0 : 1]); m.r.push({ d: 'n', t: kata[id ? 0 : 1] }); m.r = m.r.slice(-20); simpan();
-    if (k !== 'duduk' && k !== 'pangku' && typeof FPS !== 'undefined') FPS.gaya = { k, x: camera.position.x, z: camera.position.z, t: performance.now() };   // avatar sendiri ikut berpose (terlihat di Main bareng)
+    if (k !== 'duduk' && k !== 'pangku' && k !== 'baring' && typeof FPS !== 'undefined') FPS.gaya = { k, x: camera.position.x, z: camera.position.z, t: performance.now() };   // avatar sendiri ikut berpose (terlihat di Main bareng)
     tutupObrol(true);
   }
   function buka(id) {
@@ -232,6 +284,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     if (!P) bangunPanel();
     const c = kartuNpc(o), m = ingatan(id);
     KINI = { id, c, o }; m.n = c.nama;
+    KUIS = null; P.kuis.hidden = true; P.kuis.textContent = '';
     if (m.h !== hariIni() && (m.k || m.r.length)) ubahSkor(m, 3);                     // ketemu lagi hari ini: +3
     P.nama.textContent = c.nama; P.peran.textContent = tx(c.k.peran); P.log.textContent = ''; P.hadiah.hidden = true;
     for (const x of m.r.slice(-6)) tulis(x.d, x.t);                       // ingatan percakapan sebelumnya
@@ -260,5 +313,5 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id && x.kind === 'npc'); if (!o) return 0;
     const m = ingatan(id); m.n = kartuNpc(o).nama; const n = ubahSkor(m, d); simpan(); if (KINI && KINI.id === id) segarRelasi(); return n;
   }
-  window.DIALOG = { buka, tambahRelasi, nama: id => { const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id); return o ? kartuNpc(o).nama : ''; }, tutup: tutupObrol, terbuka: () => !!KINI, kartuNpc, skor: id => ingatan(id).s, niat, balasKartu: (o, s, n) => { const c = kartuNpc(o); return balasKartu(c, { s, r: [] }, n); }, _ai: v => { AI = v; } };
+  window.DIALOG = { buka, tambahRelasi, kuis: tanyaKuis, _ingat: id => ingatan(id), _kuisOtomatis: true, nama: id => { const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id); return o ? kartuNpc(o).nama : ''; }, tutup: tutupObrol, terbuka: () => !!KINI, kartuNpc, skor: id => ingatan(id).s, niat, balasKartu: (o, s, n) => { const c = kartuNpc(o); return balasKartu(c, { s, r: [] }, n); }, _ai: v => { AI = v; } };
 })();

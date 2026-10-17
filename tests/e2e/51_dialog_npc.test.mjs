@@ -44,6 +44,7 @@ export const tes = {
     assert.deepEqual(r.a, ['ngobrol', 'Ngobrol']);
     assert.deepEqual([r.panel, r.nama, r.mode], [true, 'Pak Bima', 'ngobrol']);
     assert.match(r.log.at(-1), /^Welcome\. I'm Bima|^Selamat datang\. Saya Bima/, 'salam pertama dari kartu');
+    await page.evaluate(() => { window.DIALOG._kuisOtomatis = false; });   // pertanyaan acak NPC tidak mengganggu hitungan pesan
     // tombol cepat & ketik (tanpa server: balasan kartu)
     const b = await page.evaluate(async () => { const tunggu = async n => { for (let i = 0; i < 200 && (document.querySelectorAll('#npcObrol .no-m').length < n || document.querySelector('#npcObrol .no-ketik')); i++) await new Promise(r => setTimeout(r, 50)); };
       const jumlah = () => document.querySelectorAll('#npcObrol .no-m').length, akhir = () => [...document.querySelectorAll('#npcObrol .no-m')].at(-1).textContent;
@@ -60,6 +61,24 @@ export const tes = {
     assert.equal(b.gerak, false, 'mengetik tidak menggerakkan pemain');
     assert.ok(b.naik, 'pujian menaikkan relasi'); assert.equal(b.hadiah, 12, 'hadiah kesukaan +12');
     assert.ok(b.simpan >= 6, 'riwayat tersimpan');
+    // skor & progres terlihat; pujian menampilkan +delta; tebak-tebakan: benar +6, salah −3; jatah harian habis → keterangan
+    const k = await page.evaluate(async () => { const D = window.DIALOG, m = D._ingat('nB'); m.hg = 0;
+      const tunggu = async n => { for (let i = 0; i < 200 && (document.querySelectorAll('#npcObrol .no-m').length < n || document.querySelector('#npcObrol .no-ketik')); i++) await new Promise(r => setTimeout(r, 50)); };
+      const jumlah = () => document.querySelectorAll('#npcObrol .no-m').length;
+      const info0 = $('#npcObrol .no-info').textContent;
+      let n = jumlah(), s0 = D.skor('nB'); document.querySelector('#npcObrol [data-cepat="puji"]').click(); await tunggu(n + 2);
+      const puji = D.skor('nB') - s0, delta = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent);
+      s0 = D.skor('nB'); document.querySelector('#npcObrol [data-cepat="kuis"]').click(); const tanya = [...document.querySelectorAll('#npcObrol .no-m')].at(-1).textContent, opsi = document.querySelectorAll('#npcObrol .no-kuis button').length;
+      document.querySelector('#npcObrol .no-kuis [data-jawab="1"]').click(); const benar = D.skor('nB') - s0, tutup1 = $('#npcObrol .no-kuis').hidden;
+      s0 = D.skor('nB'); D.kuis(); document.querySelector('#npcObrol .no-kuis [data-jawab="0"]').click(); const salah = D.skor('nB') - s0;
+      m.hg = 30; s0 = D.skor('nB'); n = jumlah(); document.querySelector('#npcObrol [data-cepat="puji"]').click(); await tunggu(n + 2);
+      const habis = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent).at(-1), tetap = D.skor('nB') - s0;
+      return { info0, info1: $('#npcObrol .no-info').textContent, puji, delta, tanya, opsi, benar, tutup1, salah, habis, tetap }; });
+    assert.match(k.info0, /^\d+ \/ 100.*(lagi ke|more to)/, 'skor & progres: ' + k.info0);
+    assert.ok(k.puji >= 5 && k.delta.some(t => /^\+5 ❤/.test(t)), 'pujian +5 tampil: ' + JSON.stringify(k));
+    assert.match(k.tanya, /^🎯 /); assert.equal(k.opsi, 3);
+    assert.deepEqual([k.benar, k.tutup1, k.salah, k.tetap], [6, true, -3, 0], JSON.stringify(k));
+    assert.match(k.habis, /jatah|limit/);
     // tutup & buka lagi: riwayat tampil, salam memakai tingkat relasi (bukan salam pertama)
     const c = await page.evaluate(() => { window.DIALOG.tutup(); return [$('#npcObrol').hidden, window.NPC.keadaan('nB').mode]; });
     assert.deepEqual(c, [true, 'diam']);

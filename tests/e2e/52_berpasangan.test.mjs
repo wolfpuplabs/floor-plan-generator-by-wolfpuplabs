@@ -108,6 +108,13 @@ export const tes = {
     assert.ok(b.ek.includes('baring'), 'aksi Berbaring: ' + b.ek);
     assert.deepEqual([b.baring, b.po, b.label], [true, 9, 'Berbaring']);
     assert.ok(Math.abs(b.mata - 0.24) < 0.03 && b.y > 0.4, 'mata di bantal: ' + JSON.stringify(b));
+    // NPC diminta berbaring saat pemain rebahan: berbaring di sisi lain kasur yang sama (pose 9); Lepas = NPC bangun
+    const bb = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(6, 0, 4.5);
+      const ok = window.NPC.aksiPasangan('nA', 'baring'); for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 20; i++) window.NPC.langkah(0.05);
+      const D = FPS.duduk.baring, r = { ok, mode: n.mode, po: n.po, bareng: n.kursi && n.kursi.bareng, jarak: +Math.hypot(n.p.x - D.x, n.p.z - D.z).toFixed(2), y: +(n.p.y - D.y).toFixed(2), lepas: window.NPC.ekstra('nA') };
+      pakai({ jenis: 'lepas', id: 'nA' }); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05); r.bangun = n.mode; return r; });
+    assert.deepEqual([bb.ok, bb.mode, bb.po, bb.bareng, bb.lepas], [true, 'duduk', 9, 'ranjang', ['lepas']], JSON.stringify(bb));
+    assert.ok(bb.jarak > 0.25 && bb.jarak < 0.6 && Math.abs(bb.y) < 0.05 && bb.bangun !== 'duduk', 'berbaring di sebelah: ' + JSON.stringify(bb));
     await page.evaluate(() => berdiri());
     // NPC tidur di kasur
     // sisi kasur dipilih acak: sisi yang menempel dinding dibuang, sisi yang jalurnya macet membuat NPC memilih tempat lain — ulangi

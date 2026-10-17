@@ -1805,6 +1805,9 @@ window.KAMUS_EN={
   "😘 Cium pipi":"😘 Cheek kiss",
   "🫶 Pangku":"🫶 Lap sit",
   "😘 Kamu mencium pipi":"😘 You give a cheek kiss",
+  "🎯 Tebak-tebakan":"🎯 Guessing game",
+  "🛏️ Berbaring":"🛏️ Lie down",
+  "Tingkat tertinggi":"Highest level",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1889,7 +1892,8 @@ window.KAMUS_EN={
   "Ajak ikut":"Ask to come along",
   "Cium pipi":"Cheek kiss",
   "Pangku":"Lap sit",
-  "Kamu mencium pipi":"You give a cheek kiss"
+  "Kamu mencium pipi":"You give a cheek kiss",
+  "Tebak-tebakan":"Guessing game"
  },
  // frasa
  "frasa":{
@@ -2203,7 +2207,10 @@ window.KAMUS_EN={
   ["(💢|😒|🙂|😊|💛|💖) Sangat dekat","$1 Best friends"],
   ["Relasi (-?[\\d.]+) / 100","Relationship $1 / 100"],
   ["NPC gagal ditampilkan — (.+)","NPC could not be shown — $1"],
-  ["(❤️|💔) (.+) · (.+)","$1 $2 · $3"]
+  ["(❤️|💔) (.+) · (.+)","$1 $2 · $3"],
+  ["(\\d+) lagi ke (.+)","$1 more to $2"],
+  ["jatah hari ini \\+(\\d+)","today +$1 left"],
+  ["jatah ❤ hari ini habis","daily ❤ limit reached"]
  ],
  // frasaPola
  "frasaPola":[
