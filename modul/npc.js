@@ -380,11 +380,12 @@
   /* INTERAKSI BERPASANGAN dengan pengunjung (JEV-109): peluk, gandeng (mengikuti di sisi kanan), dansa berdua, duduk bareng */
   function aksiPasangan(id, k) {
     const n = NPC.get(id); if (!n || !n.a || !FPS.on || !n.mode) return false;
-    if (k === 'lepas') { if (n.mode === 'gandeng' || n.mode === 'dansa' || n.mode === 'peluk') diam(n, 1.5); return true; }
+    if (k === 'lepas') { if (/^(gandeng|dansa|peluk|ikut|temani)$/.test(n.mode)) diam(n, 1.5); return true; }
     if (n.mode === 'duduk' || n.mode === 'masuk') { lepasKursi(n); n.kursi = null; }
     n.a.mikro = null; n.a.lambai = null;
     if (k === 'peluk' || k === 'dansa') { n.mode = k; n.po = k === 'peluk' ? 6 : 10; n.t = k === 'peluk' ? 4.5 : 18; n.jarak = k === 'peluk' ? 0.34 : 0.48; return true; }
     if (k === 'gandeng') { n.mode = 'gandeng'; n.po = 7; n.a.sisi = -1; return true; }
+    if (k === 'ikut') { n.mode = 'ikut'; n.po = 0; return true; }
     if (k === 'duduk') {
       const D = FPS.duduk; if (!D || !D.id || D.lantai || D.baring) return false;
       const lg = levelGroups[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), S = g && g.userData.duduk; if (!S) return false;
@@ -404,8 +405,8 @@
     return false;
   }
   // gandeng: berjalan di sisi kanan pengunjung, menyamai arah pandangnya
-  function ikut(n, dt) {
-    const yaw = FPS.yaw, kx = -Math.cos(yaw), kz = Math.sin(yaw), tx = camera.position.x + kx * 0.55, tz = camera.position.z + kz * 0.55;
+  function ikut(n, dt, sampingM = 0.55, belakangM = 0) {
+    const yaw = FPS.yaw, kx = -Math.cos(yaw), kz = Math.sin(yaw), tx = camera.position.x + kx * sampingM - Math.sin(yaw) * belakangM, tz = camera.position.z + kz * sampingM - Math.cos(yaw) * belakangM;
     const dx = tx - n.p.x, dz = tz - n.p.z, d = Math.hypot(dx, dz);
     if (d > 6) { diam(n, 1); return 0; }
     if (d < 0.04) { putarKe(n, yaw, dt, 4); return 0; }
@@ -425,6 +426,20 @@
     if (d > 2.5) diam(n, 1);
     return 0;
   }
+  // aktivitas.js: NPC yang sedang ikut berpindah ke titik di samping pengunjung, menghadap tempat aktivitas
+  function temani(titik, hadap, po = 0) {
+    const daftar = [];
+    for (const n of NPC.values()) {
+      if (!n.a || (n.mode !== 'ikut' && n.mode !== 'temani') || !n.p) continue;
+      const i = daftar.length, x = titik.x + Math.cos(i * 1.3) * 0.5 * i, z = titik.z + Math.sin(i * 1.3) * 0.5 * i;
+      n.mode = 'temani'; n.temani = { x, z, yaw: Math.atan2(hadap.x - x, hadap.z - z), po }; n.sorak = 0; daftar.push(n.id);
+    }
+    return daftar;
+  }
+  function selesaiTemani() { for (const n of NPC.values()) if (n.mode === 'temani') { n.mode = 'ikut'; n.po = 0; } }
+  function sorak() { for (const n of NPC.values()) if (n.mode === 'temani' && n.a) { n.sorak = 1.8; window.LOBI.gerak.mulaiLambai(n.a); } }
+  // NPC dalam jarak tertentu dari pengunjung (bonus kedekatan saat beraktivitas di dekatnya)
+  const dekat = r => [...NPC.values()].filter(n => n.a && n.p && Math.hypot(n.p.x - camera.position.x, n.p.z - camera.position.z) <= r).map(n => n.id);
   function putarKe(n, yaw, dt, laju = 3) { const d = sudut(yaw - n.yaw); n.yaw += clamp(d, -laju * dt, laju * dt); return Math.abs(d); }
   function jalan(n, dt) {
     const dx = n.tuju.x - n.p.x, dz = n.tuju.z - n.p.z, d = Math.hypot(dx, dz);
@@ -485,6 +500,13 @@
         n.t -= dt; if (n.yawTuju != null && n.po === 5) putarKe(n, n.yawTuju, dt, 2.5);
         if (n.t <= 0) { n.a.mikro = null; diam(n); }
       } else if (n.mode === 'gandeng') laju = ikut(n, dt);
+      else if (n.mode === 'ikut') { laju = ikut(n, dt, 0.8, 0.9); if (laju < 0.05 && Math.random() < dt * 0.05) n.a.mikro = { k: pilih(Math.random, ['regang', 'bahu']), t: 0, d: 2 }; }
+      else if (n.mode === 'temani') {                       // menemani aktivitas pengunjung (aktivitas.js): ke titik di sebelahnya, lalu menonton / duduk
+        const T = n.temani, dx = T.x - n.p.x, dz = T.z - n.p.z, d = Math.hypot(dx, dz);
+        if (d > 0.08) { const l = Math.min(d, 2.4 * dt); const [px, pz] = fpsResolveWalls(n.p.x + dx / d * l, n.p.z + dz / d * l, n.p.y); laju = Math.hypot(px - n.p.x, pz - n.p.z) / Math.max(dt, 1e-4); n.p.x = px; n.p.z = pz; putarKe(n, Math.atan2(dx, dz), dt, 5); n.po = 0; }
+        else { putarKe(n, T.yaw, dt, 3); n.po = n.sorak > 0 ? 3 : T.po; }
+        if (n.sorak > 0) n.sorak -= dt;
+      }
       else if (n.mode === 'peluk' || n.mode === 'dansa') { rapat(n, dt); n.t -= dt; if (n.t <= 0) diam(n, 2); }
       else if (n.mode === 'ngobrol') {
         if (FPS.on) { hadapPengunjung(n); putarKe(n, n.yawTuju, dt, 3); }
@@ -536,7 +558,7 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, ekstra: id => { const n = NPC.get(id); return n && (n.mode === 'gandeng' || n.mode === 'dansa') ? ['lepas'] : []; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && /^(gandeng|dansa|ikut|temani)$/.test(n.mode) ? ['lepas'] : []; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z) } };
 })();

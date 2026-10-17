@@ -6,7 +6,7 @@
    terima kasih, hinaan, pamit) + konteks rumah (jumlah lantai & perabot). Bila pemilik situs mengisi GROQ_API_KEY di
    Vercel, /api/npc menjawab dengan AI dalam karakter; gagal / lambat → kembali ke balasan kartu.
    Panel: nama & tingkat relasi, riwayat, tombol cepat, hadiah (disukai / biasa / dibenci kartu), kolom ketik. */
-/* global $, el, FPS, camera, PROJECT, BAHASA */
+/* global $, el, FPS, camera, PROJECT, BAHASA, toast */
 (function () {
   'use strict';
   const K = window.KARTU_NPC;
@@ -23,7 +23,15 @@
   try { const v = JSON.parse(localStorage.getItem(KUNCI) || '{}'); if (v && typeof v === 'object') INGAT = v; } catch (e) { INGAT = {}; }
   const simpan = () => { try { const k = Object.keys(INGAT); if (k.length > 60) for (const x of k.slice(0, k.length - 60)) delete INGAT[x]; localStorage.setItem(KUNCI, JSON.stringify(INGAT)); } catch (e) { /* mode privat */ } };
   const ingatan = id => { const m = INGAT[id]; if (m && typeof m === 'object' && Array.isArray(m.r)) { m.s = clamp(+m.s || 0, -100, 100); return m; } return (INGAT[id] = { s: 0, r: [], k: 0 }); };
-  const ubahSkor = (m, d) => { m.s = clamp(Math.round((m.s + d) * 10) / 10, -100, 100); };
+  /* BONDING (JEV-110): kenaikan relasi per NPC dibatasi ±30 poin / hari — kedekatan tumbuh dari interaksi yang sering,
+     bukan satu sesi panjang; naik tingkat (netral → suka → sayang → sangat dekat) diumumkan */
+  const hariIni = () => new Date().toISOString().slice(0, 10);
+  function ubahSkor(m, d) {
+    if (d > 0) { const h = hariIni(); if (m.h !== h) { m.h = h; m.hg = 0; } d = Math.min(d, Math.max(0, 30 - (m.hg || 0))); m.hg = (m.hg || 0) + d; }
+    const lv0 = K.tingkat(m.s); m.s = clamp(Math.round((m.s + d) * 10) / 10, -100, 100); const lv1 = K.tingkat(m.s);
+    if (lv1 !== lv0 && m.n && typeof toast === 'function') toast((m.s > 0 && K.TINGKAT.findIndex(x => x[0] === lv1) > K.TINGKAT.findIndex(x => x[0] === lv0) ? '❤️ ' : '💔 ') + m.n + ' · ' + NAMA_TINGKAT[lv1]);
+    return d;
+  }
 
   /* ---------- kartu untuk satu NPC ---------- */
   function kartuNpc(o) {
@@ -80,6 +88,7 @@
   }
 
   /* ---------- panel ---------- */
+  let SUARA = false; try { SUARA = localStorage.getItem('npcSuara') === '1'; } catch (e) { SUARA = false; }
   let P = null, KINI = null;
   function gaya() {
     if (document.getElementById('npcObrolGaya')) return;
@@ -87,6 +96,8 @@
     s.textContent = `#npcObrol{left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 88px);z-index:39;width:min(420px,calc(100% - 24px));max-height:min(60%,520px);display:flex;flex-direction:column;gap:8px;padding:12px 14px;font-size:.84rem}
 @media (min-width:900px){#npcObrol{left:16px;transform:none;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 16px);width:380px}}
 #npcObrol[hidden]{display:none}.no-kepala{display:flex;align-items:center;gap:8px}.no-kepala b{color:var(--txt);font-size:.95rem}.no-kepala .tag{font-size:.7rem}
+.no-batang{height:4px;border-radius:2px;background:var(--panel2);overflow:hidden}.no-batang i{display:block;height:100%;background:linear-gradient(90deg,#e86a8a,#f3b24a);transition:width .4s}
+.no-suara[aria-pressed="true"]{color:var(--accent)}
 .no-relasi{margin-left:auto;font-size:.74rem;color:var(--muted);white-space:nowrap}.no-ai{font-size:.66rem;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 6px}
 .no-log{overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:60px;max-height:200px}.no-m{padding:7px 10px;border-radius:12px;max-width:88%;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}
 .no-n{background:var(--panel2);color:var(--txt);align-self:flex-start;border-bottom-left-radius:4px}.no-u{background:rgba(78,201,176,.18);color:var(--txt);align-self:flex-end;border-bottom-right-radius:4px}
@@ -98,16 +109,19 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
   // teks *aksi* (gaya SillyTavern) tampil miring; selebihnya teks biasa (tanpa innerHTML)
   function isiPesan(d, t) { t.split(/(\*[^*]{1,200}\*)/).forEach(b => { if (!b) return; if (/^\*.*\*$/.test(b)) d.appendChild(el('i', null, b.slice(1, -1))); else d.appendChild(document.createTextNode(b)); }); }
   function tulis(d, t) { const x = el('div', 'no-m ' + (d === 'u' ? 'no-u' : 'no-n')); isiPesan(x, t); P.log.appendChild(x); P.log.scrollTop = P.log.scrollHeight; return x; }
-  function segarRelasi() { const m = ingatan(KINI.id), lv = K.tingkat(m.s); P.relasi.textContent = IKON_TINGKAT[lv] + ' ' + NAMA_TINGKAT[lv]; P.relasi.title = 'Relasi ' + Math.round(m.s) + ' / 100'; }
+  function segarRelasi() { const m = ingatan(KINI.id), lv = K.tingkat(m.s), r = K.TINGKAT.find(x => x[0] === lv); P.relasi.textContent = IKON_TINGKAT[lv] + ' ' + NAMA_TINGKAT[lv]; P.relasi.title = 'Relasi ' + Math.round(m.s) + ' / 100';
+    P.batang.style.width = Math.round(clamp((m.s - r[1]) / (Math.min(100, r[2]) - r[1]), 0, 1) * 100) + '%'; }
   function bangunPanel() {
     gaya();
     const d = el('div', 'float'); d.id = 'npcObrol'; d.hidden = true; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Obrolan NPC');
     const kepala = el('div', 'no-kepala'), nama = el('b'), peran = el('span', 'tag'), ai = el('span', 'no-ai', 'AI'), relasi = el('span', 'no-relasi'), tutup = el('button', 'btn ghost sm', '×');
     ai.hidden = true; tutup.setAttribute('aria-label', 'Tutup obrolan'); tutup.title = 'Tutup obrolan'; tutup.onclick = () => tutupObrol();
-    kepala.append(nama, peran, ai, relasi, tutup);
+    const suara = el('button', 'btn ghost sm no-suara', '🔊'); suara.title = 'Suara NPC'; suara.setAttribute('aria-label', 'Suara NPC'); suara.setAttribute('aria-pressed', String(SUARA)); suara.onclick = () => { SUARA = !SUARA; suara.setAttribute('aria-pressed', String(SUARA)); try { localStorage.setItem('npcSuara', SUARA ? '1' : '0'); } catch (e) { /* mode privat */ } if (!SUARA && window.speechSynthesis) speechSynthesis.cancel(); };
+    kepala.append(nama, peran, ai, relasi, suara, tutup);
+    const batangL = el('div', 'no-batang'), batang = el('i'); batangL.appendChild(batang);
     const log = el('div', 'no-log'); log.setAttribute('aria-live', 'polite');
     const chip = el('div', 'no-chip'), hadiah = el('div', 'no-chip'); hadiah.hidden = true;
-    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['pamit', '🚪 Pamit']]) {
+    for (const [k, l] of [['salam', '👋 Sapa'], ['rumah', '🏠 Tentang rumah'], ['siapa', '❓ Siapa kamu?'], ['puji', '👍 Puji'], ['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['pamit', '🚪 Pamit']]) {
       const b = el('button', 'btn sm ghost', l); b.dataset.cepat = k; b.onclick = () => cepat(k); chip.appendChild(b); }
     // interaksi berpasangan (JEV-109): butuh relasi cukup dekat; tidak untuk kartu anak
     const aksi = el('div', 'no-chip no-aksi');
@@ -120,12 +134,17 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     inp.addEventListener('keyup', e => e.stopPropagation());
     form.onsubmit = e => { e.preventDefault(); const t = inp.value.trim(); if (!t) return; inp.value = ''; kirim(t); };
     form.append(inp, kirimB);
-    d.append(kepala, log, chip, aksi, hadiah, form);
+    d.append(kepala, batangL, log, chip, aksi, hadiah, form);
     ($('#viewport') || document.body).appendChild(d);
-    P = { d, nama, peran, ai, relasi, log, chip, aksi, hadiah, inp };
+    P = { d, nama, peran, ai, relasi, batang, log, chip, aksi, hadiah, inp };
+  }
+  function bicara(teks) {
+    if (!SUARA || !window.speechSynthesis || !KINI) return;
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(teks.replace(/\*[^*]*\*/g, ' ').trim()); if (!u.text) return;
+      u.lang = L() === 'id' ? 'id-ID' : 'en-US'; u.pitch = KINI.o.type === 'M' ? 0.9 : 1.25; u.rate = KINI.c.id === 'anak' ? 1.15 : 1; speechSynthesis.speak(u); } catch (e) { /* tanpa suara */ }
   }
   function ucap(teks, n) {                                                 // NPC berbicara: tulis + gerak kecil
-    tulis('n', teks);
+    tulis('n', teks); bicara(teks);
     const m = ingatan(KINI.id); m.r.push({ d: 'n', t: teks.slice(0, 300) }); m.r = m.r.slice(-20); simpan(); segarRelasi();
     if (window.NPC && n !== 'diam') window.NPC.ngobrol(KINI.id, n);
   }
@@ -147,6 +166,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     puji: ['Kamu baik sekali!', 'You\'re really nice!'], pamit: ['Aku pamit dulu, ya.', 'I\'ll be going now.'] };
   function cepat(k) {
     if (k === 'hadiah') return tampilHadiah();
+    if (k === 'ikut') return ajakIkut();
     const t = TEKS_CEPAT[k][L() === 'id' ? 0 : 1];
     kirim(t, k === 'puji' ? null : k);
   }
@@ -155,6 +175,9 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     h.textContent = ''; const k = KINI.c.k, suka = tx(k.hadiah.suka), benci = tx(k.hadiah.benci), biasa = L() === 'id' ? ['bunga', 'air mineral'] : ['flowers', 'a bottle of water'];
     const pilihan = [[acak(suka), 'suka'], [acak(biasa), 'biasa'], [acak(benci), 'benci']].sort(() => Math.random() - 0.5);
     for (const [nm, j] of pilihan) { const b = el('button', 'btn sm ghost', '🎁 ' + nm); b.onclick = () => beriHadiah(nm, j); h.appendChild(b); }
+    const T = tasAkt();
+    for (const [jenis, ikon, daftar] of [['masakan', '🍽️', T.masakan || []], ['ikan', '🐟', T.ikan || []]]) daftar.slice(-3).forEach((x, k) => { const i = daftar.length - Math.min(3, daftar.length) + k, b = el('button', 'btn sm ghost', ikon + ' ' + x.nama); b.dataset.barang = jenis; b.onclick = () => beriBarang(jenis, i); h.appendChild(b); });
+    if ((T.kayu | 0) > 0) { const b = el('button', 'btn sm ghost', '🪵 ' + (L() === 'id' ? 'Kayu bakar' : 'Firewood')); b.dataset.barang = 'kayu'; b.onclick = () => beriBarang('kayu', 0); h.appendChild(b); }
     h.hidden = false;
   }
   function beriHadiah(nm, j) {
@@ -164,6 +187,27 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     ubahSkor(m, j === 'suka' ? 12 : j === 'biasa' ? 3 : -8);
     ucap(j === 'suka' ? (id ? `Wah, ${nm}! Ini kesukaan saya. Terima kasih banyak!` : `Oh, ${nm}! I love these. Thank you so much!`)
       : j === 'biasa' ? (id ? `Oh, ${nm}. Terima kasih, ya.` : `Oh, ${nm}. Thanks.`) : (id ? `Hmm… ${nm}? Saya kurang suka yang begini.` : `Hmm… ${nm}? I'm not fond of that.`), j === 'benci' ? 'hina' : 'puji');
+  }
+  // ikut: NPC berjalan mengikuti & menemani aktivitas (mancing, memasak, potong kayu) — bonus kedekatan saat beraktivitas bersama
+  function ajakIkut() {
+    const m = ingatan(KINI.id), id = L() === 'id';
+    if (m.s < -20) { ucap(id ? 'Hmm, lain kali saja.' : 'Hmm, maybe another time.', 'hina'); return; }
+    if (!(window.NPC && window.NPC.aksiPasangan(KINI.id, 'ikut'))) return;
+    ucap(id ? 'Ayo! Mau ke mana kita?' : 'Sure! Where are we going?', 'salam'); tutupObrol(true);
+  }
+  // barang dari tas aktivitas (modul/aktivitas.js): ikan, masakan, kayu bakar
+  function tasAkt() { if (window.AKT) return window.AKT.tas(); try { return JSON.parse(localStorage.getItem('aktTas') || '{}'); } catch (e) { return {}; } }
+  function beriBarang(jenis, i) {
+    P.hadiah.hidden = true;
+    const b = window.AKT ? window.AKT.ambil(jenis, i) : null; if (!b) return;
+    const m = ingatan(KINI.id), id = L() === 'id', c = KINI.c, nm = b.nama;
+    tulis('u', (id ? '*Memberi ' : '*Gives ') + nm + '*'); m.r.push({ d: 'u', t: (id ? 'memberi hadiah: ' : 'gives a gift: ') + nm }); m.r = m.r.slice(-20);
+    let d = 1, t;
+    if (jenis === 'masakan') { d = { sempurna: 18, enak: 12, mentah: 2, gosong: -5 }[b.mutu] || 6;
+      t = d >= 12 ? (id ? `Hmm, ${nm}! Wangi sekali… kamu yang masak? Enak!` : `Mmm, ${nm}! Smells amazing… you made this? Delicious!`) : d > 0 ? (id ? `Terima kasih… agak kurang matang, tapi aku hargai.` : `Thanks… a little undercooked, but I appreciate it.`) : (id ? `Eh… ini gosong, ya? Hehe.` : `Uh… it's a bit burnt? Hehe.`); }
+    else if (jenis === 'ikan') { d = 6; t = id ? `Wah, ${nm}! Hasil mancingmu? Hebat!` : `Wow, ${nm}! You caught this? Nice!`; }
+    else { d = c.id === 'tukang' || c.id === 'pandai_besi' ? 8 : 1; t = d > 1 ? (id ? 'Kayu bakar kering, pas buat tungku. Makasih!' : 'Dry firewood, perfect for the forge. Thanks!') : (id ? 'Kayu bakar? Oh… terima kasih.' : 'Firewood? Oh… thanks.'); }
+    ubahSkor(m, d); ucap(t, d > 0 ? 'puji' : 'hina');
   }
   const SYARAT = { peluk: 20, gandeng: 20, dansa: 20, duduk: -20 };
   function aksiPasangan(k) {
@@ -184,7 +228,8 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id && x.kind === 'npc'); if (!o) return false;
     if (!P) bangunPanel();
     const c = kartuNpc(o), m = ingatan(id);
-    KINI = { id, c, o };
+    KINI = { id, c, o }; m.n = c.nama;
+    if (m.h !== hariIni() && (m.k || m.r.length)) ubahSkor(m, 3);                     // ketemu lagi hari ini: +3
     P.nama.textContent = c.nama; P.peran.textContent = tx(c.k.peran); P.log.textContent = ''; P.hadiah.hidden = true;
     for (const x of m.r.slice(-6)) tulis(x.d, x.t);                       // ingatan percakapan sebelumnya
     segarRelasi(); P.d.hidden = false; document.body.classList.add('ngobrol');
@@ -207,5 +252,10 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const s = window.NPC && window.NPC.keadaan(KINI.id);
     if (!FPS.on || !s || !s.p || (s.mode !== 'ngobrol' && s.mode !== 'duduk' && s.mode !== 'masuk') || Math.hypot(camera.position.x - s.p.x, camera.position.z - s.p.z) > 4.2) tutupObrol();
   }, 400);
-  window.DIALOG = { buka, tutup: tutupObrol, terbuka: () => !!KINI, kartuNpc, skor: id => ingatan(id).s, niat, balasKartu: (o, s, n) => { const c = kartuNpc(o); return balasKartu(c, { s, r: [] }, n); }, _ai: v => { AI = v; } };
+  // aktivitas bersama (modul/aktivitas.js) & interaksi lain di luar panel menambah kedekatan
+  function tambahRelasi(id, d) {
+    const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id && x.kind === 'npc'); if (!o) return 0;
+    const m = ingatan(id); m.n = kartuNpc(o).nama; const n = ubahSkor(m, d); simpan(); if (KINI && KINI.id === id) segarRelasi(); return n;
+  }
+  window.DIALOG = { buka, tambahRelasi, nama: id => { const o = PROJECT.levels.flatMap(l => l.objects).find(x => x.id === id); return o ? kartuNpc(o).nama : ''; }, tutup: tutupObrol, terbuka: () => !!KINI, kartuNpc, skor: id => ingatan(id).s, niat, balasKartu: (o, s, n) => { const c = kartuNpc(o); return balasKartu(c, { s, r: [] }, n); }, _ai: v => { AI = v; } };
 })();
