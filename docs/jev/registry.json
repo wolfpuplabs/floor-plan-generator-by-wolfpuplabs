@@ -5137,6 +5137,68 @@
     "target": "dipakai di Main bareng & presentasi",
     "tinjau": "2027-01-16"
    }
+  },
+  {
+   "id": "JEV-110",
+   "judul": "Aktivitas & bonding: mini game mancing, panggang/masak, potong kayu, angkat-taruh barang, afeksi NPC harian, NPC ikut/menemani, suara NPC",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Relasi NPC hanya naik lewat obrolan; tidak ada kegiatan bersama, hadiah nyata, atau benda yang bisa dibawa. Pengguna juga bertanya apakah dialog diganti AI-NPC-Dialogue (Alirezasedd) — repo itu tanpa lisensi, jadi kodenya tidak disalin; idenya (suara NPC & saringan keluaran) dibuat ulang sendiri dan sistem dialog yang ada dipertahankan.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-17: \"tambah mekanik aktifitas bonding … chat, dipuji, ngasih gift, aktifitas bareng, mini game (mancing, masak & barbeque, potong kayu bakar), bawa dan taro barang, sama animasi2nya\"",
+    "alternatif": [
+     "ganti dialog dengan AI-NPC-Dialogue (tanpa lisensi — tidak boleh)",
+     "hanya tombol aktivitas tanpa mini game"
+    ]
+   },
+   "E": {
+    "peluang": 0.65,
+    "biaya": {
+     "bangunJam": 6,
+     "ujiJam": 2,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.4,
+      "pakaiPerTahun": 12,
+      "menitHemat": 4
+     },
+     "konversi": {
+      "jangkauan": 0.4,
+      "upliftMenang": 0.03
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kode pose 11–14 disaring posAman; tas aktivitas disanitasi saat dibaca dari localStorage; balasan AI disaring regex TERLARANG di server (kata kasar/seksual → balasan kartu offline)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "tas & relasi hanya di localStorage perangkat; yang terkirim ke Main bareng hanya kode pose"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "mini game, model alat, bunyi WebAudio & TTS (speechSynthesis bawaan peramban) dibuat sendiri; tidak ada kode dari AI-NPC-Dialogue (tanpa lisensi)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul aktivitas dimuat malas saat pertama dipakai; satu raycast taruh per frame hanya saat membawa barang; index.html ±1050 KB (batas guard 1060)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tiap mini game berteks + tombol sentuh besar (Space/E, Q, Esc); suara NPC bisa dimatikan; afeksi dibatasi +30/NPC/hari agar tidak bisa digiling; konten ramah semua umur"
+    }
+   },
+   "metrik": {
+    "nama": "aktivitas selesai per sesi jalan",
+    "target": "≥1 mini game per sesi yang memakai NPC",
+    "tinjau": "2027-01-17"
+   }
   }
  ]
 }

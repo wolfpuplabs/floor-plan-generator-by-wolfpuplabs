@@ -1923,7 +1923,7 @@ function aturResolusi(t){
   const mentah=clock.getDelta(), dt=Math.min(mentah,0.1);   // lompatan waktu dibatasi
   aturResolusi(mentah);
   if(FPS.on) fpsStep(dt); else orbit.update();
-  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt); if(window.NPC) window.NPC.langkah(dt);
+  stepTV(dt); stepGaris(dt); stepHadap(dt); stepGerak(dt); if(window.CUACA) window.CUACA.langkah(dt); if(window.NPC) window.NPC.langkah(dt); if(window.AKT) window.AKT.langkah(dt);
   if(window.__siap){ stepAnim(dt); stepLampu(dt); stepView(dt); stepAudio(dt); stepApi(dt); stepAir(dt); stepProbe(dt); }   // setelah semua modul selesai dimuat
   if(selBox)selBox.update();
   if(camera.isOrthographicCamera && DIM.grp.children.length){ const s=camera.top/camera.zoom;
@@ -5434,6 +5434,16 @@ function bedengBunga(){ const g=new THREE.Group(), w=1.6, d=0.6, h=0.35;
   return g; }
 function potTaman(){ const g=new THREE.Group(); g.add(cyl(0.32,0.24,0.6,MAT.terracotta,0,0.3,0,20)); g.add(cyl(0.3,0.3,0.02,matSitus('tanah'),0,0.58,0,20));
   const s=semak(); s.scale.setScalar(0.75); s.position.y=0.5; g.add(s); return g; }
+// tempat aktivitas (JEV-110): panggangan arang (Panggang) & tunggul kayu dengan tumpukan kayu (Potong kayu)
+function panggangan(){ const g=new THREE.Group();
+  g.add(box(0.8,0.2,0.45,MAT.blackMetal,0,0.82,0)); g.add(box(0.74,0.03,0.4,MAT.dark,0,0.9,0));
+  for(let i=0;i<9;i++) g.add(box(0.012,0.012,0.42,MAT.metal,-0.36+i*0.09,0.935,0));
+  for(const sx of [-1,1]) for(const sz of [-1,1]) g.add(box(0.035,0.72,0.035,MAT.blackMetal,sx*0.36,0.36,sz*0.19));
+  g.add(box(0.72,0.02,0.38,MAT.wood,0,0.3,0)); g.add(box(0.06,0.05,0.04,MAT.wood,0.46,0.86,0)); return g; }
+function tunggulKayu(){ const g=new THREE.Group();
+  g.add(cyl(0.3,0.34,0.45,MAT.woodDark,0,0.225,0,18)); const k=cyl(0.12,0.12,0.38,MAT.wood,0,0.64,0,12); k.name='kayu'; g.add(k);
+  for(let i=0;i<5;i++){ const p=cyl(0.065,0.065,0.42,MAT.wood,0.5+(i%3)*0.14,0.065+Math.floor(i/3)*0.12,0.05,8); p.rotation.x=Math.PI/2; g.add(p); }
+  return g; }
 function bangkuTaman(){ const g=new THREE.Group(), w=1.5;
   for(let i=0;i<4;i++) g.add(box(w,0.03,0.09,MAT.wood,0,0.44,-0.17+i*0.11));
   for(let i=0;i<3;i++){ const s=box(w,0.09,0.025,MAT.wood,0,0.62+i*0.12,-0.27); s.rotation.x=-0.18; g.add(s); }
@@ -5717,6 +5727,8 @@ const FURN={
   lampu_taman :{l:'Lampu Taman',        i:'🏮', c:'taman',   f:[0.25,0.25], b:lampuTaman},
   gazebo      :{l:'Gazebo',             i:'⛩️', c:'taman',   f:[3.0,3.0],   b:gazebo},
   pergola     :{l:'Pergola',            i:'🏗️', c:'taman',   f:[3.2,3.4],   b:pergola},
+  panggangan  :{l:'Panggangan BBQ',     i:'🍢', c:'taman',   f:[0.8,0.45],  b:panggangan},
+  tunggul_kayu:{l:'Tunggul Kayu Bakar', i:'🪓', c:'taman',   f:[1.0,0.7],   b:tunggulKayu},
   ayunan      :{l:'Ayunan',             i:'🎠', c:'taman',   f:[2.2,1.0],   b:ayunan},
   kursi_jemur :{l:'Kursi Berjemur',     i:'🏖️', c:'taman',   f:[0.65,2.0],  b:kursiJemur},
   payung_taman:{l:'Payung Taman',       i:'⛱️', c:'taman',   f:[2.8,2.8],   b:payungTaman},
@@ -14989,6 +15001,7 @@ function fpsStep(dt){
   const dir=new THREE.Vector3(Math.sin(FPS.yaw)*Math.cos(FPS.pitch), Math.sin(FPS.pitch),
                               Math.cos(FPS.yaw)*Math.cos(FPS.pitch));
   camera.lookAt(camera.position.clone().add(dir));
+  if(window.AKT&&window.AKT.kunci()) return;               // mini game: kamera & langkah diatur modul aktivitas
 
   if(FPS.duduk){
     const gerak=['w','s','a','d','arrowup','arrowdown','arrowleft','arrowright'].some(k=>FPS.keys.has(k)) || (FPS.move && Math.hypot(FPS.move.f,FPS.move.s)>0.3);
@@ -15396,6 +15409,7 @@ function cariTarget(ray){
         if(ak&&ak.pindah) ekstra.unshift('pindah');
         if(ak&&ak.anim) ekstra.push('anim');
         if(n.userData.nyalaJenis==='duduk'&&/^bed_/.test((cariObjek(n.userData.id)||{}).type||'')) ekstra.push('baring');
+        { const ob=cariObjek(n.userData.id), ak=aksiAktivitas(ob); if(ak) ekstra.unshift(ak); if(bisaDiangkat(ob)) ekstra.push('angkat'); }
         if(ak&&(ak.sfx||ak.media)&&!n.userData.nyalaJenis&&!ekstra.length) ekstra.push('bunyi');
         if(!n.userData.nyalaJenis && !ekstra.length) return null;
         return {jenis:n.userData.nyalaJenis||ekstra.shift(), ekstra, id:n.userData.id, grp:n, titik:h.point.clone()};
@@ -15407,8 +15421,18 @@ function cariTarget(ray){
   }
   return null;
 }
+// AKTIVITAS (JEV-110): mancing di kolam ikan, panggang / masak, potong kayu, angkat & taruh barang kecil — modul/aktivitas.js
+const LABEL_AKT={mancing:'Mancing', panggang:'Panggang', masak:'Masak', potong:'Potong kayu', angkat:'Angkat', taruh:'Taruh'};
+function aksiAktivitas(o){
+  if(!o||LIHAT.on) return null;
+  if(o.kind==='area'&&o.params&&o.params.jenis==='kolam_ikan') return 'mancing';
+  if(o.kind!=='furn') return null;
+  return o.type==='panggangan'?'panggang':o.type==='tunggul_kayu'?'potong':/^kitchen_/.test(o.type)?'masak':null;
+}
+function bisaDiangkat(o){ const d=o&&o.kind==='furn'&&FURN[o.type]; return !!d&&!LIHAT.on&&!d.wall&&d.c!=='bentuk'&&d.f[0]*d.f[1]<=1.1&&(o.y||0)<1.2&&!/^(panggangan|tunggul_kayu)$/.test(o.type); }
 function labelAksi(t){
   if(!t) return '';
+  if(LABEL_AKT[t.jenis]) return LABEL_AKT[t.jenis];
   if(t.jenis==='bukaan'){
     const buka=bukaan(t.o)>0.5, nm = isWindowType(t.o.type) ? 'jendela' : t.o.type==='garage' ? 'pintu garasi' : 'pintu';
     return (buka?'Tutup ':'Buka ')+nm;
@@ -15461,6 +15485,7 @@ function pakai(t){
   if(t.jenis==='sapa'){ AIM_T=0; if(window.NPC) window.NPC.sapa(t.id); return; }
   if(t.jenis==='lepas'){ AIM_T=0; if(window.NPC) window.NPC.aksiPasangan(t.id,'lepas'); if(FPS.gaya) FPS.gaya=null; return; }
   if(t.jenis==='baring'){ baring(t); return; }
+  if(LABEL_AKT[t.jenis]){ AIM_T=0; muatModul('aktivitas').then(()=>window.AKT.pakai(t),e=>toast(e.message)); return; }
   // dialog NPC (JEV-108): kartu karakter + memori + relasi; AI opsional lewat /api/npc
   if(t.jenis==='ngobrol'){ AIM_T=0; muatModul('kartunpc').then(()=>muatModul('dialog')).then(()=>window.DIALOG.buka(t.id),e=>toast(e.message)); return; }
   // suara pilihan pemilik menyertai aksi apa pun pada objek ini (dan terdengar oleh peserta lobi)
@@ -15584,7 +15609,7 @@ window.JEMBATAN_LOBI={terapkanAksiLuar, keadaanAksi, pasangKeadaanAksi, adeganKi
 function stepBidik(dt){
   AIM_T-=dt; if(AIM_T>0) return; AIM_T=0.1;
   aimRay.setFromCamera({x:0,y:0},camera);
-  AIM=cariTarget(aimRay);
+  AIM=window.AKT&&window.AKT.membawa()?{jenis:'taruh'}:cariTarget(aimRay);
   if(!AIM && FPS.duduk) AIM={jenis:'berdiri'};
   const lbl=labelAksi(AIM), b=$('#fpsAct');
   $('#fpsAim').classList.toggle('on',!!AIM);
@@ -15814,7 +15839,7 @@ function exitFPS(){
   if(FPS.fovEditor){ camera.fov=FPS.fovEditor; camera.updateProjectionMatrix(); }
   if(FPS.save){ if(FPS.save.orto){ pakaiKamera(true); aturOrto(FPS.save.ortoTop); kameraOrto.zoom=FPS.save.ortoZoom||1; kameraOrto.updateProjectionMatrix(); } camera.position.copy(FPS.save.pos); orbit.target.copy(FPS.save.target); camera.lookAt(orbit.target); orbit.update(); }
   document.body.classList.remove('jalan'); aturTataLihat();
-  tutupLembar(); if(window.DIALOG) window.DIALOG.tutup(); $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
+  tutupLembar(); if(window.DIALOG) window.DIALOG.tutup(); if(window.AKT) window.AKT.selesai(); $('#fpsbar').hidden=true; $('#hint').hidden=false; $('#toolbar').hidden=false; $('#viewbar').hidden=false;
   setTimeout(perbaruiMulai,0);          // FPS.on baru dimatikan di akhir fungsi ini
   $('#levelbar').hidden=false;
   viewport.style.cursor='';

@@ -11,6 +11,8 @@
    menit / IP per instans, pesan ≤ 300 huruf, riwayat ≤ 10, jawaban ≤ 160 token. */
 const { KARTU, tingkat, SIKAP } = require('../modul/kartunpc.js');
 
+// saringan balasan AI (gagasan dari AI-NPC-Dialogue: content filter): kata kasar / seksual → jawaban dibuang
+const TERLARANG = /\b(anjing|bangsat|babi|kontol|memek|ngentot|jancok|goblok|tolol|bajingan|fuck\w*|shit\w*|bitch\w*|cunt|dick|pussy|sex\w*|seks\w*|porn\w*|nude|bugil|telanjang)\b/i;
 const LAJU = new Map();
 const lajuOk = (ip, now = Date.now()) => {
   const l = (LAJU.get(ip) || []).filter(t => now - t < 60000);
@@ -72,6 +74,7 @@ async function tanyaGroq(q, env, fetchFn = fetch) {
     const j = await r.json(), isi = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
     let o = null; try { o = JSON.parse(isi); } catch (e) { o = { reply: isi }; }
     const balas = teks(o && o.reply, 600); if (!balas) throw new Error('jawaban kosong');
+    if (TERLARANG.test(balas)) throw new Error('jawaban disaring');            // peramban memakai balasan dari kartu
     const rasa = Math.max(-1, Math.min(1, +o.sentiment || 0));
     return { balas, rasa };
   } finally { clearTimeout(batas); }
@@ -100,4 +103,4 @@ module.exports = async (req, res) => {
   try { kirim(200, { ai: true, ...(await tanyaGroq(q, process.env)) }); }
   catch (e) { kirim(502, { galat: 'ai tidak menjawab' }); }
 };
-Object.assign(module.exports, { permintaanAman, promptSistem, tanyaGroq, lajuOk, asalOk });
+Object.assign(module.exports, { permintaanAman, promptSistem, tanyaGroq, lajuOk, asalOk, TERLARANG });

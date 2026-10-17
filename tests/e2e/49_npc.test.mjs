@@ -91,4 +91,28 @@ export const tes = {
     assert.deepEqual(r.bidik, ['ngobrol', 'Ngobrol', ['sapa']]); assert.deepEqual(r.sapa, ['aktivitas', 5]);
     assert.deepEqual(r.keluar, [null, 0], 'keluar mode jalan: kembali ke tempatnya');
   },
+
+  'iPad / WebKit: program shader NPC gagal → tampilan aman bertahap (tanpa GI, lalu Lambert), diingat; diagnosa memuat kemampuan WebGL & status program': async (page) => {
+    await muatProyekJSON(page, rumah);
+    await page.evaluate(() => { localStorage.removeItem('npcAman'); orbit.target.set(2, 0, 3); addObject('npc', 'F'); });
+    await siap(page);
+    const r = await page.evaluate(async () => {
+      const N = window.NPC, n = [...N._uji.NPC.values()][0], tunggu = () => new Promise(ok => setTimeout(ok, 400));
+      await tunggu(); const awal = N.periksa();
+      const rusak = () => n.a.model.traverse(x => { if (x.isMesh) { const pr = renderer.properties.get(x.material); if (pr.currentProgram) pr.currentProgram.diagnostics = { runnable: false, programLog: 'uji: link gagal' }; } });
+      rusak(); const teksGagal = N.diagnosa(); const t1 = N.periksa(); const bahan1 = []; n.a.model.traverse(x => { if (x.isMesh) bahan1.push([x.material.type, Object.prototype.hasOwnProperty.call(x.material, 'onBeforeCompile')]); });
+      await tunggu(); rusak(); const t2 = N.periksa(); const bahan2 = []; n.a.model.traverse(x => { if (x.isMesh) bahan2.push(x.material.type); });
+      return { awal, t1, t2, aman: N.aman(), simpan: localStorage.getItem('npcAman'), bahan1, bahan2, gagal: /GAGAL/.test(teksGagal) && /uji: link gagal/.test(teksGagal), webgl: /WebGL[12] · tekstur \d+/.test(teksGagal) };
+    });
+    assert.deepEqual([r.awal, r.t1, r.t2, r.aman, r.simpan], [false, true, true, 2, '2']);
+    assert.ok(r.bahan1.length && r.bahan1.every(([t, sendiri]) => t !== 'MeshLambertMaterial' && sendiri), 'tingkat 1: bahan sama tanpa GI ' + JSON.stringify(r.bahan1));
+    assert.ok(r.bahan2.every(t => t === 'MeshLambertMaterial'), 'tingkat 2: Lambert ' + r.bahan2);
+    assert.ok(r.gagal && r.webgl, 'diagnosa');
+    // NPC baru langsung memakai tingkat yang diingat; tombol diagnosa di inspector
+    const b = await page.evaluate(async () => { addObject('npc', 'M'); for (let i = 0; i < 200 && [...window.NPC._uji.NPC.values()].filter(x => x.a).length < 2; i++) await new Promise(ok => setTimeout(ok, 100));
+      const n = [...window.NPC._uji.NPC.values()].find(x => x.o.type === 'M'), t = []; n.a.model.traverse(x => { if (x.isMesh) t.push(x.material.type); });
+      const tombol = [...document.querySelectorAll('#inspector button')].find(x => /Diagnosa/.test(x.textContent)); tombol.click(); const d = $('#npcDiagnosa pre').textContent; $('#npcDiagnosa').remove();
+      localStorage.removeItem('npcAman'); return { t, d: /Mode aman: 2/.test(d) }; });
+    assert.ok(b.t.every(t => t === 'MeshLambertMaterial') && b.d, JSON.stringify(b));
+  },
 };

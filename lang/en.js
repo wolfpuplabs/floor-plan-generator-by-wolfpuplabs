@@ -1774,6 +1774,30 @@ window.KAMUS_EN={
   "Ayo, jalan bareng!":"Let's walk together!",
   "Pelan-pelan, ya…":"Nice and slow…",
   "Boleh duduk di sebelahmu?":"Mind if I sit next to you?",
+  "🩺 Diagnosa tampilan":"🩺 Display diagnostics",
+  "Bila NPC tidak terlihat di perangkat ini":"If the NPC isn't visible on this device",
+  "NPC memakai tampilan aman di perangkat ini":"NPCs use safe rendering on this device",
+  "NPC memakai tampilan sederhana di perangkat ini":"NPCs use simple rendering on this device",
+  "Diagnosa disalin":"Diagnostics copied",
+  "Tidak bisa menyalin — ambil tangkapan layar saja":"Can't copy — take a screenshot instead",
+  "Diagnosa NPC":"NPC diagnostics",
+  "Salin":"Copy",
+  "🚶 Ajak ikut":"🚶 Ask to come along",
+  "Suara NPC":"NPC voice",
+  "Panggangan BBQ":"BBQ grill",
+  "Tunggul Kayu Bakar":"Chopping stump",
+  "Mancing":"Fish",
+  "Panggang":"Grill",
+  "Masak":"Cook",
+  "Potong kayu":"Chop wood",
+  "Angkat":"Pick up",
+  "Taruh":"Put down",
+  "Benci":"Hostile",
+  "Kurang suka":"Wary",
+  "Netral":"Neutral",
+  "Suka":"Friendly",
+  "Sayang":"Close",
+  "Sangat dekat":"Best friends",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1853,7 +1877,9 @@ window.KAMUS_EN={
   "Duduk bareng":"Sit together",
   "Kamu memeluk":"You hug",
   "Kamu bergandengan tangan":"You hold hands",
-  "Kamu berdansa":"You're dancing"
+  "Kamu berdansa":"You're dancing",
+  "Diagnosa tampilan":"Display diagnostics",
+  "Ajak ikut":"Ask to come along"
  },
  // frasa
  "frasa":{
@@ -2166,7 +2192,8 @@ window.KAMUS_EN={
   ["(💢|😒|🙂|😊|💛|💖) Sayang","$1 Close"],
   ["(💢|😒|🙂|😊|💛|💖) Sangat dekat","$1 Best friends"],
   ["Relasi (-?[\\d.]+) / 100","Relationship $1 / 100"],
-  ["NPC gagal ditampilkan — (.+)","NPC could not be shown — $1"]
+  ["NPC gagal ditampilkan — (.+)","NPC could not be shown — $1"],
+  ["(❤️|💔) (.+) · (.+)","$1 $2 · $3"]
  ],
  // frasaPola
  "frasaPola":[
