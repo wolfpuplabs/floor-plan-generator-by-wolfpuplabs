@@ -113,8 +113,8 @@ export const tes = {
         const n = N._uji.NPC.get(id), lama = n.a.model;
         N._uji.masukKolam(id, N._uji.kolamDekat(id));
         for (let i = 0; i < 300 && !/_renang/.test(n.a.baju || ''); i++) { await new Promise(r => setTimeout(r, 50)); N.langkah(0.05); }
-        let kain = 0; n.a.model.traverse(x => { if (x.isMesh && x.material.map && x.material.map.isCanvasTexture) kain++; });
-        out[id] = { baju: n.a.baju, lepas: !lama.parent, po: n.po, rig: Object.keys(n.a.rig || {}).length, warna: kain > 0 };
+        let kain = 0, uk = 0; n.a.model.traverse(x => { if (x.isMesh && x.material.map && x.material.map.isCanvasTexture) { kain++; uk = Math.max(uk, x.material.map.image.width); } });
+        out[id] = { baju: n.a.baju, lepas: !lama.parent, po: n.po, rig: Object.keys(n.a.rig || {}).length, warna: kain > 0, uk };
         n.renang.t = 0; N.langkah(0.05);
         for (let i = 0; i < 40 && (n.a.baju || '') !== ''; i++) { await new Promise(r => setTimeout(r, 50)); N.langkah(0.05); }
         out[id].naik = { baju: n.a.baju || '', mode: n.mode };
@@ -126,8 +126,33 @@ export const tes = {
     for (const [id, baju] of [['nS', '_renang2'], ['nM', '_renang']]) {
       assert.equal(r[id].baju, baju, id + ': ' + JSON.stringify(r[id]));
       assert.ok(r[id].lepas && r[id].rig >= 10 && r[id].warna, 'model baju renang terpasang & diwarnai dari benih: ' + JSON.stringify(r[id]));
+      assert.equal(r[id].uk, 1024, 'baju renang diwarnai pada 1024 px (tepi kain tipis tidak bergerigi)');
       assert.deepEqual(r[id].naik, { baju: '', mode: 'diam' });
     }
     await page.evaluate(() => exitFPS());
+  },
+
+  'arah badan: berbaring (9) telentang dengan kepala ke −Z (sandaran ranjang); gaya bebas (18) telungkup dengan kepala ke arah renang (+Z) — F & M': async (page) => {
+    const r = await page.evaluate(async () => {
+      await muatModul('lobi'); const G = window.LOBI.gerak, out = {};
+      for (const jenis of ['F', 'M']) {
+        const tpl = await window.LOBI.muatAvatar3D({ bawaan: jenis });
+        for (const po of [0, 9, 18]) {
+          const g = new THREE.Group(); scene.add(g); const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
+          g.add(m); const a = { g, tuju: { po } }; G.siapkanGerak(a, m);
+          for (let i = 0; i < 80; i++) G.gerakAvatar(a, 0.05, 0);
+          g.updateMatrixWorld(true);
+          const t = k => a.rig[k].b.getWorldPosition(new THREE.Vector3()), U = t('head').sub(t('hips'));
+          const F = new THREE.Vector3().crossVectors(t('leftUpperArm').sub(t('rightUpperArm')), U).normalize();
+          out[jenis + po] = { kepala: Math.sign(Math.round(U.z * 10)), wajah: Math.sign(Math.round(F.y * 10)), depan: Math.sign(Math.round(F.z * 10)) };
+          scene.remove(g);
+        }
+      }
+      return out; });
+    for (const j of ['F', 'M']) {
+      assert.equal(r[j + '0'].depan, 1, j + ' berdiri menghadap +Z: ' + JSON.stringify(r[j + '0']));
+      assert.deepEqual([r[j + '9'].kepala, r[j + '9'].wajah], [-1, 1], j + ' berbaring telentang, kepala ke sandaran: ' + JSON.stringify(r[j + '9']));
+      assert.deepEqual([r[j + '18'].kepala, r[j + '18'].wajah], [1, -1], j + ' gaya bebas telungkup, kepala ke depan: ' + JSON.stringify(r[j + '18']));
+    }
   }
 };
