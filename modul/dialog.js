@@ -156,7 +156,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const aksi = chipDari([['peluk', '🤗 Peluk'], ['gandeng', '🤝 Gandeng'], ['dansa', '💞 Dansa'], ['cium', '😘 Cium pipi'], ['pangku', '🫶 Pangku']], 'no-chip no-aksi', k => aksiPasangan(k), 'aksi');
     laciSosial.append(el('h4', null, 'Sosial'), chip, aksi);
     const chip2 = chipDari([['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['kencan', '💐 Ajak kencan']], 'no-chip', cepat, 'cepat');
-    const aksi2 = chipDari([['duduk', '🛋️ Duduk bareng'], ['baring', '🛏️ Berbaring'], ['meringkuk', '🫂 Peluk berbaring']], 'no-chip no-aksi2', k => aksiPasangan(k), 'aksi');
+    const aksi2 = chipDari([['duduk', '🛋️ Duduk bareng'], ['baring', '🛏️ Berbaring'], ['meringkuk', '🫂 Peluk berbaring'], ['bersandar', '💤 Bersandar di dada']], 'no-chip no-aksi2', k => aksiPasangan(k), 'aksi');
     laciAktivitas.append(el('h4', null, 'Aktivitas'), chip2, aksi2);
     const form = el('form', 'no-form'), inp = document.createElement('input'), kirimB = el('button', 'btn sm', 'Kirim');
     inp.type = 'text'; inp.maxLength = 300; inp.placeholder = 'Ketik pesan…'; inp.setAttribute('aria-label', 'Pesan untuk NPC'); inp.autocomplete = 'off'; kirimB.type = 'submit';
@@ -277,7 +277,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     else { d = c.id === 'tukang' || c.id === 'pandai_besi' ? 8 : 1; t = d > 1 ? (id ? 'Kayu bakar kering, pas buat tungku. Makasih!' : 'Dry firewood, perfect for the forge. Thanks!') : (id ? 'Kayu bakar? Oh… terima kasih.' : 'Firewood? Oh… thanks.'); }
     ubahSkor(m, d); ucap(t, d > 0 ? 'puji' : 'hina');
   }
-  const SYARAT = { peluk: 20, gandeng: 20, dansa: 20, duduk: -20, baring: -20, cium: 50, pangku: 50, meringkuk: 50 };   // cium pipi, pangku & peluk berbaring: relasi Sayang ke atas
+  const SYARAT = { peluk: 20, gandeng: 20, dansa: 20, duduk: -20, baring: -20, cium: 50, pangku: 50, meringkuk: 50, bersandar: 50 };   // cium pipi, pangku & peluk berbaring: relasi Sayang ke atas
   function aksiPasangan(k) {
     if (!KINI) return;
     const c = KINI.c, m = ingatan(KINI.id), id = L() === 'id';
@@ -287,14 +287,14 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const npcId = KINI.id;
     if (!(window.NPC && window.NPC.aksiPasangan(npcId, k))) {
       if (k === 'pangku') ucap(id ? 'Duduk dulu di kursi atau sofa, ya.' : 'Sit on a chair or sofa first.', 'diam');
-      else if (k === 'meringkuk') ucap(id ? 'Berbaring dulu di ranjang, ya.' : 'Lie down on a bed first.', 'diam');
+      else if (k === 'meringkuk' || k === 'bersandar') ucap(id ? 'Berbaring dulu di ranjang, ya.' : 'Lie down on a bed first.', 'diam');
       else if (k === 'baring') ucap(id ? 'Hmm, tidak ada kasur yang bisa dipakai di lantai ini.' : 'Hmm, there\'s no free bed on this floor.', 'diam');
       else ucap(id ? 'Hmm, di sini tidak ada tempat duduk di sebelahmu.' : 'Hmm, there\'s no seat next to you here.', 'diam');
       return; }
     ubahSkor(m, 2);
-    const kata = { peluk: ['Sini, peluk dulu!', 'Come here, a hug!'], gandeng: ['Ayo, jalan bareng!', 'Let\'s walk together!'], dansa: ['Pelan-pelan, ya…', 'Nice and slow…'], duduk: ['Boleh duduk di sebelahmu?', 'Mind if I sit next to you?'], cium: ['Mwah! 💕', 'Mwah! 💕'], meringkuk: ['Hangat… 💕', 'So warm… 💕'], baring: bareng ? ['Geser sedikit, ya… 😊', 'Scoot over a little… 😊'] : ['Hoaam… aku rebahan sebentar, ya.', 'Yawn… I\'ll lie down for a bit.'], pangku: ['Hehe, aku duduk di sini ya…', 'Hehe, I\'ll sit right here…'] }[k];
+    const kata = { peluk: ['Sini, peluk dulu!', 'Come here, a hug!'], gandeng: ['Ayo, jalan bareng!', 'Let\'s walk together!'], dansa: ['Pelan-pelan, ya…', 'Nice and slow…'], duduk: ['Boleh duduk di sebelahmu?', 'Mind if I sit next to you?'], cium: ['Mwah! 💕', 'Mwah! 💕'], meringkuk: ['Hangat… 💕', 'So warm… 💕'], bersandar: ['Aku dengar detak jantungmu… 💕', 'I can hear your heartbeat… 💕'], baring: bareng ? ['Geser sedikit, ya… 😊', 'Scoot over a little… 😊'] : ['Hoaam… aku rebahan sebentar, ya.', 'Yawn… I\'ll lie down for a bit.'], pangku: ['Hehe, aku duduk di sini ya…', 'Hehe, I\'ll sit right here…'] }[k];
     tulis('n', kata[id ? 0 : 1]); m.r.push({ d: 'n', t: kata[id ? 0 : 1] }); m.r = m.r.slice(-20); simpan();
-    if (k !== 'duduk' && k !== 'pangku' && k !== 'baring' && k !== 'meringkuk' && typeof FPS !== 'undefined') FPS.gaya = { k, x: camera.position.x, z: camera.position.z, t: performance.now() };   // avatar sendiri ikut berpose (terlihat di Main bareng)
+    if (k !== 'duduk' && k !== 'pangku' && k !== 'baring' && k !== 'meringkuk' && k !== 'bersandar' && typeof FPS !== 'undefined') FPS.gaya = { k, x: camera.position.x, z: camera.position.z, t: performance.now() };   // avatar sendiri ikut berpose (terlihat di Main bareng)
     tutupObrol(true);
   }
   function buka(id) {
@@ -309,7 +309,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     for (const x of m.r.slice(-6)) tulis(x.d, x.t);                       // ingatan percakapan sebelumnya
     segarRelasi(); P.d.hidden = false; document.body.classList.add('ngobrol');
     P.aksi.hidden = P.aksi2.hidden = c.id === 'anak'; P.aksi2.querySelector('[data-aksi="duduk"]').hidden = !(FPS.duduk && FPS.duduk.id && !FPS.duduk.lantai && !FPS.duduk.baring);
-    P.aksi2.querySelector('[data-aksi="meringkuk"]').hidden = !(FPS.duduk && FPS.duduk.baring);   // peluk berbaring: hanya saat pengunjung rebahan
+    for (const k of ['meringkuk', 'bersandar']) P.aksi2.querySelector(`[data-aksi="${k}"]`).hidden = !(FPS.duduk && FPS.duduk.baring);   // peluk berbaring: hanya saat pengunjung rebahan
     P.tutupLaci();
     if (window.NPC) window.NPC.ngobrol(id, 'mulai');
     ucap(m.k || m.r.length ? tx(c.k.relasi[K.tingkat(m.s)]) : tx(c.k.salam), 'salam');

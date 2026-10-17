@@ -526,7 +526,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (pw[19] > 0.001) { const b = pw[19], s = a.sisi === -1 ? -1 : 1, atas = s === 1 ? 'right' : 'left', bawah = s === 1 ? 'left' : 'right', napas = 0.02 * Math.sin(t * 1.3);
       tambah('hips', 0, 0, -s * Math.PI / 2, b); tambah('spine', 0.08, 0, 0, b); tambah('chest', 0.06 + napas, 0, 0, b);
       tambah('spine', 0, 0, 0.1 * s, b); tambah('neck', 0.1, 0, 0.45 * s, b); tambah('head', 0.12, 0, 0.35 * s, b);   // leher menekuk ke atas: kepala di bantal
-      tambah(atas + 'UpperArm', 0.85, 0, 0, b); tambah(atas + 'LowerArm', 0.9, 0, 0, b);
+      tambah(atas + 'UpperArm', 1.05, 0, 0.65 * s, b); tambah(atas + 'LowerArm', 0.5, 0, 0, b);   // lengan atas menjulur ke depan & turun: merangkul pasangan
       tambah(bawah + 'UpperArm', 1.0, 0, 0, b); tambah(bawah + 'LowerArm', 1.5, 0, 0, b);
       tambah('leftUpperLeg', 0.55, 0, 0, b); tambah('rightUpperLeg', 0.42, 0, 0, b); tambah('leftLowerLeg', -0.85, 0, 0, b); tambah('rightLowerLeg', -0.7, 0, 0, b);
       turun += ((a.tinggiPinggul || 0.9) - 0.14) * b; }

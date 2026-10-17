@@ -468,17 +468,18 @@
   }
   function masukKursi(n) { const k = n.kursi; n.mode = 'masuk'; n.t = 0; n.dari = { x: n.p.x, z: n.p.z, y: n.p.y }; n.po = k.po || 1; n.yawTuju = k.yaw; if (k.sandar != null) n.a.sandar = k.sandar; if (k.sisi != null) n.a.sisi = k.sisi; }
   // berbaring bareng: pengunjung rebahan di tengah kasur, NPC di sisi kasur yang lain. peluk: meringkuk rapat menghadap
-  // pengunjung (pose 19) — miring, lengan merangkul; a.sisi = arah kepala (1 kiri avatar, −1 kanan) agar kepala tetap di bantal
-  function kasurBareng(n, D, peluk) {
+  // pengunjung (pose 19) — miring, lengan merangkul; a.sisi = arah kepala (1 kiri avatar, −1 kanan) agar kepala tetap di bantal.
+  // dada: sama, tetapi badan bergeser ke arah kaki ranjang & ke tengah sehingga kepala NPC bersandar di dada pengunjung
+  function kasurBareng(n, D, peluk, dada) {
     const lg = levelGroups[n.li], lv = PROJECT.levels[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), o = lv && lv.objects.find(x => x.id === D.id);
     if (!g || !o || !/^bed_/.test(o.type) || !FURN[o.type] || !g.userData.duduk) return null;
     g.updateMatrixWorld(true);
-    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, jx = peluk ? 0.36 : f[0] / 4;
-    const ki = g.localToWorld(new THREE.Vector3(-jx, h, -0.05)), ka = g.localToWorld(new THREE.Vector3(jx, h, -0.05));
+    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, jx = dada ? 0.17 : peluk ? 0.36 : f[0] / 4, jz = dada ? 0.36 : -0.05;
+    const ki = g.localToWorld(new THREE.Vector3(-jx, h, jz)), ka = g.localToWorld(new THREE.Vector3(jx, h, jz));
     const s = Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
     const sisi = g.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * s, 0, 0.2)), rot = o.rotY || 0;
     return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, lama: 45, d: 0,
-      ...(peluk ? { po: 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: g.localToWorld(new THREE.Vector3(s * jx, h + 0.22, -0.58)) } : { po: 9, yaw: rot }) };
+      ...(peluk ? { po: 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: g.localToWorld(new THREE.Vector3(s * jx, h + 0.22, jz - 0.53)) } : { po: 9, yaw: rot }) };
   }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
@@ -512,9 +513,9 @@
       const D = FPS.duduk; if (!D || !D.id || D.lantai || D.baring || !D.mata) return false;
       n.pangku = { D, yaw: FPS.yaw, x: D.mata.x, z: D.mata.z, y: D.mata.y - 0.72 }; n.mode = 'pangku'; n.po = 16; hati(n); return true;
     }
-    if (k === 'meringkuk') {                              // peluk sambil berbaring: pengunjung harus sedang berbaring di ranjang
+    if (k === 'meringkuk' || k === 'bersandar') {         // peluk sambil berbaring / bersandar di dada: pengunjung harus sedang berbaring di ranjang
       const D = FPS.duduk; if (!D || !D.baring || !D.id) return false;
-      const ks = kasurBareng(n, D, true); if (!ks) return false;
+      const ks = kasurBareng(n, D, true, k === 'bersandar'); if (!ks) return false;
       ks.minta = true; ks.lama = 60; KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks;
       FPS.yaw = Math.atan2(ks.wajah.x - D.mata.x, ks.wajah.z - D.mata.z); FPS.pitch = -0.25;   // pengunjung menoleh ke wajah NPC
       if ((n.mode === 'duduk' || n.mode === 'masuk') && Math.hypot(n.p.x - ks.x, n.p.z - ks.z) < 1.2) masukKursi(n);   // sudah rebahan di kasur ini: bergeser merapat
@@ -672,7 +673,8 @@
   }
   /* POTRET untuk ilustrasi (kencan): klon model karakter dengan bahan berwarna NPC ini, diberi pose, dirender sendirian ke
      kanvas transparan memakai renderer yang sama (render target, keadaan renderer dikembalikan). cahaya: {kunci, isi, tepi}
-     warna; arah: sudut pandang kamera dari depan (rad). Gagal → null (ilustrasi tetap tampil tanpa tokoh). */
+     warna; arah: sudut pandang kamera dari depan (rad); bingkai + periode: daftar kanvas satu putaran animasi (napas, gerak
+     pose) untuk diputar berulang. Gagal → null (ilustrasi tetap tampil tanpa tokoh). */
   function potret(id, po = 0, opsi = {}) {
     const n = NPC.get(id); if (!n || !n.a || !n.a.tpl || !n.a.model || !window.LOBI) return null;
     const w = opsi.w || 480, h = opsi.h || 560, G = window.LOBI.gerak;
@@ -682,6 +684,7 @@
       m.traverse(x => { if (x.isMesh) { if (asli[i]) x.material = asli[i]; i++; x.frustumCulled = false; } });
       const sc = new THREE.Scene(), g = new THREE.Group(); g.add(m); sc.add(g);
       const a = { g, tuju: { po }, sisi: 1 }; G.siapkanGerak(a, m);
+      a.tm = a.lt = 1e9;                                      // tanpa gerak kecil / lirikan acak: putaran animasi bisa berulang mulus
       for (let k = 0; k < 70; k++) G.gerakAvatar(a, 0.05, 0);
       g.updateMatrixWorld(true);
       const kepala = a.rig && a.rig.head ? a.rig.head.b.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.45, 0);
@@ -695,13 +698,19 @@
       const rt = new THREE.WebGLRenderTarget(w, h); rt.texture.encoding = THREE.sRGBEncoding;
       const lama = renderer.getRenderTarget(), cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), ac = renderer.autoClear, tm = renderer.toneMapping, ek = renderer.toneMappingExposure;
       renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;   // eksposur otomatis adegan (mis. malam) tidak ikut: kulit (bahan tanpa cahaya) tidak memutih
-      renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.autoClear = true; renderer.clear(); renderer.render(sc, cam);
-      const px = new Uint8Array(w * h * 4); renderer.readRenderTargetPixels(rt, 0, 0, w, h, px);
-      renderer.setRenderTarget(lama); renderer.setClearColor(cc, ca); renderer.autoClear = ac; renderer.toneMapping = tm; renderer.toneMappingExposure = ek; rt.dispose();
-      const kan = document.createElement('canvas'); kan.width = w; kan.height = h; const x = kan.getContext('2d'), im = x.createImageData(w, h);
-      for (let y = 0; y < h; y++) im.data.set(px.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);   // WebGL membaca dari bawah
-      x.putImageData(im, 0, 0);
-      return kan;
+      const px = new Uint8Array(w * h * 4), hasil = [], N = Math.max(1, Math.min(32, opsi.bingkai | 0 || 1)), dt = (opsi.periode || 3.7) / N;
+      try {
+        for (let f = 0; f < N; f++) {
+          // bingkai animasi: satu putaran napas / gerak pose dibagi rata (bingkai > 1)
+          if (f) { G.gerakAvatar(a, dt, 0); g.updateMatrixWorld(true); }
+          renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.autoClear = true; renderer.clear(); renderer.render(sc, cam);
+          renderer.readRenderTargetPixels(rt, 0, 0, w, h, px);
+          const kan = document.createElement('canvas'); kan.width = w; kan.height = h; const x = kan.getContext('2d'), im = x.createImageData(w, h);
+          for (let y = 0; y < h; y++) im.data.set(px.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);   // WebGL membaca dari bawah
+          x.putImageData(im, 0, 0); hasil.push(kan);
+        }
+      } finally { renderer.setRenderTarget(lama); renderer.setClearColor(cc, ca); renderer.autoClear = ac; renderer.toneMapping = tm; renderer.toneMappingExposure = ek; rt.dispose(); }
+      return opsi.bingkai ? hasil : hasil[0];
     } catch (e) { console.warn('potret NPC', e); return null; }
   }
   // aktivitas.js: pengunjung masuk kolam → NPC yang ikut / menemani / bergandengan ikut berenang

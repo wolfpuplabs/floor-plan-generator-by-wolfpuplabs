@@ -15,7 +15,7 @@ export const tes = {
     const r = await page.evaluate(async () => {
       await muatModul('lobi'); const G = window.LOBI.gerak, tpl = await window.LOBI.muatAvatar3D({ bawaan: 'M' });
       const buat = ek => { const a = { g: new THREE.Group(), ...ek }, m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
-        a.g.add(m); scene.add(a.g); G.siapkanGerak(a, m); return a; };
+        a.g.add(m); scene.add(a.g); G.siapkanGerak(a, m); a.lt = 1e9; return a; };   // tanpa lirikan acak: sudut kepala pose pasti
       const sudut = (a, k) => 2 * Math.acos(Math.min(1, Math.abs(a.rig[k].b.quaternion.dot(a.rig[k].rest))));
       const out = {};
       for (const [po, ek] of [[6], [7, { sisi: 1 }], [8, { sandar: 1 }], [9], [10], [15], [16]]) {
@@ -123,8 +123,16 @@ export const tes = {
       pakai({ jenis: 'lepas', id: 'nA' }); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05); r.bangun = n.mode; return r; });
     assert.deepEqual([mk.ok, mk.mode, mk.po, mk.sisi, mk.lepas, mk.noleh], [true, 'duduk', 19, 1, ['lepas'], true], JSON.stringify(mk));
     assert.ok(mk.jarak > 0.25 && mk.jarak < 0.5 && mk.hadap > 0.9 && mk.bobot > 0.8 && mk.bangun !== 'duduk', 'meringkuk rapat menghadap pemain: ' + JSON.stringify(mk));
+    // bersandar di dada: badan NPC bergeser ke arah kaki ranjang & ke tengah — kepalanya di dada pemain
+    const bs = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(6, 0, 4.5);
+      const ok = window.NPC.aksiPasangan('nA', 'bersandar'); for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05);
+      const D = FPS.duduk.baring, kepala = n.a.rig.head.b.getWorldPosition(new THREE.Vector3());
+      const r = { ok, mode: n.mode, po: n.po, samping: +Math.abs(n.p.x - D.x).toFixed(2), keKaki: +(n.p.z - D.z).toFixed(2), kepalaDada: +Math.hypot(kepala.x - D.x, kepala.z - (D.z - 0.25)).toFixed(2) };
+      pakai({ jenis: 'lepas', id: 'nA' }); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05); return r; });
+    assert.deepEqual([bs.ok, bs.mode, bs.po], [true, 'duduk', 19], JSON.stringify(bs));
+    assert.ok(bs.samping < 0.25 && bs.keKaki > 0.3 && bs.kepalaDada < 0.35, 'kepala bersandar di dada: ' + JSON.stringify(bs));
     await page.evaluate(() => berdiri());
-    assert.equal(await page.evaluate(() => window.NPC.aksiPasangan('nA', 'meringkuk')), false, 'tanpa rebahan: ditolak');
+    assert.equal(await page.evaluate(() => window.NPC.aksiPasangan('nA', 'meringkuk') || window.NPC.aksiPasangan('nA', 'bersandar')), false, 'tanpa rebahan: ditolak');
     // NPC tidur di kasur
     // sisi kasur dipilih acak: sisi yang menempel dinding dibuang, sisi yang jalurnya macet membuat NPC memilih tempat lain — ulangi
     const t = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); let r = null;

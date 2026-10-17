@@ -5452,13 +5452,13 @@
   },
   {
    "id": "JEV-115",
-   "judul": "Ilustrasi adegan kencan (latar + NPC asli), peluk berbaring di ranjang, bantal tidur rebah",
+   "judul": "Ilustrasi adegan kencan bergerak (latar + NPC asli), peluk berbaring & bersandar di dada, bantal tidur rebah",
    "status": "terkirim",
    "kelas": "fitur",
    "J": {
     "masalah": "Cutscene kencan hanya layar hitam dengan emoji; tidak ada interaksi peluk saat berbaring bersama; bantal tidur & bantal hias berdiri di tengah area kepala sehingga kamera pemain yang berbaring masuk ke dalam bantal.",
     "bukti": "permintaan-pengguna",
-    "sumberBukti": "pesan pengguna 2026-10-18 (tangkapan layar iPad): \"buat ilustrasi waktu kencan jangan emoji doang, bikin interaksi cuddle kaya gbr 2, bantal kasur masih aneh pas lie down\"",
+    "sumberBukti": "pesan pengguna 2026-10-18 (tangkapan layar iPad): \"buat ilustrasi waktu kencan jangan emoji doang, bikin interaksi cuddle kaya gbr 2, bantal kasur masih aneh pas lie down\"; lanjutan: \"animasiin ilustrasi, cuddle position bisa player diatas npc / sebaliknya\" (varian saling menindih tidak dibuat — terlalu bernuansa seksual; diganti bersandar di dada)",
     "alternatif": [
      "gambar ilustrasi statis per jenis kencan (tanpa tokoh NPC yang sebenarnya)",
      "kamera pemain digeser tanpa mengubah bantal"
@@ -5499,7 +5499,7 @@
     },
     "kinerja": {
      "status": "lolos",
-     "catatan": "satu render 480×560 ke render target sekali per kencan; keadaan renderer (target, warna latar, tone mapping, eksposur) dikembalikan"
+     "catatan": "20 bingkai potret 480×560 dirender sekali per kencan (±1 dtk di GPU perangkat lunak); latar & latar depan diam dilukis sekali, hanya bagian hidup dilukis ulang tiap bingkai; animasi berhenti saat layar ditutup; keadaan renderer dikembalikan"
     },
     "aksesibilitas": {
      "status": "lolos",
