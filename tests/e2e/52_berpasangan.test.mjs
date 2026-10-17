@@ -18,11 +18,11 @@ export const tes = {
         a.g.add(m); scene.add(a.g); G.siapkanGerak(a, m); return a; };
       const sudut = (a, k) => 2 * Math.acos(Math.min(1, Math.abs(a.rig[k].b.quaternion.dot(a.rig[k].rest))));
       const out = {};
-      for (const [po, ek] of [[6], [7, { sisi: 1 }], [8, { sandar: 1 }], [9], [10]]) {
+      for (const [po, ek] of [[6], [7, { sisi: 1 }], [8, { sandar: 1 }], [9], [10], [15], [16]]) {
         const a = buat(ek); a.tuju = { po }; for (let i = 0; i < 60; i++) G.gerakAvatar(a, 0.05, 0);
         out[po] = { turun: +(a.dasarY - a.model.position.y).toFixed(2), pinggul: +sudut(a, 'hips').toFixed(2), lenganKa: +sudut(a, 'rightUpperArm').toFixed(2), lenganKi: +sudut(a, 'leftUpperArm').toFixed(2), kepala: +sudut(a, 'head').toFixed(2), tinggi: +(a.tinggiPinggul || 0).toFixed(2) };
         scene.remove(a.g); }
-      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 15 }).po];
+      out.aman = [G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 9 }).po, G.posAman({ jalan: 1, x: 0, y: 0, z: 0, yaw: 0, po: 17 }).po];
       return out;
     });
     assert.ok(r[6].lenganKa > 0.6 && r[6].lenganKi > 0.6 && r[6].turun < 0.05, 'peluk: ' + JSON.stringify(r[6]));
@@ -30,6 +30,8 @@ export const tes = {
     assert.ok(Math.abs(r[8].turun - 0.42) < 0.05 && r[8].kepala > 0.3, 'duduk bersandar: ' + JSON.stringify(r[8]));
     assert.ok(Math.abs(r[9].pinggul - Math.PI / 2) < 0.1 && Math.abs(r[9].turun - (r[9].tinggi - 0.13)) < 0.05 && r[9].tinggi > 0.7, 'berbaring: ' + JSON.stringify(r[9]));
     assert.ok(r[10].lenganKa > 0.5 && r[10].lenganKi > 0.5, 'dansa: ' + JSON.stringify(r[10]));
+    assert.ok(r[15].kepala > 0.3 && r[15].turun < 0.05 && r[15].lenganKa > 0.4, 'cium pipi: ' + JSON.stringify(r[15]));
+    assert.ok(Math.abs(r[16].turun - 0.42) < 0.05 && r[16].lenganKi > 1.2, 'dipangku: ' + JSON.stringify(r[16]));
     assert.deepEqual(r.aman, [9, undefined]);
   },
 
@@ -80,7 +82,21 @@ export const tes = {
       async function ngobrolLagi() { const p = window.NPC.keadaan('nA').p; window.DIALOG.buka('nA'); return p; } });
     assert.deepEqual([d.tampak, d.mode, d.po, d.kursi], [true, 'duduk', 8, 'sofa']);
     assert.ok(d.beda > 0.4 && d.beda < 1.6 && d.sandar > 0.8, 'duduk di sebelah: ' + JSON.stringify(d));
-    await page.evaluate(() => berdiri());
+    // cium pipi & pangku butuh relasi Sayang (≥ 50): di relasi Suka ditolak
+    const tolak = await page.evaluate(() => { window.DIALOG.buka('nA'); document.querySelector('#npcObrol [data-aksi="cium"]').click(); const t = [...document.querySelectorAll('#npcObrol .no-m')].at(-1).textContent; window.DIALOG.tutup(); return t; });
+    assert.match(tolak, /belum seakrab|not that close/);
+    // pangku: NPC duduk menyamping di pangkuan pemain yang duduk di sofa; pemain berdiri → NPC turun ke lantai; lalu cium pipi
+    const pk = await page.evaluate(() => {
+      const ok = window.NPC.aksiPasangan('nA', 'pangku'); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05);
+      const s = window.NPC.keadaan('nA'), n = window.NPC._uji.NPC.get('nA'), D = FPS.duduk;
+      const r = { ok, mode: s.mode, po: s.po, dekat: +Math.hypot(s.p.x - D.mata.x, s.p.z - D.mata.z).toFixed(2), y: +(s.p.y - (D.mata.y - 0.72)).toFixed(2), pw: +n.a.pw[16].toFixed(2), lepas: window.NPC.ekstra('nA') };
+      berdiri(); for (let i = 0; i < 5; i++) window.NPC.langkah(0.05); const s2 = window.NPC.keadaan('nA'); r.sesudah = s2.mode; r.yTurun = +s2.p.y.toFixed(2);
+      const c = window.NPC.aksiPasangan('nA', 'cium'); for (let i = 0; i < 10; i++) window.NPC.langkah(0.05);
+      r.cium = [c, window.NPC.keadaan('nA').mode, window.NPC.keadaan('nA').po, scene.children.some(x => x.isSprite && x.userData.noExport)];
+      for (let i = 0; i < 70; i++) window.NPC.langkah(0.05); r.ciumSesudah = window.NPC.keadaan('nA').mode; return r; });
+    assert.deepEqual([pk.ok, pk.mode, pk.po, pk.lepas, pk.sesudah], [true, 'pangku', 16, ['lepas'], 'diam'], JSON.stringify(pk));
+    assert.ok(pk.dekat < 0.45 && Math.abs(pk.y + 0.3) < 0.02 && pk.pw > 0.8 && pk.yTurun < 0.05, 'pangku: ' + JSON.stringify(pk));
+    assert.deepEqual([...pk.cium, pk.ciumSesudah], [true, 'cium', 15, true, 'diam'], 'cium pipi: ' + JSON.stringify(pk));
     // kartu anak menolak interaksi berpasangan (baris aksi disembunyikan)
     await ngobrol('nK');
     assert.equal(await page.evaluate(() => document.querySelector('#npcObrol .no-aksi').hidden), true);

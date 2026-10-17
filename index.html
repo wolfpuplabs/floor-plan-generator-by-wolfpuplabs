@@ -1018,7 +1018,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       </div>
       <div class="fl" data-lembar="gaya" hidden>
         <div class="fl-judul">Gaya <small>— terlihat oleh teman di Main bareng</small></div>
-        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button><button class="btn sm ghost" data-gaya="peluk">🤗 Peluk</button><button class="btn sm ghost" data-gaya="gandeng">🤝 Gandeng</button><button class="btn sm ghost" data-gaya="dansa">💞 Dansa berdua</button></div>
+        <div class="fl-chip"><button class="btn sm ghost" data-gaya="lantai">🧘 Duduk di lantai</button><button class="btn sm ghost" data-gaya="joget">💃 Joget</button><button class="btn sm ghost" data-gaya="ngantuk">😴 Ngantuk</button><button class="btn sm ghost" data-gaya="lambai">👋 Lambai</button><button class="btn sm ghost" data-gaya="peluk">🤗 Peluk</button><button class="btn sm ghost" data-gaya="gandeng">🤝 Gandeng</button><button class="btn sm ghost" data-gaya="dansa">💞 Dansa berdua</button><button class="btn sm ghost" data-gaya="cium">😘 Cium pipi</button></div>
         <div class="fl-npc"><div class="fl-judul">NPC <small>— muncul di depanmu</small></div>
         <div class="fl-chip"><button class="btn sm ghost" data-npc-jalan="F">NPC F</button><button class="btn sm ghost" data-npc-jalan="M">NPC M</button><button class="btn sm ghost" data-npc-jalan="acak">🎲 Acak</button></div></div>
       </div>
@@ -15640,7 +15640,7 @@ function pilihGaya(v){ if(!v||!FPS.on) return; tutupLembar();
     return; }
   if(v==='lantai') return dudukLantai();
   if(FPS.duduk) berdiri(); FPS.gaya={k:v, x:camera.position.x, z:camera.position.z, t:performance.now()};
-  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai',peluk:'🤗 Kamu memeluk',gandeng:'🤝 Kamu bergandengan tangan',dansa:'💞 Kamu berdansa'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
+  toast(window.LOBI&&window.LOBI.aktif?{joget:'💃 Kamu berjoget',ngantuk:'😴 Kamu mengantuk',lambai:'👋 Kamu melambai',peluk:'🤗 Kamu memeluk',gandeng:'🤝 Kamu bergandengan tangan',dansa:'💞 Kamu berdansa',cium:'😘 Kamu mencium pipi'}[v]:'Gaya ini terlihat oleh teman di Main bareng'); }
 // dok mode jalan (JEV-107): satu lembar terbuka sekali waktu; ketuk ikon yang sama / layar = tutup
 function tutupLembar(){ $('#fpsLembar').hidden=true; for(const b of document.querySelectorAll('#fpsDok .fps-ik')) b.setAttribute('aria-expanded','false'); }
 function bukaLembar(k){

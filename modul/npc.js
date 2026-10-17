@@ -159,7 +159,7 @@
   const TPL = {};
   // perbaikan hasil uji gambar (lihat ujiDanPerbaiki), diingat per perangkat
   let PERBAIKI = {}; try { PERBAIKI = JSON.parse(localStorage.getItem('npcPerbaiki') || '{}') || {}; } catch (e) { PERBAIKI = {}; }
-  const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg'];
+  const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg', 'jarak', 'pangku'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
   let PERINGATAN = false;
   function rakit(n, tpl, lama) {
@@ -453,10 +453,15 @@
   /* INTERAKSI BERPASANGAN dengan pengunjung (JEV-109): peluk, gandeng (mengikuti di sisi kanan), dansa berdua, duduk bareng */
   function aksiPasangan(id, k) {
     const n = NPC.get(id); if (!n || !n.a || !FPS.on || !n.mode) return false;
-    if (k === 'lepas') { if (/^(gandeng|dansa|peluk|ikut|temani)$/.test(n.mode)) diam(n, 1.5); return true; }
+    if (k === 'lepas') { if (n.mode === 'pangku') turunPangku(n); else if (/^(gandeng|dansa|peluk|cium|ikut|temani)$/.test(n.mode)) diam(n, 1.5); return true; }
     if (n.mode === 'duduk' || n.mode === 'masuk') { lepasKursi(n); n.kursi = null; }
     n.a.mikro = null; n.a.lambai = null;
     if (k === 'peluk' || k === 'dansa') { n.mode = k; n.po = k === 'peluk' ? 6 : 10; n.t = k === 'peluk' ? 4.5 : 18; n.jarak = k === 'peluk' ? 0.34 : 0.48; return true; }
+    if (k === 'cium') { n.mode = 'cium'; n.po = 15; n.t = 3; n.jarak = 0.3; hati(n); return true; }
+    if (k === 'pangku') {                                 // NPC duduk menyamping di pangkuan pengunjung yang sedang duduk di kursi / sofa
+      const D = FPS.duduk; if (!D || !D.id || D.lantai || D.baring || !D.mata) return false;
+      n.pangku = { D, yaw: FPS.yaw, x: D.mata.x, z: D.mata.z, y: D.mata.y - 0.72 }; n.mode = 'pangku'; n.po = 16; hati(n); return true;
+    }
     if (k === 'gandeng') { n.mode = 'gandeng'; n.po = 7; n.a.sisi = -1; return true; }
     if (k === 'ikut') { n.mode = 'ikut'; n.po = 0; return true; }
     if (k === 'duduk') {
@@ -489,6 +494,23 @@
     const maju = Math.hypot(px - n.p.x, pz - n.p.z); n.p.x = px; n.p.z = pz;
     putarKe(n, d > 0.4 ? Math.atan2(dx, dz) : yaw, dt, 5);
     return maju / Math.max(dt, 1e-4);
+  }
+  function turunPangku(n) {
+    const P = n.pangku; n.pangku = null; if (!P) { diam(n, 1.5); return; }
+    const [px, pz] = fpsResolveWalls(P.x + Math.sin(P.yaw) * 0.7, P.z + Math.cos(P.yaw) * 0.7, n.rumah ? n.rumah.y : P.y - 0.45);
+    const t = tanahDi(n, px, pz); n.p.set(px, t != null ? t : (n.rumah ? n.rumah.y : P.y - 0.45), pz); n.yaw = P.yaw + Math.PI; diam(n, 2);
+  }
+  // hati kecil 💕 yang melayang naik dari kepala NPC (cium / pangku)
+  const HATI = []; let TEX_HATI = null;
+  function hati(n) {
+    if (!TEX_HATI) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.font = '48px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💕', 32, 34); TEX_HATI = new THREE.CanvasTexture(c); }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX_HATI, transparent: true, depthWrite: false }));
+    s.scale.set(0.22, 0.22, 1); s.position.set(n.p.x, n.p.y + 1.75, n.p.z); s.userData.noExport = true; s.raycast = () => {};
+    scene.add(s); HATI.push({ s, t: 0 });
+  }
+  function langkahHati(dt) {
+    for (let i = HATI.length - 1; i >= 0; i--) { const h = HATI[i]; h.t += dt; h.s.position.y += dt * 0.3; h.s.material.opacity = Math.max(0, 1 - h.t / 1.8);
+      if (h.t > 1.8) { scene.remove(h.s); h.s.material.dispose(); HATI.splice(i, 1); } }
   }
   // peluk & dansa: berdiri ±0,4–0,5 m di depan pengunjung, menghadapnya
   function rapat(n, dt) {
@@ -555,6 +577,7 @@
   }
   let tBayang = 0;
   function langkah(dt) {
+    if (HATI.length) langkahHati(Math.min(dt, 0.1));
     if (!NPC.size) return;
     dt = Math.min(dt, 0.1);
     const aktif = hidup(); let gerak = false;
@@ -580,7 +603,13 @@
         else { putarKe(n, T.yaw, dt, 3); n.po = n.sorak > 0 ? 3 : T.po; }
         if (n.sorak > 0) n.sorak -= dt;
       }
-      else if (n.mode === 'peluk' || n.mode === 'dansa') { rapat(n, dt); n.t -= dt; if (n.t <= 0) diam(n, 2); }
+      else if (n.mode === 'peluk' || n.mode === 'dansa' || n.mode === 'cium') { rapat(n, dt); n.t -= dt; if (n.t <= 0) diam(n, 2); }
+      else if (n.mode === 'pangku') {
+        const P = n.pangku;
+        if (FPS.duduk !== P.D) turunPangku(n);          // pengunjung berdiri: NPC turun ke depan kursi
+        else { const fx = Math.sin(P.yaw), fz = Math.cos(P.yaw), kx = -Math.cos(P.yaw), kz = Math.sin(P.yaw);
+          n.p.set(P.x + fx * 0.3 + kx * 0.1, P.y - 0.3, P.z + fz * 0.3 + kz * 0.1); n.yaw = P.yaw + Math.PI / 2; n.yawTuju = null; n.po = 16; }
+      }
       else if (n.mode === 'ngobrol') {
         if (FPS.on) { hadapPengunjung(n); putarKe(n, n.yawTuju, dt, 3); }
       } else if (n.mode === 'masuk') {
@@ -631,8 +660,8 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && /^(gandeng|dansa|ikut|temani)$/.test(n.mode) ? ['lepas'] : []; },
-    pasangan: () => { for (const n of NPC.values()) if (n.a && /^(gandeng|dansa|peluk|ikut|temani)$/.test(n.mode)) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, ekstra: id => { const n = NPC.get(id); return n && /^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) ? ['lepas'] : []; },
+    pasangan: () => { for (const n of NPC.values()) if (n.a && /^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode)) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
     _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };
 })();

@@ -5113,7 +5113,7 @@
    "guardrail": {
     "keamanan": {
      "status": "lolos",
-     "catatan": "kode pose 6–10 disaring di posAman (nilai lain dibuang); tanpa data baru"
+     "catatan": "kode pose 6–10 & 15–16 disaring di posAman (nilai lain dibuang); tanpa data baru"
     },
     "privasi": {
      "status": "lolos",
@@ -5129,7 +5129,7 @@
     },
     "aksesibilitas": {
      "status": "lolos",
-     "catatan": "tombol berteks di lembar Gaya & panel obrolan; ketuk lagi = berhenti; bidik NPC → Lepas; konten ramah semua umur — interaksi berpasangan tidak tersedia untuk kartu anak & butuh relasi cukup dekat"
+     "catatan": "tombol berteks di lembar Gaya & panel obrolan; ketuk lagi = berhenti; bidik NPC → Lepas; konten ramah semua umur — interaksi berpasangan tidak tersedia untuk kartu anak & butuh relasi cukup dekat; cium pipi & pangku (2026-10-17) butuh relasi Sayang (≥ 50), tidak untuk kartu anak, ramah semua umur (cium di pipi, pangku menyamping saat pemain duduk di kursi/sofa)"
     }
    },
    "metrik": {
