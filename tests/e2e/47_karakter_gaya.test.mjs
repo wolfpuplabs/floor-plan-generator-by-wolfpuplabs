@@ -43,7 +43,7 @@ export const tes = {
       return { diambil, rig: Object.keys(tpl.userData.rigIdx).length, kedip: tpl.userData.kedipIdx.length, tinggi: +b.y.toFixed(2) };
     });
     assert.ok(m.diambil.some(u => /avatar\/F\.vrm$/.test(u)), 'diambil dari situs: ' + m.diambil);
-    assert.equal(m.rig, 15, 'semua tulang animasi terpetakan');
+    assert.equal(m.rig, 21, 'semua tulang animasi terpetakan (15 badan + 6 jari tangan kanan untuk pose ✌️)');
     assert.ok(m.kedip >= 1, 'kedip VRM');
     assert.ok(Math.abs(m.tinggi - 1.7) < 0.05, 'tinggi disamakan 1,7 m: ' + m.tinggi);
     // data peserta: hanya kode bawaan yang dikirim, kode lain ditolak

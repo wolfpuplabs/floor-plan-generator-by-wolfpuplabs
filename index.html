@@ -312,7 +312,6 @@ body.jalan #mediaDock{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 96px)}
 #fpsFoto{display:none;position:absolute;left:50%;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 10px);transform:translateX(-50%);z-index:37;width:62px;height:62px;border-radius:50%;
   place-items:center;padding:0;color:#fff;background:rgba(18,20,24,.45);border:3px solid rgba(255,255,255,.92);box-shadow:0 2px 12px rgba(0,0,0,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer}
 #fpsFoto .ik{width:24px;height:24px}
-#fpsFoto.siap{box-shadow:0 0 0 4px #ffd54a;animation:fotoSiap 1s ease-in-out infinite}@keyframes fotoSiap{50%{box-shadow:0 0 0 9px rgba(255,213,74,.35)}}@media (prefers-reduced-motion:reduce){#fpsFoto.siap{animation:none}}
 #fpsFoto:active{transform:translateX(-50%) scale(.92);background:rgba(255,255,255,.3)}
 body.jalan #fpsFoto{display:grid}
 body.jalan #toast{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 84px)}
@@ -16056,20 +16055,8 @@ function fotoJalan(){
   else { download(file,nama); toast('Foto diunduh: '+nama); }
   return {nama, ukuran:u8.length, lebar:c.width, tinggi:c.height, bagikan:!!janji};
 }
-/* pose foto (JEV-118): ketukan pertama — NPC yang tampak di bingkai menoleh & berpose (✌️, tangan di pinggang, 🫶, melambai),
-   tombol berdenyut; ketukan kedua (≤ 10 dtk) memotret. Tanpa NPC di bingkai: langsung memotret. Dua ketukan, karena berbagi
-   ke galeri (navigator.share) harus terjadi tepat dari ketukan, tidak bisa ditunda */
-let FOTO_SIAP=0;
-function tombolFoto(){
-  const b=$('#fpsFoto');
-  if(FOTO_SIAP && performance.now()-FOTO_SIAP<10000){ FOTO_SIAP=0; b.classList.remove('siap'); const r=fotoJalan(); if(window.NPC&&window.NPC.selesaiFoto) window.NPC.selesaiFoto(); return r; }
-  const n=window.NPC&&window.NPC.poseFoto?window.NPC.poseFoto(10):0;
-  if(!n){ FOTO_SIAP=0; b.classList.remove('siap'); return fotoJalan(); }
-  FOTO_SIAP=performance.now(); b.classList.add('siap');
-  setTimeout(()=>{ if(FOTO_SIAP && performance.now()-FOTO_SIAP>=9900){ FOTO_SIAP=0; b.classList.remove('siap'); } },10000);
-  toast(n>1?`📸 ${n} NPC berpose — ketuk kamera lagi untuk memotret`:'📸 NPC berpose — ketuk kamera lagi untuk memotret');
-  return null;
-}
+// pose foto (JEV-118): ketukan pertama membuat NPC di bingkai berpose, ketukan kedua memotret — lihat modul/npc.js
+function tombolFoto(){ return window.NPC&&window.NPC.tombolFoto?window.NPC.tombolFoto(fotoJalan):fotoJalan(); }
 $('#fpsFoto').onclick=()=>tombolFoto();
 { let v=null; try{ v=localStorage.getItem('fps_ciut'); }catch(e){ /* mode privat */ }
   const c=v==='1'; $('#fpsbar').classList.toggle('ciut',c); document.body.classList.toggle('menu-ciut',c); }

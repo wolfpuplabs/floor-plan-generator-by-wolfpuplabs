@@ -691,6 +691,22 @@
     FOTO_N++; return k;
   }
   function selesaiFoto() { for (const n of NPC.values()) if (n.foto && n.mode === 'aktivitas') n.t = Math.min(n.t, 1.2); }
+  /* tombol kamera mode jalan: ketukan pertama — NPC di bingkai berpose & tombol berdenyut; ketukan kedua (≤ 10 dtk) memotret.
+     Tanpa NPC di bingkai langsung memotret. Dua ketukan, karena berbagi ke galeri (navigator.share) harus tepat dari ketukan */
+  let FOTO_SIAP = 0;
+  function tombolFoto(potret) {
+    const b = document.getElementById('fpsFoto');
+    if (!document.getElementById('npcFotoGaya')) { const st = document.createElement('style'); st.id = 'npcFotoGaya';
+      st.textContent = '#fpsFoto.siap{box-shadow:0 0 0 4px #ffd54a;animation:npcFoto 1s ease-in-out infinite}@keyframes npcFoto{50%{box-shadow:0 0 0 9px rgba(255,213,74,.35)}}@media (prefers-reduced-motion:reduce){#fpsFoto.siap{animation:none}}';
+      document.head.appendChild(st); }
+    if (FOTO_SIAP && performance.now() - FOTO_SIAP < 10000) { FOTO_SIAP = 0; b.classList.remove('siap'); const r = potret(); selesaiFoto(); return r; }
+    const n = poseFoto(10);
+    if (!n) { FOTO_SIAP = 0; b.classList.remove('siap'); return potret(); }
+    FOTO_SIAP = performance.now(); b.classList.add('siap');
+    setTimeout(() => { if (FOTO_SIAP && performance.now() - FOTO_SIAP >= 9900) { FOTO_SIAP = 0; b.classList.remove('siap'); } }, 10000);
+    toast('📸 NPC berpose — ketuk kamera lagi untuk memotret');
+    return null;
+  }
 
   function sorak() { let i = 0; for (const n of NPC.values()) if (n.mode === 'temani' && n.a) { n.sorak = 1.8; window.LOBI.gerak.mulaiLambai(n.a); suaraSorak(n.id, 0.12 * i++); } }
   /* ---------- SUARA NPC: disintesis WebAudio (tanpa berkas) — gumaman saat bicara (suku kata pendek bergaya "Animal Crossing":
@@ -1003,7 +1019,7 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, kumpulApi, ciprat, poseFoto, selesaiFoto, sorak, dekat, renang: renangBareng, selesaiRenang, potret, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, kumpulApi, ciprat, poseFoto, selesaiFoto, tombolFoto, sorak, dekat, renang: renangBareng, selesaiRenang, potret, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
     warnaiAvatar, penyunting, warnaAman, bajuAman, hadirkan,
     suara: { gumam, sorak: suaraSorak, huft, mode: m => { if (m) MODE_SUARA = m; return MODE_SUARA; } }, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },

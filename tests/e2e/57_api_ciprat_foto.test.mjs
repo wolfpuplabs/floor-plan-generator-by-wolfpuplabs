@@ -32,7 +32,7 @@ export const tes = {
       FPS.yaw = Math.atan2(n.p.x - camera.position.x, n.p.z - camera.position.z);
       K._uji.tekan(2, true); K._uji.tekan(2, false); K.langkah(0.05); out.pose = window.LOBI.gerak.posSaya().po;
       let balas = 0; for (let i = 0; i < 40 && !balas; i++) { await tunggu(50); K.langkah(0.02); N.langkah(0.02); if (n.po === 21) balas = 1; }
-      out.balas = balas; await tunggu(500); out.tetes = !!document.querySelector('#aktHud .ak-tetes');
+      out.balas = balas; out.tetes = false; for (let i = 0; i < 50 && !out.tetes; i++) { await tunggu(50); K.langkah(0.02); out.tetes = !!document.querySelector('#aktHud .ak-tetes'); }
       // ciprat ke arah lain: NPC tidak kena
       FPS.yaw += Math.PI; K.langkah(1); const sebelum = n.cip; K._uji.tekan(2, true); K._uji.tekan(2, false); await tunggu(1600); out.melesetCip = n.cip > (sebelum || 0) ? 'kena' : 'tidak';
       K.selesai(); exitFPS(); return out; });
