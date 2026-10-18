@@ -1924,9 +1924,10 @@ var JEDA_RENDER=0;                  // panel AR terbuka: adegan utama tertutup �
 const RES={skala:1, dasar:Math.min(devicePixelRatio,2), lambat:0, lancar:0};
 function aturResolusi(t){
   if(document.hidden||t>0.5) return;
-  if(t>1/24){ RES.lambat+=t; RES.lancar=0; } else if(t<1/45){ RES.lancar+=t; RES.lambat=Math.max(0,RES.lambat-t); }
+  // pulih bila ≥ 30 fps (JEV-131)
+  if(t>1/24){ RES.lambat+=t; RES.lancar=0; } else if(t<1/30){ RES.lancar+=t; RES.lambat=Math.max(0,RES.lambat-t); }
   let k=RES.skala;
-  if(RES.lambat>1.5&&k>0.5){ k=Math.max(0.5,k*0.85); RES.lambat=0; } else if(RES.lancar>5&&k<1){ k=Math.min(1,k/0.85); RES.lancar=0; }
+  if(RES.lambat>1.5&&k>0.6){ k=Math.max(0.6,k*0.85); RES.lambat=0; } else if(RES.lancar>4&&k<1){ k=Math.min(1,k/0.85); RES.lancar=0; }
   if(k!==RES.skala){ RES.skala=k; renderer.setPixelRatio(RES.dasar*k); fitViewport(); }
 }
 (function animate(){
@@ -15175,9 +15176,9 @@ function baring(t){
   const g=t.grp, o=cariObjek(t.id), D=g.userData.duduk||{h:0.55}, f=(FURN[o&&o.type]||{f:[1.6,2]}).f, B=g.userData.baring; g.updateMatrixWorld(true);
   if(FPS.duduk) berdiri(); FPS.gaya=null;
   let tengah, mata, yaw=(o&&o.rotY)||0;
-  if(B){ const s=Math.sin(B.a), c=Math.cos(B.a), r=B.len*0.3, y=g.getWorldPosition(new THREE.Vector3()).y+(B.h!=null?B.h:B.hl*g.scale.y);   // model unggahan (JEV-123)
+  if(B){ window.KURSI&&window.KURSI.kasur(g,B); const s=Math.sin(B.a), c=Math.cos(B.a), r=B.r||B.len*0.3, y=g.getWorldPosition(new THREE.Vector3()).y+(B.h!=null?B.h:B.hl*g.scale.y);   // model unggahan (JEV-123)
     tengah=g.localToWorld(new THREE.Vector3(B.cx,0,B.cz)).setY(y); mata=g.localToWorld(new THREE.Vector3(B.cx-s*r,0,B.cz-c*r)).setY(y+0.3); yaw+=B.a; }
-  else { tengah=g.localToWorld(new THREE.Vector3(0,D.h,-0.05)); mata=g.localToWorld(new THREE.Vector3(0,D.h+0.3,-(f[1]/2-0.4))); }
+  else { tengah=g.localToWorld(new THREE.Vector3(0,D.h,-0.22)); mata=g.localToWorld(new THREE.Vector3(0,D.h+0.3,-(f[1]/2-0.25))); }
   FPS.duduk={id:t.id, baring:{x:tengah.x, y:tengah.y, z:tengah.z, yaw}, dari:camera.position.clone(), mata, t:0, asal:{x:camera.position.x, z:camera.position.z, feet:FPS.feet}};
   FPS.yaw=yaw; FPS.pitch=0.45; FPS.keys.clear(); if(FPS.move){ FPS.move.f=0; FPS.move.s=0; }
   FPS.info='<b>Berbaring</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk bangun'); $('#fpsinfo').innerHTML=FPS.info;

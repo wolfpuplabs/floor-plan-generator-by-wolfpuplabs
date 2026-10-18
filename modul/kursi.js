@@ -104,8 +104,42 @@
     pos.y += 0.02; pos.addScaledVector(arah, 0.04);
     return { pos, arah };
   }
+  /* KASUR MODEL (JEV-131): titik rebah dulu = tengah kotak batas model; ranjang dengan sandaran tebal / bangku di kaki membuat
+     kepala jatuh di depan bantal. Di sini garis tengah kasur dipindai dari ujung kepala ke kaki: permukaan kasur = median
+     tinggi di paruh kaki; tepi kepala = titik pertama yang tidak lebih dari 45 cm di atas kasur (bukan sandaran / bantal tegak).
+     Kepala di tengah bantal rebah sesudahnya (atau 20 cm dari tepi), pinggul 42 cm ke arah kaki. B.cx / B.cz digeser, B.r = jarak mata. */
+  const PINGGUL_KEPALA = 0.42, PINGGUL_MATA = 0.53;                  // diukur pada pose 9 F.vrm / M.vrm di ranjang pustaka
+  function kasur(g, B) {
+    if (!g || !B || B.diukur) return; B.diukur = true;
+    try {
+      g.updateMatrixWorld(true);
+      const mesh = []; g.traverse(o => { if (o.isMesh && !o.isSkinnedMesh && TERLIHAT(o)) mesh.push(o); }); if (!mesh.length) return;
+      const s = Math.sin(B.a), k = Math.cos(B.a), p0 = g.localToWorld(new THREE.Vector3(B.cx, 0, B.cz)), p1 = g.localToWorld(new THREE.Vector3(B.cx + s, 0, B.cz + k));
+      const kaki = p1.clone().sub(p0).setY(0), satuan = kaki.length(); if (!(satuan > 1e-6)) return; kaki.divideScalar(satuan);
+      const L = B.len * satuan, W = (B.wid || 1) * satuan, samping = new THREE.Vector3(-kaki.z, 0, kaki.x), bb = new THREE.Box3().setFromObject(g);
+      const tinggi = t => { let m = -1e9;
+        for (const x of [-W / 4, 0, W / 4]) { _o.copy(p0).addScaledVector(kaki, t).addScaledVector(samping, x).setY(bb.max.y + 0.1); ray.set(_o, _d); ray.far = bb.max.y - bb.min.y + 0.2;
+          const h = ray.intersectObjects(mesh, false); if (h.length) m = Math.max(m, h[0].point.y); }
+        return m; };
+      const N = Math.max(8, Math.round(L / 0.03)), T = [], H = [];
+      for (let i = 0; i <= N; i++) { const t = -L / 2 + L * i / N; T.push(t); H.push(tinggi(t)); }
+      const kaki2 = H.filter((h, i) => h > -1e8 && T[i] > 0 && T[i] < L * 0.35).sort((a, b) => a - b); if (!kaki2.length) return;
+      const hm = kaki2[kaki2.length >> 1];
+      const i0 = H.findIndex(h => h > -1e8 && h <= hm + 0.45); if (i0 < 0) return;
+      // bantal: daerah 5–45 cm di atas kasur, mulai ≤ 25 cm dari tepi kepala → kepala di tengahnya; tanpa bantal: 20 cm dari tepi
+      let j = i0; while (j + 1 < H.length && H[j] <= hm + 0.05 && T[j] - T[i0] < 0.25) j++;
+      let i1 = j; while (i1 + 1 < H.length && H[i1 + 1] > hm + 0.05 && T[i1 + 1] - T[j] < 0.7) i1++;
+      const kepala = H[j] > hm + 0.05 && T[i1] - T[j] >= 0.15 ? (T[j] + T[i1]) / 2 : T[i0] + 0.2;
+      let pinggul = kepala + PINGGUL_KEPALA;
+      pinggul = Math.min(pinggul, L / 2 - 0.85);                        // kaki tidak melewati ujung kasur
+      if (pinggul <= T[i0] + 0.3) return;                                // kasur terlalu pendek: biarkan di tengah
+      const q = g.worldToLocal(p0.clone().addScaledVector(kaki, pinggul));
+      B.cx = q.x; B.cz = q.z; B.r = PINGGUL_MATA / satuan;
+    } catch (e) { /* biarkan titik tengah lama */ }
+  }
+
   // model berubah (pindah / skala / ganti berkas): pindai ulang
   function lupakan(g) { if (g) delete g.userData.jokOtomatis; }
 
-  window.KURSI = { titikDuduk, lupakan, _pindai: pindai };
+  window.KURSI = { titikDuduk, kasur, lupakan, _pindai: pindai };
 })();

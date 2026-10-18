@@ -6342,6 +6342,60 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-131",
+   "judul": "Kepala di bantal saat berbaring, tepi baju renang tidak bercak, resolusi adaptif pulih",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "(1) Saat berbaring, pinggul diletakkan di tengah ranjang sehingga kepala jatuh di tepi bawah bantal; pada model kasur dengan sandaran tebal / bangku kaki kepala jatuh jauh di depan bantal. (2) Baju renang: pewarnaan kulit berbatas keras membiarkan piksel peralihan di tepi bikini berwarna kulit asli, tampak bercak pucat pada kulit gelap. (3) Resolusi adaptif hanya naik lagi pada ≥ 45 fps — iPad jarang mencapainya, sehingga resolusi turun bertahap sampai 0,5× dan terbawa ke editor.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-18 20.51: \"kepala ga diatas bantal, kok jadi low res gini di editor juga, tekstur bikini pecah lg\"",
+    "alternatif": [
+     "menurunkan kualitas render secara manual",
+     "mengatur tinggi/arah kepala per ranjang"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pemindaian kasur sekali per model (±70 sinar); resolusi adaptif tetap turun saat < 24 fps, batas bawah 0,6"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan kepala di luar bantal, tepi baju bercak, gambar buram",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }
