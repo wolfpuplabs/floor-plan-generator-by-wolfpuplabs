@@ -471,8 +471,16 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     lihatKe(a.lihat, dt, 3);
     // joran di tangan kanan, melengkung menurut tegangan
     const ten = a.tahap === 'tarik' ? a.T : a.tahap === 'isi' ? -a.kuat * 0.6 : 0;
-    tempelKamera(a.alat, 0.24, -0.3, -0.45);
-    a.alat.quaternion.multiply(qA.setFromEuler(new THREE.Euler(-0.95 - (a.tahap === 'isi' ? a.kuat * 0.6 : 0), 0.12, -0.15)));
+    // orang ketiga (JEV-134): joran di tangan kanan avatar, condong ke depan-atas ke arah air (ditarik ke belakang saat mengisi)
+    const O3 = window.ORANG3 && window.ORANG3.aktif() && window.ORANG3.tangan ? window.ORANG3.tangan() : null;
+    if (O3) {
+      const fy = Math.atan2(a.lihat.x - camera.position.x, a.lihat.z - camera.position.z), naik = 0.75 + (a.tahap === 'isi' ? a.kuat * 0.65 : 0);
+      a.alat.position.copy(O3).setY(O3.y + 0.08);
+      a.alat.quaternion.setFromUnitVectors(vB.set(0, 1, 0), vC.set(Math.sin(fy) * Math.cos(naik), Math.sin(naik), Math.cos(fy) * Math.cos(naik)));
+    } else {
+      tempelKamera(a.alat, 0.24, -0.3, -0.45);
+      a.alat.quaternion.multiply(qA.setFromEuler(new THREE.Euler(-0.95 - (a.tahap === 'isi' ? a.kuat * 0.6 : 0), 0.12, -0.15)));
+    }
     a.alat.userData.ruas.forEach((r, i) => { r.rotation.x = clamp(ten, -0.5, 1.2) * 0.18 * (i + 1); });
     a.alat.userData.tuas.rotation.x = TEKAN[1] && a.tahap === 'tarik' ? performance.now() / 60 : 0;
     const ujung = a.alat.userData.ujung.getWorldPosition(vA);

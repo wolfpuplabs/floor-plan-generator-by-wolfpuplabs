@@ -6505,6 +6505,58 @@
     "target": "0",
     "tinjau": "2026-12-19"
    }
+  },
+  {
+   "id": "JEV-134",
+   "judul": "Pose memancing wajar: joran dipegang di depan perut, di tangan avatar orang ketiga",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Saat memancing, kedua lengan avatar terangkat lurus di atas kepala (putaran sumbu tulang mengangkat lengan VRM ke atas, bukan ke depan) dan di kamera orang ketiga joran melayang di posisi kamera orang pertama, tidak di tangan. Arah acuan lengan avatar M juga keliru karena anak pertama tulang lengan atasnya adalah tulang kain (memengaruhi pose gandeng & foto).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-19 01.05: \"game mancing posenya masih aneh\"",
+    "alternatif": [
+     "animasi memancing dari berkas animasi (perlu aset & retarget)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.8,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan pose memancing",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
   }
  ]
 }
