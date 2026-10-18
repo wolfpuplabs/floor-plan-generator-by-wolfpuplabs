@@ -5,6 +5,7 @@ import { FIX, muatProyekJSON } from './harness.mjs';
 
 // JEV-123: model unggahan bisa jadi tempat berbaring, perapian, atau api unggun; kartu NPC "Dimas" dihapus;
 // NPC tidak ikut berjoget hanya karena musik diputar & jarang memilih joget sendiri
+// JEV-125: NPC berbaring (sendiri / bareng) di model unggahan; iPad: tekstur model diperkecil hanya saat dimuat ke GPU
 const dinding = [[0, 0, 12, 0], [12, 0, 12, 10], [12, 10, 0, 10], [0, 10, 0, 0]].map(([x1, z1, x2, z2], i) => ({ id: 'w' + i, x1, z1, x2, z2, thickness: 0.15, openings: [] }));
 const RUANG = { v: 1, levels: [{ name: 'L1', height: 3, walls: dinding, objects: [
   { id: 'nK', kind: 'npc', type: 'F', x: 10, y: 0, z: 8, rotY: 0, sx: 1, sy: 1, sz: 1, params: { benih: 4, jelajah: 0, kartu: 'anak' } }] }] };
@@ -72,6 +73,54 @@ export const tes = {
     assert.match(r.insA, /Maju–mundur api/);
     assert.ok(['baring', 'api', 'unggun'].every(k => r.pilihan.includes(k)), r.pilihan.join());
   },
+
+  'NPC berbaring di model unggahan berkategori Berbaring: sendiri (cari kasur) & bareng pengunjung yang rebahan di model itu': async (page) => {
+    await siapkan(page);
+    await page.evaluate(() => { L().objects.push({ id: 'nB', kind: 'npc', type: 'F', x: 3, y: 0, z: 5.5, rotY: 0, sx: 1, sy: 1, sz: 1, params: { benih: 3, jelajah: 4 } }); rebuildScene(); });
+    await page.waitForFunction(() => window.NPC && window.NPC.keadaan('nB') && window.NPC.keadaan('nB').siap, undefined, { timeout: 120000 });
+    const r = await page.evaluate(async () => {
+      enterFPS(); camera.position.set(8, 1.6, 8); fpsStep(0); window.NPC.langkah(0.05);
+      const U = window.NPC._uji, n = U.NPC.get('nB'), g = findGroup('obj', 'mBaring'), B = g.userData.baring;
+      const ks = U.cariKasur(n, true), out = { ks: ks && { id: ks.id, po: ks.po, y: +ks.y.toFixed(2), yaw: +ks.yaw.toFixed(2), x: +ks.x.toFixed(2), z: +ks.z.toFixed(2) }, hl: +B.hl.toFixed(2), wid: +B.wid.toFixed(2) };
+      // NPC berjalan ke kasur model & berbaring (pose 9)
+      U.aktivitas(n, 0, 1); n.kursi = ks; window.NPC._uji.mulaiJalan(n, ks.q.x, ks.q.z, 'kursi');
+      for (let i = 0; i < 800 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05);
+      out.sendiri = { mode: n.mode, po: n.po, dekat: +Math.hypot(n.p.x - ks.x, n.p.z - ks.z).toFixed(2) };
+      U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(3, 0, 5.5);
+      // pengunjung rebahan di model, NPC diajak berbaring bareng → sisi lain kasur yang sama
+      pakai({ jenis: 'baring', id: 'mBaring', grp: g }); for (let i = 0; i < 20; i++) fpsStep(0.05);
+      await muatModul('kartunpc'); await muatModul('dialog');
+      const m = window.DIALOG._dalam.ingatan('nB'); m.s = 90;
+      out.bareng = window.NPC.aksiPasangan('nB', 'baring');
+      for (let i = 0; i < 800 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05);
+      out.barengHasil = { mode: n.mode, po: n.po, kasur: n.kursi && n.kursi.bareng, beda: n.kursi && +Math.hypot(n.kursi.x - FPS.duduk.baring.x, n.kursi.z - FPS.duduk.baring.z).toFixed(2) };
+      exitFPS(); return out; });
+    assert.ok(r.ks && r.ks.id === 'mBaring' && r.ks.po === 9 && Math.abs(r.ks.y - r.hl) < 0.02 && r.ks.yaw === 0 && Math.abs(r.ks.x - 3) < 0.3, 'kasur model: ' + JSON.stringify(r));
+    assert.ok(r.wid > 0.2, 'lebar kasur model: ' + r.wid);
+    assert.deepEqual([r.sendiri.mode, r.sendiri.po], ['duduk', 9], 'NPC berbaring di model: ' + JSON.stringify(r.sendiri));
+    assert.equal(r.bareng, true);
+    assert.ok(r.barengHasil.mode === 'duduk' && r.barengHasil.po === 9 && r.barengHasil.kasur === 'mBaring' && r.barengHasil.beda > 0.05, 'berbaring bareng di model: ' + JSON.stringify(r.barengHasil));
+  },
+
+  'iPad: tekstur model unggahan diperkecil saat dimuat ke GPU (warna 1K), berkas proyek & tautan tetap memakai aslinya': Object.assign(async (page) => {
+    await muatProyekJSON(page, RUANG);
+    const gltf = JSON.parse(fs.readFileSync(path.join(FIX, 'kursi_1k.gltf'), 'utf8'));
+    const bin = fs.readFileSync(path.join(FIX, 'kursi.bin')).toString('base64');
+    const r = await page.evaluate(async ([gltf, bin]) => {
+      // tekstur warna 2048 px (dibuat di kanvas) — tersimpan 2K, di GPU iPad 1K
+      const c = document.createElement('canvas'); c.width = c.height = 2048; const x = c.getContext('2d');
+      for (let i = 0; i < 64; i++) { x.fillStyle = `hsl(${i * 37},60%,50%)`; x.fillRect((i % 8) * 256, (i >> 3) * 256, 256, 256); }
+      const jpg = new Uint8Array(await (await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.9))).arrayBuffer()); c.width = 0;
+      const isi = { 'kursi.bin': new Uint8Array(bufFromB64(bin)), 'textures/kursi_diff_1k.jpg': jpg };
+      const glb = gltfKeGLB(gltf, uri => /^data:/.test(uri) ? dataURIkeU8(uri) : isi[uri]);
+      const a = await daftarkanAset('Model 2K', glb), id = a.id; let maks = 0;
+      ASSET_OBJ.get(id).traverse(m => { if (m.isMesh) for (const mt of [].concat(m.material)) if (mt.map && mt.map.image) maks = Math.max(maks, mt.map.image.width); });
+      const simpan = bufFromB64(PROJECT.assets[id].data).byteLength;
+      return { hemat: perangkatHemat(), gpu: maks, simpan, buf: ASSET_BUF.get(id).byteLength, size: PROJECT.assets[id].size };
+    }, [gltf, bin]);
+    assert.deepEqual([r.hemat, r.gpu], [true, 1024], JSON.stringify(r));
+    assert.deepEqual([r.buf, r.size], [r.simpan, r.simpan], 'berkas proyek & salinan untuk tautan tetap asli: ' + JSON.stringify(r));
+  }, { opsi: { ua: 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/155.0 Mobile/15E148 Safari/604.1' } }),
 
   'NPC: kartu Dimas dihapus (kartu lama "anak" → kartu bertema rumah); musik tidak membuat NPC berjoget; joget sendiri jarang & tidak beruntun': async (page) => {
     await muatProyekJSON(page, RUANG);

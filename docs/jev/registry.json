@@ -5960,6 +5960,115 @@
     "target": "> 0,2",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-124",
+   "judul": "Efek real-time hanya di kualitas Tinggi; baju renang tetap saat main air (orang ketiga & lobi)",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Saat berenang dengan kamera orang ketiga, menekan Ciprat membuat avatar sesaat memuat ulang baju biasa lalu baju renang (lag & tampak memakai baju). Efek real-time (AO, bloom, HDR, color grading) selalu berjalan di kualitas Halus bawaan sehingga berat di iPad.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18: \"pas berenang 3rd person kalo splash suka lag loading make baju; default display quality kalo high baru make realtime effect (AO, dll), kalo smooth ga usah\"",
+    "alternatif": [
+     "mematikan efek hanya di iPad",
+     "memuat semua baju di awal tanpa simpanan"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 3000000,
+      "reduksi": 0.75
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "Halus/Cepat: tanpa buffer MSAA HDR, AO & bloom (buffer dikecilkan ke 2×2); eksposur dikoreksi per suasana agar terang rata-rata sama dengan Tinggi (siang 112 vs 117, senja 94 vs 93, malam 82 vs 81)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "centang Efek realistis dinonaktifkan (bukan disembunyikan) di luar kualitas Tinggi, labelnya menyebut syaratnya"
+    }
+   },
+   "metrik": {
+    "nama": "konteks WebGL hilang per sesi di iPad (kualitas Halus)",
+    "target": "< 0,05",
+    "tinjau": "2026-12-18"
+   }
+  },
+  {
+   "id": "JEV-125",
+   "judul": "iPad: tekstur model unggahan diperkecil saat dimuat ke GPU; NPC berbaring di model unggahan",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Memori grafis iPad masih sering habis: tekstur model unggahan disimpan & dimuat hingga 2048 px (±22 MB GPU per tekstur), beberapa bahan saja sudah ratusan MB. NPC tidak mau berbaring di model unggahan berkategori Berbaring karena pencarian kasur hanya mengenal ranjang pustaka (bed_*).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18: \"memory masih suka ran out, kalo make asset upload bakal gt ga? npc ga bisa lie down di asset yg diupload padahal udah di define bed/sofa\"",
+    "alternatif": [
+     "menyimpan semua model unggahan 1K untuk semua perangkat",
+     "membatasi jumlah model unggahan di iPad"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 4000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "iPad/iPhone: warna & normal ≤ 1024 px, peta lain ≤ 512 px di GPU (±4× lebih hemat per tekstur 2K); berkas proyek & salinan untuk tautan tetap asli"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "konteks WebGL hilang per sesi di iPad dengan model unggahan",
+    "target": "< 0,05",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

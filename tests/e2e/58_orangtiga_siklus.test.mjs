@@ -8,7 +8,7 @@ const dinding = [[0, 0, 10, 0], [10, 0, 10, 8], [10, 8, 0, 8], [0, 8, 0, 0]].map
 const rumah = { v: 1, levels: [{ name: 'L1', height: 3, walls: dinding, objects: [obj('unggun', 'furn', 'api_unggun', 5, 12)] }] };
 
 export const tes = {
-  'orang ketiga: tombol di mode jalan → avatar pemain tampil saat digambar, kamera kembali ke kepala sesudahnya; kamera maju dekat dinding; diingat': async (page) => {
+  'orang ketiga: tombol di mode jalan → avatar pemain tampil saat digambar, kamera kembali ke kepala sesudahnya; kamera maju dekat dinding; diingat; baju renang tetap saat main air': async (page) => {
     await muatProyekJSON(page, rumah);
     const r = await page.evaluate(async () => {
       localStorage.removeItem('kamera3'); enterFPS(); camera.position.set(5, 1.6, 4); FPS.yaw = 0; FPS.pitch = 0; fpsStep(0);
@@ -23,6 +23,13 @@ export const tes = {
       // menghadap dinding belakang yang dekat: kamera maju
       camera.position.set(5, 1.6, 1.2); FPS.yaw = 0; fpsStep(0); for (let i = 0; i < 5; i++) window.ORANG3.render(() => {});
       out.dekatDinding = +S.d.toFixed(2);
+      // berenang (17) → baju renang; main air (21) tetap berbaju renang tanpa memuat ulang; keluar → baju biasa dari simpanan, langsung
+      camera.position.set(5, 1.6, 4); fpsStep(0);
+      const gaya = k => { FPS.gaya = { k, x: camera.position.x, z: camera.position.z, t: performance.now() }; };
+      const tunggu = async () => { for (let i = 0; i < 300; i++) { window.ORANG3.render(() => {}); if (!S.memuat) { window.ORANG3.render(() => {}); if (!S.memuat) return; } await new Promise(ok => setTimeout(ok, 50)); } };
+      const avBiasa = S.a; gaya('renang'); await tunggu(); out.renang = S.baju;
+      const avRenang = S.a; gaya('ciprat'); window.ORANG3.render(() => {}); out.ciprat = [S.baju, S.memuat, S.a === avRenang, window.LOBI.poseAir(21)];
+      FPS.gaya = null; window.ORANG3.render(() => {}); out.keluar = [S.baju, S.memuat, S.a === avBiasa, window.ORANG3._uji.SIMPAN.size];
       $('#fpsO3').click(); await new Promise(ok => setTimeout(ok, 50)); out.mati = [window.ORANG3.aktif(), localStorage.getItem('kamera3')]; localStorage.removeItem('kamera3'); exitFPS();
       return out; });
     assert.deepEqual([r.aktif, r.tekan, r.simpan], [true, 'true', '1']);
@@ -31,6 +38,9 @@ export const tes = {
     assert.deepEqual(r.posisi, [5, 4]);
     assert.ok(r.dekatDinding < 1.3, 'kamera tidak menembus dinding: ' + r.dekatDinding);
     assert.deepEqual(r.mati, [false, '0']);
+    assert.equal(r.renang, '_renang', 'berenang: baju renang');
+    assert.deepEqual(r.ciprat, ['_renang', false, true, true], 'main air: tetap baju renang, tanpa memuat ulang');
+    assert.deepEqual(r.keluar, ['', false, true, 2], 'keluar kolam: avatar baju biasa dari simpanan');
   },
 
   'siklus waktu menyala sebagai bawaan; mati tersimpan & lolos penyaring; api unggun: kayu bersandar membentuk kerucut': async (page) => {

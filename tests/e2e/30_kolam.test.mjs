@@ -13,6 +13,9 @@ const layar = (page, x, z) => page.evaluate(([x, z]) => {
   return { clientX: r.left + (v.x + 1) / 2 * r.width, clientY: r.top + (1 - v.y) / 2 * r.height };
 }, [x, z]);
 
+// tunggu kamera berhenti beranimasi (pindah ke tampak atas bisa lebih lama dari 1,5 dtk di mesin yang sibuk)
+const kameraDiam = page => page.waitForFunction(() => { const k = camera.position.toArray().join(); const lalu = window.__kamLalu; window.__kamLalu = k; return k === lalu; }, undefined, { polling: 250, timeout: 20000 });
+
 export const tes = {
   'kolam: persegi & bentuk L berukuran di inspector (seperti void), bebas lewat tracing; gambar ulang jadi bebas': async (page) => {
     await page.evaluate(() => { PROJECT.levels[0].walls = []; PROJECT.levels[0].objects = []; rebuildScene(); });
@@ -58,7 +61,7 @@ export const tes = {
       [{ x: 4, z: 0 }, { x: 4, z: 3 }, { x: 6, z: 0 }, { x: 8, z: 1 }, null]);
     // tracing: kursor di dekat ujung pagar menempel tepat & bertanda
     await page.evaluate(() => mulaiTrace({ kind: 'garis', type: 'pagar_kayu' }, null));
-    await page.waitForTimeout(1500);                        // tampilan atas selesai beranimasi sebelum titik layar dihitung
+    await kameraDiam(page);                                 // tampilan atas selesai beranimasi sebelum titik layar dihitung
     const t = await page.evaluate(e => titikTrace(e), await layar(page, 8.06, 0.07));
     assert.deepEqual(t, { x: 8, z: 0, ujung: true }, JSON.stringify(t));
     await page.evaluate(() => setTool('select'));

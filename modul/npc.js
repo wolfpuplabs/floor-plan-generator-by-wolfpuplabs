@@ -475,18 +475,28 @@
     return null;
   }
   // kasur: berbaring telentang (pose 9) di tengah ranjang, kepala ke arah sandaran (−Z lokal ranjang)
+  // rangka kasur: ranjang pustaka (bed_*) atau model unggahan berkategori Berbaring (JEV-125). titik(x, y, z): x ke samping,
+  // y di atas permukaan kasur, z ke arah kaki (kepala di −z); w = lebar; yaw = arah hadap orang berbaring
+  function rangkaKasur(c, o) {
+    if (!o) return null;
+    if (/^bed_/.test(o.type) && FURN[o.type] && c.userData.duduk) { const h = c.userData.duduk.h || 0.55;
+      return { w: FURN[o.type].f[0], yaw: o.rotY || 0, titik: (x, y, z) => c.localToWorld(new THREE.Vector3(x, h + y, z)) }; }
+    const B = c.userData.baring; if (o.kind !== 'model' || !B) return null;
+    const s = Math.sin(B.a), k = Math.cos(B.a), y0 = c.getWorldPosition(new THREE.Vector3()).y + (B.h != null ? B.h : B.hl * c.scale.y);
+    return { w: B.wid || 1, yaw: (o.rotY || 0) + B.a, titik: (x, y, z) => c.localToWorld(new THREE.Vector3(B.cx + x * k + z * s, 0, B.cz - x * s + z * k)).setY(y0 + y) };
+  }
   function cariKasur(n, jauh) {
     const lg = levelGroups[n.li], lv = PROJECT.levels[n.li]; if (!lg || !lv) return null;
     const calon = [];
     for (const c of lg.children) {
-      if (c.userData.kind !== 'obj' || !c.visible || !c.userData.duduk) continue;
-      const o = lv.objects.find(x => x.id === c.userData.id); if (!o || !/^bed_/.test(o.type) || !FURN[o.type]) continue;
+      if (c.userData.kind !== 'obj' || !c.visible || !(c.userData.duduk || c.userData.baring)) continue;
+      const o = lv.objects.find(x => x.id === c.userData.id); c.updateMatrixWorld(true);
+      const R = rangkaKasur(c, o); if (!R) continue;
       const kunci = 'kasur:' + o.id; if (KURSI_DIPAKAI.has(kunci) || (FPS.duduk && FPS.duduk.id === o.id)) continue;
-      c.updateMatrixWorld(true);
-      const f = FURN[o.type].f, h = c.userData.duduk.h || 0.55, tengah = c.localToWorld(new THREE.Vector3(0, h, -0.05));
+      const tengah = R.titik(0, 0, -0.05);
       if (!jauh && Math.hypot(tengah.x - n.rumah.x, tengah.z - n.rumah.z) > n.jelajah + 2) continue;   // diminta pengunjung: kasur mana pun di lantai ini
-      const sisi = c.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * (Math.random() < 0.5 ? 1 : -1), 0, 0.2));
-      const yaw = (o.rotY || 0), q = { x: sisi.x, z: sisi.z };
+      const sisi = R.titik((R.w / 2 + 0.5) * (Math.random() < 0.5 ? 1 : -1), 0, 0.2);
+      const yaw = R.yaw, q = { x: sisi.x, z: sisi.z };
       if (!jalurBebas(n, q.x, q.z, o.id)) continue;
       calon.push({ id: o.id, kunci, q, x: tengah.x, z: tengah.z, y: tengah.y, yaw, po: 9, lama: 20 + Math.random() * 25, d: Math.hypot(q.x - n.p.x, q.z - n.p.z) });
     }
@@ -517,14 +527,15 @@
   // dada: sama, tetapi badan bergeser ke arah kaki ranjang & ke tengah sehingga kepala NPC bersandar di dada pengunjung
   function kasurBareng(n, D, peluk, dada) {
     const lg = levelGroups[n.li], lv = PROJECT.levels[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), o = lv && lv.objects.find(x => x.id === D.id);
-    if (!g || !o || !/^bed_/.test(o.type) || !FURN[o.type] || !g.userData.duduk) return null;
+    if (!g || !o) return null;
     g.updateMatrixWorld(true);
-    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, jx = dada ? 0.4 : peluk ? 0.36 : f[0] / 4, jz = dada ? 0.3 : -0.05;
-    const ki = g.localToWorld(new THREE.Vector3(-jx, h, jz)), ka = g.localToWorld(new THREE.Vector3(jx, h, jz));
+    const R = rangkaKasur(g, o); if (!R) return null;
+    const jx = dada ? 0.4 : peluk ? 0.36 : R.w / 4, jz = dada ? 0.3 : -0.05;
+    const ki = R.titik(-jx, 0, jz), ka = R.titik(jx, 0, jz);
     const s = Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
-    const sisi = g.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * s, 0, 0.2)), rot = o.rotY || 0;
+    const sisi = R.titik((R.w / 2 + 0.5) * s, 0, 0.2), rot = R.yaw;
     return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, lama: 45, d: 0,
-      ...(peluk ? { po: dada ? 20 : 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: g.localToWorld(dada ? new THREE.Vector3(s * 0.1, h + 0.26, jz - 0.4) : new THREE.Vector3(s * jx, h + 0.22, jz - 0.53)) } : { po: 9, yaw: rot }) };
+      ...(peluk ? { po: dada ? 20 : 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: dada ? R.titik(s * 0.1, 0.26, jz - 0.4) : R.titik(s * jx, 0.22, jz - 0.53) } : { po: 9, yaw: rot }) };
   }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
