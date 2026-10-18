@@ -6450,6 +6450,61 @@
     "target": "0",
     "tinjau": "2026-12-19"
    }
+  },
+  {
+   "id": "JEV-133",
+   "judul": "Model kendaraan: pemain duduk di jok sopir, di belakang setir",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Duduk di model mobil memilih jok terdekat dengan titik bidik — dari pintu penumpang / belakang pemain tidak duduk di belakang setir.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-19: \"kalo defined vehicle duduk dibelakang steer mobil\"",
+    "alternatif": [
+     "membidik jok sopir secara tepat",
+     "titik duduk manual per model"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.7,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "≤ 54 sinar tambahan per jok bersandaran, sekali per model"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "setir kiri / kanan bisa dipilih manual bila deteksi otomatis keliru"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan tidak duduk di belakang setir",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
   }
  ]
 }

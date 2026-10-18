@@ -7509,6 +7509,7 @@ function inspektorInteraksi(ins,d){
   if(j==='duduk'){
     fRow(ins,'Tinggi dudukan (m)',numInput(+d.params.tinggiDuduk||0.45,0.01,v=>ubah('Tinggi dudukan',()=>{ d.params.tinggiDuduk=clamp(v,0.15,1.2); }),0.15,1.2));
     fRow(ins,'Arah hadap',selInput([['','Otomatis'],['0','Depan model (+Z)'],['90','Kanan (+X)'],['180','Belakang (−Z)'],['270','Kiri (−X)']],d.params.arahDuduk!=null?String(+d.params.arahDuduk):'',v=>ubah('Arah duduk',()=>{ if(v==='') delete d.params.arahDuduk; else d.params.arahDuduk=+v; })));
+    window.KURSI&&window.KURSI.panel(ins,d,ubah);
     ins.appendChild(el('p','hint','Di mode jalan, bidik jok yang mau diduduki lalu tekan E / ketuk Duduk. Otomatis: jok & arah dicari dari bentuk model (menjauhi sandaran).'));
   } else if(j==='baring'){
     fRow(ins,'Tinggi kasur (m)',numInput(d.params.tinggiBaring!=null?+d.params.tinggiBaring:0.55,0.01,v=>ubah('Tinggi kasur',()=>{ d.params.tinggiBaring=clamp(v,0.1,1.5); }),0.1,1.5));

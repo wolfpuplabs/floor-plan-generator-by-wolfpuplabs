@@ -61,6 +61,48 @@ export const tes = {
     assert.deepEqual(r.opsi, ['', 'Otomatis']);
   },
 
+  'kendaraan (JEV-133): pemain duduk di jok sopir di belakang setir — setir otomatis dari bentuk model, kiri / kanan dari panel; NPC tetap jok terdekat': async (page) => {
+    await muatProyekJSON(page, RUANG);
+    await page.waitForFunction(() => !!window.KURSI, undefined, { timeout: 30000 });
+    const gltf = JSON.parse(fs.readFileSync(path.join(FIX, 'kursi_1k.gltf'), 'utf8'));
+    const bin = fs.readFileSync(path.join(FIX, 'kursi.bin')).toString('base64'), jpg = fs.readFileSync(path.join(FIX, 'kursi_diff_1k.jpg')).toString('base64');
+    const r = await page.evaluate(async ([gltf, bin, jpg]) => {
+      const isi = { 'kursi.bin': new Uint8Array(bufFromB64(bin)), 'textures/kursi_diff_1k.jpg': new Uint8Array(bufFromB64(jpg)) };
+      const a = await daftarkanAset('Mobil', gltfKeGLB(gltf, uri => /^data:/.test(uri) ? dataURIkeU8(uri) : isi[uri]));
+      L().objects.push({ id: 'mV', kind: 'model', type: a.id, x: 8, y: 0, z: 2, rotY: 0, sx: 1, sy: 1, sz: 1, params: { interaksi: 'duduk', collider: false, setir: 'auto' } });
+      rebuildScene();
+      const kotak = (g, w, h, d, x, y, z) => { const k = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial()); k.position.set(x, y, z); g.add(k); };
+      const bangun = setir => { const g = findGroup('obj', 'mV'); for (const c of [...g.children]) g.remove(c); const w = new THREE.Group(); g.add(w);
+        kotak(w, 4, 0.3, 1.8, 0, 0.45, 0); kotak(w, 2.6, 0.06, 1.8, -0.4, 1.95, 0); kotak(w, 4, 1.15, 0.05, 0, 1.38, 0.9); kotak(w, 4, 1.15, 0.05, 0, 1.38, -0.9);
+        kotak(w, 0.3, 0.5, 1.7, 1.0, 1.1, 0);                                                          // dasbor jauh di depan (depan mobil = +X)
+        for (const z of [-0.45, 0.45]) { kotak(w, 0.5, 0.12, 0.5, 0.2, 0.86, z); kotak(w, 0.1, 0.6, 0.5, -0.1, 1.2, z); }
+        kotak(w, 0.5, 0.12, 1.4, -1.0, 0.86, 0); kotak(w, 0.1, 0.6, 1.4, -1.3, 1.2, 0);
+        if (setir) kotak(w, 0.06, 0.35, 0.35, 0.62, 1.2, setir);                                        // roda setir
+        g.updateMatrixWorld(true); delete g.userData.jokOtomatis; return g; };
+      const coba = (g, titik, id = 'mV') => { const s = window.KURSI.titikDuduk({ id, grp: g, titik: new THREE.Vector3(...titik) }, g.userData.duduk);
+        return { x: +s.pos.x.toFixed(2), z: +s.pos.z.toFixed(2), yaw: +Math.atan2(s.arah.x, s.arah.z).toFixed(2) }; };
+      const o = cariObjek('mV'), out = {};
+      // setir di z −0,45 (sisi kiri orang yang menghadap +X); dibidik dari sisi kanan (z 2,9) tetap ke jok sopir
+      let g = bangun(-0.45); out.otomatis = coba(g, [8.2, 1.2, 2.9]);
+      o.params.setir = 'kanan'; out.kanan = coba(g, [8.2, 1.2, 1.1]);
+      o.params.setir = 'auto'; g = bangun(0.45); out.otomatisKanan = coba(g, [8.2, 1.2, 1.1]);
+      g = bangun(null); out.tanpaSetir = coba(g, [8.2, 1.2, 1.1]);
+      out.npc = (() => { const s = window.KURSI.titikDuduk({ grp: g, titik: new THREE.Vector3(8.2, 1.2, 1.1) }, g.userData.duduk); return +s.pos.z.toFixed(2); })();
+      delete o.params.setir; out.bukan = coba(g, [8.2, 1.2, 2.9]);
+      // panel: pilihan Kendaraan di kategori Duduk
+      o.params.setir = 'kiri'; select('obj', 'mV'); renderInspector();
+      const sel = [...document.querySelectorAll('#inspector select')].find(x => [...x.options].some(op => op.value === 'kanan'));
+      out.panel = sel && [sel.value, [...sel.options].map(op => op.value)];
+      return out; }, [gltf, bin, jpg]);
+    assert.ok(Math.abs(r.otomatis.z - 1.55) < 0.1 && Math.abs(r.otomatis.yaw - Math.PI / 2) < 0.05, 'setir otomatis → jok di belakang setir (kiri): ' + JSON.stringify(r));
+    assert.ok(Math.abs(r.kanan.z - 2.45) < 0.1, 'setir kanan: ' + JSON.stringify(r.kanan));
+    assert.ok(Math.abs(r.otomatisKanan.z - 2.45) < 0.1, 'setir otomatis di kanan: ' + JSON.stringify(r.otomatisKanan));
+    assert.ok(Math.abs(r.tanpaSetir.z - 2.45) < 0.1, 'tanpa setir terdeteksi → setir kanan: ' + JSON.stringify(r.tanpaSetir));
+    assert.ok(Math.abs(r.npc - 1.55) < 0.1, 'NPC tetap jok terdekat: ' + r.npc);
+    assert.ok(Math.abs(r.bukan.z - 2.45) < 0.1, 'bukan kendaraan → jok terdekat: ' + JSON.stringify(r.bukan));
+    assert.deepEqual(r.panel, ['kiri', ['', 'auto', 'kanan', 'kiri']]);
+  },
+
   'kepribadian NPC mengikuti tubuhnya: NPC F hanya kartu perempuan (kartu laki-laki lama diganti), NPC M hanya laki-laki': async (page) => {
     const o = (id, type, x, params) => ({ id, kind: 'npc', type, x, y: 0, z: 3, rotY: Math.PI, sx: 1, sy: 1, sz: 1, params: { jelajah: 0, ...params } });
     await muatProyekJSON(page, { v: 1, levels: [{ name: 'L1', height: 3, walls: [], objects: [o('nF', 'F', 2, { benih: 1, kartu: 'tukang' }), o('nM', 'M', 4, { benih: 2, kartu: 'agen' }), o('nF2', 'F', 6, { benih: 3 })] }] });

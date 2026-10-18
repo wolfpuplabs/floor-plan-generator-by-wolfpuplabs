@@ -11,10 +11,11 @@
    di depannya — lantai kabin & bak kargo bukan jok (JEV-132). Jok dipilih yang terdekat dengan
    titik bidik (pemain) atau posisi NPC. Arah hadap yang diatur sendiri di panel tetap dihormati; model tanpa jok bersandaran
    yang Tinggi dudukannya diisi sendiri memakai isian itu. */
-/* global cariObjek */
+/* global cariObjek, fRow, selInput */
 (function () {
   'use strict';
   const ray = new THREE.Raycaster(), _o = new THREE.Vector3(), _d = new THREE.Vector3(0, -1, 0), _n = new THREE.Vector3(), _m3 = new THREE.Matrix3();
+  const SETIR = ['auto', 'kiri', 'kanan'];                              // params.setir model kendaraan (JEV-133)
   const TERLIHAT = o => { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; };
 
   function pindai(g) {
@@ -91,8 +92,16 @@
       const dalam = arah === null ? 0 : 2 * (arah < 2 ? ru : rw);
       if (arah !== null && (dalam < 0.28 || dalam > 0.8 || !ruangKaki([[1, 0, rw], [-1, 0, rw], [0, 1, ru], [0, -1, ru]][arah]))) arah = null;
       const vek = arah === null ? null : [ex, ex.clone().negate(), ez, ez.clone().negate()][arah].clone();
+      // ruang di depan jok setinggi dada (20–75 cm di atas dudukan): setir lebih dekat ke jok sopir daripada dasbor ke jok
+      // penumpang — dipakai untuk menemukan jok sopir pada model kendaraan (JEV-133)
+      let depan = 9;
+      if (arah !== null) { const [du, dw, lebar] = [[1, 0, rw], [-1, 0, rw], [0, 1, ru], [0, -1, ru]][arah];
+        cari: for (let jauh = 0.05; jauh <= 0.9; jauh += 0.05) for (const t of [-0.15, 0, 0.15]) {
+          const p = titik(u + du * (ru + jauh) + dw * t * lebar * 2, w + dw * (rw + jauh) + du * t * lebar * 2);
+          _o.set(p.x, y + 0.75, p.z); ray.set(_o, _d); ray.far = 0.55;
+          if (ray.intersectObjects(mesh, false).length) { depan = jauh; break cari; } } }
       jok.push({ sel: grup.map(s => g.worldToLocal(titik(s.u, s.w).setY(s.y))), pos: g.worldToLocal(titik(u, w).setY(y)),
-        arah: vek && vek.transformDirection(inv), sandar: arah !== null, lebar: Math.max(ru, rw) > 0.45,
+        arah: vek && vek.transformDirection(inv), sandar: arah !== null, lebar: Math.max(ru, rw) > 0.45, depan,
         atap: grup.filter(c => c.atap).length >= grup.length * 0.6 });
     }
     // jok bersandaran diutamakan; model yang punya jok beratap (kabin mobil, gazebo) hanya memakai jok beratap — permukaan
@@ -113,6 +122,9 @@
     const dunia = v => v.clone().applyMatrix4(g.matrixWorld), acuan = t.titik || dunia(J[0].pos);
     let best = null, bd = 1e9;
     for (const j of J) for (const p of j.sel) { const q = dunia(p), d = Math.hypot(q.x - acuan.x, q.z - acuan.z); if (d < bd) { bd = d; best = { j, q }; } }
+    // kendaraan (JEV-133): pemain selalu duduk di jok sopir, di belakang setir — NPC tetap memilih jok terdekat
+    const setir = o && o.params && SETIR.includes(o.params.setir) ? o.params.setir : '', sopir = setir && t.id ? jokSopir(g, J, setir) : null;
+    if (sopir) best = { j: sopir, q: dunia(sopir.pos) };
     const j = best.j;
     // posisi duduk: sel terdekat di jok lebar (sofa / bangku panjang), tengah jok untuk jok sempit
     const pos = j.lebar ? best.q : dunia(j.pos);
@@ -122,6 +134,29 @@
     pos.y += 0.02; pos.addScaledVector(arah, 0.04);
     return { pos, arah };
   }
+  /* JOK SOPIR (JEV-133): baris depan = jok bersandaran yang paling jauh ke arah hadap (±30 cm); setir otomatis = jok baris
+     depan yang ruang di depannya paling sempit (setir lebih dekat daripada dasbor), seimbang (< 8 cm) → setir kanan seperti
+     mobil di Indonesia. Setir kiri / kanan = sisi kiri / kanan orang yang duduk menghadap depan. */
+  function jokSopir(g, J, setir) {
+    const A = J.filter(j => j.arah); if (!A.length) return null;
+    const ke = j => j.arah.clone().transformDirection(g.matrixWorld).setY(0).normalize(), F = ke(A[0]);
+    const S = A.filter(j => ke(j).dot(F) > 0.7), posW = j => j.pos.clone().applyMatrix4(g.matrixWorld);
+    const maju = Math.max(...S.map(j => posW(j).dot(F))), depan = S.filter(j => posW(j).dot(F) > maju - 0.3);
+    const kiri = new THREE.Vector3(F.z, 0, -F.x), sisi = j => posW(j).dot(kiri);       // menghadap +Z: kiri = +X
+    const urut = depan.slice().sort((a, b) => sisi(b) - sisi(a));                       // [paling kiri … paling kanan]
+    if (urut.length < 2) return urut[0] || null;
+    if (setir === 'kiri') return urut[0];
+    if (setir === 'kanan') return urut[urut.length - 1];
+    const sempit = depan.slice().sort((a, b) => a.depan - b.depan);
+    return sempit[1].depan - sempit[0].depan >= 0.08 ? sempit[0] : urut[urut.length - 1];
+  }
+  // panel Interaksi model (kategori Duduk): tandai sebagai kendaraan
+  function panel(ins, d, ubah) {
+    const v = SETIR.includes(d.params.setir) ? d.params.setir : '';
+    fRow(ins, 'Kendaraan', selInput([['', 'Bukan kendaraan'], ['auto', 'Ya — setir otomatis'], ['kanan', 'Ya — setir kanan'], ['kiri', 'Ya — setir kiri']], v,
+      x => ubah('Kendaraan', () => { if (x) d.params.setir = x; else delete d.params.setir; })));
+  }
+
   /* KASUR MODEL (JEV-131): titik rebah dulu = tengah kotak batas model; ranjang dengan sandaran tebal / bangku di kaki membuat
      kepala jatuh di depan bantal. Di sini garis tengah kasur dipindai dari ujung kepala ke kaki: permukaan kasur = median
      tinggi di paruh kaki; tepi kepala = titik pertama yang tidak lebih dari 45 cm di atas kasur (bukan sandaran / bantal tegak).
@@ -159,5 +194,5 @@
   // model berubah (pindah / skala / ganti berkas): pindai ulang
   function lupakan(g) { if (g) delete g.userData.jokOtomatis; }
 
-  window.KURSI = { titikDuduk, kasur, lupakan, _pindai: pindai };
+  window.KURSI = { titikDuduk, kasur, panel, lupakan, _pindai: pindai, _jokSopir: jokSopir };
 })();
