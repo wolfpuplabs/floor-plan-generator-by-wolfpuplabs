@@ -61,20 +61,27 @@ export const tes = {
     assert.deepEqual(r.ganti, { warna: null, baju: 'renang2' });
   },
 
-  'NPC tetap tergambar: tanda "tulang cadangan" lama dibuang saat dimuat; NPC berenang / berbaring tidak ikut uji gambar (dulu salah deteksi → badan meledak / hilang di iPad)': async (page) => {
-    await page.evaluate(() => localStorage.setItem('npcPerbaiki', JSON.stringify({ tulang: 1, kul: 1 })));
+  'NPC tetap tergambar: tanda lama (tulang cadangan, warna polos) dibuang; NPC berenang / berbaring & sesaat setelah memori grafis pulih tidak ikut uji gambar; ganti warna tidak menumpuk tekstur': async (page) => {
+    await page.evaluate(() => localStorage.setItem('npcPerbaiki', JSON.stringify({ tulang: 1, kul: 1, peta: 'polos' })));
     await muatProyekJSON(page, rumah);
     await siap(page);
-    const r = await page.evaluate(() => {
+    const r = await page.evaluate(async () => {
       const U = window.NPC._uji, n = U.NPC.get('nF');
       const out = { simpan: JSON.parse(localStorage.getItem('npcPerbaiki')), perbaikan: { ...U.perbaikan() }, fvt: renderer.capabilities.floatVertexTextures };
       n.renang = { airY: 0 }; n.uji = undefined; U.ujiDanPerbaiki(); out.renang = n.uji === undefined; n.renang = null;
       const pw = n.a.pw.slice(); n.a.pw[9] = 1; U.ujiDanPerbaiki(); out.baring = n.uji === undefined; n.a.pw = pw;
+      // memori grafis baru dipulihkan: uji gambar ditunda (tekstur belum terunggah ulang)
+      GPU.t = performance.now(); n.uji = undefined; U.ujiDanPerbaiki(); out.pulih = n.uji === undefined; GPU.t = -1e9;
       U.ujiDanPerbaiki(); out.tegak = !!n.uji && n.uji.A > 50;
+      // ganti warna berkali-kali: set tekstur lama dibuang (yang dipakai + 2 terakhir)
+      const o = L().objects.find(x => x.id === 'nF');
+      for (const w of ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff']) { o.params.warna = { atas: w }; rebuildScene(); for (let i = 0; i < 40 && U.NPC.get('nF').kunciMat.indexOf(w) < 0; i++) await new Promise(ok => setTimeout(ok, 50)); }
+      out.simpan2 = U.simpan();
       localStorage.removeItem('npcPerbaiki');
       return out; });
-    assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1 }, { kul: 1 }, true]);
-    assert.deepEqual([r.renang, r.baring, r.tegak], [true, true, true], JSON.stringify(r));
+    assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1, v: 2 }, { kul: 1, v: 2 }, true]);
+    assert.deepEqual([r.renang, r.baring, r.pulih, r.tegak], [true, true, true, true], JSON.stringify(r));
+    assert.ok(r.simpan2 <= 3, 'tekstur warna lama dibuang: ' + r.simpan2);
   },
 
   'suara NPC: gumaman sepanjang teks (mati = diam), huft saat kesal, sorakan; tombol suara gumam → dibacakan → mati': async (page) => {

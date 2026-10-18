@@ -130,15 +130,15 @@ export const tes = {
       const m = [...U.NPC.values()][0], pulih = U.ujiGambar(m), kanvas = []; const tpl = await window.LOBI.muatAvatar3D({ bawaan: 'F' }), asli = new Set(); tpl.traverse(x => { if (x.isMesh && x.material.map) asli.add(x.material.map); });
       m.a.model.traverse(x => { if (x.isMesh) kanvas.push(!asli.has(x.material.map)); });
       const d = N.diagnosa();
-      return { normal, tetap, rusak, pulih, kanvas, simpan: localStorage.getItem('npcPerbaiki'), diag: /uji gambar K=\d+ A=\d+ B=\d+ C=\d+/.test(d) && /perbaikan: \{"peta":"asli"\}/.test(d) };
+      return { normal, tetap, rusak, pulih, kanvas, simpan: localStorage.getItem('npcPerbaiki'), diag: /uji gambar K=\d+ A=\d+ B=\d+ C=\d+/.test(d) && /perbaikan: \{"v":2,"peta":"asli"\}/.test(d) };
     });
     await page.evaluate(() => localStorage.removeItem('npcPerbaiki'));
     assert.ok(r.normal.K > 20 && r.normal.A > 50 && r.normal.B > 50 && r.normal.C > 50, 'normal: ' + JSON.stringify(r.normal));
-    assert.equal(r.tetap, '{}', 'tanpa perbaikan bila tergambar');
+    assert.equal(r.tetap, '{"v":2}', 'tanpa perbaikan bila tergambar');
     assert.ok(r.rusak.A === 0 && r.rusak.B > 50, 'tekstur kosong: ' + JSON.stringify(r.rusak));
     assert.ok(r.pulih.A > 50, 'pulih dengan tekstur asli: ' + JSON.stringify(r.pulih));
     assert.ok(r.kanvas.every(k => !k), 'tekstur asli, bukan kanvas pewarnaan');
-    assert.equal(r.simpan, '{"peta":"asli"}'); assert.ok(r.diag, 'diagnosa');
+    assert.equal(r.simpan, '{"v":2,"peta":"asli"}'); assert.ok(r.diag, 'diagnosa');
   },
   'masuk mode jalan saat NPC terpilih (target orbit di NPC): pemain berdiri di depan NPC & menghadapnya, bukan di dalam badannya; badan NPC tetap tampak (tidak ikut disembunyikan sebagai penanda editor)': async (page) => {
     await muatProyekJSON(page, rumah);
