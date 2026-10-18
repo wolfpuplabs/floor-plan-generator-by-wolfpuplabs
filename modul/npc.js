@@ -161,13 +161,25 @@
   /* ---------- PEWARNAAN per benih (tembolok LRU) ---------- */
   const SIMPAN = new Map();
   // kainAsli: kain (atasan / bawahan / sepatu) tetap berwarna asli — baju renang dirancang pemiliknya; kulit & rambut tetap ikut benih
+  // bobot kulit 0–1 (JEV-131): dari kemiripan warna (kroma, tanpa terang) dengan kulit acuan — piksel peralihan di tepi kain
+  // (bikini, tali) ikut diwarnai sebagian; dulu batas keras miripKulit membiarkannya pucat sehingga tepi kain tampak pecah
+  const halus = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  function bobotKulit(r, g, b, ref) {
+    const j = r + g + b + 1, j0 = ref[0] + ref[1] + ref[2] + 1, d = Math.hypot(r / j - ref[0] / j0, g / j - ref[1] / j0, b / j - ref[2] / j0);
+    const sat = (r - b) / j, sat0 = (ref[0] - ref[2]) / j0;
+    return halus(0.16, 0.06, d) * halus(sat0 * 0.25, sat0 * 0.6, sat) * halus(12, 40, lum(r, g, b));
+  }
   function warnai(p, ref, look, kainAsli) {
     const uk = p.uk, out = new Uint8ClampedArray(p.src), rasio = look.kulit.map((v, i) => v / Math.max(1, ref[i]));
     const tujuan = [null, null, look.rambut, look.atas, look.bawah, look.sepatu];
     for (let i = 0; i < uk * uk; i++) {
       const j = i * 4, r = p.src[j], g = p.src[j + 1], b = p.src[j + 2], k = p.kelas[i];
-      if (k === 0 || k === 1) { if ((p.wajah || k === 1) && miripKulit(r, g, b, ref)) { out[j] = r * rasio[0]; out[j + 1] = g * rasio[1]; out[j + 2] = b * rasio[2]; } continue; }
-      const t = tujuan[k]; if (!t || (kainAsli && k !== 2)) continue;
+      if (k === 1 && !p.wajah) { const w = bobotKulit(r, g, b, ref); if (w > 0.001) { out[j] = r * (1 + (rasio[0] - 1) * w); out[j + 1] = g * (1 + (rasio[1] - 1) * w); out[j + 2] = b * (1 + (rasio[2] - 1) * w); } continue; }
+      if (k === 0 || k === 1) { if (p.wajah && miripKulit(r, g, b, ref)) { out[j] = r * rasio[0]; out[j + 1] = g * rasio[1]; out[j + 2] = b * rasio[2]; } continue; }
+      // baju renang: kain tetap berwarna asli, tetapi piksel berwarna kulit di sekitar potongan kain (tepi bikini, padding atlas)
+      // ikut warna kulit — kalau tidak, tepi kain bercak pucat pada kulit gelap
+      if (kainAsli && k !== 2) { const w = bobotKulit(r, g, b, ref); if (w > 0.001) { out[j] = r * (1 + (rasio[0] - 1) * w); out[j + 1] = g * (1 + (rasio[1] - 1) * w); out[j + 2] = b * (1 + (rasio[2] - 1) * w); } continue; }
+      const t = tujuan[k]; if (!t) continue;
       const l = lum(r, g, b), m = p.rata[k];
       if (k !== 2 && l > m * 1.7 && l > 150) continue;                    // lis / garis terang: tetap
       const f = clamp(l / Math.max(8, m), 0, 2.2);
@@ -480,8 +492,10 @@
   function rangkaKasur(c, o) {
     if (!o) return null;
     if (/^bed_/.test(o.type) && FURN[o.type] && c.userData.duduk) { const h = c.userData.duduk.h || 0.55;
-      return { w: FURN[o.type].f[0], yaw: o.rotY || 0, titik: (x, y, z) => c.localToWorld(new THREE.Vector3(x, h + y, z)) }; }
+      // z digeser 17 cm ke kepala (JEV-131): pinggul di −0,22 → kepala tepat di bantal tidur, bukan di tepi bawahnya
+      return { w: FURN[o.type].f[0], yaw: o.rotY || 0, titik: (x, y, z) => c.localToWorld(new THREE.Vector3(x, h + y, z - 0.17)) }; }
     const B = c.userData.baring; if (o.kind !== 'model' || !B) return null;
+    if (window.KURSI) window.KURSI.kasur(c, B);                          // kepala di bantal, bukan tengah kotak batas (JEV-131)
     const s = Math.sin(B.a), k = Math.cos(B.a), y0 = c.getWorldPosition(new THREE.Vector3()).y + (B.h != null ? B.h : B.hl * c.scale.y);
     return { w: B.wid || 1, yaw: (o.rotY || 0) + B.a, titik: (x, y, z) => c.localToWorld(new THREE.Vector3(B.cx + x * k + z * s, 0, B.cz - x * s + z * k)).setY(y0 + y) };
   }
@@ -1047,10 +1061,12 @@
     penyunting(ins, d, k => { HIST.label = k === 'baju' ? 'Pakaian NPC' : 'Warna NPC'; rebuildScene(); renderInspector(); });
     const KN = window.KARTU_NPC;
     if (KN) {
-      fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...KN.URUT.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], typeof d.params.kartu === 'string' && KN.KARTU[d.params.kartu] ? d.params.kartu : '',
+      // kepribadian mengikuti tubuh NPC (JEV-130): Karakter F hanya kartu perempuan, M hanya laki-laki
+      const jk = jenisAman(d.type), pas = KN.URUT.filter(k => KN.cocok(k, jk));
+      fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...pas.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], pas.includes(d.params.kartu) ? d.params.kartu : '',
         v => { if (v) d.params.kartu = v; else delete d.params.kartu; HIST.label = 'Kepribadian NPC'; rebuildScene(); renderInspector(); }));
       const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 30; nm.value = typeof d.params.nama === 'string' ? d.params.nama : '';
-      const kk = KN.KARTU[d.params.kartu] || KN.KARTU[KN.URUT[benihAman(d) % 5 % 4]]; nm.placeholder = kk.nama;
+      nm.placeholder = KN.KARTU[KN.kartuNpc(d.params.kartu, jk, d.params.benih)].nama;
       nm.onchange = () => { const v = nm.value.trim().slice(0, 30); if (v) d.params.nama = v; else delete d.params.nama; HIST.label = 'Nama NPC'; rebuildScene(); };
       fRow(ins, 'Nama', nm);
     } else muatModul('kartunpc').then(() => { if (window.KARTU_NPC) renderInspector(); }, () => {});
@@ -1066,5 +1082,5 @@
     suara: { gumam, sorak: suaraSorak, huft, mode: m => { if (m) MODE_SUARA = m; return MODE_SUARA; } }, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
-    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, kolamDekat: id => kolamDekat(NPC.get(id)), masukKolam: (id, K) => masukKolam(NPC.get(id), K), bajuRenang, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI, simpan: () => SIMPAN.size } };
+    _uji: { NPC, bobotKulit, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, kolamDekat: id => kolamDekat(NPC.get(id)), masukKolam: (id, K) => masukKolam(NPC.get(id), K), bajuRenang, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI, simpan: () => SIMPAN.size } };
 })();

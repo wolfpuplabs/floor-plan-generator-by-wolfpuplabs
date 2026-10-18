@@ -6232,6 +6232,170 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-129",
+   "judul": "Eksposur otomatis ringan untuk kualitas Halus & Cepat — siang tidak lagi gelap",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Sejak JEV-124 (efek realtime hanya di Tinggi), kualitas Halus memakai faktor eksposur tetap per suasana yang dikalibrasi di dalam ruangan terang (siang 0,4). Adegan yang lebih redup — luar rumah, langit foto 360° matahari terbit, hujan/mendung, tampilan editor dari atas — jadi jauh lebih gelap daripada Tinggi yang menyesuaikan eksposur sendiri (terukur: editor 26 vs 87, luar rumah 61 vs 100 rata-rata luminans).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-18 (mode jalan & editor, Halus, Siang lembut, cuaca Acak, langit HDRI 'Lakeside Sunrise'): \"kenap day jg jadi gelap?\"",
+    "alternatif": [
+     "menaikkan faktor tetap (luar rumah membaik, dalam ruangan jadi terlalu terang)",
+     "menyalakan HDR penuh di Halus (memori & GPU iPad — alasan JEV-124)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/eksposur.js dimuat malas sesudah aplikasi siap; tiap ±0,4 dtk satu gambar adegan 48×32 piksel tanpa pembaruan bayangan + baca piksel 6 KB; tidak ada buffer layar penuh tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "terang adegan konsisten antar-kualitas; malam tetap terasa malam (kunci eksposur per suasana sama dengan Tinggi)"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan adegan siang gelap di kualitas Halus",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
+  },
+  {
+   "id": "JEV-130",
+   "judul": "Jok otomatis untuk model unggahan & kepribadian NPC sesuai tubuh F/M",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Duduk di model unggahan memakai tengah kotak batas & arah +Z model: model berisi dua kursi kemah membuat pemain duduk di celah antara keduanya dan menghadap arah salah; di mobil pemain duduk di antara jok depan. Kepribadian otomatis NPC dipilih tanpa melihat tubuhnya, sehingga NPC F bisa menjadi 'Pak Bima' / 'Pak Joko'.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna 2026-10-18 20.05: \"arah duduk ga bener\" & \"NPC F buat karakter female, jadi jangan karakter cowo kalo milih itu\"",
+    "alternatif": [
+     "pengguna mengatur Arah hadap & memecah model per kursi secara manual",
+     "pilih kepribadian manual per NPC"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/kursi.js dimuat malas; pemindaian sekali per model (±1 ms untuk model uji, BVH untuk model berat), disimpan di userData"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "Arah hadap manual tetap tersedia; bawaan Otomatis"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan arah/posisi duduk di model & NPC beda jenis kelamin",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
+  },
+  {
+   "id": "JEV-131",
+   "judul": "Kepala di bantal saat berbaring, tepi baju renang tidak bercak, resolusi adaptif pulih",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "(1) Saat berbaring, pinggul diletakkan di tengah ranjang sehingga kepala jatuh di tepi bawah bantal; pada model kasur dengan sandaran tebal / bangku kaki kepala jatuh jauh di depan bantal. (2) Baju renang: pewarnaan kulit berbatas keras membiarkan piksel peralihan di tepi bikini berwarna kulit asli, tampak bercak pucat pada kulit gelap. (3) Resolusi adaptif hanya naik lagi pada ≥ 45 fps — iPad jarang mencapainya, sehingga resolusi turun bertahap sampai 0,5× dan terbawa ke editor.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-18 20.51: \"kepala ga diatas bantal, kok jadi low res gini di editor juga, tekstur bikini pecah lg\"",
+    "alternatif": [
+     "menurunkan kualitas render secara manual",
+     "mengatur tinggi/arah kepala per ranjang"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pemindaian kasur sekali per model (±70 sinar); resolusi adaptif tetap turun saat < 24 fps, batas bawah 0,6"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan kepala di luar bantal, tepi baju bercak, gambar buram",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

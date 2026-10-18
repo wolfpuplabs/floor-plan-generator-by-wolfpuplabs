@@ -4,9 +4,9 @@ import { muatProyekJSON } from './harness.mjs';
 const require = createRequire(import.meta.url);
 
 // JEV-111: date sim — obrolan pilihan A–D (gagasan open-ai-npc, MIT), suasana hati, kencan + cutscene, nyatakan perasaan / pacaran
-const npc = (id, x, z, kartu) => ({ id, kind: 'npc', type: 'F', x, y: 0, z, rotY: Math.PI, sx: 1, sy: 1, sz: 1, params: { benih: 7, jelajah: 0, kartu } });
+const npc = (id, x, z, kartu, type = 'F') => ({ id, kind: 'npc', type, x, y: 0, z, rotY: Math.PI, sx: 1, sy: 1, sz: 1, params: { benih: 7, jelajah: 0, kartu } });   // kartu mengikuti tubuh (JEV-130)
 const rumah = { v: 1, levels: [{ name: 'L1', height: 3, walls: [[0, 0, 10, 0], [10, 0, 10, 8], [10, 8, 0, 8], [0, 8, 0, 0]].map(([x1, z1, x2, z2], i) => ({ id: 'w' + i, x1, z1, x2, z2, thickness: 0.15, openings: [] })),
-  objects: [npc('nA', 4, 3, 'tukang'), npc('nK', 8, 3, 'anak')] }] };
+  objects: [npc('nA', 4, 3, 'tukang', 'M'), npc('nK', 8, 3, 'anak')] }] };
 
 export const tes = {
   'api/npc mode pilihan: suasana disaring 0–3, prompt meminta 4 pilihan ramah semua umur; kartu "anak" lama ditolak; pilihan AI dibaca & disaring': async () => {

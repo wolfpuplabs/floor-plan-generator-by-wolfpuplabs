@@ -1660,9 +1660,9 @@ const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:2.3, run:3.9, fov:
    shader kosong pada ½ resolusi, AO dihitung & dihaluskan pada ½ resolusi,
    lalu dikalikan ke gambar utama — antialias dan pencahayaan asli tetap.
    ===================================================================== */
-const FX={on:true, siap:false, eks:{siang:0.4, senja:0.73, malam:0.88, gelap:0.88}, ke:0.4};   // eks: eksposur tanpa HDR (dikalibrasi ke terang rata-rata Tinggi)
+const FX={on:true, siap:false, eks:{siang:0.4, senja:0.73, malam:0.88, gelap:0.88}, ke:0.4};   // eks: awal tanpa HDR; lalu diukur modul/eksposur.js
 try{ FX.on=localStorage.getItem('fx_on')!=='0'; }catch(e){}
-// hanya di kualitas Tinggi (JEV-124): Halus & Cepat menggambar langsung tanpa AO/bloom/HDR — buffer efeknya dikecilkan agar memori lega
+// efek hanya di Tinggi (JEV-124); Halus & Cepat: buffer efek dikecilkan
 var RQ_KINI='halus';                // kualitas render kini (setRenderQuality)
 const fxAktif=()=>FX.on&&RQ_KINI==='tinggi';
 function fxKecilkan(){ const P=FX.pipa||{}; for(const r of [P.rtAdegan,P.h1,P.h2,P.q1,P.q2,FX.rtD,FX.rtA,FX.rtB]) if(r&&r.width>2) r.setSize(2,2); }
@@ -1871,7 +1871,7 @@ const _ukDB=new THREE.Vector2();
 let FX_T0=0;
 function renderFrame(){
   if(!window.__siap){ renderer.render(scene,camera); return; }
-  if(!fxAktif()){ const e=renderer.toneMappingExposure; renderer.toneMappingExposure=e*FX.ke; renderer.render(scene,camera); renderer.toneMappingExposure=e; return; }
+  if(!fxAktif()){ window.EKSPOSUR&&window.EKSPOSUR.langkah(); const e=renderer.toneMappingExposure; renderer.toneMappingExposure=e*FX.ke; renderer.render(scene,camera); renderer.toneMappingExposure=e; return; }
   if(!renderer.capabilities.isWebGL2){ renderer.render(scene,camera); fxAO(); return; }
   fxSiapkan(); const P=fxPipelineSiap();
   renderer.getDrawingBufferSize(_ukDB);
@@ -1920,13 +1920,14 @@ function segarFX(){
 
 const clock=new THREE.Clock();
 var JEDA_RENDER=0;                  // panel AR terbuka: adegan utama tertutup — tidak digambar (JEV-083)
-// resolusi adaptif (JEV-093): frame lambat terus (model berat, iPad panas) → piksel render turun bertahap; lancar lagi → naik
+// resolusi adaptif (JEV-093): lambat → piksel turun; lancar → naik
 const RES={skala:1, dasar:Math.min(devicePixelRatio,2), lambat:0, lancar:0};
 function aturResolusi(t){
   if(document.hidden||t>0.5) return;
-  if(t>1/24){ RES.lambat+=t; RES.lancar=0; } else if(t<1/45){ RES.lancar+=t; RES.lambat=Math.max(0,RES.lambat-t); }
+  // pulih bila ≥ 30 fps (JEV-131)
+  if(t>1/24){ RES.lambat+=t; RES.lancar=0; } else if(t<1/30){ RES.lancar+=t; RES.lambat=Math.max(0,RES.lambat-t); }
   let k=RES.skala;
-  if(RES.lambat>1.5&&k>0.5){ k=Math.max(0.5,k*0.85); RES.lambat=0; } else if(RES.lancar>5&&k<1){ k=Math.min(1,k/0.85); RES.lancar=0; }
+  if(RES.lambat>1.5&&k>0.6){ k=Math.max(0.6,k*0.85); RES.lambat=0; } else if(RES.lancar>4&&k<1){ k=Math.min(1,k/0.85); RES.lancar=0; }
   if(k!==RES.skala){ RES.skala=k; renderer.setPixelRatio(RES.dasar*k); fitViewport(); }
 }
 (function animate(){
@@ -5945,7 +5946,7 @@ function hiasNyala(g,o){
   g.userData.nyalaJenis=jenis;
   if(jenis==='duduk'){ const D=DUDUK[o.type], p=o.params||{};
     // tanpa titik duduk bawaan / arah diatur sendiri: dari kotak batas seperti model
-    if(!D || p.arahDuduk){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||(D&&D.h)||0.45,0.15,1.2), arah:+p.arahDuduk||0}; return; }
+    if(!D || p.arahDuduk){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||(D&&D.h)||0.45,0.15,1.2), arah:p.arahDuduk?+p.arahDuduk:null}; return; }
     g.userData.duduk={h:p.tinggiDuduk!=null?clamp(+p.tinggiDuduk,0.15,1.2):D.h, n:D.n||1, z:D.z||0, w:(FURN[o.type]&&FURN[o.type].f[0])||0.5}; return; }
   if(jenis==='lampu'||jenis==='api'){
     if(!HALO.lampu.map){ HALO.lampu.map=haloTex('rgba(255,255,255,1)'); HALO.api.map=HALO.lampu.map; }
@@ -6027,7 +6028,7 @@ function hiasModel(g,o){
   const p=o.params||{};
   g.userData.nyalaJenis=jenis;
   if(jenis==='audio'){ g.userData.audioJenis=['music_box','cd_player','cassette_player','vinyl_player'].includes(p.audioJenis)?p.audioJenis:'music_box'; return; }
-  if(jenis==='duduk'){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||0.45,0.15,1.2), arah:+p.arahDuduk||0}; return; }
+  if(jenis==='duduk'){ g.userData.duduk={model:true, h:clamp(+p.tinggiDuduk||0.45,0.15,1.2), arah:p.arahDuduk!=null?+p.arahDuduk:null}; return; }
   if(jenis!=='lampu'&&jenis!=='api'&&jenis!=='baring') return;
   g.updateMatrixWorld(true);
   const bb=new THREE.Box3().setFromObject(g); if(bb.isEmpty()) return;
@@ -7507,8 +7508,8 @@ function inspektorInteraksi(ins,d){
   const j=jenisNyala(d);
   if(j==='duduk'){
     fRow(ins,'Tinggi dudukan (m)',numInput(+d.params.tinggiDuduk||0.45,0.01,v=>ubah('Tinggi dudukan',()=>{ d.params.tinggiDuduk=clamp(v,0.15,1.2); }),0.15,1.2));
-    fRow(ins,'Arah hadap',selInput([['0','Depan model (+Z)'],['90','Kanan (+X)'],['180','Belakang (−Z)'],['270','Kiri (−X)']],String(+d.params.arahDuduk||0),v=>ubah('Arah duduk',()=>{ d.params.arahDuduk=+v; })));
-    ins.appendChild(el('p','hint','Di mode jalan, bidik model ini lalu tekan E / ketuk Duduk. Bila pandangan menghadap sandaran, ganti Arah hadap.'));
+    fRow(ins,'Arah hadap',selInput([['','Otomatis'],['0','Depan model (+Z)'],['90','Kanan (+X)'],['180','Belakang (−Z)'],['270','Kiri (−X)']],d.params.arahDuduk!=null?String(+d.params.arahDuduk):'',v=>ubah('Arah duduk',()=>{ if(v==='') delete d.params.arahDuduk; else d.params.arahDuduk=+v; })));
+    ins.appendChild(el('p','hint','Di mode jalan, bidik jok yang mau diduduki lalu tekan E / ketuk Duduk. Otomatis: jok & arah dicari dari bentuk model (menjauhi sandaran).'));
   } else if(j==='baring'){
     fRow(ins,'Tinggi kasur (m)',numInput(d.params.tinggiBaring!=null?+d.params.tinggiBaring:0.55,0.01,v=>ubah('Tinggi kasur',()=>{ d.params.tinggiBaring=clamp(v,0.1,1.5); }),0.1,1.5));
     fRow(ins,'Arah kepala',selInput([['0','Belakang model (−Z)'],['90','Kiri (−X)'],['180','Depan (+Z)'],['270','Kanan (+X)']],String(+d.params.arahBaring||0),v=>ubah('Arah kepala',()=>{ if(+v) d.params.arahBaring=+v; else delete d.params.arahBaring; })));
@@ -8061,7 +8062,7 @@ function uriLuarGLTF(buf){
   return luar.length ? luar : null;
 }
 function parseAsset(id,buf){
-  // iPad/iPhone (JEV-125): tekstur model unggahan diperkecil saat dimuat ke GPU (warna/normal 1K, lain 512); berkas proyek tetap tajam
+  // iPad/iPhone (JEV-125): tekstur unggahan diperkecil di GPU saja
   if(perangkatHemat()&&!buf.hemat) return rampingkanGLB(buf,512,1024).then(o=>{ o.buf.hemat=1; return parseAsset(id,o.buf).then(r=>(ASSET_BUF.set(id,buf),r)); });
   return new Promise((res,rej)=>{
     const luar=uriLuarGLTF(buf);
@@ -13985,7 +13986,7 @@ function pasangPilihAvatar3D(akar){
   const nama=akar.querySelector('.lobi-av3d-nama'), hapus=akar.querySelector('.lobi-av3d-hapus'), pilih=akar.querySelector('.lobi-av3d-pilih');
   const simpanAv=()=>{ try{ if(AVATAR_LOBI.d) localStorage.setItem('lobiAvatar3D',JSON.stringify(AVATAR_LOBI.d)); else localStorage.removeItem('lobiAvatar3D'); }catch(e){ /* mode privat */ } };
   const benihBaru=()=>Math.floor(Math.random()*4294967296);
-  // kustom tampilan: warna per bagian (kulit, rambut, atasan, bawahan, sepatu) + pakaian; 🎲 Ganti warna = benih baru, warna otomatis
+  // kustom tampilan: warna per bagian + pakaian; 🎲 = benih baru
   const warna=el('div','lobi-av-warna'), contoh=el('div','lobi-av-contoh'), ganti=el('button','btn sm ghost','🎲 Ganti warna'); ganti.type='button';
   warna.append(contoh,ganti);
   const isiWarna=()=>{ const d=AVATAR_LOBI.d; warna.hidden=!(d&&d.bawaan); contoh.textContent=''; if(warna.hidden) return;
@@ -15144,7 +15145,7 @@ function stepGaris(dt){
 const MATA_DUDUK=0.72;
 function titikDuduk(t){
   const g=t.grp, D=g.userData.duduk||{h:0.45}; g.updateMatrixWorld(true);
-  if(D.model){
+  if(D.model){ const k=window.KURSI&&window.KURSI.titikDuduk(t,D); if(k) return k;     // jok otomatis (JEV-130)
     const bb=new THREE.Box3().setFromObject(g), c=bb.getCenter(new THREE.Vector3()), a=D.arah*D2R;
     const arah=new THREE.Vector3(Math.sin(a),0,Math.cos(a)).transformDirection(g.matrixWorld); arah.y=0; arah.normalize();
     return {pos:new THREE.Vector3(c.x,bb.min.y+D.h,c.z).addScaledVector(arah,0.04), arah};
@@ -15175,9 +15176,9 @@ function baring(t){
   const g=t.grp, o=cariObjek(t.id), D=g.userData.duduk||{h:0.55}, f=(FURN[o&&o.type]||{f:[1.6,2]}).f, B=g.userData.baring; g.updateMatrixWorld(true);
   if(FPS.duduk) berdiri(); FPS.gaya=null;
   let tengah, mata, yaw=(o&&o.rotY)||0;
-  if(B){ const s=Math.sin(B.a), c=Math.cos(B.a), r=B.len*0.3, y=g.getWorldPosition(new THREE.Vector3()).y+(B.h!=null?B.h:B.hl*g.scale.y);   // model unggahan (JEV-123)
+  if(B){ window.KURSI&&window.KURSI.kasur(g,B); const s=Math.sin(B.a), c=Math.cos(B.a), r=B.r||B.len*0.3, y=g.getWorldPosition(new THREE.Vector3()).y+(B.h!=null?B.h:B.hl*g.scale.y);   // model unggahan (JEV-123)
     tengah=g.localToWorld(new THREE.Vector3(B.cx,0,B.cz)).setY(y); mata=g.localToWorld(new THREE.Vector3(B.cx-s*r,0,B.cz-c*r)).setY(y+0.3); yaw+=B.a; }
-  else { tengah=g.localToWorld(new THREE.Vector3(0,D.h,-0.05)); mata=g.localToWorld(new THREE.Vector3(0,D.h+0.3,-(f[1]/2-0.4))); }
+  else { tengah=g.localToWorld(new THREE.Vector3(0,D.h,-0.22)); mata=g.localToWorld(new THREE.Vector3(0,D.h+0.3,-(f[1]/2-0.25))); }
   FPS.duduk={id:t.id, baring:{x:tengah.x, y:tengah.y, z:tengah.z, yaw}, dari:camera.position.clone(), mata, t:0, asal:{x:camera.position.x, z:camera.position.z, feet:FPS.feet}};
   FPS.yaw=yaw; FPS.pitch=0.45; FPS.keys.clear(); if(FPS.move){ FPS.move.f=0; FPS.move.s=0; }
   FPS.info='<b>Berbaring</b> · '+(SENTUH?'ketuk <b>Berdiri</b> atau geser stik':'<b>E</b> atau <b>W A S D</b> untuk bangun'); $('#fpsinfo').innerHTML=FPS.info;
@@ -15470,7 +15471,7 @@ function cariTarget(ray){
   }
   return null;
 }
-// AKTIVITAS (JEV-110): mancing di kolam ikan, panggang / masak, potong kayu, angkat & taruh barang kecil, berenang — modul/aktivitas.js
+// AKTIVITAS (JEV-110) — modul/aktivitas.js
 const LABEL_AKT={mancing:'Mancing', panggang:'Panggang', masak:'Masak', potong:'Potong kayu', angkat:'Angkat', taruh:'Taruh', renang:'Berenang',
   ambilkayu:'Ambil kayu bakar', kayu:'Tambah kayu bakar', hangat:'Hangatkan diri', marshmallow:'Bakar marshmallow'};
 function aksiAktivitas(o){
@@ -16653,7 +16654,7 @@ setSuasana('siang');
 if(window.innerWidth<900 && proyekKosong()) setSidebar(false);
 perbaruiMulai();
 for(const s of $$('.pilih-bahasa')){ s.value=BAHASA.kode; s.onchange=()=>gantiBahasa(s.value); }
-window.__siap=true;
+window.__siap=true; for(const m of ['eksposur','kursi']) muatModul(m).catch(()=>{});   // JEV-129/130
 // tautan lihat-saja dibuka SETELAH halaman tampil: membangun rumah (shader, GI) butuh
 // beberapa detik dan tidak boleh menahan tampilan pertama
 if(/^#(lihat|l)=/.test(location.hash)){
@@ -16679,7 +16680,7 @@ try{ const pr=JSON.parse(localStorage.getItem('langitPref')||'null');
   if(pr){ Object.assign(langitP(),{jenis:LANGIT_JENIS[pr.jenis]?pr.jenis:'acak', res:pr.res==='2k'?'2k':'4k', editor:pr.editor!==false,
       pilih:pr.pilih==='acak'?'acak':'manual', id:typeof pr.id==='string'&&ID_AMAN.test(pr.id)?pr.id:null, nama:typeof pr.nama==='string'?pr.nama.slice(0,120):''});
     if(pr.mode==='foto') mulaiLangitFoto(); } }catch(e){}
-// ikon layar utama iOS (JEV-087): diambil lewat sesi halaman & dipasang sebagai data: URL — iOS kadang gagal mengambilnya sendiri
+// ikon layar utama iOS (JEV-087) sebagai data: URL
 addEventListener('load',()=>{ const l=document.querySelector('link[rel="apple-touch-icon"]');
   if(!l||!/iP(ad|hone|od)|Macintosh/.test(navigator.userAgent)) return;
   fetch(l.href,{credentials:'same-origin'}).then(r=>r.ok&&/^image\/png/.test(r.headers.get('content-type')||'')?r.blob():null).then(b=>{ if(!b) return;

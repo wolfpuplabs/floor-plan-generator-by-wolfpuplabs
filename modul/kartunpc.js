@@ -9,7 +9,7 @@
   'use strict';
   const T = (id, en) => ({ id, en });
   const KARTU = {
-    tetangga: { nama: 'Bu Sari', peran: T('Tetangga', 'Neighbour'),
+    tetangga: { nama: 'Bu Sari', jk: 'F', peran: T('Tetangga', 'Neighbour'),
       deskripsi: T('Tetangga sebelah berusia 50-an yang ramah, gemar berkebun dan tahu semua kabar di lingkungan.', 'A friendly next-door neighbour in her 50s who loves gardening and knows all the neighbourhood news.'),
       kepribadian: T('Hangat, suka bercerita, sedikit kepo, senang membantu tetangga baru.', 'Warm, chatty, a little nosy, happy to help new neighbours.'),
       gaya: T('Santai dan akrab, sering menyebut tanaman & resep masakan.', 'Casual and familiar, often mentions plants and recipes.'),
@@ -20,7 +20,7 @@
       topik: T(['Tanaman di depan rumah itu butuh sinar matahari pagi, lho.', 'Di ujung jalan ada tukang sayur, datang tiap jam enam pagi.', 'Lingkungan sini aman, satpamnya ramah.'],
         ['The plants out front need morning sun, you know.', 'There\'s a vegetable seller at the end of the street, every morning at six.', 'This neighbourhood is safe, the security guard is friendly.']),
       hadiah: { suka: T(['bibit bunga', 'kue', 'pupuk'], ['flower seeds', 'cake', 'fertiliser']), benci: T(['bunga plastik'], ['plastic flowers']) } },
-    arsitek: { nama: 'Pak Bima', peran: T('Arsitek', 'Architect'),
+    arsitek: { nama: 'Pak Bima', jk: 'M', peran: T('Arsitek', 'Architect'),
       deskripsi: T('Arsitek berpengalaman 20 tahun yang merancang rumah ini; teliti soal cahaya, sirkulasi udara dan proporsi.', 'An architect with 20 years of experience who designed this house; meticulous about light, airflow and proportion.'),
       kepribadian: T('Tenang, detail, bangga pada karyanya, senang menjelaskan alasan desain.', 'Calm, detailed, proud of his work, enjoys explaining design decisions.'),
       gaya: T('Rapi dan teknis tapi mudah dipahami, sering menyebut cahaya alami & ruang.', 'Neat and technical but easy to follow, often mentions natural light and space.'),
@@ -31,7 +31,7 @@
       topik: T(['Bukaan jendela diletakkan berseberangan supaya udara mengalir silang.', 'Tinggi plafon dibuat lega agar ruangan tidak terasa sempit.', 'Material terang memantulkan cahaya alami lebih jauh ke dalam ruang.'],
         ['The windows face each other so air can cross-ventilate.', 'The ceiling is kept generous so the rooms don\'t feel cramped.', 'Light materials bounce daylight deeper into the room.']),
       hadiah: { suka: T(['pensil gambar', 'buku arsitektur', 'kopi'], ['drawing pencils', 'an architecture book', 'coffee']), benci: T(['denah asal jadi'], ['a sloppy floor plan']) } },
-    agen: { nama: 'Mbak Rina', peran: T('Agen properti', 'Estate agent'),
+    agen: { nama: 'Mbak Rina', jk: 'F', peran: T('Agen properti', 'Estate agent'),
       deskripsi: T('Agen properti muda yang energik dan tahu harga pasar di kawasan ini.', 'A young, energetic estate agent who knows the market prices in this area.'),
       kepribadian: T('Persuasif, optimis, cepat tanggap, menghargai calon pembeli yang serius.', 'Persuasive, optimistic, quick, values serious buyers.'),
       gaya: T('Antusias, memakai istilah promosi, selalu menonjolkan kelebihan rumah.', 'Enthusiastic, uses sales language, always highlights the home\'s strengths.'),
@@ -42,7 +42,7 @@
       topik: T(['Lokasinya dekat sekolah dan pasar, nilai investasinya bagus.', 'Sertifikatnya sudah SHM, aman.', 'Tata letak terbuka seperti ini sedang banyak dicari.'],
         ['It\'s close to schools and the market — a good investment.', 'The title deed is freehold, all clear.', 'Open layouts like this are in high demand.']),
       hadiah: { suka: T(['kopi', 'kartu nama', 'brosur'], ['coffee', 'business cards', 'brochures']), benci: T(['tawaran asal-asalan'], ['a lowball offer']) } },
-    tukang: { nama: 'Pak Joko', peran: T('Tukang', 'Builder'),
+    tukang: { nama: 'Pak Joko', jk: 'M', peran: T('Tukang', 'Builder'),
       deskripsi: T('Tukang bangunan senior yang ikut membangun rumah ini, tangannya kasar tapi hatinya baik.', 'A senior builder who helped build this house, rough hands but a kind heart.'),
       kepribadian: T('Jujur, sederhana, bangga pada kerja rapi, tidak suka orang yang meremehkan pekerjaan tangan.', 'Honest, simple, proud of tidy work, dislikes people who look down on manual work.'),
       gaya: T('Singkat, logat santai, sering menyebut semen, bata dan waterpass.', 'Short, relaxed accent, often mentions cement, bricks and spirit levels.'),
@@ -53,7 +53,7 @@
       topik: T(['Adukan semen yang pas itu kunci tembok awet.', 'Lantai keramik dipasang dengan kemiringan sedikit ke arah saluran air.', 'Kusen pintu dipasang dulu sebelum dinding naik.'],
         ['The right cement mix is the key to a lasting wall.', 'Tiles are laid with a slight slope towards the drain.', 'Door frames go in before the walls go up.']),
       hadiah: { suka: T(['kopi', 'rokok kretek', 'nasi bungkus'], ['coffee', 'clove cigarettes', 'a packed lunch']), benci: T(['komplain tanpa alasan'], ['pointless complaints']) } },
-    pandai_besi: { nama: 'Thorne', peran: T('Pandai besi', 'Blacksmith'),
+    pandai_besi: { nama: 'Thorne', jk: 'M', peran: T('Pandai besi', 'Blacksmith'),
       deskripsi: T('Pandai besi 50-an berjanggut tebal dan celemek bernoda jelaga; senjatanya terkenal tak pernah patah, tapi ia pilih-pilih pelanggan.', 'A gruff but skilled blacksmith in his 50s with a thick beard and soot-stained apron, known for weapons that never break but picky about who he works with.'),
       kepribadian: T('Pemarah, skeptis, bangga pada keahliannya, lunak pada yang menghargai kerja tangan.', 'Grumpy, skeptical, proud of his craft, soft on those who respect it.'),
       gaya: T('Kalimat pendek, kadang menggerutu, banyak perumpamaan tungku & landasan.', 'Short, direct sentences with occasional grunts and forge metaphors.'),
@@ -64,7 +64,7 @@
       topik: T(['Baja yang baik ditempa sabar, bukan buru-buru.', 'Landasan ini warisan ayahku.', 'Rumahmu butuh engsel pintu yang kuat — aku bisa membuatnya.'],
         ['Good steel is forged with patience, not haste.', 'This anvil was my father\'s.', 'Your house needs sturdy door hinges — I can make them.']),
       hadiah: { suka: T(['bijih langka', 'palu bagus', 'batu asah'], ['rare ore', 'a fine hammer', 'a whetstone']), benci: T(['besi karatan'], ['rusty scrap']) } },
-    pedagang: { nama: 'Elara', peran: T('Pedagang', 'Merchant'),
+    pedagang: { nama: 'Elara', jk: 'F', peran: T('Pedagang', 'Merchant'),
       deskripsi: T('Pedagang elegan berusia 30-an dengan mata tajam dan senyum hangat; membawa barang dari negeri jauh dan tahu rahasia setiap desa.', 'An elegant merchant in her 30s with keen eyes and a warm smile, bringing goods from distant lands and knowing every village\'s secrets.'),
       kepribadian: T('Cerdik tapi adil, jeli, suka tawar-menawar, menghormati yang jujur.', 'Cunning but fair, observant, loves a good bargain, respects honesty.'),
       gaya: T('Halus dan meyakinkan, memakai perumpamaan pasar.', 'Smooth and persuasive, uses market metaphors.'),
@@ -75,7 +75,7 @@
       topik: T(['Rempah dari timur ini cocok untuk dapur rumahmu.', 'Kain ini akan indah jadi gorden ruang tamu.', 'Setiap rumah punya cerita; rumah ini terasa hangat.'],
         ['These eastern spices would suit your kitchen.', 'This silk would make lovely living-room curtains.', 'Every house has a story; this one feels warm.']),
       hadiah: { suka: T(['permata langka', 'rempah eksotis', 'sutra'], ['rare gems', 'exotic spices', 'silk']), benci: T(['barang palsu'], ['counterfeit goods']) } },
-    penyihir: { nama: 'Zephyr', peran: T('Penyihir', 'Wizard'),
+    penyihir: { nama: 'Zephyr', jk: 'M', peran: T('Penyihir', 'Wizard'),
       deskripsi: T('Penyihir tua berjanggut putih panjang dengan mata yang seolah melihat melampaui dunia fisik.', 'An ancient wizard with a flowing white beard and eyes that seem to see beyond the physical realm.'),
       kepribadian: T('Bijak tapi penuh teka-teki, menjunjung pengetahuan, sabar pada yang ingin belajar.', 'Wise but enigmatic, values knowledge, patient with those who seek understanding.'),
       gaya: T('Perlahan dan berjeda, memakai perumpamaan sihir, kadang berteka-teki.', 'Measured with pauses, magical metaphors, sometimes speaks in riddles.'),
@@ -88,6 +88,11 @@
       hadiah: { suka: T(['buku kuno', 'kristal mana', 'gulungan mantra'], ['an ancient grimoire', 'a mana crystal', 'a spell scroll']), benci: T(['jimat palsu'], ['a fake amulet']) } },
   };
   const URUT = ['tetangga', 'arsitek', 'agen', 'tukang', 'pandai_besi', 'pedagang', 'penyihir'];
+  // JEV-130: kartu mengikuti tubuh NPC — NPC F hanya kartu perempuan, NPC M hanya kartu laki-laki (jk). Otomatis: salah satu
+  // kartu bertema rumah (4 pertama) yang cocok; kartu pilihan yang tidak cocok (proyek lama) diganti otomatis.
+  const cocok = (id, jk) => !!KARTU[id] && (!jk || KARTU[id].jk === jk);
+  const kartuNpc = (id, jk, benih) => { if (typeof id === 'string' && Object.prototype.hasOwnProperty.call(KARTU, id) && cocok(id, jk)) return id;
+    const c = URUT.slice(0, 4).filter(k => cocok(k, jk)); return c[(benih >>> 0) % c.length]; };
   // tingkat relasi sama dengan RelationshipLevel aslinya (skor −100…100)
   const TINGKAT = [['benci', -100, -50], ['tidakSuka', -50, -20], ['netral', -20, 20], ['suka', 20, 50], ['sayang', 50, 80], ['pujaan', 80, 101]];
   const tingkat = s => { s = Math.max(-100, Math.min(100, +s || 0)); return (TINGKAT.find(([, a, b]) => s >= a && s < b) || TINGKAT[2])[0]; };
@@ -95,6 +100,6 @@
     benci: 'You despise this player. Be hostile, dismissive, and short.', tidakSuka: 'You don\'t trust this player. Be cautious, skeptical, and reluctant.',
     netral: 'Treat this player as a stranger. Be polite but distant.', suka: 'You are friendly with this player. Be warm, helpful, and conversational.',
     sayang: 'You consider this player a friend. Be very warm and share personal stories.', pujaan: 'You deeply admire and trust this player. Be extremely warm and loyal.' };
-  const isi = { KARTU, URUT, TINGKAT, tingkat, SIKAP };
+  const isi = { KARTU, URUT, TINGKAT, tingkat, SIKAP, cocok, kartuNpc };
   if (typeof module !== 'undefined' && module.exports) module.exports = isi; else g.KARTU_NPC = isi;
 })(typeof window !== 'undefined' ? window : this);

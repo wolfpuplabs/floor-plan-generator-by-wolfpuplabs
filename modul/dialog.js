@@ -39,8 +39,8 @@
 
   /* ---------- kartu untuk satu NPC ---------- */
   function kartuNpc(o) {
-    const p = (o && o.params) || {}, ada = id => typeof id === 'string' && Object.prototype.hasOwnProperty.call(K.KARTU, id);
-    const id = ada(p.kartu) ? p.kartu : K.URUT[(p.benih >>> 0) % 5 % 4];           // otomatis: salah satu dari 4 kartu bertema rumah (bekas kartu anak → tetangga)
+    const p = (o && o.params) || {};
+    const id = K.kartuNpc(p.kartu, o && (o.type === 'F' || o.type === 'M') ? o.type : null, p.benih);   // kartu sesuai tubuh NPC F / M (JEV-130)
     const k = K.KARTU[id], nama = typeof p.nama === 'string' && p.nama.trim() ? p.nama.trim().slice(0, 30) : k.nama;
     return { id, k, nama };
   }
