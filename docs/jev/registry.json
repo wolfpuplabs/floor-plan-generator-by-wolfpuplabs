@@ -6557,6 +6557,61 @@
     "target": "0",
     "tinjau": "2026-12-19"
    }
+  },
+  {
+   "id": "JEV-135",
+   "judul": "Duduk di lantai menapak tanah, ikan 3D bermotif, tombol kamera orang ketiga sendiri",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "(1) Duduk di depan api / di lantai menurunkan badan 0,72 m tetap sehingga kaki avatar tenggelam ke tanah (atau melayang menurut tinggi badan); paha 30° membuat telapak jauh di bawah pinggul. (2) Ikan hasil tangkapan hanya bola + kerucut. (3) Kamera orang ketiga tersembunyi di lembar Waktu & cuaca.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-19 01.03–01.17: \"duduk masih tenggelem kakinya, ikannya ganti 3d ikan yg bagus, icon camera dipisah\"",
+    "alternatif": [
+     "model ikan dari berkas glTF pihak ketiga (lisensi & ukuran unduhan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1200000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikan dibuat prosedural (tanpa aset pihak ketiga); ikon switch-camera dari Lucide (ISC, lisensi sudah disertakan)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "ikan: 1 tekstur kanvas 256×128 dibuang bersama mesh; penapakan tanah: 3 posisi tulang per bingkai saat duduk di lantai"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol kamera berlabel 'Kamera orang ketiga' (aria-label & title), status aria-pressed"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan kaki tenggelam, ikan jelek, kamera sulit ditemukan",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
   }
  ]
 }

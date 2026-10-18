@@ -365,6 +365,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     }
     for (const [m, i, b] of a.kedip) m.morphTargetInfluences[i] = v * b;
   }
+  const vTanah = new THREE.Vector3();                                  // duduk di lantai menapak tanah (JEV-135)
   function gerakAvatar(a, dt, laju) {
     kedipkan(a, dt);
     a.v += (laju - a.v) * Math.min(1, dt * 5); a.t += dt;
@@ -415,6 +416,16 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (pw[7] > 0.001 || pw[12] > 0.001 || pw[22] > 0.001 || pw[23] > 0.001 || pw[24] > 0.001) lenganFoto(a, pw);
     if (eL > 0) lambaikan(a, eL);
     a.model.position.y = a.dasarY + 0.035 * wd * (Math.abs(c) - 0.6) - turun;
+    // duduk di lantai (2 bersila, 25–26 di depan api — JEV-135): turun tetap 0,72 m membuat kaki avatar tenggelam / melayang
+    // menurut tinggi badannya. Sesudah dipose, titik terendah (bokong ±15 cm di bawah sendi pinggul, telapak ±9 cm di bawah
+    // pergelangan) diukur & badan digeser tepat menapak tanah (akar grup avatar = tanah)
+    const lantai = Math.max(pw[2], pw[25], pw[26]), R0 = a.rig;
+    if (lantai > 0.01 && R0.hips && R0.leftFoot && R0.rightFoot) {
+      a.g.updateMatrixWorld(true);
+      const sk = a.g.getWorldScale(vTanah).y || 1, y0 = a.g.getWorldPosition(vTanah).y;
+      const rendah = Math.min(R0.hips.b.getWorldPosition(vTanah).y - 0.15 * sk, R0.leftFoot.b.getWorldPosition(vTanah).y - 0.09 * sk, R0.rightFoot.b.getWorldPosition(vTanah).y - 0.09 * sk);
+      a.model.position.y += (y0 - rendah) / sk * lantai;
+    }
   }
   /* POSE & VARIAN DIAM (JEV-103) — kode pose dari peserta: 1 duduk di kursi, 2 duduk bersila di lantai,
      3 joget kecil, 4 mengantuk, 5 melambai. Avatar yang diam tanpa pose sendiri sesekali meregang / melihat
@@ -445,7 +456,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       tambah('leftLowerArm', 0.6, 0, 0, b); tambah('rightLowerArm', 0.6, 0, 0, b); turun += 0.42 * b; }
     // 2 duduk di lantai: pinggul di lantai, lutut ditekuk ke atas, lengan bertumpu santai di lutut
     if (pw[2] > 0.001) { const b = pw[2];
-      tambah('leftUpperLeg', 2.1, 0, 0.18, b); tambah('rightUpperLeg', 2.1, 0, -0.18, b); tambah('leftLowerLeg', -1.65, 0, 0, b); tambah('rightLowerLeg', -1.65, 0, 0, b);
+      tambah('leftUpperLeg', 2.45, 0, 0.18, b); tambah('rightUpperLeg', 2.45, 0, -0.18, b); tambah('leftLowerLeg', -1.85, 0, 0, b); tambah('rightLowerLeg', -1.85, 0, 0, b);
       tambah('leftFoot', -0.4, 0, 0, b); tambah('rightFoot', -0.4, 0, 0, b); tambah('spine', 0.12, 0, 0, b); tambah('chest', 0.06, 0, 0, b); tambah('head', -0.05, 0, 0, b);
       tambah('leftUpperArm', 0.6, 0, 0.16, b); tambah('rightUpperArm', 0.6, 0, -0.16, b); tambah('leftLowerArm', 0.4, 0, 0, b); tambah('rightLowerArm', 0.4, 0, 0, b);
       turun += 0.72 * b; }
@@ -572,7 +583,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     /* DI DEPAN API — 25 duduk bersila menghangatkan tangan (telapak ke arah api, sesekali menggosok); 26 duduk bersila
        memanggang marshmallow: tangan kanan menjulurkan tusukan ke api & memutarnya pelan, tangan kiri di lutut */
     if (pw[25] > 0.001 || pw[26] > 0.001) { const b = Math.max(pw[25], pw[26]);
-      tambah('leftUpperLeg', 2.1, 0, 0.18, b); tambah('rightUpperLeg', 2.1, 0, -0.18, b); tambah('leftLowerLeg', -1.65, 0, 0, b); tambah('rightLowerLeg', -1.65, 0, 0, b);
+      tambah('leftUpperLeg', 2.45, 0, 0.18, b); tambah('rightUpperLeg', 2.45, 0, -0.18, b); tambah('leftLowerLeg', -1.85, 0, 0, b); tambah('rightLowerLeg', -1.85, 0, 0, b);
       tambah('leftFoot', -0.4, 0, 0, b); tambah('rightFoot', -0.4, 0, 0, b); turun += 0.72 * b; }
     if (pw[25] > 0.001) { const b = pw[25], gosok = Math.max(0, Math.sin(t * 0.7)) * Math.sin(t * 9);
       tambah('spine', 0.2, 0, 0, b); tambah('chest', 0.06, 0, 0, b); tambah('head', -0.05, 0, 0, b);

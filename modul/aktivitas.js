@@ -135,12 +135,68 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
   function silinder(rt, rb, h, m, seg = 10) { const x = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m); x.userData.noExport = true; x.raycast = () => {}; return x; }
   function kotak(w, h, d, m) { const x = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); x.userData.noExport = true; x.raycast = () => {}; return x; }
   function bola(r, m) { const x = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), m); x.userData.noExport = true; x.raycast = () => {}; return x; }
-  function ikanMesh(warna) {
-    const g = new THREE.Group(), m = bahan(warna, 0.45, 0.2), b = bola(0.5, m); b.scale.set(0.16, 0.34, 0.6); g.add(b);
-    const ekor = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.2, 4), m); ekor.rotation.x = -Math.PI / 2; ekor.position.z = -0.36; ekor.scale.set(0.3, 1, 1); g.add(ekor);
-    const mata = bola(0.025, bahan(0x111111, 0.3)); mata.position.set(0.07, 0.04, 0.2); g.add(mata); return g;
+  /* IKAN 3D (JEV-135): badan bubutan (Lathe) memipih ke samping, sirip ekor (bercabang / membulat), sirip punggung, dada,
+     perut & dubur, mata ber-kornea, kumis (lele); tekstur kanvas: punggung gelap → perut terang, sisik, motif per jenis
+     (garis tegak nila/gurame, totol koi). Panjang ±0,9 unit (hidung di +z), diskalakan menurut berat. */
+  const RUPA = { nila: { t: 1.12, motif: 'garis', sirip: 0x8a5a4a }, lele: { t: 0.72, p: 1.15, kumis: 1, motif: 'polos', ekor: 'bulat', sirip: 0x3a322c },
+    mas: { t: 1.05, motif: 'sisik', sirip: 0xd98a2a }, gurame: { t: 1.32, motif: 'garis', sirip: 0x7a6a50 }, patin: { t: 0.85, p: 1.08, motif: 'polos', sirip: 0x8a8e96 },
+    koi: { t: 1.0, motif: 'koi', sirip: 0xf2efe8 } };
+  const PROFIL = [[0, 0], [0.32, 0.03], [0.6, 0.08], [0.84, 0.17], [0.97, 0.3], [1, 0.42], [0.93, 0.56], [0.76, 0.7], [0.52, 0.83], [0.34, 0.93], [0.27, 1]];
+  function teksturIkan(warna, motif) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d');
+    const w = new THREE.Color(warna), koi = motif === 'koi', dasar = koi ? new THREE.Color(0xf4f1ea) : w;
+    const css = (k, f = 1) => '#' + k.clone().multiplyScalar(f).getHexString(), terang = css(dasar.clone().lerp(new THREE.Color(0xffffff), 0.6));
+    // u (lebar kanvas) melingkari badan: punggung di tengah, perut di kedua tepi; v (tinggi): hidung di bawah, ekor di atas
+    const gr = x.createLinearGradient(0, 0, 256, 0);
+    gr.addColorStop(0, terang); gr.addColorStop(0.28, css(dasar)); gr.addColorStop(0.5, css(dasar, koi ? 0.92 : 0.45)); gr.addColorStop(0.72, css(dasar)); gr.addColorStop(1, terang);
+    x.fillStyle = gr; x.fillRect(0, 0, 256, 128);
+    let b = 7; const r = () => (b = (b * 16807) % 2147483647) / 2147483647;
+    if (koi) for (let i = 0; i < 9; i++) {                                  // totol jingga-merah besar di punggung & kedua sisi
+      x.fillStyle = i % 3 ? '#ff7a1e' : '#e8402a'; x.globalAlpha = 0.95; x.beginPath();
+      x.ellipse(128 + (r() - 0.5) * 170, 10 + r() * 108, 22 + r() * 30, 12 + r() * 18, r() * 3, 0, Math.PI * 2); x.fill(); }
+    if (motif === 'garis') { x.fillStyle = css(w, 0.35); x.globalAlpha = 0.28; for (let y = 22; y < 112; y += 13) x.fillRect(50, y, 156, 5); }
+    if (motif !== 'polos') { x.globalAlpha = koi ? 0.1 : 0.16; x.strokeStyle = css(dasar, 0.4); x.lineWidth = 1;   // sisik
+      for (let y = 6; y < 124; y += 7) for (let u = (y / 7) % 2 ? 0 : 5; u < 256; u += 10) { x.beginPath(); x.arc(u, y, 5, 0.15 * Math.PI, 0.85 * Math.PI); x.stroke(); } }
+    x.globalAlpha = 1;
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
   }
-  function bersih(g) { if (!g) return; if (g.parent) g.parent.remove(g); g.traverse(x => { if (x.isMesh || x.isLine || x.isPoints) { x.geometry.dispose(); } }); }
+  function sirip(titik, m) {                                                // bentuk di bidang (mundur, naik) → bidang YZ
+    const sh = new THREE.Shape(); titik.forEach(([u, v], i) => (i ? sh.lineTo(u, v) : sh.moveTo(u, v)));
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateY(Math.PI / 2); const s = new THREE.Mesh(geo, m); s.userData.noExport = true; s.raycast = () => {}; return s;
+  }
+  function ikanMesh(warna, k) {
+    const R = RUPA[k] || { t: 1, motif: 'sisik', sirip: warna }, g = new THREE.Group(), L = 0.7 * (R.p || 1), H = 0.13 * R.t, lebar = k === 'lele' ? 0.7 : 0.52;
+    const geo = new THREE.LatheGeometry(PROFIL.map(([r, t]) => new THREE.Vector2(Math.max(0.002, r * H), L / 2 - t * L)), 28);
+    geo.rotateX(Math.PI / 2); geo.scale(lebar, 1, 1); if (k === 'lele') geo.scale(1, 0.92, 1);
+    const tubuh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: teksturIkan(warna, R.motif), roughness: 0.35, metalness: 0.15 }));
+    tubuh.userData.noExport = true; tubuh.raycast = () => {}; g.add(tubuh);
+    const ms = new THREE.MeshStandardMaterial({ color: R.sirip, roughness: 0.55, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+    const ekor = sirip(R.ekor === 'bulat' ? [[0, 0.03], [0.09, 0.09], [0.17, 0.07], [0.2, 0], [0.17, -0.07], [0.09, -0.09], [0, -0.03]]
+      : [[0, 0.03], [0.07, 0.08], [0.22, 0.19 * R.t], [0.17, 0.07], [0.13, 0], [0.17, -0.07], [0.22, -0.19 * R.t], [0.07, -0.08], [0, -0.03]], ms);
+    ekor.position.z = -L / 2 + 0.03; g.add(ekor);
+    const punggung = sirip(k === 'lele' ? [[0, 0], [0.03, 0.04], [0.4, 0.035], [0.46, 0]] : [[0, 0], [0.04, 0.09], [0.12, 0.08], [0.26, 0.05], [0.32, 0]], ms);
+    punggung.position.set(0, H * 0.9, L * 0.12); g.add(punggung);
+    const dubur = sirip([[0, 0], [0.03, -0.05], [0.12, -0.045], [0.16, 0]], ms); dubur.position.set(0, -H * 0.72, -L * 0.18); g.add(dubur);
+    for (const s of [-1, 1]) {                                              // sirip dada & perut, condong ke belakang-bawah
+      const d = sirip([[0, 0], [0.09, 0.025], [0.11, -0.02], [0.03, -0.035]], ms); d.position.set(s * H * lebar * 0.85, -H * 0.25, L * 0.2); d.rotation.set(0, s * 0.5, s * -0.5); g.add(d);
+      const p = sirip([[0, 0], [0.07, 0.01], [0.08, -0.025], [0.02, -0.03]], ms); p.position.set(s * H * lebar * 0.5, -H * 0.8, -L * 0.02); p.rotation.set(0, s * 0.3, s * -0.9); g.add(p);
+      const mata = bola(0.022, bahan(0xf2f2ec, 0.2)); mata.position.set(s * H * lebar * 0.78, H * 0.28, L * 0.33); g.add(mata);
+      const pupil = bola(0.013, bahan(0x111111, 0.15)); pupil.position.set(s * (H * lebar * 0.78 + 0.013), H * 0.28, L * 0.335); g.add(pupil);
+      if (R.kumis) for (const yy of [0.01, -0.03]) { const km = silinder(0.0025, 0.004, 0.16, bahan(0x2a2420, 0.6), 4);
+        km.position.set(s * 0.05, yy, L / 2 + 0.03); km.rotation.set(Math.PI / 2 - 0.5 - yy * 6, 0, s * 0.7); g.add(km); }
+    }
+    return g;
+  }
+  // tangkapan sampah: sepatu bot tua (bukan ikan berwarna sepatu)
+  function sepatuMesh(warna) {
+    const g = new THREE.Group(), m = bahan(warna, 0.85), sol = bahan(0x1a1714, 0.9);
+    const batang = silinder(0.07, 0.075, 0.22, m, 14); batang.position.set(0, 0.11, -0.05); g.add(batang);
+    const kaki = kotak(0.14, 0.09, 0.26, m); kaki.position.set(0, 0.045, 0.04); g.add(kaki);
+    const ujung = bola(0.07, m); ujung.scale.set(1, 0.65, 1); ujung.position.set(0, 0.05, 0.16); g.add(ujung);
+    const bawah = kotak(0.15, 0.025, 0.33, sol); bawah.position.set(0, 0.0, 0.05); g.add(bawah);
+    return g;
+  }
+  function bersih(g) { if (!g) return; if (g.parent) g.parent.remove(g); g.traverse(x => { if (x.isMesh || x.isLine || x.isPoints) { x.geometry.dispose(); if (x.material && x.material.map && x.material.map.isCanvasTexture) x.material.map.dispose(); } }); }
 
   /* ---------- percikan ---------- */
   let PERCIK = null;
@@ -497,7 +553,13 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
       else if (a.tahap === 'gigit') { p.y = a.airY - 0.05; if (a.t > 1.15) { a.tahap = 'lepas'; a.t = 0; teks(T('Umpannya dimakan, ikan lepas…', 'It stole the bait…')); } }
       else if (a.t > 1.6) { a.tahap = 'tunggu'; a.tunggu = acak(2.5, 7); a.t = 0; tombol(T('Tunggu', 'Wait')); teks(T('Tunggu umpan dimakan…', 'Wait for a bite…')); }
     } else if (a.tahap === 'tarik') langkahTarik(a, dt);
-    else if (a.tahap === 'hasil') { a.t += dt; if (a.ikanMesh) { tempelKamera(a.ikanMesh, 0, -0.05, -0.65); a.ikanMesh.rotateY(a.t * 2); } if (a.t > 2.4) siapLagi(a); }
+    else if (a.tahap === 'hasil') { a.t += dt;
+      if (a.ikanMesh) {
+        if (O3) {                                                   // orang ketiga: tangkapan diangkat di tangan avatar, berputar pelan
+          a.ikanMesh.position.copy(O3).setY(O3.y + 0.18); a.ikanMesh.rotation.set(0, a.t * 1.6, 0.25 * Math.sin(a.t * 5));
+        } else { tempelKamera(a.ikanMesh, 0, -0.05, -0.65); a.ikanMesh.rotateY(a.t * 2); }
+      }
+      if (a.t > 2.4) siapLagi(a); }
     // tali melengkung dari ujung joran ke pelampung (kendur bila tegangan rendah)
     if (a.tali.visible) { const pos = a.tali.geometry.attributes.position, q = a.pelampung.position, kendur = a.tahap === 'tarik' ? (1 - clamp(a.T, 0, 1)) * 0.4 : 0.35;
       for (let i = 0; i < 16; i++) { const k = i / 15; pos.setXYZ(i, ujung.x + (q.x - ujung.x) * k, ujung.y + (q.y - ujung.y) * k - Math.sin(k * Math.PI) * kendur * Math.min(1, a.jarakAwal / 4 || 1), ujung.z + (q.z - ujung.z) * k); }
@@ -527,7 +589,7 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     const f = a.ikan, berat = Math.round(acak(f.b[0], f.b[1]) * 10) / 10, nama = f.n[BAHASA.kode === 'id' ? 0 : 1];
     a.tahap = 'hasil'; a.t = 0; H.meter.hidden = true; teks(''); BUNYI.dapat(); percik(a.pelampung.position, 24);
     a.pelampung.visible = false; a.tali.visible = false; a.tangkap++;
-    a.ikanMesh = ikanMesh(f.w); a.ikanMesh.scale.setScalar(f.sampah ? 0.5 : 0.35 + berat * 0.08); a.props.add(a.ikanMesh);
+    a.ikanMesh = f.sampah ? sepatuMesh(f.w) : ikanMesh(f.w, f.k); a.ikanMesh.scale.setScalar(f.sampah ? 1 : 0.3 + berat * 0.07); a.props.add(a.ikanMesh);
     if (f.sampah) { kartu('🥾', T('Yah… dapat sepatu bekas', 'Oh… an old boot')); return; }
     TAS.ikan.push({ nama: nama + ' ' + berat + ' kg', berat }); TAS.ikan = TAS.ikan.slice(-30); simpanTas();
     kartu('🐟', T(`Dapat ${nama} ${berat} kg!`, `Caught a ${nama}, ${berat} kg!`));
@@ -727,5 +789,5 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     renang: () => !!A && A.jenis === 'renang', dicipratkan, besarkanApi,
     // geometri kolam untuk NPC (modul/npc.js): tepi terdekat, titik di dalam, permukaan air; cebur = suara + percikan
     kolam: { tepi: tepiKolam, keDalam, dalam: dalamKolam, air: airKolam, cebur: p => { BUNYI.cebur(); percik(p, 30, 0xe8f6ff, 1.2); } },
-    _uji: { A: () => A, tekan, lempar: k => A && lempar(A, k), TAS: () => TAS, pilihIkan, dapat: () => A && dapat(A) } };
+    _uji: { A: () => A, tekan, lempar: k => A && lempar(A, k), TAS: () => TAS, pilihIkan, ikanMesh, sepatuMesh, IKAN, dapat: () => A && dapat(A) } };
 })();

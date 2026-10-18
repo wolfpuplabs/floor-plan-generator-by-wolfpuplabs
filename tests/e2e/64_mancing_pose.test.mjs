@@ -41,4 +41,34 @@ export const tes = {
     assert.ok(r.joran.jarak < 0.15, 'joran di tangan avatar: ' + JSON.stringify(r.joran));
     assert.ok(r.joran.naik > 0.4 && r.joran.naik < 0.95 && r.joran.maju > 0.3, 'joran condong ke depan-atas (ke air): ' + JSON.stringify(r.joran));
   },
+
+  'JEV-135: duduk di depan api / di lantai menapak tanah (kaki tidak tenggelam, bokong tidak melayang); ikan 3D bersirip & bermotif, sepatu bot untuk sampah; tombol kamera orang ketiga sendiri di dok': async (page) => {
+    await muatProyekJSON(page, { v: 1, levels: [{ name: 'L1', height: 3, walls: [], objects: [] }] });
+    const r = await page.evaluate(async () => {
+      const out = {};
+      await muatModul('lobi'); await muatModul('npc'); const G = window.LOBI.gerak;
+      for (const po of [25, 2]) for (const k of ['F', 'M']) {
+        const tpl = await window.LOBI.muatAvatar3D({ bawaan: k }), m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = []; m.userData.klip = [];
+        const g = new THREE.Group(); g.add(m); scene.add(g); const a = { g, tuju: { po } }; G.siapkanGerak(a, m); a.tm = a.lt = 1e9;
+        for (let i = 0; i < 80; i++) G.gerakAvatar(a, 0.05, 0); scene.updateMatrixWorld(true);
+        let minY = 1e9; m.traverse(o => { if (o.isSkinnedMesh) { const p = o.geometry.attributes.position, v = new THREE.Vector3();
+          for (let i = 0; i < p.count; i += 5) { v.fromBufferAttribute(p, i); o.boneTransform(i, v); v.applyMatrix4(o.matrixWorld); minY = Math.min(minY, v.y); } } });
+        out[po + k] = { kulit: +minY.toFixed(3), pinggul: +a.rig.hips.b.getWorldPosition(new THREE.Vector3()).y.toFixed(2) }; scene.remove(g);
+      }
+      await muatModul('aktivitas'); const U = window.AKT._uji;
+      out.ikan = U.IKAN.map(f => { const g = f.sampah ? U.sepatuMesh(f.w) : U.ikanMesh(f.w, f.k); let n = 0, kanvas = 0; g.traverse(x => { if (x.isMesh) { n++; if (x.material.map && x.material.map.isCanvasTexture) kanvas++; } });
+        const bb = new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3()); return { k: f.k, n, kanvas, panjang: +bb.z.toFixed(2), tinggi: +bb.y.toFixed(2) }; });
+      const o3 = $('#fpsO3'); out.tombol = { diDok: !!o3.closest('#fpsDok'), kelas: o3.classList.contains('fps-ik'), ikon: !!o3.querySelector('use[href="#l-switch-camera"]'), diLembar: !!o3.closest('#fpsLembar'), label: o3.getAttribute('aria-label') };
+      return out; });
+    for (const k of ['25F', '25M', '2F', '2M']) {
+      assert.ok(r[k].kulit > -0.06 && r[k].kulit < 0.05, k + ' menapak tanah (tidak tenggelam / melayang): ' + JSON.stringify(r[k]));
+      assert.ok(r[k].pinggul < 0.32, k + ' bokong di tanah, bukan jongkok: ' + JSON.stringify(r[k]));
+    }
+    for (const f of r.ikan.filter(x => x.k !== 'sepatu')) {
+      assert.ok(f.n >= 10 && f.kanvas === 1, f.k + ' badan bertekstur + sirip & mata: ' + JSON.stringify(f));
+      assert.ok(f.panjang > 1.6 * f.tinggi, f.k + ' memanjang (gurame memang tinggi): ' + JSON.stringify(f));
+    }
+    const sp = r.ikan.find(x => x.k === 'sepatu'); assert.ok(sp.kanvas === 0 && sp.tinggi > 0.15, 'sepatu bot: ' + JSON.stringify(sp));
+    assert.deepEqual(r.tombol, { diDok: true, kelas: true, ikon: true, diLembar: false, label: 'Kamera orang ketiga' });
+  },
 };
