@@ -510,12 +510,12 @@
     const lg = levelGroups[n.li], lv = PROJECT.levels[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === D.id), o = lv && lv.objects.find(x => x.id === D.id);
     if (!g || !o || !/^bed_/.test(o.type) || !FURN[o.type] || !g.userData.duduk) return null;
     g.updateMatrixWorld(true);
-    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, jx = dada ? 0.17 : peluk ? 0.36 : f[0] / 4, jz = dada ? 0.36 : -0.05;
+    const f = FURN[o.type].f, h = g.userData.duduk.h || 0.55, jx = dada ? 0.4 : peluk ? 0.36 : f[0] / 4, jz = dada ? 0.3 : -0.05;
     const ki = g.localToWorld(new THREE.Vector3(-jx, h, jz)), ka = g.localToWorld(new THREE.Vector3(jx, h, jz));
     const s = Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
     const sisi = g.localToWorld(new THREE.Vector3((f[0] / 2 + 0.5) * s, 0, 0.2)), rot = o.rotY || 0;
     return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, lama: 45, d: 0,
-      ...(peluk ? { po: 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: g.localToWorld(new THREE.Vector3(s * jx, h + 0.22, jz - 0.53)) } : { po: 9, yaw: rot }) };
+      ...(peluk ? { po: dada ? 20 : 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: g.localToWorld(dada ? new THREE.Vector3(s * 0.1, h + 0.26, jz - 0.4) : new THREE.Vector3(s * jx, h + 0.22, jz - 0.53)) } : { po: 9, yaw: rot }) };
   }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
@@ -641,7 +641,73 @@
     }
     return daftar;
   }
-  function selesaiTemani() { for (const n of NPC.values()) if (n.mode === 'temani') { n.mode = 'ikut'; n.po = 0; } }
+  function selesaiTemani() { for (const n of NPC.values()) if (n.mode === 'temani') { if (n.dariApi) { n.dariApi = false; diam(n); } else { n.mode = 'ikut'; n.po = 0; } } }
+  /* api unggun / perapian (aktivitas.js): NPC yang ikut, menemani, atau sedang santai ≤ 10 m datang duduk melingkari api
+     (pose 25 menghangatkan tangan), di kiri-kanan pengunjung; yang tadinya santai kembali santai setelah selesai */
+  function kumpulApi(pusat, r, sudutPengunjung, maks = 4) {
+    const daftar = [], geser = [1.05, -1.05, 2.1, -2.1, 3.14];
+    for (const n of NPC.values()) {
+      if (daftar.length >= maks) break;
+      if (!n.a || !n.p || !/^(ikut|temani|diam|jalan|aktivitas|duduk|masuk)$/.test(n.mode) || Math.hypot(n.p.x - pusat.x, n.p.z - pusat.z) > 10) continue;
+      if (/^(duduk|masuk)$/.test(n.mode) && n.kursi && n.kursi.bareng) continue;   // sedang duduk / berbaring bersama pengunjung
+      if (/^(jalan|duduk|masuk)$/.test(n.mode)) { lepasKursi(n); n.kursi = null; n.lanjut = null; const t = tanahDi(n, n.p.x, n.p.z); if (t != null) n.p.y = t; }
+      const s = sudutPengunjung + geser[daftar.length], x = pusat.x + Math.sin(s) * r, z = pusat.z + Math.cos(s) * r;
+      n.dariApi = !/^(ikut|temani)$/.test(n.mode); n.foto = false;
+      n.mode = 'temani'; n.temani = { x, z, yaw: Math.atan2(pusat.x - x, pusat.z - z), po: 25 }; n.sorak = 0; daftar.push(n.id);
+    }
+    return daftar;
+  }
+  // main air (aktivitas.js): cipratan pengunjung mengenai NPC di depannya (≤ 3,5 m, ±40°) — NPC tertawa; yang berenang membalas
+  function ciprat(x, z, fx, fz) {
+    const kena = [];
+    for (const n of NPC.values()) {
+      if (!n.a || !n.p) continue; const dx = n.p.x - x, dz = n.p.z - z, d = Math.hypot(dx, dz);
+      if (d > 3.5 || d < 0.05 || (dx * fx + dz * fz) / d < 0.75) continue;
+      kena.push(n.id); gumam(n.id, 'Hahaha!', 'puji');
+      if (n.mode === 'renang' && n.renang) { const id = n.id; setTimeout(() => balasCiprat(id), 900 + Math.random() * 500); }
+      else n.a.mikro = { k: 'bahu', t: 0, d: 1.2 };
+    }
+    return kena;
+  }
+  function balasCiprat(id) {
+    const n = NPC.get(id); if (!n || n.mode !== 'renang' || !n.renang || !n.a) return;
+    n.cip = 1.1; setTimeout(() => { if (window.AKT && window.AKT.dicipratkan && NPC.get(id) === n && n.p) window.AKT.dicipratkan(n.p.x, n.p.z); }, 350);
+  }
+  /* FOTO (index.html, tombol kamera mode jalan): NPC yang tampak di bingkai (≤ 12 m, di depan kamera, sedang santai / berjalan)
+     berhenti, menoleh ke kamera & berpose — ✌️ (22), tangan di pinggang (23), 🫶 (24), atau melambai (5) — selama `lama` detik */
+  const POSE_FOTO = [22, 23, 24, 5];
+  let FOTO_N = 0;
+  function poseFoto(lama = 10) {
+    if (!hidup()) return 0;
+    camera.updateMatrixWorld(); const v = new THREE.Vector3(); let k = 0;
+    for (const n of NPC.values()) {
+      if (!n.a || !n.p || !/^(diam|jalan|aktivitas)$/.test(n.mode) || (n.mode === 'aktivitas' && n.po && n.po !== 3 && n.po !== 5 && !n.foto)) continue;
+      if (Math.hypot(camera.position.x - n.p.x, camera.position.z - n.p.z) > 12) continue;
+      v.set(n.p.x, n.p.y + 1.1, n.p.z).project(camera); if (v.z > 1 || Math.abs(v.x) > 0.95 || Math.abs(v.y) > 0.95) continue;
+      if (n.mode === 'jalan') { lepasKursi(n); n.kursi = null; n.lanjut = null; }
+      const po = POSE_FOTO[(benihAman(n.o) + FOTO_N + k) % POSE_FOTO.length];
+      aktivitas(n, po, lama); n.foto = true; hadapPengunjung(n); n.a.lambai = null; k++;
+    }
+    FOTO_N++; return k;
+  }
+  function selesaiFoto() { for (const n of NPC.values()) if (n.foto && n.mode === 'aktivitas') n.t = Math.min(n.t, 1.2); }
+  /* tombol kamera mode jalan: ketukan pertama — NPC di bingkai berpose & tombol berdenyut; ketukan kedua (≤ 10 dtk) memotret.
+     Tanpa NPC di bingkai langsung memotret. Dua ketukan, karena berbagi ke galeri (navigator.share) harus tepat dari ketukan */
+  let FOTO_SIAP = 0;
+  function tombolFoto(potret) {
+    const b = document.getElementById('fpsFoto');
+    if (!document.getElementById('npcFotoGaya')) { const st = document.createElement('style'); st.id = 'npcFotoGaya';
+      st.textContent = '#fpsFoto.siap{box-shadow:0 0 0 4px #ffd54a;animation:npcFoto 1s ease-in-out infinite}@keyframes npcFoto{50%{box-shadow:0 0 0 9px rgba(255,213,74,.35)}}@media (prefers-reduced-motion:reduce){#fpsFoto.siap{animation:none}}';
+      document.head.appendChild(st); }
+    if (FOTO_SIAP && performance.now() - FOTO_SIAP < 10000) { FOTO_SIAP = 0; b.classList.remove('siap'); const r = potret(); selesaiFoto(); return r; }
+    const n = poseFoto(10);
+    if (!n) { FOTO_SIAP = 0; b.classList.remove('siap'); return potret(); }
+    FOTO_SIAP = performance.now(); b.classList.add('siap');
+    setTimeout(() => { if (FOTO_SIAP && performance.now() - FOTO_SIAP >= 9900) { FOTO_SIAP = 0; b.classList.remove('siap'); } }, 10000);
+    toast('📸 NPC berpose — ketuk kamera lagi untuk memotret');
+    return null;
+  }
+
   function sorak() { let i = 0; for (const n of NPC.values()) if (n.mode === 'temani' && n.a) { n.sorak = 1.8; window.LOBI.gerak.mulaiLambai(n.a); suaraSorak(n.id, 0.12 * i++); } }
   /* ---------- SUARA NPC: disintesis WebAudio (tanpa berkas) — gumaman saat bicara (suku kata pendek bergaya "Animal Crossing":
      nada dasar menurut karakter F / M / anak & benih, vokal dari teks, lengkung nada menurut niat: tanya naik, puji / salam
@@ -776,6 +842,9 @@
       putarKe(n, Math.atan2(dx, dz), dt, 2.5);
     } else if (R.bareng) putarKe(n, FPS.yaw, dt, 1.5);
     n.p.y = R.airY; n.po = v > 0.2 ? 18 : 17;
+    // main air: membalas / sesekali lebih dulu mencipratkan air ke pengunjung yang berenang di dekatnya (pose 21, menghadapnya)
+    if (R.bareng && !(n.cip > 0) && Math.random() < dt * 0.02 && Math.hypot(camera.position.x - n.p.x, camera.position.z - n.p.z) < 3) balasCiprat(n.id);
+    if (n.cip > 0) { n.cip -= dt; n.po = 21; putarKe(n, Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z), dt, 5); }
   }
   /* POTRET untuk ilustrasi (kencan): klon model karakter dengan bahan berwarna NPC ini, diberi pose, dirender sendirian ke
      kanvas transparan memakai renderer yang sama (render target, keadaan renderer dikembalikan). cahaya: {kunci, isi, tepi}
@@ -885,8 +954,8 @@
         if (n.t <= 0) berikutnya(n);
       } else if (n.mode === 'jalan') laju = jalan(n, dt);
       else if (n.mode === 'aktivitas') {
-        n.t -= dt; if (n.yawTuju != null && n.po === 5) putarKe(n, n.yawTuju, dt, 2.5);
-        if (n.t <= 0) { n.a.mikro = null; diam(n); }
+        n.t -= dt; if (n.foto) hadapPengunjung(n); if (n.yawTuju != null && (n.po === 5 || n.foto)) putarKe(n, n.yawTuju, dt, n.foto ? 4 : 2.5);
+        if (n.t <= 0) { n.a.mikro = null; n.foto = false; diam(n); }
       } else if (n.mode === 'gandeng') laju = ikut(n, dt);
       else if (n.mode === 'renang') renang(n, dt);
       else if (n.mode === 'ikut') { laju = ikut(n, dt, 0.8, 0.9); if (laju < 0.05 && Math.random() < dt * 0.05) n.a.mikro = { k: pilih(Math.random, ['regang', 'bahu']), t: 0, d: 2 }; }
@@ -950,7 +1019,7 @@
     addTransformFields(ins, d, false);
   }
   const jumlah = () => PROJECT.levels.reduce((s, l) => s + l.objects.filter(o => o.kind === 'npc').length, 0);
-  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, sorak, dekat, renang: renangBareng, selesaiRenang, potret, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
+  window.NPC = { pasang, langkah, sapa, ngobrol, aksiPasangan, temani, selesaiTemani, kumpulApi, ciprat, poseFoto, selesaiFoto, tombolFoto, sorak, dekat, renang: renangBareng, selesaiRenang, potret, ekstra: id => { const n = NPC.get(id); return n && (/^(gandeng|dansa|ikut|temani|pangku)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta)) ? ['lepas'] : []; },
     warnaiAvatar, penyunting, warnaAman, bajuAman, hadirkan,
     suara: { gumam, sorak: suaraSorak, huft, mode: m => { if (m) MODE_SUARA = m; return MODE_SUARA; } }, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },

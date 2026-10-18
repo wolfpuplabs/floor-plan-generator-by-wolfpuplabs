@@ -11,7 +11,7 @@
    bersorak saat berhasil, dan kedekatannya naik. Pose avatar (membawa, memancing, mengapak, memasak) terlihat di Main bareng.
    · Berenang (JEV-113): bidik kolam renang → Berenang; joystick / WASD di air, tahan Selam untuk menyelam, Selesai = naik ke tepi. */
 /* global $, el, toast, FPS, camera, scene, PROJECT, levelGroups, cariObjek, areaDunia, pointInPoly, rebuildScene, HIST, worldRoot,
-   levelElevation, BAHASA, MOOD, muatModul, berdiri, FURN, fpsPijakan, adaTanahSitus, tinggiTanah */
+   levelElevation, BAHASA, MOOD, muatModul, berdiri, FURN, fpsPijakan, adaTanahSitus, tinggiTanah, tambahKayuApi, apiMenyala */
 (function () {
   'use strict';
   const T = (id, en) => (BAHASA && BAHASA.kode === 'id' ? id : en);
@@ -72,6 +72,9 @@
 .ak-pilih:empty{display:none}.ak-kartu{position:absolute;left:50%;top:24%;transform:translateX(-50%);background:rgba(14,16,20,.82);border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:12px 18px;text-align:center;font:600 1rem/1.35 inherit}
 .ak-kartu[hidden]{display:none}.ak-kartu big{display:block;font-size:1.6rem}
 .ak-air{position:absolute;inset:0;opacity:0;pointer-events:none;background:radial-gradient(ellipse at 50% 28%,rgba(70,180,215,.32),rgba(6,48,88,.8));transition:opacity .12s}
+.ak-tetes{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 18% 32%,rgba(225,242,255,.6) 0 2.4%,transparent 3%),radial-gradient(circle at 74% 22%,rgba(225,242,255,.55) 0 3.2%,transparent 3.8%),radial-gradient(circle at 62% 70%,rgba(225,242,255,.5) 0 2%,transparent 2.6%),radial-gradient(circle at 34% 78%,rgba(225,242,255,.5) 0 2.8%,transparent 3.4%),radial-gradient(circle at 88% 58%,rgba(225,242,255,.45) 0 1.6%,transparent 2.1%),rgba(200,230,255,.12);animation:akTetes 1.6s ease-out forwards}
+@keyframes akTetes{0%{opacity:1}100%{opacity:0;transform:translateY(22px)}}
+@media (prefers-reduced-motion:reduce){.ak-tetes{animation:none;opacity:.6}}
 body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktivitas #fpsLembar{display:none!important}`;
     document.head.appendChild(s);
     const d = el('div'); d.id = 'aktHud'; d.hidden = true;
@@ -169,7 +172,7 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
 
   /* ---------- keadaan aktivitas ---------- */
   let A = null, B = null, TEKAN = [false, false, false];
-  const KODE = { mancing: 'mancing', potong: 'kapak', panggang: 'masak', masak: 'masak', renang: 'renang' };
+  const KODE = { mancing: 'mancing', potong: 'kapak', panggang: 'masak', masak: 'masak', renang: 'renang', hangat: 'hangat', marshmallow: 'marshmallow' };
   function mulai(jenis, t) {
     if (A) selesai(); if (B) taruh(); if (!FPS.on) return null;
     if (FPS.duduk && typeof berdiri === 'function') berdiri();
@@ -235,11 +238,11 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     const a = mulai('renang', t); if (!a) return;
     Object.assign(a, K, { x: p.x, z: p.z, vx: 0, vz: 0, selam: 0, fase: 0, jarak: 0, bonusM: 0, asal: { x: camera.position.x, z: camera.position.z, feet: FPS.feet } });
     hud(T('🏊 Berenang', '🏊 Swimming'), T('Joystick / WASD untuk berenang · tahan Selam untuk menyelam', 'Joystick / WASD to swim · hold Dive to go under'));
-    tombol(T('Selam', 'Dive')); lapisanAir().style.opacity = 0;
+    tombol(T('Selam', 'Dive'), T('💦 Ciprat', '💦 Splash')); lapisanAir().style.opacity = 0;
     FPS.feet = a.airY; FPS.vy = 0; FPS.pitch = Math.max(FPS.pitch, -0.2);
     BUNYI.cebur(); percik(vB.set(a.x, a.airY, a.z), 40, 0xe8f6ff, 1.3);
     a.langkah = dt => langkahRenang(a, dt);
-    a.tekan = k => { if (k === 1) { derau(0.5, 380, 0.8, 0.35); percik(vB.set(a.x, a.airY, a.z), 14, 0xe8f6ff, 0.9); } };
+    a.tekan = k => { if (k === 1) { derau(0.5, 380, 0.8, 0.35); percik(vB.set(a.x, a.airY, a.z), 14, 0xe8f6ff, 0.9); } else if (k === 2) ciprat(a); };
     a.akhir = () => naikKolam(a);
     if (window.NPC && window.NPC.renang) window.NPC.renang(a.poli, a.airY);
   }
@@ -273,7 +276,8 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     camera.position.set(a.x, a.airY + 0.11 + ayun - a.selam * dasar, a.z);
     FPS.feet = a.airY;
     if (H.air) H.air.style.opacity = clamp((a.selam * dasar - 0.08) / 0.25, 0, 1).toFixed(2);
-    FPS.gaya = { k: laju > 0.25 ? 'bebas' : 'renang', x: a.x, z: a.z, t: performance.now() };
+    if (a.cipT > 0) a.cipT -= dt; if (a.cipJeda > 0) a.cipJeda -= dt;
+    FPS.gaya = { k: a.cipT > 0 ? 'ciprat' : laju > 0.25 ? 'bebas' : 'renang', x: a.x, z: a.z, t: performance.now() };
     H.info.textContent = T('Jarak ', 'Distance ') + a.jarak.toFixed(0) + ' m · ' + (a.selam > 0.5 ? T('menyelam', 'diving') : T('tahan Selam untuk menyelam', 'hold Dive to go under'));
     if (a.jarak - a.bonusM >= 25) { a.bonusM += 25; bonus(3, T('berenang bareng', 'swimming together')); }
   }
@@ -288,6 +292,117 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     if (H.air) H.air.style.opacity = 0;
     derau(0.3, 700, 0.7, 0.25);
     if (window.NPC && window.NPC.selesaiRenang) window.NPC.selesaiRenang();
+  }
+
+  /* ---------- main air (JEV-118): Ciprat = sapuan tangan ke depan, air memercik sepanjang ±2 m; NPC di depan tertawa, yang
+     ikut berenang membalas (atau sesekali lebih dulu) — cipratan yang mengenai pengunjung membasahi layar sebentar ---------- */
+  function ciprat(a) {
+    if (a.cipJeda > 0) return; a.cipJeda = 0.7; a.cipT = 0.75;
+    const fx = Math.sin(FPS.yaw), fz = Math.cos(FPS.yaw);
+    derau(0.45, 1700, 0.5, 0.4, 'bandpass'); setTimeout(() => derau(0.3, 900, 0.7, 0.25), 120);
+    for (let i = 0; i < 5; i++) setTimeout(() => { if (A === a) percik(vB.set(a.x + fx * (0.4 + i * 0.45), a.airY + 0.05, a.z + fz * (0.4 + i * 0.45)), 10, 0xe8f6ff, 1.1); }, i * 35);
+    const kena = window.NPC && window.NPC.ciprat ? window.NPC.ciprat(a.x, a.z, fx, fz) : [];
+    if (kena.length) { a.cipKena = (a.cipKena || 0) + 1; if (a.cipKena % 3 === 1) bonus(2, T('main air bareng', 'splashing around together')); }
+    return kena;
+  }
+  function dicipratkan(x, z) {
+    if (!A || A.jenis !== 'renang') return false;
+    const a = A, dx = a.x - x, dz = a.z - z, d = Math.hypot(dx, dz) || 1;
+    for (let i = 0; i < 4; i++) setTimeout(() => { if (A === a) percik(vB.set(x + dx / d * (0.4 + i * 0.45), a.airY + 0.05, z + dz / d * (0.4 + i * 0.45)), 10, 0xe8f6ff, 1.1); }, i * 40);
+    setTimeout(() => { if (A !== a || !H) return; derau(0.5, 2000, 0.4, 0.35, 'bandpass'); const t = el('div', 'ak-tetes'); H.d.appendChild(t); setTimeout(() => t.remove(), 1700); }, 200);
+    return true;
+  }
+
+  /* =================== API: KAYU BAKAR & API UNGGUN (JEV-118) ===================
+     Tumpukan kayu bakar → Ambil kayu bakar (+3, sekali per menit per tumpukan). Api unggun / perapian / tungku → Tambah kayu
+     bakar (api menyala bila padam & membesar beberapa menit), Hangatkan diri (duduk bersila menghadap api; NPC sekitar datang
+     duduk melingkar), Bakar marshmallow (api unggun: tahan Panggang untuk mendekatkan tusukan ke api, angkat saat keemasan). */
+  const AMBIL_T = new Map();
+  function ambilKayu(t) {
+    const kini = performance.now();
+    if (kini - (AMBIL_T.get(t.id) ?? -1e9) < 60000) { toast(T('Tumpukan ini baru diambil — tunggu sebentar', 'You just took from this pile — wait a moment')); return; }
+    AMBIL_T.set(t.id, kini); TAS.kayu = Math.min(999, TAS.kayu + 3); simpanTas();
+    derau(0.15, 320, 1.2, 0.45, 'bandpass'); setTimeout(() => derau(0.15, 280, 1.2, 0.4, 'bandpass'), 160);
+    toast(T(`🪵 +3 kayu bakar (tas: ${TAS.kayu})`, `🪵 +3 firewood (bag: ${TAS.kayu})`));
+  }
+  function titikApi(id) {
+    const g = grupObjek(id), o = cariObjek(id); if (!g || !o) return null; g.updateMatrixWorld(true);
+    const unggun = o.type === 'api_unggun';
+    return { g, o, unggun, pusat: g.getWorldPosition(new THREE.Vector3()), p: g.localToWorld(new THREE.Vector3(0, unggun ? 0.2 : 0.42, unggun ? 0 : 0.3)) };
+  }
+  function tambahKayu(t) {
+    const F = titikApi(t.id); if (!F) return;
+    if (TAS.kayu < 1) { toast(T('Kayu bakar habis — ambil di tumpukan kayu bakar atau potong kayu di tunggul', 'No firewood — take some from a log pile or chop some at a stump')); return; }
+    TAS.kayu--; simpanTas();
+    if (typeof tambahKayuApi === 'function') tambahKayuApi(t.id);
+    derau(0.25, 260, 1.1, 0.5, 'bandpass'); setTimeout(() => derau(0.9, 2400, 0.4, 0.16, 'highpass'), 220);   // kayu jatuh, api menyambar
+    percik(F.p.clone(), 26, 0xffb050, 1.1);
+    toast(T(`🔥 Api membesar (kayu bakar tersisa: ${TAS.kayu})`, `🔥 The fire grows (firewood left: ${TAS.kayu})`));
+    if (A && A.F && A.F.o.id === t.id) A.kayuT = 0;
+  }
+  function mulaiHangat(t, marsh) {
+    const F = titikApi(t.id); if (!F) return;
+    if (typeof apiMenyala === 'function' && !apiMenyala(t.id)) { toast(T('Apinya padam — tambah kayu bakar dulu', 'The fire is out — add some firewood first')); return; }
+    const a = mulai(marsh ? 'marshmallow' : 'hangat', t); if (!a) return;
+    // duduk di sisi api yang terdekat (api unggun) atau di depan perapian, menghadap api
+    let ux = camera.position.x - F.pusat.x, uz = camera.position.z - F.pusat.z;
+    if (!F.unggun) { const d0 = F.g.localToWorld(new THREE.Vector3(0, 0, 1)).sub(F.pusat); ux = d0.x; uz = d0.z; }
+    const l = Math.hypot(ux, uz) || 1; ux /= l; uz /= l;
+    const r = F.unggun ? 1.15 : 1.35, x = F.pusat.x + ux * r, z = F.pusat.z + uz * r;
+    const g0 = fpsPijakan(x, z, FPS.feet + 0.8), tanah = levelElevation(0) + (adaTanahSitus() ? tinggiTanah(x, z) : 0);
+    let feet = Math.max(g0 == null ? -1e9 : g0, tanah); if (!Number.isFinite(feet) || Math.abs(feet - FPS.feet) > 0.6) feet = FPS.feet;
+    Object.assign(a, { F, x, z, feet, bonusT: 0, marsh, kayuT: 0 });
+    FPS.feet = feet; FPS.yaw = Math.atan2(-ux, -uz); FPS.pitch = marsh ? -0.42 : -0.25; camera.position.set(x, feet + 0.8, z);
+    a.ids = window.NPC && window.NPC.kumpulApi ? window.NPC.kumpulApi({ x: F.pusat.x, z: F.pusat.z }, r, Math.atan2(ux, uz)) : [];
+    if (marsh) {
+      hud(T('🍡 Bakar marshmallow', '🍡 Toast marshmallows'), T('Tahan Panggang untuk mendekatkan ke api · Angkat saat keemasan', 'Hold Toast to bring it near the fire · Take it out when golden'));
+      tombol(T('Panggang', 'Toast'), T('Angkat', 'Take out'));
+      const tusuk = silinder(0.005, 0.005, 0.75, bahan(0xb8925a, 0.8), 6), mm = bahan(0xf6f2ea, 0.85), marshmallow = silinder(0.024, 0.024, 0.045, mm, 14);
+      a.alat = new THREE.Group(); a.alat.add(tusuk, marshmallow); scene.add(a.alat); Object.assign(a, { tusuk, marshmallow, mm, tahap: 'bakar', mt: 0, ujung: 0 });
+      a.tekan = k => { if (k === 2) angkatMarsh(a); };
+    } else {
+      hud(T('🔥 Menghangatkan diri', '🔥 Warming up'), T('Duduk di dekat api · Selesai untuk berdiri', 'Sitting by the fire · Done to stand up'));
+      tombol(T('Gosok tangan', 'Rub hands'));
+      a.tekan = k => { if (k === 1) derau(0.5, 900, 0.5, 0.12, 'bandpass'); };
+    }
+    a.langkah = dt => langkahHangat(a, dt);
+    a.akhir = () => { FPS.feet = a.feet; camera.position.set(a.x, a.feet + FPS.eye, a.z); };
+  }
+  function langkahHangat(a, dt) {
+    a.t += dt; camera.position.set(a.x, a.feet + 0.8 + 0.005 * Math.sin(a.t * 1.3), a.z);
+    FPS.gaya = { k: a.marsh ? 'marshmallow' : 'hangat', x: a.x, z: a.z, t: performance.now() };
+    if (typeof apiMenyala === 'function' && !apiMenyala(a.F.o.id)) { teks(T('Apinya padam', 'The fire went out')); setTimeout(() => { if (A === a) selesai(); }, 1200); a.langkah = () => {}; return; }
+    a.bonusT += dt; if (a.bonusT >= 30) { a.bonusT = 0; bonus(2, T('duduk di depan api bersama', 'sitting by the fire together')); }
+    if (a.marsh) langkahMarsh(a, dt);
+  }
+  // marshmallow: tahan Panggang = ujung tusukan turun ke lidah api (matang cepat), lepas = di atas api (matang pelan)
+  const warnaMarsh = x => { const c = new THREE.Color(0xf6f2ea); if (x < 0.8) return c.lerp(new THREE.Color(0xd9a35a), clamp(x / 0.8, 0, 1)); return new THREE.Color(0xd9a35a).lerp(new THREE.Color(0x1d1612), clamp((x - 0.8) / 0.45, 0, 1)); };
+  function langkahMarsh(a, dt) {
+    if (a.tahap !== 'bakar') { desis(0); return; }
+    a.ujung += ((TEKAN[1] ? 1 : 0) - a.ujung) * Math.min(1, dt * 4);
+    a.mt += dt * (0.05 + 0.28 * a.ujung) * (0.85 + 0.3 * Math.sin(a.t * 0.9));
+    camera.updateMatrixWorld();
+    const tangan = vA.set(0.16, -0.3, -0.2).applyMatrix4(camera.matrixWorld), ujung = vC.copy(a.F.p).setY(a.F.p.y + 0.42 - 0.24 * a.ujung);
+    const arah = vB.copy(ujung).sub(tangan), pj = arah.length(); arah.normalize();
+    a.tusuk.position.copy(tangan).addScaledVector(arah, 0.375); a.tusuk.quaternion.setFromUnitVectors(vC.set(0, 1, 0), arah);
+    a.marshmallow.position.copy(tangan).addScaledVector(arah, Math.min(pj, 0.72)); a.marshmallow.quaternion.copy(a.tusuk.quaternion);
+    a.mm.color.copy(warnaMarsh(a.mt));
+    bar([[0.55 / 1.25, 0.8 / 1.25, 'ak-zona'], [0.45 / 1.25, 0.55 / 1.25, 'ak-zona2'], [0.8 / 1.25, 0.95 / 1.25, 'ak-zona2']], a.mt / 1.25, 1 / 1.25);
+    desis(0.15 + 0.5 * a.ujung);
+    if (a.mt > 0.95 && Math.random() < dt * 12) percik(a.marshmallow.position.clone(), 2, 0xff9a3a, 0.35);
+    teks(a.mt > 0.95 ? T('Terbakar! Angkat!', 'It caught fire! Take it out!') : a.mt >= 0.55 && a.mt <= 0.8 ? T('Keemasan — angkat sekarang!', 'Golden — take it out now!') : '');
+    if (a.mt > 1.25) angkatMarsh(a);
+  }
+  function angkatMarsh(a) {
+    if (a.tahap !== 'bakar') return;
+    const x = a.mt, mutu = x > 0.95 ? 'gosong' : x < 0.45 ? 'mentah' : x >= 0.55 && x <= 0.8 ? 'sempurna' : 'enak';
+    const nama = T('Marshmallow bakar', 'Toasted marshmallow');
+    TAS.masakan.push({ nama, mutu }); TAS.masakan = TAS.masakan.slice(-30); simpanTas(); desis(0);
+    kartu(mutu === 'sempurna' ? '🌟' : mutu === 'gosong' ? '🔥' : '🍡', nama + ' — ' + { sempurna: T('Keemasan sempurna!', 'Perfectly golden!'), enak: T('Enak', 'Tasty'), mentah: T('Masih putih…', 'Still pale…'), gosong: T('Gosong…', 'Burnt…') }[mutu]);
+    BUNYI[mutu === 'sempurna' || mutu === 'enak' ? 'dapat' : 'meleset']();
+    if (mutu === 'sempurna' || mutu === 'enak') bonus(mutu === 'sempurna' ? 5 : 3, T('bakar marshmallow bareng', 'toasting marshmallows together'));
+    a.tahap = 'jeda'; a.marshmallow.visible = false;
+    setTimeout(() => { if (A !== a) return; a.mt = 0; a.ujung = 0; a.marshmallow.visible = true; a.tahap = 'bakar'; teks(''); }, 2000);
   }
 
   /* =================== MANCING =================== */
@@ -586,9 +701,13 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     if (t.jenis === 'potong') return mulaiPotong(t);
     if (t.jenis === 'panggang') return mulaiMasak(t, false);
     if (t.jenis === 'masak') return mulaiMasak(t, true);
+    if (t.jenis === 'ambilkayu') return ambilKayu(t);
+    if (t.jenis === 'kayu') return tambahKayu(t);
+    if (t.jenis === 'hangat') return mulaiHangat(t, false);
+    if (t.jenis === 'marshmallow') return mulaiHangat(t, true);
   }
   window.AKT = { pakai, langkah, selesai, kunci: () => !!A, membawa: () => !!B, tas: () => JSON.parse(JSON.stringify(TAS)), ambil,
-    renang: () => !!A && A.jenis === 'renang',
+    renang: () => !!A && A.jenis === 'renang', dicipratkan,
     // geometri kolam untuk NPC (modul/npc.js): tepi terdekat, titik di dalam, permukaan air; cebur = suara + percikan
     kolam: { tepi: tepiKolam, keDalam, dalam: dalamKolam, air: airKolam, cebur: p => { BUNYI.cebur(); percik(p, 30, 0xe8f6ff, 1.2); } },
     _uji: { A: () => A, tekan, lempar: k => A && lempar(A, k), TAS: () => TAS, pilihIkan, dapat: () => A && dapat(A) } };

@@ -5624,6 +5624,68 @@
     "target": "0 per bulan",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-118",
+   "judul": "Main air (ciprat) saat berenang, kayu bakar & api unggun (tambah kayu, hangatkan diri, bakar marshmallow), NPC berpose saat difoto & pose foto sendiri, pose bersandar di dada diperbaiki",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Berenang hanya bergerak & menyelam tanpa interaksi dengan NPC; perapian/tungku hanya bisa dinyalakan-dipadamkan dan tidak ada api unggun; NPC diam saja saat difoto; pose bersandar di dada menembus badan pemain dengan kaki melewati kasur.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18 (tangkapan layar iPad): \"kasih interaksi tambahan main air / splashing waktu renang, kayu bakar sama api unggun, tidur di dada kurang bagus posenya, pose waktu difoto\"",
+    "alternatif": [
+     "animasi kamera saja tanpa reaksi NPC",
+     "pose foto acak tanpa menunggu ketukan kedua (navigator.share kehilangan izin ketukan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 4,
+     "ujiJam": 1.5,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.3,
+      "pakaiPerTahun": 12,
+      "menitHemat": 2
+     },
+     "konversi": {
+      "jangkauan": 0.3,
+      "upliftMenang": 0.02
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kode pose 20–26 disaring di tiap penerima (posAman 1–26); aksi 'kayu' Main bareng hanya untuk objek berjenis api, sesaat (tidak dipantulkan ke pengirim), kuota aksi lobi tetap"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "kayu bakar & masakan di tas perangkat (localStorage), tidak dikirim"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "api unggun & tumpukan kayu prosedural, suara disintesis; pose prosedural buatan sendiri"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "api unggun memakai tekstur api & kolam cahaya yang sudah ada; lidah api bertekstur bersama; percikan memakai kolam partikel yang sama; semua logika di modul yang dimuat malas"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "aksi berlabel teks; tetesan air di layar & denyut tombol foto mematuhi prefers-reduced-motion"
+    }
+   },
+   "metrik": {
+    "nama": "sesi mode jalan yang memakai main air / api unggun / pose foto",
+    "target": "≥ 20%",
+    "tinjau": "2027-01-18"
+   }
   }
  ]
 }
