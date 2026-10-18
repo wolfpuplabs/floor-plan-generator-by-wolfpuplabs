@@ -39,7 +39,7 @@
   /* ---------- kartu untuk satu NPC ---------- */
   function kartuNpc(o) {
     const p = (o && o.params) || {}, ada = id => typeof id === 'string' && Object.prototype.hasOwnProperty.call(K.KARTU, id);
-    const id = ada(p.kartu) ? p.kartu : K.URUT[((p.benih >>> 0) % 5)];                // otomatis: salah satu kartu bertema rumah
+    const id = ada(p.kartu) ? p.kartu : K.URUT[(p.benih >>> 0) % 5 % 4];           // otomatis: salah satu dari 4 kartu bertema rumah (bekas kartu anak → tetangga)
     const k = K.KARTU[id], nama = typeof p.nama === 'string' && p.nama.trim() ? p.nama.trim().slice(0, 30) : k.nama;
     return { id, k, nama };
   }
@@ -157,7 +157,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     const chipDari = (daftar, kelas, f, kunci) => { const c = el('div', kelas); for (const [k, l] of daftar) { const b = el('button', 'btn sm ghost', l); b.dataset[kunci] = k; b.onclick = () => f(k); c.appendChild(b); } return c; };
     const laciSosial = el('div', 'no-laci'), laciAktivitas = el('div', 'no-laci'); laciSosial.hidden = laciAktivitas.hidden = true;
     const chip = chipDari([['salam', '👋 Sapa'], ['puji', '👍 Puji'], ['siapa', '❓ Siapa kamu?'], ['rumah', '🏠 Tentang rumah'], ['pamit', '🚪 Pamit']], 'no-chip', cepat, 'cepat');
-    // interaksi berpasangan (JEV-109): butuh relasi cukup dekat; tidak untuk kartu anak
+    // interaksi berpasangan (JEV-109): butuh relasi cukup dekat
     const aksi = chipDari([['peluk', '🤗 Peluk'], ['gandeng', '🤝 Gandeng'], ['dansa', '💞 Dansa'], ['cium', '😘 Cium pipi'], ['pangku', '🫶 Pangku']], 'no-chip no-aksi', k => aksiPasangan(k), 'aksi');
     laciSosial.append(el('h4', null, 'Sosial'), chip, aksi);
     const chip2 = chipDari([['hadiah', '🎁 Beri hadiah'], ['ikut', '🚶 Ajak ikut'], ['kuis', '🎯 Tebak-tebakan'], ['kencan', '💐 Ajak kencan']], 'no-chip', cepat, 'cepat');
@@ -185,7 +185,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
   function bicara(teks) {
     if (SUARA !== 'tts' || !window.speechSynthesis || !KINI) return;
     try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(teks.replace(/\*[^*]*\*/g, ' ').trim()); if (!u.text) return;
-      u.lang = L() === 'id' ? 'id-ID' : 'en-US'; u.pitch = KINI.o.type === 'M' ? 0.9 : 1.25; u.rate = KINI.c.id === 'anak' ? 1.15 : 1; speechSynthesis.speak(u); } catch (e) { /* tanpa suara */ }
+      u.lang = L() === 'id' ? 'id-ID' : 'en-US'; u.pitch = KINI.o.type === 'M' ? 0.9 : 1.25; speechSynthesis.speak(u); } catch (e) { /* tanpa suara */ }
   }
   function ucap(teks, n) {                                                 // NPC berbicara: tulis + gerak kecil + suara
     tulis('n', teks); bicara(teks);
@@ -288,8 +288,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
   const SYARAT = { peluk: 20, gandeng: 20, dansa: 20, duduk: -20, baring: -20, cium: 50, pangku: 50, meringkuk: 50, bersandar: 50 };   // cium pipi, pangku & peluk berbaring: relasi Sayang ke atas
   function aksiPasangan(k) {
     if (!KINI) return;
-    const c = KINI.c, m = ingatan(KINI.id), id = L() === 'id';
-    if (c.id === 'anak') { ucap(id ? 'Hehe, aku main bola aja yuk, Kak!' : 'Hehe, let\'s just play football!', 'salam'); return; }
+    const m = ingatan(KINI.id), id = L() === 'id';
     const bareng = k === 'baring' && typeof FPS !== 'undefined' && FPS.duduk && FPS.duduk.baring;   // rebahan di kasur yang sama: relasi Sayang
     if (m.s < (bareng ? 50 : SYARAT[k])) { ubahSkor(m, -1); ucap(id ? 'Eh… kita belum seakrab itu, ya.' : 'Uh… we\'re not that close yet.', 'hina'); return; }
     const npcId = KINI.id;
@@ -316,7 +315,7 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
     P.nama.textContent = c.nama; P.peran.textContent = tx(c.k.peran); P.log.textContent = ''; P.hadiah.hidden = true;
     for (const x of m.r.slice(-6)) tulis(x.d, x.t);                       // ingatan percakapan sebelumnya
     segarRelasi(); P.d.hidden = false; document.body.classList.add('ngobrol');
-    P.aksi.hidden = P.aksi2.hidden = c.id === 'anak'; P.aksi2.querySelector('[data-aksi="duduk"]').hidden = !(FPS.duduk && FPS.duduk.id && !FPS.duduk.lantai && !FPS.duduk.baring);
+    P.aksi.hidden = P.aksi2.hidden = false; P.aksi2.querySelector('[data-aksi="duduk"]').hidden = !(FPS.duduk && FPS.duduk.id && !FPS.duduk.lantai && !FPS.duduk.baring);
     for (const k of ['meringkuk', 'bersandar']) P.aksi2.querySelector(`[data-aksi="${k}"]`).hidden = !(FPS.duduk && FPS.duduk.baring);   // peluk berbaring: hanya saat pengunjung rebahan
     P.tutupLaci();
     if (window.NPC) window.NPC.ngobrol(id, 'mulai');

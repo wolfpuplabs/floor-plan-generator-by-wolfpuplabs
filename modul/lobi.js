@@ -420,7 +420,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if ((po >= 1 && po <= 4) || (po >= 6 && po <= POSE_MAKS)) { a.mikro = null; return po; }
     a.diam = a.v < 0.05 ? (a.diam || 0) + dt : 0;
     if (a.diam > 45) return 4;                                        // lama diam: mengantuk
-    if (a.diam > 4 && adaMusik()) return 3;                           // musik: joget pelan
+    if (a.diam > 4 && !a.npc && adaMusik()) return 3;                 // musik: joget pelan (NPC tidak — joget NPC lewat aktivitasnya, JEV-123)
     // gerak kecil acak saat diam
     if (a.mikro) { a.mikro.t += dt; if (a.mikro.t > a.mikro.d) a.mikro = null; }
     else if (a.diam > 6) { a.tm = (a.tm == null ? 6 + Math.random() * 8 : a.tm) - dt;

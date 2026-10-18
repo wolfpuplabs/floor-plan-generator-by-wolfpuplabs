@@ -7,7 +7,7 @@
    · Tertarik 3 + relasi ≥ 80 → nyatakan perasaan (NPC atau pemain) → terima = status 💞 Pacaran.
    · Kesal 3 → NPC pamit dengan ketus, relasi turun.
    Pilihan dibuat AI (/api/npc, pilihan:true) bila tersedia; tanpa AI dari kumpulan ucapan bawaan. Semua isi ramah semua
-   umur: tanpa unsur seksual; kartu anak tanpa unsur romantis (tidak ada rayuan, kencan atau pacaran). */
+   umur: tanpa unsur seksual */
 /* global el, toast, FPS, MOOD, setSuasana */
 (function () {
   'use strict';
@@ -56,7 +56,6 @@
 
   let PIL = null, LAJU = 2300;                        // PIL: wadah pilihan aktif · LAJU: ms per baris cutscene
   const kini = () => D.kini();
-  const anak = () => !!(kini() && kini().c.id === 'anak');
   function suasana(m) {
     const s = m.mood && typeof m.mood === 'object' ? m.mood : (m.mood = { senang: 1, nyaman: 0, tertarik: 0, kesal: 0 });
     for (const k of RASA) s[k] = clamp(Math.round(+s[k] || 0), 0, 3);
@@ -96,7 +95,7 @@
   function segar(m) {
     const P = siapkanUI(); if (!P || !m) return;
     const s = suasana(m); P.mood.textContent = '';
-    for (const k of RASA) { if (k === 'tertarik' && anak()) continue;
+    for (const k of RASA) {
       const x = el('span'); x.title = tx2(NAMA[k]); x.append(IKON[k] + ' ' + tx2(NAMA[k]) + ' '); x.appendChild(el('b', null, String(s[k]))); P.mood.appendChild(x); }
     P.status.hidden = m.status !== 'pacaran';
   }
@@ -120,13 +119,13 @@
   // perasaan ±1 → relasi: senang / nyaman / tertarik ±2, kesal ∓3
   function terapkan(m, efek) {
     const s = suasana(m); let d = 0;
-    for (const k of Object.keys(efek || {})) { if (!RASA.includes(k) || (k === 'tertarik' && anak())) continue;
+    for (const k of Object.keys(efek || {})) { if (!RASA.includes(k)) continue;
       const v = clamp(Math.round(efek[k]), -1, 1); s[k] = clamp(s[k] + v, 0, 3); d += k === 'kesal' ? -3 * v : 2 * v; }
     if (d) D.ubahSkor(m, d);
     D.simpan(); D.segarRelasi();
   }
   function opsiBawaan(m) {
-    const s = suasana(m), rom = !anak() && m.s >= 20;
+    const s = suasana(m), rom = m.s >= 20;
     const baik = POOL.filter(p => !p.buruk && (!p.romantis || rom)), buruk = POOL.filter(p => p.buruk);
     const pilih = [...baik].sort(() => Math.random() - 0.5).slice(0, 2).concat([acakDari(buruk)]).sort(() => Math.random() - 0.5);
     const o = pilih.map(p => ({ t: tx2(p.t), efek: { ...p.efek } }));
@@ -200,11 +199,10 @@
   }
 
   /* ---------- kencan ---------- */
-  function bisaKencan(m) { return !anak() && (m.status === 'pacaran' || m.s >= 20); }
+  function bisaKencan(m) { return m.status === 'pacaran' || m.s >= 20; }
   function ajak() {
     const K = kini(); if (!K) return;
     const m = D.ingatan(K.id), s = suasana(m);
-    if (anak()) return D.ucap(T('Hehe, aku main sama teman-teman dulu, ya!', 'Hehe, I\'m going to play with my friends!'), 'salam');
     if (m.s < 20) { D.ubahSkor(m, -1); return D.ucap(T('Eh… kita belum cukup dekat untuk kencan.', 'Uh… we\'re not close enough to go on a date.'), 'hina'); }
     if (m.status !== 'pacaran' && s.nyaman < 2) return D.ucap(T('Hmm, aku belum terlalu kenal kamu. Ngobrol dulu, yuk.', 'Hmm, I don\'t know you that well yet. Let\'s talk first.'), 'diam');
     if (m.kh === D.hariIni()) return D.ucap(T('Kita kan sudah kencan hari ini. Besok lagi, ya!', 'We already went on a date today. Tomorrow, okay?'), 'salam');
@@ -422,7 +420,7 @@
 
   /* ---------- nyatakan perasaan & pacaran ---------- */
   function bisaNyatakan(m, olehPemain) {
-    if (anak() || m.status === 'pacaran') return false;
+    if (m.status === 'pacaran') return false;
     const s = suasana(m);
     return olehPemain ? m.s >= 60 && s.tertarik >= 2 : m.s >= 80 && s.tertarik >= 3;
   }

@@ -5846,6 +5846,120 @@
     "target": "< 0,1",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-122",
+   "judul": "Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengguna ingin melihat avatarnya sendiri saat berjalan (orang ketiga), siklus siang-malam langsung berjalan tanpa diaktifkan, dan kayu api unggun terlihat aneh (melayang/bersilang tidak wajar).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18 + tangkapan layar api unggun di iPad",
+    "alternatif": [
+     "kamera orbit bebas di mode jalan",
+     "biarkan siklus waktu mati sebagai bawaan"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.6,
+      "dampakRp": 2000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya pilihan kamera tersimpan di localStorage perangkat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "avatar memakai VRM bawaan/milik pengguna yang sudah ada"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul orangtiga.js dimuat malas hanya saat tombol ditekan; satu raycast per bingkai ke geometri level"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel aria-pressed; siklus waktu tetap bisa dimatikan & pilihan mati diingat di proyek"
+    }
+   },
+   "metrik": {
+    "nama": "sesi mode jalan yang memakai kamera orang ketiga",
+    "target": "> 20%",
+    "tinjau": "2026-12-18"
+   }
+  },
+  {
+   "id": "JEV-123",
+   "judul": "Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model unggahan hanya bisa jadi kursi/lampu/audio/piano/gitar — kasur, perapian dan api unggun unggahan tidak bisa dipakai berbaring atau dinyalakan. NPC terlalu sering berjoget (setiap diam 4 detik saat musik latar menyala). Pengguna ingin kartu NPC anak \"Dimas\" dihapus.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18: \"hilangkan npc dimas, npc jadi keseringan joget, tambahin opsi interaksi lie down, perapian, api unggun di uploaded asset\"",
+    "alternatif": [
+     "mematikan joget NPC sepenuhnya",
+     "menebak peran model dari nama berkas"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 0.7,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.6,
+      "dampakRp": 2000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "parameter model baru dijepit (clamp) di setiap pemakaian"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "lidah api & cahaya memakai aset bawaan; tidak ada berkas baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "saluran TV bawaan dipindah ke modul/kanaltv.js (dimuat saat TV menyala) — index.html turun ±4,9 KB sebelum fitur baru"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pengaturan baru memakai baris inspector berlabel; aksi muncul sebagai tombol Berinteraksi seperti perabot bawaan"
+    }
+   },
+   "metrik": {
+    "nama": "model unggahan berkategori baring/api/unggun per proyek",
+    "target": "> 0,2",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

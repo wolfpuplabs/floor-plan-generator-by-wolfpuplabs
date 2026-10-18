@@ -1,8 +1,8 @@
 /* Plan23D — KARTU KARAKTER NPC (JEV-108)
    Format diadaptasi dari npc-dialogue-system (Morgan Page, lisensi MIT — github.com/morganpage-tech/npc-dialogue-system):
    kartu gaya SillyTavern berisi deskripsi, kepribadian, gaya bicara, salam pertama, kalimat per tingkat relasi
-   (benci … pujaan) dan hadiah yang disukai / dibenci. Tiga kartu asli (Thorne, Elara, Zephyr) diterjemahkan; lima kartu
-   baru bertema rumah. Berkas ini dipakai dua sisi: peramban (window.KARTU_NPC) dan fungsi server api/npc.js (require),
+   (benci … pujaan) dan hadiah yang disukai / dibenci. Tiga kartu asli (Thorne, Elara, Zephyr) diterjemahkan; empat kartu
+   baru bertema rumah (kartu anak "Dimas" dihapus, JEV-123). Berkas ini dipakai dua sisi: peramban (window.KARTU_NPC) dan fungsi server api/npc.js (require),
    sehingga server tidak pernah menerima isi prompt dari peramban. */
 /* global module */
 (function (g) {
@@ -53,17 +53,6 @@
       topik: T(['Adukan semen yang pas itu kunci tembok awet.', 'Lantai keramik dipasang dengan kemiringan sedikit ke arah saluran air.', 'Kusen pintu dipasang dulu sebelum dinding naik.'],
         ['The right cement mix is the key to a lasting wall.', 'Tiles are laid with a slight slope towards the drain.', 'Door frames go in before the walls go up.']),
       hadiah: { suka: T(['kopi', 'rokok kretek', 'nasi bungkus'], ['coffee', 'clove cigarettes', 'a packed lunch']), benci: T(['komplain tanpa alasan'], ['pointless complaints']) } },
-    anak: { nama: 'Dimas', peran: T('Anak tetangga', 'Neighbour\'s kid'),
-      deskripsi: T('Anak SD yang ceria, suka main bola dan penasaran dengan semua hal.', 'A cheerful primary-school kid who loves football and is curious about everything.'),
-      kepribadian: T('Polos, bersemangat, banyak bertanya, gampang senang.', 'Innocent, energetic, full of questions, easily delighted.'),
-      gaya: T('Pendek-pendek, seru, banyak tanda seru.', 'Short, excited, lots of exclamation marks.'),
-      salam: T('Halo Kak! Ini rumah baru Kakak ya? Boleh main di halamannya nggak?', 'Hi! Is this your new house? Can I play in the garden?'),
-      relasi: { benci: T('Aku nggak mau main sama Kakak!', 'I don\'t want to play with you!'), tidakSuka: T('Hmm… ya udah.', 'Hmm… okay.'),
-        netral: T('Kak, tahu nggak? Tadi aku lihat kucing di atap!', 'Guess what? I saw a cat on the roof!'), suka: T('Kak! Main bola yuk!', 'Hey! Let\'s play football!'),
-        sayang: T('Kakak paling seru se-kompleks!', 'You\'re the coolest in the whole neighbourhood!'), pujaan: T('Nanti kalau besar aku mau punya rumah kayak punya Kakak!', 'When I grow up I want a house just like yours!') },
-      topik: T(['Kamar yang di atas itu bisa lihat lapangan, lho!', 'Aku bisa lari keliling rumah ini dalam sepuluh detik!', 'Kemarin ada layangan nyangkut di pohon depan.'],
-        ['The upstairs room can see the football field!', 'I can run around this house in ten seconds!', 'Yesterday a kite got stuck in the front tree.']),
-      hadiah: { suka: T(['bola', 'permen', 'layangan'], ['a ball', 'sweets', 'a kite']), benci: T(['PR matematika'], ['maths homework']) } },
     pandai_besi: { nama: 'Thorne', peran: T('Pandai besi', 'Blacksmith'),
       deskripsi: T('Pandai besi 50-an berjanggut tebal dan celemek bernoda jelaga; senjatanya terkenal tak pernah patah, tapi ia pilih-pilih pelanggan.', 'A gruff but skilled blacksmith in his 50s with a thick beard and soot-stained apron, known for weapons that never break but picky about who he works with.'),
       kepribadian: T('Pemarah, skeptis, bangga pada keahliannya, lunak pada yang menghargai kerja tangan.', 'Grumpy, skeptical, proud of his craft, soft on those who respect it.'),
@@ -98,7 +87,7 @@
         ['This house stands on a calm ley line.', 'Moonlight is loveliest from the upstairs window.', 'Every room holds an echo of those who lived in it.']),
       hadiah: { suka: T(['buku kuno', 'kristal mana', 'gulungan mantra'], ['an ancient grimoire', 'a mana crystal', 'a spell scroll']), benci: T(['jimat palsu'], ['a fake amulet']) } },
   };
-  const URUT = ['tetangga', 'arsitek', 'agen', 'tukang', 'anak', 'pandai_besi', 'pedagang', 'penyihir'];
+  const URUT = ['tetangga', 'arsitek', 'agen', 'tukang', 'pandai_besi', 'pedagang', 'penyihir'];
   // tingkat relasi sama dengan RelationshipLevel aslinya (skor −100…100)
   const TINGKAT = [['benci', -100, -50], ['tidakSuka', -50, -20], ['netral', -20, 20], ['suka', 20, 50], ['sayang', 50, 80], ['pujaan', 80, 101]];
   const tingkat = s => { s = Math.max(-100, Math.min(100, +s || 0)); return (TINGKAT.find(([, a, b]) => s >= a && s < b) || TINGKAT[2])[0]; };

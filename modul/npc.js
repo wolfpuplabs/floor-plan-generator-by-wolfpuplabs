@@ -11,7 +11,7 @@
    Berenang (JEV-113): NPC yang ikut pengunjung ikut masuk kolam renang; sesekali NPC berenang sendiri di kolam dekat
    tempatnya. Selama di air NPC berganti ke baju renang — avatar/F_renang.vrm atau F_renang2.vrm (menurut benih) dan
    M_renang.vrm, karakter yang sama diekspor dari VRoid Studio; tanpa berkas itu tetap berbaju biasa. */
-/* global FPS, LIHAT, camera, levelGroups, PROJECT, areaDunia, pointInPoly, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
+/* global GPU, FPS, LIHAT, camera, levelGroups, PROJECT, areaDunia, pointInPoly, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
    adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, MOOD, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
    renderInspector, addTransformFields, toast, BAHASA, renderer, scene */
 (function () {
@@ -157,6 +157,7 @@
     return (tpl.userData.npcPeta = { daftar, ref });
   }
 
+  const NPC = new Map();   // id objek → keadaan NPC (lihat PASANG)
   /* ---------- PEWARNAAN per benih (tembolok LRU) ---------- */
   const SIMPAN = new Map();
   // kainAsli: kain (atasan / bawahan / sepatu) tetap berwarna asli — baju renang dirancang pemiliknya; kulit & rambut tetap ikut benih
@@ -196,7 +197,6 @@
   }
 
   /* ---------- PASANG ke grup objek ---------- */
-  const NPC = new Map();
   const kotor = () => { BAYANG_KOTOR = Math.max(BAYANG_KOTOR, 1); };
   // bangun ulang adegan (edit, masuk mode jalan, pintu…) membuat grup baru: NPC dipasang seketika bila karakternya
   // sudah dimuat, dan keadaannya (posisi, kegiatan, kursi, bobot pose) dibawa ke grup baru selama tempat asalnya sama
@@ -221,7 +221,7 @@
     m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; x.userData.tetapTampak = true; } });
     n.badan.add(m);
     setTimeout(() => periksa(), 1500); setTimeout(() => periksa(), 4000);
-    const a = { g: n.badan, tuju: { po: 0 }, baju, tpl }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
+    const a = { g: n.badan, tuju: { po: 0 }, baju, tpl, npc: true }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
     if (lama && lama.a) { for (const k of ['pw', 'w', 'v', 'mikro', 'lambai', 'diam']) if (lama.a[k] != null) a[k] = Array.isArray(lama.a[k]) ? lama.a[k].slice() : lama.a[k]; }
     if (n.mode && n.p) pasangBadan(n);
     if ((n.renang || bajuTetap(n)) && !baju) pakaiBaju(n, true);   // sedang berenang / pakaian renang dipilih di inspector
@@ -314,6 +314,8 @@
     for (const n of NPC.values()) { const t = TPL[jenisAman(n.o.type)]; if (t && n.badan) rakit(n, t, n); }
   }
   let UJI_T = -1e9;
+  // memori grafis habis / baru dipulihkan (GPU di index.html): tekstur & program belum siap → uji & periksa ditunda
+  const gpuBaruPulih = () => (renderer.getContext && renderer.getContext().isContextLost()) || (typeof GPU !== 'undefined' && performance.now() - GPU.t < 20000);
   function ujiDanPerbaiki() {
     if (performance.now() - UJI_T < 8000) return;
     // memori grafis habis / baru dipulihkan: tekstur belum terunggah ulang → hasil uji keliru
@@ -328,7 +330,6 @@
     else return;
     UJI_T = -1e9; kotor(); setTimeout(() => ujiDanPerbaiki(), 1500);
   }
-  const gpuBaruPulih = () => (renderer.getContext && renderer.getContext().isContextLost()) || (typeof GPU !== 'undefined' && performance.now() - GPU.t < 20000);
   function periksa() {
     if (gpuBaruPulih()) { setTimeout(() => periksa(), 21000); return false; }   // memori grafis habis / baru dipulihkan: program & tekstur belum siap
     let gagal = false;
@@ -498,9 +499,10 @@
     if (dekat && !n.disapa && Math.random() < 0.25) { n.disapa = true; return sapaAuto(n); }
     if (r < 0.48 && cobaJalan(n)) return;
     const malam = typeof MOOD !== 'undefined' && (MOOD === 'malam' || MOOD === 'gelap');
-    const pilihan = [['kursi', 0.24], ['kasur', malam ? 0.45 : 0.08], ['lantai', 0.12], ['joget', adaMusik() ? 0.4 : 0.12], ['ngantuk', 0.1], ['mikro', 0.3], ['renang', adaKolam(n) ? (malam ? 0.04 : 0.16) : 0]];
+    const pilihan = [['kursi', 0.24], ['kasur', malam ? 0.45 : 0.08], ['lantai', 0.12], ['joget', n.akhirAkt === 'joget' ? 0 : adaMusik() ? 0.1 : 0.025], ['ngantuk', 0.1], ['mikro', 0.3], ['renang', adaKolam(n) ? (malam ? 0.04 : 0.16) : 0]];
     let x = Math.random() * pilihan.reduce((s, p) => s + p[1], 0), k = 'mikro';
     for (const [nm, w] of pilihan) { x -= w; if (x <= 0) { k = nm; break; } }
+    n.akhirAkt = k;                                                   // joget jarang (JEV-123): ±2 % tanpa musik, ±8 % dengan musik, tidak dua kali beruntun
     if (k === 'renang') { const K = kolamDekat(n); if (K) { n.kolamTuju = K; return mulaiJalan(n, K.q.x, K.q.z, 'renang'); } k = 'kursi'; }
     if (k === 'kasur') { const ks = cariKasur(n); if (ks) { KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; return mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); } k = 'kursi'; }
     if (k === 'kursi') { const ks = cariKursi(n); if (ks) { KURSI_DIPAKAI.add(ks.kunci); n.kursi = ks; return ks.d < 0.3 ? masukKursi(n) : mulaiJalan(n, ks.q.x, ks.q.z, 'kursi'); } k = 'lantai'; }
@@ -717,16 +719,16 @@
 
   function sorak() { let i = 0; for (const n of NPC.values()) if (n.mode === 'temani' && n.a) { n.sorak = 1.8; window.LOBI.gerak.mulaiLambai(n.a); suaraSorak(n.id, 0.12 * i++); } }
   /* ---------- SUARA NPC: disintesis WebAudio (tanpa berkas) — gumaman saat bicara (suku kata pendek bergaya "Animal Crossing":
-     nada dasar menurut karakter F / M / anak & benih, vokal dari teks, lengkung nada menurut niat: tanya naik, puji / salam
+     nada dasar menurut karakter F / M & benih, vokal dari teks, lengkung nada menurut niat: tanya naik, puji / salam
      ceria, hina datar & rendah), sorakan "yay!" + tepuk tangan, dan "huft" (hembusan napas) saat kesal / menolak / mengantuk.
      Volume & kiri-kanan mengikuti jarak NPC dari pengunjung. Mode (tombol suara di obrolan): gumam (bawaan), tts, mati. */
   let MODE_SUARA = 'gumam'; try { const v = localStorage.getItem('npcSuara'); MODE_SUARA = v === '1' ? 'tts' : v === 'mati' ? 'mati' : 'gumam'; } catch (e) { MODE_SUARA = 'gumam'; }
   let AC = null, DERAU = null;
   const ac = () => { try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; } return AC; };
   const FORMAN = { a: [800, 1200], i: [300, 2300], u: [350, 800], e: [500, 1900], o: [500, 900] };
-  function nadaDasar(n) {                                              // Hz: F ± 300, M ± 150, anak ± 400; ±8 % menurut benih
-    const anak = n.o.params && n.o.params.kartu === 'anak', b = (benihAman(n.o) % 1000) / 1000 - 0.5;
-    return (anak ? 390 : jenisAman(n.o.type) === 'M' ? 145 : 285) * (1 + 0.16 * b);
+  function nadaDasar(n) {                                              // Hz: F ± 300, M ± 150; ±8 % menurut benih
+    const b = (benihAman(n.o) % 1000) / 1000 - 0.5;
+    return (jenisAman(n.o.type) === 'M' ? 145 : 285) * (1 + 0.16 * b);
   }
   function keluaran(c, n, vol) {
     let v = vol;
@@ -1015,7 +1017,7 @@
       fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...KN.URUT.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], typeof d.params.kartu === 'string' && KN.KARTU[d.params.kartu] ? d.params.kartu : '',
         v => { if (v) d.params.kartu = v; else delete d.params.kartu; HIST.label = 'Kepribadian NPC'; rebuildScene(); renderInspector(); }));
       const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 30; nm.value = typeof d.params.nama === 'string' ? d.params.nama : '';
-      const kk = KN.KARTU[d.params.kartu] || KN.KARTU[KN.URUT[benihAman(d) % 5]]; nm.placeholder = kk.nama;
+      const kk = KN.KARTU[d.params.kartu] || KN.KARTU[KN.URUT[benihAman(d) % 5 % 4]]; nm.placeholder = kk.nama;
       nm.onchange = () => { const v = nm.value.trim().slice(0, 30); if (v) d.params.nama = v; else delete d.params.nama; HIST.label = 'Nama NPC'; rebuildScene(); };
       fRow(ins, 'Nama', nm);
     } else muatModul('kartunpc').then(() => { if (window.KARTU_NPC) renderInspector(); }, () => {});

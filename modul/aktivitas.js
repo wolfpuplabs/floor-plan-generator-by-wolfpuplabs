@@ -327,28 +327,37 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
   }
   function titikApi(id) {
     const g = grupObjek(id), o = cariObjek(id); if (!g || !o) return null; g.updateMatrixWorld(true);
-    const unggun = o.type === 'api_unggun';
+    const unggun = o.type === 'api_unggun' || (o.kind === 'model' && o.params && o.params.interaksi === 'unggun'), at = g.userData.apiTitik;
+    if (at) {                                                          // model unggahan (JEV-123): titik api pilihan pemilik, jarak duduk dari ukuran model
+      const pusat = g.localToWorld(at.clone()), s = new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3());
+      return { g, o, unggun, pusat, p: pusat.clone().add(new THREE.Vector3(0, 0.2, 0)), r: Math.max(unggun ? 1.15 : 1.35, Math.max(s.x, s.z) / 2 + 0.55) };
+    }
     return { g, o, unggun, pusat: g.getWorldPosition(new THREE.Vector3()), p: g.localToWorld(new THREE.Vector3(0, unggun ? 0.2 : 0.42, unggun ? 0 : 0.3)) };
   }
   function tambahKayu(t) {
     const F = titikApi(t.id); if (!F) return;
     if (TAS.kayu < 1) { toast(T('Kayu bakar habis — ambil di tumpukan kayu bakar atau potong kayu di tunggul', 'No firewood — take some from a log pile or chop some at a stump')); return; }
     TAS.kayu--; simpanTas();
-    if (typeof tambahKayuApi === 'function') tambahKayuApi(t.id);
+    if (typeof tambahKayuApi === 'function') tambahKayuApi(t.id); besarkanApi(t.id);
     derau(0.25, 260, 1.1, 0.5, 'bandpass'); setTimeout(() => derau(0.9, 2400, 0.4, 0.16, 'highpass'), 220);   // kayu jatuh, api menyambar
     percik(F.p.clone(), 26, 0xffb050, 1.1);
     toast(T(`🔥 Api membesar (kayu bakar tersisa: ${TAS.kayu})`, `🔥 The fire grows (firewood left: ${TAS.kayu})`));
     if (A && A.F && A.F.o.id === t.id) A.kayuT = 0;
   }
+  // besar api sesudah ditambah kayu: ≤ 1,8×, susut ke 1× dalam ±3 menit — lidah api & kuat cahaya (index.html membaca apiKuat)
+  const API_KUAT = new Map();
+  function kuatkanApi(id, v) { const g = grupObjek(id); if (!g) return; g.userData.apiKuat = v; g.traverse(x => { if (x.name === 'lidahApi') x.scale.set(0.75 + 0.25 * v, 0.6 + 0.4 * v, 0.75 + 0.25 * v); }); }
+  function besarkanApi(id) { const v = Math.min(1.8, (API_KUAT.get(id) || 1) + 0.4); API_KUAT.set(id, v); kuatkanApi(id, v); return v; }
+  function langkahApi(dt) { for (const [id, v] of API_KUAT) { const b = Math.max(1, v - 0.8 / 180 * dt); if (b <= 1.001) { API_KUAT.delete(id); kuatkanApi(id, 1); } else { API_KUAT.set(id, b); kuatkanApi(id, b); } } }
   function mulaiHangat(t, marsh) {
     const F = titikApi(t.id); if (!F) return;
     if (typeof apiMenyala === 'function' && !apiMenyala(t.id)) { toast(T('Apinya padam — tambah kayu bakar dulu', 'The fire is out — add some firewood first')); return; }
     const a = mulai(marsh ? 'marshmallow' : 'hangat', t); if (!a) return;
     // duduk di sisi api yang terdekat (api unggun) atau di depan perapian, menghadap api
     let ux = camera.position.x - F.pusat.x, uz = camera.position.z - F.pusat.z;
-    if (!F.unggun) { const d0 = F.g.localToWorld(new THREE.Vector3(0, 0, 1)).sub(F.pusat); ux = d0.x; uz = d0.z; }
+    if (!F.unggun) { const d0 = F.g.localToWorld(new THREE.Vector3(0, 0, 1)).sub(F.g.getWorldPosition(new THREE.Vector3())); ux = d0.x; uz = d0.z; }
     const l = Math.hypot(ux, uz) || 1; ux /= l; uz /= l;
-    const r = F.unggun ? 1.15 : 1.35, x = F.pusat.x + ux * r, z = F.pusat.z + uz * r;
+    const r = F.r || (F.unggun ? 1.15 : 1.35), x = F.pusat.x + ux * r, z = F.pusat.z + uz * r;
     const g0 = fpsPijakan(x, z, FPS.feet + 0.8), tanah = levelElevation(0) + (adaTanahSitus() ? tinggiTanah(x, z) : 0);
     let feet = Math.max(g0 == null ? -1e9 : g0, tanah); if (!Number.isFinite(feet) || Math.abs(feet - FPS.feet) > 0.6) feet = FPS.feet;
     Object.assign(a, { F, x, z, feet, bonusT: 0, marsh, kayuT: 0 });
@@ -686,7 +695,7 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
   /* ---------- per frame ---------- */
   function langkah(dt) {
     dt = Math.min(dt, 0.1);
-    langkahPercik(dt);
+    langkahPercik(dt); langkahApi(dt);
     if (B) { if (!FPS.on) B = null; else langkahBawa(); }
     if (!A) return;
     if (!FPS.on) { selesai(); return; }
@@ -707,7 +716,7 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     if (t.jenis === 'marshmallow') return mulaiHangat(t, true);
   }
   window.AKT = { pakai, langkah, selesai, kunci: () => !!A, membawa: () => !!B, tas: () => JSON.parse(JSON.stringify(TAS)), ambil,
-    renang: () => !!A && A.jenis === 'renang', dicipratkan,
+    renang: () => !!A && A.jenis === 'renang', dicipratkan, besarkanApi,
     // geometri kolam untuk NPC (modul/npc.js): tepi terdekat, titik di dalam, permukaan air; cebur = suara + percikan
     kolam: { tepi: tepiKolam, keDalam, dalam: dalamKolam, air: airKolam, cebur: p => { BUNYI.cebur(); percik(p, 30, 0xe8f6ff, 1.2); } },
     _uji: { A: () => A, tekan, lempar: k => A && lempar(A, k), TAS: () => TAS, pilihIkan, dapat: () => A && dapat(A) } };

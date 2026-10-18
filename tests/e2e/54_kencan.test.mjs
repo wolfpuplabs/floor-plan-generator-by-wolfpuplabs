@@ -9,18 +9,18 @@ const rumah = { v: 1, levels: [{ name: 'L1', height: 3, walls: [[0, 0, 10, 0], [
   objects: [npc('nA', 4, 3, 'tukang'), npc('nK', 8, 3, 'anak')] }] };
 
 export const tes = {
-  'api/npc mode pilihan: suasana disaring 0–3, prompt meminta 4 pilihan ramah semua umur (anak tanpa romansa); pilihan AI dibaca & disaring': async () => {
+  'api/npc mode pilihan: suasana disaring 0–3, prompt meminta 4 pilihan ramah semua umur; kartu "anak" lama ditolak; pilihan AI dibaca & disaring': async () => {
     const api = require('../../api/npc.js');
     const q = api.permintaanAman({ kartu: 'tukang', pesan: 'hai', pilihan: true, suasana: { senang: 9, nyaman: 2, tertarik: -4, kesal: 'x' } });
     assert.deepEqual([q.pilihan, q.suasana], [true, { senang: 3, nyaman: 2, tertarik: 0, kesal: 0 }]);
-    const p = api.promptSistem(q), pa = api.promptSistem(api.permintaanAman({ kartu: 'anak', pesan: 'hai', pilihan: true }));
-    assert.match(p, /exactly 4 short things/); assert.match(p, /no sexual content/); assert.match(pa, /NO romance or flirting/);
+    const p = api.promptSistem(q);
+    assert.match(p, /exactly 4 short things/); assert.match(p, /no sexual content/); assert.equal(api.permintaanAman({ kartu: 'anak', pesan: 'hai', pilihan: true }), null);
     assert.doesNotMatch(api.promptSistem(api.permintaanAman({ kartu: 'tukang', pesan: 'hai' })), /options/);
-    const ok = api.bacaPilihan({ options: [{ text: 'Halo!', effect: 'happy+1' }, { text: 'Membosankan.', effect: 'annoyed+1' }, { text: 'Senyummu manis.', effect: 'attracted+1' }, { text: 'Dah!', effect: 'happy+1' }] }, false);
+    const ok = api.bacaPilihan({ options: [{ text: 'Halo!', effect: 'happy+1' }, { text: 'Membosankan.', effect: 'annoyed+1' }, { text: 'Senyummu manis.', effect: 'attracted+1' }, { text: 'Dah!', effect: 'happy+1' }] });
     assert.deepEqual(ok, [{ t: 'Halo!', efek: { senang: 1 } }, { t: 'Membosankan.', efek: { kesal: 1 } }, { t: 'Senyummu manis.', efek: { tertarik: 1 } }, { t: 'Dah!', efek: {}, akhir: true }]);
-    assert.deepEqual(api.bacaPilihan({ options: [{ text: 'a', effect: 'attracted+1' }, { text: 'b', effect: 'x' }, { text: 'c', effect: 'happy-1' }, { text: 'd' }] }, true).map(o => o.efek), [{}, {}, { senang: -1 }, {}]);
-    assert.throws(() => api.bacaPilihan({ options: [{ text: 'a' }, { text: 'sex' }, { text: 'c' }, { text: 'd' }] }, false));
-    assert.throws(() => api.bacaPilihan({ options: [{ text: 'a' }] }, false));
+    assert.deepEqual(api.bacaPilihan({ options: [{ text: 'a', effect: 'attracted+1' }, { text: 'b', effect: 'x' }, { text: 'c', effect: 'happy-1' }, { text: 'd' }] }).map(o => o.efek), [{ tertarik: 1 }, {}, { senang: -1 }, {}]);
+    assert.throws(() => api.bacaPilihan({ options: [{ text: 'a' }, { text: 'sex' }, { text: 'c' }, { text: 'd' }] }));
+    assert.throws(() => api.bacaPilihan({ options: [{ text: 'a' }] }));
     // Groq dipalsukan: balasan + 4 pilihan
     const palsu = async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ reply: 'Halo juga!', sentiment: 0.5, options: [{ text: 'A', effect: 'happy+1' }, { text: 'B', effect: 'comfortable+1' }, { text: 'C', effect: 'annoyed+1' }, { text: 'D', effect: 'none' }] }) } }] }) });
     const r = await api.tanyaGroq(q, { GROQ_API_KEY: 'x' }, palsu);
@@ -86,7 +86,7 @@ export const tes = {
     assert.match(e.t, /tidak mau ngobrol|don't want to talk/); assert.ok(e.turun <= -9 && e.tutup && e.kesal === 1, JSON.stringify(e));
   },
 
-  'nyatakan perasaan: NPC (tertarik 3, relasi ≥ 80) → terima = 💞 Pacaran; pemain terlalu dini ditolak; kartu anak tanpa romansa & kencan': async (page) => {
+  'nyatakan perasaan: NPC (tertarik 3, relasi ≥ 80) → terima = 💞 Pacaran; pemain terlalu dini ditolak': async (page) => {
     await muatProyekJSON(page, rumah);
     await page.evaluate(() => { localStorage.removeItem('npcIngat'); });
     await page.waitForFunction(() => window.NPC && ['nA', 'nK'].every(id => window.NPC.keadaan(id) && window.NPC.keadaan(id).siap), undefined, { timeout: 90000 });
@@ -106,20 +106,11 @@ export const tes = {
       const tanya = akhir(); opsi().find(x => x.dataset.efek === 'terima').click();
       const status = m.status, tag = !$('#npcObrol .no-status').hidden, jawab = akhir();
       window.DIALOG.tutup();
-      // kartu anak: tanpa "tertarik", tanpa kencan / nyatakan
-      const k = D._dalam.ingatan('nK'); Object.assign(k, { s: 90, hg: 0 }); k.mood = { senang: 2, nyaman: 3, tertarik: 3, kesal: 0 };
-      const sk = window.NPC.keadaan('nK').p; camera.position.set(sk.x, 1.6, sk.z + 1.2); window.DIALOG.buka('nK'); await tunggu(() => !!$('#npcObrol .no-mood'));
-      const moodAnak = $('#npcObrol .no-mood').textContent;
-      window.KENCAN.pilihan(); await tunggu(() => opsi().length);
-      const efekAnak = opsi().map(x => x.dataset.efek); window.KENCAN.ajak(); const kencanAnak = akhir();
-      return { ada: !!ada, tolak, tertarik, tanya, status, tag, jawab, moodAnak, efekAnak, kencanAnak };
+      return { ada: !!ada, tolak, tertarik, tanya, status, tag, jawab };
     });
     assert.ok(r.ada && /belum siap|not ready/.test(r.tolak) && r.tertarik === 1, 'terlalu dini: ' + JSON.stringify(r));
     assert.match(r.tanya, /suka sama kamu|I like you/);
     assert.deepEqual([r.status, r.tag], ['pacaran', true]); assert.match(r.jawab, /pacaran|together/);
-    assert.doesNotMatch(r.moodAnak, /Tertarik|Attracted/);
-    assert.ok(!r.efekAnak.some(e => /tertarik|kencan|nyatakan/.test(e)), 'anak tanpa romansa: ' + r.efekAnak);
-    assert.match(r.kencanAnak, /main sama teman|play with my friends/);
   },
   'hari dalam game: malam → siang = hari baru (jatah relasi +30 pulih, toast Hari ke-n); senja → siang tanpa malam tidak; tersimpan': async (page) => {
     await muatProyekJSON(page, rumah);
