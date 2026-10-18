@@ -6396,6 +6396,60 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-132",
+   "judul": "Jok otomatis: abaikan pijakan, bemper & lantai kabin — duduk di jok sungguhan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pada model mobil, pemindai jok (JEV-130) bisa memilih permukaan di luar kabin yang 'bersandar' ke badan mobil — pijakan samping, bemper — atau lantai kabin / bak kargo, sehingga pemain duduk di samping roda depan atau di lantai belakang.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar & rekaman iPad pengguna 2026-10-19 00.58: \"posisi duduk belom bener\"",
+    "alternatif": [
+     "pengguna memecah model mobil per jok",
+     "titik duduk manual per model"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 0.6,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tambahan ≤ 6 sinar per calon jok, sekali per model"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan posisi duduk di model kendaraan",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
   }
  ]
 }

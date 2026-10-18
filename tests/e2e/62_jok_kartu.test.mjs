@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { FIX, muatProyekJSON } from './harness.mjs';
 
-// JEV-130: duduk di model unggahan — jok & arah hadap dicari dari bentuk model (dua kursi dalam satu model, jok mobil,
+// JEV-130 / JEV-132: duduk di model unggahan — jok & arah hadap dicari dari bentuk model (dua kursi dalam satu model, jok mobil,
 // kursi yang depannya bukan +Z); kepribadian NPC mengikuti tubuhnya (NPC F → kartu perempuan, NPC M → kartu laki-laki)
 const RUANG = { v: 1, levels: [{ name: 'L1', height: 3, walls: [], objects: [] }] };
 
@@ -25,16 +25,18 @@ export const tes = {
       const duaKursi = w => { for (const x of [-0.35, 0.35]) { kotak(w, 0.5, 0.04, 0.45, x, 0.42, 0); kotak(w, 0.5, 0.5, 0.04, x, 0.7, 0.24, -0.2);
         for (const [dx, dz] of [[-0.23, -0.2], [0.23, -0.2], [-0.23, 0.2], [0.23, 0.2]]) kotak(w, 0.03, 0.42, 0.03, x + dx, 0.21, dz); } };   // depan kursi = −Z
       const gD = ganti('mDua', duaKursi), gP = ganti('mPutar', duaKursi), gM = ganti('mManual', duaKursi);
-      const gC = ganti('mMobil', w => { kotak(w, 4, 0.5, 1.8, 0, 0.55, 0); kotak(w, 2.6, 0.06, 1.8, -0.4, 1.95, 0);   // depan mobil = +X
+      const gC = ganti('mMobil', w => { kotak(w, 4, 0.3, 1.8, 0, 0.45, 0); kotak(w, 2.6, 0.06, 1.8, -0.4, 1.95, 0);   // depan mobil = +X
         kotak(w, 4, 1.15, 0.05, 0, 1.38, 0.9); kotak(w, 4, 1.15, 0.05, 0, 1.38, -0.9); kotak(w, 0.3, 0.5, 1.7, 0.75, 1.1, 0);
         for (const z of [-0.45, 0.45]) { kotak(w, 0.5, 0.12, 0.5, 0.2, 0.86, z); kotak(w, 0.1, 0.6, 0.5, -0.1, 1.2, z); }
-        kotak(w, 0.5, 0.12, 1.4, -1.0, 0.86, 0); kotak(w, 0.1, 0.6, 1.4, -1.3, 1.2, 0); });
+        kotak(w, 0.5, 0.12, 1.4, -1.0, 0.86, 0); kotak(w, 0.1, 0.6, 1.4, -1.3, 1.2, 0);
+        // di luar kabin (JEV-132): pijakan samping & bemper — tanpa atap, tipis, "bersandar" ke badan mobil
+        for (const z of [-1.02, 1.02]) kotak(w, 2.4, 0.05, 0.2, 0, 0.45, z); kotak(w, 0.22, 0.12, 1.8, 2.12, 0.5, 0); });
       enterFPS(); camera.position.set(2, 1.6, 0); fpsStep(0);
       const out = {}, sudut = y => +(((y % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI).toFixed(2);
       const coba = (id, grp, titik) => { duduk({ id, grp, titik: new THREE.Vector3(...titik) }); for (let i = 0; i < 40; i++) fpsStep(0.05);
         const v = { x: +camera.position.x.toFixed(2), y: +camera.position.y.toFixed(2), z: +camera.position.z.toFixed(2), yaw: sudut(FPS.yaw) }; berdiri(); return v; };
       out.kanan = coba('mDua', gD, [2.45, 0.6, 1.7]); out.kiri = coba('mDua', gD, [1.6, 0.6, 1.7]);
-      out.sopir = coba('mMobil', gC, [8.2, 1.2, 1.1]); out.penumpang = coba('mMobil', gC, [8.2, 1.2, 2.9]); out.belakang = coba('mMobil', gC, [7.0, 1.2, 2.9]);
+      out.sopir = coba('mMobil', gC, [8.2, 1.2, 1.1]); out.dariLuar = coba('mMobil', gC, [8.3, 0.5, 0.98]); out.bemper = coba('mMobil', gC, [10.1, 0.6, 2]); out.pintuBelakang = coba('mMobil', gC, [6.0, 1.0, 2]); out.penumpang = coba('mMobil', gC, [8.2, 1.2, 2.9]); out.belakang = coba('mMobil', gC, [7.0, 1.2, 2.9]);
       out.putar = coba('mPutar', gP, [1.7, 0.6, 7.4]); out.manual = coba('mManual', gM, [5.3, 0.6, 7]);
       exitFPS();
       // panel: Arah hadap bawaan = Otomatis
@@ -47,7 +49,11 @@ export const tes = {
     assert.ok(Math.abs(r.kanan.y - (0.44 + 0.02 + 0.72)) < 0.05, 'mata di atas dudukan: ' + r.kanan.y);
     // mobil: jok sopir / penumpang / belakang, semua menghadap kaca depan (+X → yaw π/2)
     assert.ok(Math.abs(r.sopir.z - 1.55) < 0.1 && Math.abs(r.penumpang.z - 2.45) < 0.1 && r.belakang.x < 7.3, 'jok mobil: ' + JSON.stringify(r));
-    for (const k of ['sopir', 'penumpang', 'belakang']) assert.ok(Math.abs(r[k].yaw - Math.PI / 2) < 0.05, k + ' menghadap depan mobil: ' + JSON.stringify(r[k]));
+    // dibidik dari luar tepat di atas pijakan samping / bemper → tetap jok di dalam kabin (JEV-132)
+    assert.ok(Math.abs(r.dariLuar.z - 1.55) < 0.1 && Math.abs(r.dariLuar.x - 8.2) < 0.15, 'pijakan samping bukan jok: ' + JSON.stringify(r.dariLuar));
+    assert.ok(r.bemper.x < 8.5 && r.bemper.y > 1.5, 'bemper bukan jok: ' + JSON.stringify(r.bemper));
+    assert.ok(Math.abs(r.pintuBelakang.x - 7.0) < 0.2 && r.pintuBelakang.y > 1.5, 'lantai kargo bukan jok — jok belakang: ' + JSON.stringify(r.pintuBelakang));
+    for (const k of ['sopir', 'penumpang', 'belakang', 'dariLuar', 'bemper', 'pintuBelakang']) assert.ok(Math.abs(r[k].yaw - Math.PI / 2) < 0.05, k + ' menghadap depan mobil: ' + JSON.stringify(r[k]));
     // model diputar 90°: depan kursi (−Z model) → −X dunia (yaw −π/2)
     assert.ok(Math.abs(r.putar.yaw + Math.PI / 2) < 0.05, 'ikut putaran model: ' + JSON.stringify(r.putar));
     // arah manual (Kanan +X) tetap dipakai, posisinya tetap di jok

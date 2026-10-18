@@ -6,7 +6,9 @@
    menghadap atas setinggi 0,2–1,1 m dengan ruang kepala ≥ 0,75 m = calon dudukan; sel bertetangga yang setinggi
    dikelompokkan menjadi satu jok. Arah hadap jok = menjauhi sandaran: dari empat sisi jok (sumbu model), sisi yang
    memiliki bidang 0,2–0,7 m di atas dudukan adalah sandaran; sisi seberangnya harus lega (lantai kaki lebih rendah).
-   Dudukan tanpa sandaran (bangku, pouf) dipakai bila model tidak punya jok bersandaran. Jok dipilih yang terdekat dengan
+   Dudukan tanpa sandaran (bangku, pouf) dipakai bila model tidak punya jok bersandaran; bila ada jok beratap (kabin mobil),
+   permukaan tanpa atap (pijakan samping, bemper) diabaikan; dudukan harus 28–80 cm dalamnya dengan ruang kaki lebih rendah
+   di depannya — lantai kabin & bak kargo bukan jok (JEV-132). Jok dipilih yang terdekat dengan
    titik bidik (pemain) atau posisi NPC. Arah hadap yang diatur sendiri di panel tetap dihormati; model tanpa jok bersandaran
    yang Tinggi dudukannya diisi sendiri memakai isian itu. */
 /* global cariObjek */
@@ -48,7 +50,7 @@
       const u = u0 + (i + 0.5) * (u1 - u0) / NU, w = w0 + (j + 0.5) * (w1 - w0) / NW;
       for (const s of tiang(titik(u, w))) {
         const r = s.y - y0;
-        if (s.naik && r >= 0.2 && r <= 1.1 && s.atas >= 0.75) { kisi.set(i + ',' + j, { i, j, u, w, y: s.y }); break; }
+        if (s.naik && r >= 0.2 && r <= 1.1 && s.atas >= 0.75) { kisi.set(i + ',' + j, { i, j, u, w, y: s.y, atap: s.atas < 3 }); break; }
       }
     }
     // kelompok sel bertetangga yang setinggi (±7 cm)
@@ -73,14 +75,30 @@
           if (n2 >= 2) return jauh; }
         return 9; };
       const sisi = [[1, 0, rw], [-1, 0, rw], [0, 1, ru], [0, -1, ru]].map(([du, dw, l]) => jarak(du, dw, l));
+      const ruangKaki = ([du, dw, lebar]) => {
+        for (const jauh of [0.12, 0.3]) { let n2 = 0;
+          for (const t of [-0.25, 0, 0.25]) {
+            const p = titik(u + du * (ru + jauh) + dw * t * lebar * 2, w + dw * (rw + jauh) + du * t * lebar * 2);
+            _o.set(p.x, y + 0.25, p.z); ray.set(_o, _d); ray.far = y + 0.25 - y0 + 0.05;
+            const h = ray.intersectObjects(mesh, false); if (!h.length || h[0].point.y < y - 0.12) n2++; }
+          if (n2 >= 2) return true; }
+        return false; };
       // sandaran = sisi dengan penghalang terdekat (menempel tepi jok); seberangnya harus jauh lebih lega (ruang kaki, dasbor jauh)
       let arah = null; const sb = sisi.indexOf(Math.min(...sisi));
       if (sisi[sb] <= 0.15 && sisi[sb ^ 1] >= sisi[sb] + 0.1) arah = sb ^ 1;                // depan = seberang sandaran
+      // ciri jok sungguhan (JEV-132): dalam dudukan 28–80 cm (pijakan samping, bemper & lis tipis yang "bersandar" ke badan
+      // mobil terlalu dangkal; lantai kabin / bak kargo terlalu dalam), dan di depannya ada ruang kaki ≥ 12 cm lebih rendah
+      const dalam = arah === null ? 0 : 2 * (arah < 2 ? ru : rw);
+      if (arah !== null && (dalam < 0.28 || dalam > 0.8 || !ruangKaki([[1, 0, rw], [-1, 0, rw], [0, 1, ru], [0, -1, ru]][arah]))) arah = null;
       const vek = arah === null ? null : [ex, ex.clone().negate(), ez, ez.clone().negate()][arah].clone();
       jok.push({ sel: grup.map(s => g.worldToLocal(titik(s.u, s.w).setY(s.y))), pos: g.worldToLocal(titik(u, w).setY(y)),
-        arah: vek && vek.transformDirection(inv), sandar: arah !== null, lebar: Math.max(ru, rw) > 0.45 });
+        arah: vek && vek.transformDirection(inv), sandar: arah !== null, lebar: Math.max(ru, rw) > 0.45,
+        atap: grup.filter(c => c.atap).length >= grup.length * 0.6 });
     }
-    return jok.some(j => j.sandar) ? jok.filter(j => j.sandar) : jok;
+    // jok bersandaran diutamakan; model yang punya jok beratap (kabin mobil, gazebo) hanya memakai jok beratap — permukaan
+    // di luar kabin (pijakan, bemper, kap) tidak dipilih walau titik bidik lebih dekat ke sana
+    const sandar = jok.filter(j => j.sandar), atap = sandar.filter(j => j.atap);
+    return atap.length ? atap : sandar.length ? sandar : jok;
   }
 
   // t: {grp, titik}; D: userData.duduk ({model, h, arah: derajat atau null = otomatis}). null = pakai cara lama (kotak batas).
