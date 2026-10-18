@@ -1853,6 +1853,10 @@ window.KAMUS_EN={
   "Atur ulang tampilan NPC":"Reset NPC display",
   "Tampilan NPC diatur ulang":"NPC display reset",
   "Kualitas render diturunkan agar memori grafis cukup":"Render quality lowered so graphics memory is enough",
+  "Orang ketiga":"Third person",
+  "👤 Kamera orang ketiga":"👤 Third-person camera",
+  "👁 Kamera orang pertama":"👁 First-person camera",
+  "Avatar orang ketiga tidak bisa dimuat":"Third-person avatar could not be loaded",
   "Berkas model gagal diurai.":"The model file could not be parsed.",
   "Kolam rumah tinggal umumnya 1,2–1,5 m; bagian dangkal ≤ 1,0 m untuk anak.":"Residential pools are usually 1.2–1.5 m deep; shallow part ≤ 1.0 m for children.",
   "Model ini sudah tidak ada di pustaka — objeknya ditampilkan sebagai kotak penanda.":"This model is no longer in the library — the object is shown as a placeholder box.",
@@ -1950,7 +1954,9 @@ window.KAMUS_EN={
   "Kamu berpose peace":"You strike a peace pose",
   "Kamu berpose":"You strike a pose",
   "Kamu berpose hati":"You make a heart",
-  "NPC berpose — ketuk kamera lagi untuk memotret":"NPCs are posing — tap the camera again to take the photo"
+  "NPC berpose — ketuk kamera lagi untuk memotret":"NPCs are posing — tap the camera again to take the photo",
+  "Kamera orang ketiga":"Third-person camera",
+  "Kamera orang pertama":"First-person camera"
  },
  // frasa
  "frasa":{

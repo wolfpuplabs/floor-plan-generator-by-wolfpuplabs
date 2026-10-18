@@ -5846,6 +5846,63 @@
     "target": "< 0,1",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-122",
+   "judul": "Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengguna ingin melihat avatarnya sendiri saat berjalan (orang ketiga), siklus siang-malam langsung berjalan tanpa diaktifkan, dan kayu api unggun terlihat aneh (melayang/bersilang tidak wajar).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18 + tangkapan layar api unggun di iPad",
+    "alternatif": [
+     "kamera orbit bebas di mode jalan",
+     "biarkan siklus waktu mati sebagai bawaan"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.6,
+      "dampakRp": 2000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya pilihan kamera tersimpan di localStorage perangkat"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "avatar memakai VRM bawaan/milik pengguna yang sudah ada"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul orangtiga.js dimuat malas hanya saat tombol ditekan; satu raycast per bingkai ke geometri level"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel aria-pressed; siklus waktu tetap bisa dimatikan & pilihan mati diingat di proyek"
+    }
+   },
+   "metrik": {
+    "nama": "sesi mode jalan yang memakai kamera orang ketiga",
+    "target": "> 20%",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

@@ -11,7 +11,7 @@
    Berenang (JEV-113): NPC yang ikut pengunjung ikut masuk kolam renang; sesekali NPC berenang sendiri di kolam dekat
    tempatnya. Selama di air NPC berganti ke baju renang — avatar/F_renang.vrm atau F_renang2.vrm (menurut benih) dan
    M_renang.vrm, karakter yang sama diekspor dari VRoid Studio; tanpa berkas itu tetap berbaju biasa. */
-/* global FPS, LIHAT, camera, levelGroups, PROJECT, areaDunia, pointInPoly, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
+/* global GPU, FPS, LIHAT, camera, levelGroups, PROJECT, areaDunia, pointInPoly, klonModel, muatModul, fpsResolveWalls, fpsGround, levelElevation,
    adaTanahSitus, tinggiTanah, FURN, titikDuduk, MEDIA_OBJ, MOOD, BAYANG_KOTOR:writable, el, fRow, selInput, numInput, HIST, rebuildScene,
    renderInspector, addTransformFields, toast, BAHASA, renderer, scene */
 (function () {
@@ -157,6 +157,7 @@
     return (tpl.userData.npcPeta = { daftar, ref });
   }
 
+  const NPC = new Map();   // id objek → keadaan NPC (lihat PASANG)
   /* ---------- PEWARNAAN per benih (tembolok LRU) ---------- */
   const SIMPAN = new Map();
   // kainAsli: kain (atasan / bawahan / sepatu) tetap berwarna asli — baju renang dirancang pemiliknya; kulit & rambut tetap ikut benih
@@ -196,7 +197,6 @@
   }
 
   /* ---------- PASANG ke grup objek ---------- */
-  const NPC = new Map();
   const kotor = () => { BAYANG_KOTOR = Math.max(BAYANG_KOTOR, 1); };
   // bangun ulang adegan (edit, masuk mode jalan, pintu…) membuat grup baru: NPC dipasang seketika bila karakternya
   // sudah dimuat, dan keadaannya (posisi, kegiatan, kursi, bobot pose) dibawa ke grup baru selama tempat asalnya sama
@@ -314,6 +314,8 @@
     for (const n of NPC.values()) { const t = TPL[jenisAman(n.o.type)]; if (t && n.badan) rakit(n, t, n); }
   }
   let UJI_T = -1e9;
+  // memori grafis habis / baru dipulihkan (GPU di index.html): tekstur & program belum siap → uji & periksa ditunda
+  const gpuBaruPulih = () => (renderer.getContext && renderer.getContext().isContextLost()) || (typeof GPU !== 'undefined' && performance.now() - GPU.t < 20000);
   function ujiDanPerbaiki() {
     if (performance.now() - UJI_T < 8000) return;
     // memori grafis habis / baru dipulihkan: tekstur belum terunggah ulang → hasil uji keliru
@@ -328,7 +330,6 @@
     else return;
     UJI_T = -1e9; kotor(); setTimeout(() => ujiDanPerbaiki(), 1500);
   }
-  const gpuBaruPulih = () => (renderer.getContext && renderer.getContext().isContextLost()) || (typeof GPU !== 'undefined' && performance.now() - GPU.t < 20000);
   function periksa() {
     if (gpuBaruPulih()) { setTimeout(() => periksa(), 21000); return false; }   // memori grafis habis / baru dipulihkan: program & tekstur belum siap
     let gagal = false;

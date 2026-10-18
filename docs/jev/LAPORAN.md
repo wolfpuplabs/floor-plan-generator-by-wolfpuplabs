@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 96 GO · 3 DEFER · 5 NO-GO dari 104 item.
+**Ringkasan:** 97 GO · 3 DEFER · 5 NO-GO dari 105 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -104,6 +104,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-040 | Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global) | terkirim | 0.90 | 5,7 jt | 2,9 jt | 3.0× | 1.0× | 5.0 bln | 0 | **GO** |
 | JEV-051 | Model unggahan kategori Audio: putar musik / piano | terkirim | 0.50 | 1,3 jt | 0,8 jt | 2.4× | 0.7× | 4.9 bln | 298 | **GO** |
 | JEV-047 | Kolaborasi & berbagi tautan proyek (cloud) | usulan | 0.45 | 70,9 jt | 48 jt | 2.0× | 0.5× | 6.7 bln | 339 | **DEFER** |
+| JEV-122 | Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut | terkirim | 0.65 | 0,5 jt | 0,4 jt | 1.8× | 0.4× | 7.2 bln | 0 | **GO** |
 | JEV-019 | SFX langkah kaki & interaksi | terkirim | 0.35 | 3,3 jt | 2,7 jt | 1.4× | 0.2× | 8.4 bln | 409 | **GO** |
 | JEV-013 | Tracing void & area bentuk bebas | terkirim | 0.60 | 4,5 jt | 3,8 jt | 1.4× | 0.2× | 8.4 bln | 417 | **GO** |
 | JEV-005 | Deteksi perabot dari simbol denah | terkirim | 0.45 | 20,3 jt | 19,5 jt | 1.1× | 0.0× | 10.0 bln | 482 | **GO** |
@@ -213,6 +214,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-040 Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global) — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-051 Model unggahan kategori Audio: putar musik / piano — GO.** ROI 2.4× ≥ 1, payback 4.9 bln. _Kategori audio/piano sendiri ber-verdict NO-GO (JEV-015/018). Item ini hanya MEMAKAI ULANG mesin yang sudah ada — biayanya kecil._
 - **JEV-047 Kolaborasi & berbagi tautan proyek (cloud) — DEFER.** ROI lolos, tetapi guardrail belum dinilai: keamanan, privasi.
+- **JEV-122 Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut — GO.** ROI 1.8× ≥ 1, payback 7.2 bln.
 - **JEV-019 SFX langkah kaki & interaksi — GO.** ROI 1.4× ≥ 1, payback 8.4 bln.
 - **JEV-013 Tracing void & area bentuk bebas — GO.** ROI 1.4× ≥ 1, payback 8.4 bln.
 - **JEV-005 Deteksi perabot dari simbol denah — GO.** ROI 1.1× ≥ 1, payback 10.0 bln. _Pengguna beberapa kali melaporkan hasil "masih ngaco" → peluang diturunkan ke 0,45. Akurasi uji: 88/97 simbol benar pada 5 denah uji._

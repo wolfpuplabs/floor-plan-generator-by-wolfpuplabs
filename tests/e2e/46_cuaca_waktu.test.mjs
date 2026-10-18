@@ -64,7 +64,7 @@ export const tes = {
     assert.deepEqual([r.dalam, r.luar], [true, false], 'masker beratap = tapak rumah');
     assert.ok(r.kasar == null || r.kasar < 0.8, 'tanah basah mengkilap: ' + r.kasar);
     assert.equal(r.sinkron, 'hujan');
-    assert.deepEqual(r.adegan, { jenis: 'hujan', siklus: 0 }, 'cuaca ikut keadaan lobi');
+    assert.deepEqual(r.adegan, { jenis: 'hujan', siklus: 6 }, 'cuaca ikut keadaan lobi (siklus waktu bawaan nyala)');
     // badai: kilat menyalakan cahaya langit sesaat
     await page.evaluate(() => { const e = $('#fpsCuaca'); e.value = 'badai'; e.dispatchEvent(new Event('change')); });
     const kilat = await page.evaluate(() => { for (let i = 0; i < 8; i++) CUACA.langkah(0.5); let maks = 0; const dasar = hemiL.intensity;
@@ -100,7 +100,7 @@ export const tes = {
     assert.ok(r.reda >= 0, 'hujan reda lagi');
     assert.match(r.toast2, /reda/);
     assert.equal(r.sisa, 0);
-    assert.deepEqual(r.simpan, { jenis: 'acak', siklus: 0 }, 'pengaturan proyek tetap Acak');
+    assert.deepEqual(r.simpan, { jenis: 'acak', siklus: 6 }, 'pengaturan proyek tetap Acak (siklus waktu bawaan menyala)');
     // cuaca Cerah (meski siklus waktu berjalan): tidak pernah hujan sendiri
     const tanpa = await page.evaluate(() => { aturCuaca({ jenis: 'cerah', siklus: 2 }); const asli = Math.random; Math.random = () => 0.01; enterFPS();
       for (let i = 0; i < 300; i++) CUACA.langkah(0.5); const k = CUACA.keadaan(); Math.random = asli; exitFPS(); return [k.acak, k.tetes]; });
@@ -109,7 +109,8 @@ export const tes = {
 
   'sakelar Siklus waktu di mode jalan: nyala → waktu berjalan & cuaca Cerah jadi Acak; pilihan cuaca tetap dihormati; mati → waktu tetap': async (page) => {
     await muatProyekJSON(page, rumah);
-    await page.evaluate(() => enterFPS());
+    await page.evaluate(() => { aturCuaca({ siklus: 0 }); enterFPS(); });                // bawaan menyala (JEV-122): mulai dari mati
+    await page.waitForFunction(() => window.CUACA && CUACA.keadaan().siklus === 0);
     const klik = () => page.evaluate(() => $('#fpsOto').click());
     await klik();
     await page.waitForFunction(() => window.CUACA && CUACA.keadaan().siklus === 6);
