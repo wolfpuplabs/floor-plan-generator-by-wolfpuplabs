@@ -1660,7 +1660,7 @@ const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:2.3, run:3.9, fov:
    shader kosong pada ½ resolusi, AO dihitung & dihaluskan pada ½ resolusi,
    lalu dikalikan ke gambar utama — antialias dan pencahayaan asli tetap.
    ===================================================================== */
-const FX={on:true, siap:false, eks:{siang:0.4, senja:0.73, malam:0.88, gelap:0.88}, ke:0.4};   // eks: eksposur tanpa HDR (dikalibrasi ke terang rata-rata Tinggi)
+const FX={on:true, siap:false, eks:{siang:0.4, senja:0.73, malam:0.88, gelap:0.88}, ke:0.4};   // eks: awal tanpa HDR; lalu diukur modul/eksposur.js
 try{ FX.on=localStorage.getItem('fx_on')!=='0'; }catch(e){}
 // hanya di kualitas Tinggi (JEV-124): Halus & Cepat menggambar langsung tanpa AO/bloom/HDR — buffer efeknya dikecilkan agar memori lega
 var RQ_KINI='halus';                // kualitas render kini (setRenderQuality)
@@ -1871,7 +1871,7 @@ const _ukDB=new THREE.Vector2();
 let FX_T0=0;
 function renderFrame(){
   if(!window.__siap){ renderer.render(scene,camera); return; }
-  if(!fxAktif()){ const e=renderer.toneMappingExposure; renderer.toneMappingExposure=e*FX.ke; renderer.render(scene,camera); renderer.toneMappingExposure=e; return; }
+  if(!fxAktif()){ window.EKSPOSUR&&window.EKSPOSUR.langkah(); const e=renderer.toneMappingExposure; renderer.toneMappingExposure=e*FX.ke; renderer.render(scene,camera); renderer.toneMappingExposure=e; return; }
   if(!renderer.capabilities.isWebGL2){ renderer.render(scene,camera); fxAO(); return; }
   fxSiapkan(); const P=fxPipelineSiap();
   renderer.getDrawingBufferSize(_ukDB);
@@ -16653,7 +16653,7 @@ setSuasana('siang');
 if(window.innerWidth<900 && proyekKosong()) setSidebar(false);
 perbaruiMulai();
 for(const s of $$('.pilih-bahasa')){ s.value=BAHASA.kode; s.onchange=()=>gantiBahasa(s.value); }
-window.__siap=true;
+window.__siap=true; muatModul('eksposur').catch(()=>{});   // JEV-129
 // tautan lihat-saja dibuka SETELAH halaman tampil: membangun rumah (shader, GI) butuh
 // beberapa detik dan tidak boleh menahan tampilan pertama
 if(/^#(lihat|l)=/.test(location.hash)){

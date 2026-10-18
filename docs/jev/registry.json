@@ -6232,6 +6232,61 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-129",
+   "judul": "Eksposur otomatis ringan untuk kualitas Halus & Cepat — siang tidak lagi gelap",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Sejak JEV-124 (efek realtime hanya di Tinggi), kualitas Halus memakai faktor eksposur tetap per suasana yang dikalibrasi di dalam ruangan terang (siang 0,4). Adegan yang lebih redup — luar rumah, langit foto 360° matahari terbit, hujan/mendung, tampilan editor dari atas — jadi jauh lebih gelap daripada Tinggi yang menyesuaikan eksposur sendiri (terukur: editor 26 vs 87, luar rumah 61 vs 100 rata-rata luminans).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-18 (mode jalan & editor, Halus, Siang lembut, cuaca Acak, langit HDRI 'Lakeside Sunrise'): \"kenap day jg jadi gelap?\"",
+    "alternatif": [
+     "menaikkan faktor tetap (luar rumah membaik, dalam ruangan jadi terlalu terang)",
+     "menyalakan HDR penuh di Halus (memori & GPU iPad — alasan JEV-124)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/eksposur.js dimuat malas sesudah aplikasi siap; tiap ±0,4 dtk satu gambar adegan 48×32 piksel tanpa pembaruan bayangan + baca piksel 6 KB; tidak ada buffer layar penuh tambahan"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "terang adegan konsisten antar-kualitas; malam tetap terasa malam (kunci eksposur per suasana sama dengan Tinggi)"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan adegan siang gelap di kualitas Halus",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }
