@@ -103,5 +103,8 @@
     finally { g.visible = false; camera.position.copy(simpan); camera.quaternion.copy(qA); camera.updateMatrixWorld(); }
   }
   tombol();
-  window.ORANG3 = { togel, render, aktif: () => S.on && FPS.on, _uji: { S, SIMPAN } };
+  // posisi dunia tangan avatar (ujung lengan bawah) dari gambar terakhir — alat di tangan (joran) di kamera orang ketiga (JEV-134)
+  function tangan(k = 'rightLowerArm') { const r = S.a && S.a.rig && S.a.rig[k]; if (!r || !r.b) return null;
+    const c = r.b.children.find(x => x.isBone) || r.b; return c.getWorldPosition(new THREE.Vector3()); }
+  window.ORANG3 = { togel, render, tangan, aktif: () => S.on && FPS.on, _uji: { S, SIMPAN } };
 })();

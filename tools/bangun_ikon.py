@@ -32,6 +32,9 @@ AKSI = {'bukaan':'door-open','lampu':'lightbulb','api':'flame','tv':'tv','gorden
  'berdiri':'person-standing','mancing':'fish-symbol','panggang':'beef','masak':'cooking-pot','potong':'axe','angkat':'package','taruh':'package-open','renang':'waves',
  'ambilkayu':'flame-kindling','kayu':'flame-kindling','hangat':'flame','marshmallow':'lollipop','ciprat':'droplets','_':'pointer'}
 
+# ikon yang dipakai langsung oleh templat (bukan dari emoji / aksi)
+EKSTRA = ['switch-camera']
+
 def isi_svg(path):
     s = open(path, encoding='utf-8').read()
     s = re.sub(r'<!--.*?-->', '', s, flags=re.S)
@@ -42,7 +45,7 @@ def main():
     pkg = sys.argv[1] if len(sys.argv) > 1 else '/tmp/lucide/package'
     versi = json.load(open(os.path.join(pkg, 'package.json')))['version']
     akar = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    nama = sorted(set(PETA.values()) | set(AKSI.values()))
+    nama = sorted(set(PETA.values()) | set(AKSI.values()) | set(EKSTRA))
     ikon = {n: isi_svg(os.path.join(pkg, 'icons', n + '.svg')) for n in nama}
     peta = {k: v for k, v in PETA.items()}
     t = open(os.path.join(akar, 'tools', 'antarmuka_templat.js.in'), encoding='utf-8').read()

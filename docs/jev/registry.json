@@ -6396,6 +6396,222 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-132",
+   "judul": "Jok otomatis: abaikan pijakan, bemper & lantai kabin — duduk di jok sungguhan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pada model mobil, pemindai jok (JEV-130) bisa memilih permukaan di luar kabin yang 'bersandar' ke badan mobil — pijakan samping, bemper — atau lantai kabin / bak kargo, sehingga pemain duduk di samping roda depan atau di lantai belakang.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar & rekaman iPad pengguna 2026-10-19 00.58: \"posisi duduk belom bener\"",
+    "alternatif": [
+     "pengguna memecah model mobil per jok",
+     "titik duduk manual per model"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 0.6,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tambahan ≤ 6 sinar per calon jok, sekali per model"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan posisi duduk di model kendaraan",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
+  },
+  {
+   "id": "JEV-133",
+   "judul": "Model kendaraan: pemain duduk di jok sopir, di belakang setir",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Duduk di model mobil memilih jok terdekat dengan titik bidik — dari pintu penumpang / belakang pemain tidak duduk di belakang setir.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-19: \"kalo defined vehicle duduk dibelakang steer mobil\"",
+    "alternatif": [
+     "membidik jok sopir secara tepat",
+     "titik duduk manual per model"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.7,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "≤ 54 sinar tambahan per jok bersandaran, sekali per model"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "setir kiri / kanan bisa dipilih manual bila deteksi otomatis keliru"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan tidak duduk di belakang setir",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
+  },
+  {
+   "id": "JEV-134",
+   "judul": "Pose memancing wajar: joran dipegang di depan perut, di tangan avatar orang ketiga",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Saat memancing, kedua lengan avatar terangkat lurus di atas kepala (putaran sumbu tulang mengangkat lengan VRM ke atas, bukan ke depan) dan di kamera orang ketiga joran melayang di posisi kamera orang pertama, tidak di tangan. Arah acuan lengan avatar M juga keliru karena anak pertama tulang lengan atasnya adalah tulang kain (memengaruhi pose gandeng & foto).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-19 01.05: \"game mancing posenya masih aneh\"",
+    "alternatif": [
+     "animasi memancing dari berkas animasi (perlu aset & retarget)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.8,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan pose memancing",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
+  },
+  {
+   "id": "JEV-135",
+   "judul": "Duduk di lantai menapak tanah, ikan 3D bermotif, tombol kamera orang ketiga sendiri",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "(1) Duduk di depan api / di lantai menurunkan badan 0,72 m tetap sehingga kaki avatar tenggelam ke tanah (atau melayang menurut tinggi badan); paha 30° membuat telapak jauh di bawah pinggul. (2) Ikan hasil tangkapan hanya bola + kerucut. (3) Kamera orang ketiga tersembunyi di lembar Waktu & cuaca.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-19 01.03–01.17: \"duduk masih tenggelem kakinya, ikannya ganti 3d ikan yg bagus, icon camera dipisah\"",
+    "alternatif": [
+     "model ikan dari berkas glTF pihak ketiga (lisensi & ukuran unduhan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1200000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikan dibuat prosedural (tanpa aset pihak ketiga); ikon switch-camera dari Lucide (ISC, lisensi sudah disertakan)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "ikan: 1 tekstur kanvas 256×128 dibuang bersama mesh; penapakan tanah: 3 posisi tulang per bingkai saat duduk di lantai"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol kamera berlabel 'Kamera orang ketiga' (aria-label & title), status aria-pressed"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan kaki tenggelam, ikan jelek, kamera sulit ditemukan",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
   }
  ]
 }
