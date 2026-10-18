@@ -5686,6 +5686,58 @@
     "target": "≥ 20%",
     "tinjau": "2027-01-18"
    }
+  },
+  {
+   "id": "JEV-119",
+   "judul": "Memori grafis iPad habis saat mengganti warna NPC; NPC jadi warna polos setelah tampilan dipulihkan",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Tiap pilihan warna NPC membuat satu set tekstur baru (±13 MB; baju renang ±50 MB) dan cache menyimpan hingga 24 set sebelum membuang — memilih warna di iPad menghabiskan memori grafis (konteks WebGL hilang). Sesaat setelah dipulihkan, uji gambar otomatis menilai tekstur kosong lalu mengingat perbaikan 'tekstur asli' → 'warna polos', sehingga NPC permanen tampil sebagai siluet polos.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar pengguna 2026-10-18 (iPad Chrome): toast \"View restored after graphics memory ran out\", NPC tampil polos tanpa tekstur — \"graphic memory run out\"",
+    "alternatif": []
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 5000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "set tekstur yang tidak dipakai NPC mana pun dibuang (sisa 2 terakhir) — memori grafis tidak bertambah saat memilih warna"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol Atur ulang tampilan NPC berlabel teks di panel diagnosa"
+    }
+   },
+   "metrik": {
+    "nama": "laporan memori grafis habis / NPC polos di iPad",
+    "target": "0 per bulan",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

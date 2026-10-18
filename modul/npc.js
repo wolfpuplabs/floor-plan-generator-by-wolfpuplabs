@@ -178,6 +178,7 @@
     tex.flipY = asal.flipY; tex.encoding = asal.encoding; tex.wrapS = asal.wrapS; tex.wrapT = asal.wrapT; tex.anisotropy = asal.anisotropy || 1;
     return tex;
   }
+  function buangSet(k) { const s = SIMPAN.get(k); if (!s) return; SIMPAN.delete(k); for (const t of s.texs.values()) t.dispose(); for (const b of s.peta.values()) b.dispose(); }
   function materiUntuk(tpl, kunci, look, baju = '') {
     if (SIMPAN.has(kunci)) { const s = SIMPAN.get(kunci); SIMPAN.delete(kunci); SIMPAN.set(kunci, s); return s.peta; }
     const renang = /^_renang2?$/.test(baju), P = petakan(tpl, renang ? 1024 : UK), texs = new Map(), peta = new Map();
@@ -185,7 +186,11 @@
     tpl.traverse(m => { if (!m.isMesh || !m.material || Array.isArray(m.material) || !texs.has(m.material.map) || peta.has(m.material)) return;
       const b = m.material.clone(); b.map = texs.get(m.material.map); peta.set(m.material, b); });
     SIMPAN.set(kunci, { peta, texs });
-    while (SIMPAN.size > SIMPAN_MAKS) { const [k, s] = SIMPAN.entries().next().value; SIMPAN.delete(k); for (const t of s.texs.values()) t.dispose(); for (const b of s.peta.values()) b.dispose(); }
+    // memori grafis (iPad): tiap kombinasi warna = satu set tekstur (±13 MB, baju renang ±50 MB). Set yang tidak dipakai NPC
+    // mana pun dibuang selain 2 terakhir (memilih warna di inspector tidak menumpuk tekstur); batas keras SIMPAN_MAKS
+    const dipakai = new Set([kunci]); for (const n of NPC.values()) if (n.kunciMat) dipakai.add(n.kunciMat);
+    let bebas = [...SIMPAN.keys()].filter(k => !dipakai.has(k));
+    while (bebas.length > 2 || SIMPAN.size > SIMPAN_MAKS) { const k = bebas.length ? bebas.shift() : SIMPAN.keys().next().value; buangSet(k); }
     return peta;
   }
 
@@ -198,19 +203,20 @@
   const TPL = {};
   // perbaikan hasil uji gambar (lihat ujiDanPerbaiki), diingat per perangkat
   let PERBAIKI = {}; try { PERBAIKI = JSON.parse(localStorage.getItem('npcPerbaiki') || '{}') || {}; } catch (e) { PERBAIKI = {}; }
-  // 'tulang' (jalur tulang lewat uniform) dulu bisa terpasang keliru saat NPC berenang dan merusak tampilan (badan meledak /
-  // hilang): three r128 mengunci pilihan tekstur tulang saat renderer dibuat. Tanda lama dibuang.
-  if (PERBAIKI.tulang) { delete PERBAIKI.tulang; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } }
+  // tanda lama (versi < 2) bisa terpasang keliru: 'tulang' saat NPC berenang (badan meledak / hilang — three r128 mengunci
+  // tekstur tulang saat renderer dibuat), 'asli' / 'polos' sesaat setelah memori grafis habis & dipulihkan. Dibuang sekali.
+  if (PERBAIKI.v !== 2) { PERBAIKI = { ...(PERBAIKI.kul ? { kul: 1 } : {}), v: 2 }; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } }
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg', 'jarak', 'pangku', 'renang', 'kolamTuju'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
   let PERINGATAN = false;
   function rakit(n, tpl, lama, baju = '') {
     const o = n.o;
     let peta;
-    try { peta = materiUntuk(tpl, jenisAman(o.type) + baju + ':' + benihAman(o) + kunciWarna(o.params && o.params.warna), penampilan(o), baju); }
+    const km = jenisAman(o.type) + baju + ':' + benihAman(o) + kunciWarna(o.params && o.params.warna);
+    try { peta = materiUntuk(tpl, km, penampilan(o), baju); n.kunciMat = km; }
     catch (e) { peta = new Map(); console.warn('NPC warna', e); if (!PERINGATAN) { PERINGATAN = true; toast('Warna NPC tidak bisa diacak di perangkat ini — memakai warna asli'); } }
     const m = klonModel(tpl); m.userData.rigIdx = tpl.userData.rigIdx; m.userData.kedipIdx = tpl.userData.kedipIdx; m.userData.klip = [];
-    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.peta === 'polos') x.material = bahanPolos(x, o); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; x.userData.tetapTampak = true; } });
+    m.traverse(x => { if (x.isMesh) { if (peta.has(x.material) && !PERBAIKI.peta) x.material = peta.get(x.material); if (AMAN) x.material = bahanAman(x.material, AMAN); if (PERBAIKI.kul) x.frustumCulled = false; x.raycast = () => {}; x.userData.bersama = true; x.userData.tetapTampak = true; } });
     n.badan.add(m);
     setTimeout(() => periksa(), 1500); setTimeout(() => periksa(), 4000);
     const a = { g: n.badan, tuju: { po: 0 }, baju, tpl }; window.LOBI.gerak.siapkanGerak(a, m); n.a = a;
@@ -298,15 +304,9 @@
     }
     return hasil;
   }
-  // perbaikan menurut uji gambar, diingat per perangkat: tekstur kosong → tekstur asli (tanpa pewarnaan) → warna polos;
+  // perbaikan menurut uji gambar, diingat per perangkat: tekstur kosong → tekstur asli (tanpa pewarnaan);
   // (B = 0, C > 0 hanya dicatat di diagnosa: tulang tidak bisa dipindah ke uniform setelah renderer dibuat)
   const simpanPerbaiki = () => { try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } };
-  const SIMPAN_POLOS = new Map();
-  function bahanPolos(x, o) {
-    const lk = penampilan(o), w = /face|wajah|head/i.test(x.name) ? lk.kulit : lk.atas, kunci = x.material.uuid + ':' + w.join(',');
-    if (!SIMPAN_POLOS.has(kunci)) SIMPAN_POLOS.set(kunci, new THREE.MeshBasicMaterial({ color: new THREE.Color(w[0] / 255, w[1] / 255, w[2] / 255), skinning: true, morphTargets: !!x.material.morphTargets }));
-    return SIMPAN_POLOS.get(kunci);
-  }
   function terapkanPerbaikan() {
     for (const n of NPC.values()) if (n.badan) { const lama = n.a && n.a.model; if (lama) { n.badan.remove(lama); n.a = null; } }
     for (const n of NPC.values()) { const t = TPL[jenisAman(n.o.type)]; if (t && n.badan) rakit(n, t, n); }
@@ -314,17 +314,21 @@
   let UJI_T = -1e9;
   function ujiDanPerbaiki() {
     if (performance.now() - UJI_T < 8000) return;
+    // memori grafis habis / baru dipulihkan: tekstur belum terunggah ulang → hasil uji keliru
+    if (gpuBaruPulih()) return;
     // hanya NPC yang berdiri biasa: berenang / berbaring / duduk menggeser badan keluar kotak ikat → bingkai uji meleset
     const tegak = x => !x.renang && x.mode !== 'renang' && !(x.a.pw || []).some((w, i) => i > 0 && w > 0.05);
     const n = [...NPC.values()].find(x => x.a && x.a.model && x.badan && x.badan.visible && tegak(x)); if (!n) return;
     UJI_T = performance.now();
     const r = ujiGambar(n); n.uji = r; if (!r || r.galat || r.A > 0 || !r.K || r.sembunyi) return;   // mesh disembunyikan kode lain: bukan soal perangkat
     if (r.C === 0 && !PERBAIKI.kul) { PERBAIKI.kul = 1; simpanPerbaiki(); for (const m of NPC.values()) if (m.a && m.a.model) m.a.model.traverse(x => { if (x.isMesh) x.frustumCulled = false; }); toast('NPC selalu digambar (tanpa pemangkasan pandang) di perangkat ini'); }
-    else if (r.B > 0 && PERBAIKI.peta !== 'polos') { PERBAIKI.peta = PERBAIKI.peta ? 'polos' : 'asli'; simpanPerbaiki(); terapkanPerbaikan(); toast(PERBAIKI.peta === 'asli' ? 'NPC memakai tekstur asli di perangkat ini' : 'NPC memakai warna polos di perangkat ini'); }
+    else if (r.B > 0 && !PERBAIKI.peta) { PERBAIKI.peta = 'asli'; simpanPerbaiki(); terapkanPerbaikan(); toast('NPC memakai tekstur asli di perangkat ini'); }
     else return;
     UJI_T = -1e9; kotor(); setTimeout(() => ujiDanPerbaiki(), 1500);
   }
+  const gpuBaruPulih = () => (renderer.getContext && renderer.getContext().isContextLost()) || (typeof GPU !== 'undefined' && performance.now() - GPU.t < 20000);
   function periksa() {
+    if (gpuBaruPulih()) { setTimeout(() => periksa(), 21000); return false; }   // memori grafis habis / baru dipulihkan: program & tekstur belum siap
     let gagal = false;
     for (const n of NPC.values()) if (n.a && n.a.model && statusProgram(n.a.model).gagal) gagal = true;
     if (!gagal) { try { ujiDanPerbaiki(); } catch (e) { console.warn('NPC uji', e && e.message); } return false; }
@@ -361,9 +365,10 @@
     if (!d) { d = el('div', 'float'); d.id = 'npcDiagnosa'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Diagnosa NPC');
       d.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%);z-index:80;width:min(560px,calc(100% - 24px));max-height:80%;display:flex;flex-direction:column;gap:8px;padding:12px';
       const pre = el('pre'); pre.style.cssText = 'margin:0;overflow:auto;white-space:pre-wrap;font-size:.7rem;max-height:60vh;user-select:text;-webkit-user-select:text';
-      const r = el('div', 'row'), salin = el('button', 'btn sm', 'Salin'), tutup = el('button', 'btn sm ghost', 'Tutup');
+      const r = el('div', 'row'), salin = el('button', 'btn sm', 'Salin'), ulang = el('button', 'btn sm ghost', 'Atur ulang tampilan NPC'), tutup = el('button', 'btn sm ghost', 'Tutup');
+      ulang.onclick = () => { PERBAIKI = { v: 2 }; AMAN = 0; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); localStorage.removeItem('npcAman'); } catch (e) { /* mode privat */ } terapkanPerbaikan(); kotor(); d.querySelector('pre').textContent = diagnosa(); toast('Tampilan NPC diatur ulang'); };
       salin.onclick = () => { try { navigator.clipboard.writeText(pre.textContent).then(() => toast('Diagnosa disalin'), () => toast('Tidak bisa menyalin — ambil tangkapan layar saja')); } catch (e) { toast('Tidak bisa menyalin — ambil tangkapan layar saja'); } };
-      tutup.onclick = () => d.remove(); r.append(salin, tutup); d.append(pre, r); document.body.appendChild(d); }
+      tutup.onclick = () => d.remove(); r.append(salin, ulang, tutup); d.append(pre, r); document.body.appendChild(d); }
     d.querySelector('pre').textContent = diagnosa();
   }
   // siluet tembus pandang selama karakter diunduh & disiapkan (unduhan ±12 MB pertama kali)
@@ -1024,5 +1029,5 @@
     suara: { gumam, sorak: suaraSorak, huft, mode: m => { if (m) MODE_SUARA = m; return MODE_SUARA; } }, hati: id => { const n = NPC.get(id); if (n && n.p) hati(n); },
     pasangan: () => { for (const n of NPC.values()) if (n.a && (/^(gandeng|dansa|peluk|cium|pangku|ikut|temani)$/.test(n.mode) || (n.mode === 'duduk' && n.kursi && n.kursi.minta))) return n.id; return null; }, penampilan, jumlah, inspektor, MAKS, siapkan: k => muatTpl(jenisAman(k)).catch(() => {}), keadaan: id => { const n = NPC.get(id); return n && { mode: n.mode, po: n.po, p: n.p && n.p.clone(), siap: !!n.a, kursi: n.kursi && n.kursi.id }; },
     diagnosa, periksa, aman: () => AMAN,
-    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, kolamDekat: id => kolamDekat(NPC.get(id)), masukKolam: (id, K) => masukKolam(NPC.get(id), K), bajuRenang, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI } };
+    _uji: { NPC, mulaiJalan, aktivitas, berikutnya, cariKursi, cariKasur, kolamDekat: id => kolamDekat(NPC.get(id)), masukKolam: (id, K) => masukKolam(NPC.get(id), K), bajuRenang, diPerabot: (id, x, z) => diPerabot(NPC.get(id), x, z), ujiGambar, ujiDanPerbaiki: () => { UJI_T = -1e9; ujiDanPerbaiki(); }, perbaikan: () => PERBAIKI, simpan: () => SIMPAN.size } };
 })();

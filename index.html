@@ -12644,10 +12644,11 @@ async function perkecilTeksturAset(id,maks){
    Bila memori grafis habis, iOS mematikan konteks WebGL; three.js memulihkannya, tetapi isi
    yang DIGAMBAR di GPU (lingkungan pantulan PMREM, probe ruangan, peta bayangan) ikut hilang,
    dan gambar tekstur model (ImageBitmap) bisa ikut terlepas. Semuanya dibuat ulang dari data. */
-const GPU={hilang:0};
-renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); GPU.hilang++; toast('Memori grafis penuh — memulihkan tampilan…'); },false);
+const GPU={hilang:0, t:-1e9};   // t: konteks hilang / pulih terakhir
+renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); GPU.hilang++; GPU.t=performance.now(); toast('Memori grafis penuh — memulihkan tampilan…'); },false);
 renderer.domElement.addEventListener('webglcontextrestored',()=>{ pulihkanGPU(); },false);
 async function pulihkanGPU(){
+  GPU.t=performance.now();
   ENV_TEX.clear();
   PROBE.rt=null; PROBE.cam=null; PROBE.pm=null; PROBE.envRT=null; PROBE.env=null; PROBE.aktif=false; PROBE.kotor=true;
   if(fotoAktif()) terapkanCahayaFoto(); else { LANGIT_FOTO_ENV=null; terapkanEnv(); }
@@ -16055,7 +16056,7 @@ function fotoJalan(){
   else { download(file,nama); toast('Foto diunduh: '+nama); }
   return {nama, ukuran:u8.length, lebar:c.width, tinggi:c.height, bagikan:!!janji};
 }
-// pose foto (JEV-118): ketukan pertama membuat NPC di bingkai berpose, ketukan kedua memotret — lihat modul/npc.js
+// pose foto (JEV-118): dua ketukan — modul/npc.js
 function tombolFoto(){ return window.NPC&&window.NPC.tombolFoto?window.NPC.tombolFoto(fotoJalan):fotoJalan(); }
 $('#fpsFoto').onclick=()=>tombolFoto();
 { let v=null; try{ v=localStorage.getItem('fps_ciut'); }catch(e){ /* mode privat */ }
