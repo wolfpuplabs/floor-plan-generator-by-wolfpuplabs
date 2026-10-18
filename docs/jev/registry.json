@@ -6126,6 +6126,59 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-127",
+   "judul": "Berbaring bersama NPC: masing-masing satu sisi kasur, tidak menumpuk",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Bila NPC sudah rebahan di tengah kasur/model lalu pengunjung ikut berbaring (atau diajak berbaring bareng), kedua badan menumpuk di tempat yang sama.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-10-18 16.46: pemain & NPC berbaring bertumpuk di karpet model unggahan",
+    "alternatif": [
+     "melarang pengunjung berbaring di kasur yang dipakai NPC"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 0.6,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1500000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "satu pemeriksaan per langkah NPC hanya saat pengunjung berbaring"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "laporan badan menumpuk saat berbaring",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

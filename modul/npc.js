@@ -531,11 +531,14 @@
     g.updateMatrixWorld(true);
     const R = rangkaKasur(g, o); if (!R) return null;
     const jx = dada ? 0.4 : peluk ? 0.36 : R.w / 4, jz = dada ? 0.3 : -0.05;
-    const ki = R.titik(-jx, 0, jz), ka = R.titik(jx, 0, jz);
-    const s = Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
+    // peluk / dada: relatif terhadap tempat pengunjung berbaring (bisa sudah bergeser ke satu sisi — rapikanBaring), ke arah tengah kasur
+    const c0 = R.titik(0, 0, jz), c1 = R.titik(1, 0, jz), ex = c1.x - c0.x, ez = c1.z - c0.z;
+    const u = peluk ? ((D.baring.x - c0.x) * ex + (D.baring.z - c0.z) * ez) / (ex * ex + ez * ez || 1) : 0;
+    const ki = R.titik(u - jx, 0, jz), ka = R.titik(u + jx, 0, jz);
+    const s = Math.abs(u) > 0.05 ? (u > 0 ? -1 : 1) : Math.hypot(ki.x - D.baring.x, ki.z - D.baring.z) > Math.hypot(ka.x - D.baring.x, ka.z - D.baring.z) ? -1 : 1, t = s < 0 ? ki : ka;
     const sisi = R.titik((R.w / 2 + 0.5) * s, 0, 0.2), rot = R.yaw;
     return { id: o.id, kunci: 'kasur:' + o.id + ':bareng', bareng: o.id, q: { x: sisi.x, z: sisi.z }, x: t.x, z: t.z, y: t.y, lama: 45, d: 0,
-      ...(peluk ? { po: dada ? 20 : 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: dada ? R.titik(s * 0.1, 0.26, jz - 0.4) : R.titik(s * jx, 0.22, jz - 0.53) } : { po: 9, yaw: rot }) };
+      ...(peluk ? { po: dada ? 20 : 19, sisi: -s, yaw: rot - s * Math.PI / 2, wajah: dada ? R.titik(u + s * 0.1, 0.26, jz - 0.4) : R.titik(u + s * jx, 0.22, jz - 0.53) } : { po: 9, yaw: rot }) };
   }
   function lepasKursi(n) { if (n.kursi) KURSI_DIPAKAI.delete(n.kursi.kunci); }
   function hadapPengunjung(n) { n.yawTuju = Math.atan2(camera.position.x - n.p.x, camera.position.z - n.p.z); }
@@ -957,10 +960,28 @@
     n.badan.rotation.y = n.yaw - (n.o.rotY || 0);
   }
   let tBayang = 0;
+  // berbaring telentang di kasur yang sama dengan pengunjung (JEV-127): masing-masing satu sisi, tidak saling menumpuk —
+  // NPC yang sudah rebahan di tengah lalu pengunjung ikut berbaring, atau diajak berbaring bareng. Pengunjung bergeser ke sisi
+  // yang kosong (mata ikut), NPC meluncur ke sisi lainnya; jarak antarbadan ≥ 0,6 m
+  function rapikanBaring() {
+    const D = FPS.on && FPS.duduk && FPS.duduk.baring; if (!D || !FPS.duduk.id) return;
+    for (const n of NPC.values()) {
+      const k = n.kursi; if (!k || k.id !== FPS.duduk.id || k.po !== 9 || k.rapi === D || !/^(masuk|duduk)$/.test(n.mode)) continue;
+      const lg = levelGroups[n.li], g = lg && lg.children.find(c => c.userData.kind === 'obj' && c.userData.id === k.id), o = PROJECT.levels[n.li] && PROJECT.levels[n.li].objects.find(x => x.id === k.id);
+      if (!g) return; g.updateMatrixWorld(true); const R = rangkaKasur(g, o); if (!R) return;
+      const j = Math.max(0.3, Math.min(R.w / 4, 0.45)), ki = R.titik(-j, 0, -0.05), ka = R.titik(j, 0, -0.05);
+      const s = Math.hypot(k.x - ki.x, k.z - ki.z) < Math.hypot(k.x - ka.x, k.z - ka.z) ? -1 : 1, tn = s < 0 ? ki : ka, tp = s < 0 ? ka : ki;
+      Object.assign(k, { x: tn.x, y: tn.y, z: tn.z, rapi: D });                 // sekali per kali pengunjung berbaring
+      if (n.mode === 'duduk') masukKursi(n);                                 // sudah rebahan: meluncur ke sisinya
+      const dx = tp.x - D.x, dz = tp.z - D.z; D.x = tp.x; D.z = tp.z; FPS.duduk.mata.x += dx; FPS.duduk.mata.z += dz;
+      return;
+    }
+  }
   function langkah(dt) {
     if (HATI.length) langkahHati(Math.min(dt, 0.1));
     if (!NPC.size) return;
     dt = Math.min(dt, 0.1);
+    rapikanBaring();
     const aktif = hidup(); let gerak = false;
     for (const [id, n] of NPC) {
       if (!diDunia(n.g)) { if (NPC.get(id) === n) { lepasKursi(n); NPC.delete(id); } continue; }

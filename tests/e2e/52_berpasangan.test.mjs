@@ -114,7 +114,7 @@ export const tes = {
       const D = FPS.duduk.baring, r = { ok, mode: n.mode, po: n.po, bareng: n.kursi && n.kursi.bareng, jarak: +Math.hypot(n.p.x - D.x, n.p.z - D.z).toFixed(2), y: +(n.p.y - D.y).toFixed(2), lepas: window.NPC.ekstra('nA') };
       pakai({ jenis: 'lepas', id: 'nA' }); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05); r.bangun = n.mode; return r; });
     assert.deepEqual([bb.ok, bb.mode, bb.po, bb.bareng, bb.lepas], [true, 'duduk', 9, 'ranjang', ['lepas']], JSON.stringify(bb));
-    assert.ok(bb.jarak > 0.25 && bb.jarak < 0.6 && Math.abs(bb.y) < 0.05 && bb.bangun !== 'duduk', 'berbaring di sebelah: ' + JSON.stringify(bb));
+    assert.ok(bb.jarak > 0.55 && bb.jarak < 0.95 && Math.abs(bb.y) < 0.05 && bb.bangun !== 'duduk', 'berbaring di sebelah (masing-masing separuh kasur, JEV-127): ' + JSON.stringify(bb));
     // peluk berbaring (meringkuk): NPC rebah miring rapat di sebelah pemain menghadapnya (pose 19), pemain menoleh ke wajahnya
     const mk = await page.evaluate(() => { const U = window.NPC._uji, n = U.NPC.get('nA'); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(6, 0, 4.5);
       const yaw0 = FPS.yaw, ok = window.NPC.aksiPasangan('nA', 'meringkuk'); for (let i = 0; i < 600 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05); for (let i = 0; i < 30; i++) window.NPC.langkah(0.05);
