@@ -79,7 +79,7 @@ export const tes = {
       out.simpan2 = U.simpan();
       localStorage.removeItem('npcPerbaiki');
       return out; });
-    assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1, v: 2 }, { kul: 1, v: 2 }, true]);
+    assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1, v: 3 }, { kul: 1, v: 3 }, true]);
     assert.deepEqual([r.renang, r.baring, r.pulih, r.tegak], [true, true, true, true], JSON.stringify(r));
     assert.ok(r.simpan2 <= 3, 'tekstur warna lama dibuang: ' + r.simpan2);
   },

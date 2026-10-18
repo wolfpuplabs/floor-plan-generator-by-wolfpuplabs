@@ -29,7 +29,7 @@ export const tes = {
       const warnai = b => { const m = klonModel(tpl); window.NPC.warnaiAvatar(m, tpl, 'M', b); const t = []; m.traverse(x => { if (x.isMesh && x.material.map) t.push(x.material.map); }); return t; };
       const petaTpl = () => { const t = []; tpl.traverse(x => { if (x.isMesh) t.push(x.material.map); }); return t; }, asli = petaTpl();
       const a = warnai(77), b = warnai(77), c = warnai(78), sesudah = petaTpl();
-      return { kanvas: a.length > 0 && a.every(t => t.isCanvasTexture), sama: a.every((t, i) => t === b[i]), beda: a.some((t, i) => t !== c[i]), asliUtuh: asli.every((t, i) => t === sesudah[i]) && a.every(t => !asli.includes(t)) }; });
+      return { kanvas: a.length > 0 && a.every(t => t.npcWarna), sama: a.every((t, i) => t === b[i]), beda: a.some((t, i) => t !== c[i]), asliUtuh: asli.every((t, i) => t === sesudah[i]) && a.every(t => !asli.includes(t)) }; });
     assert.deepEqual(p, { kanvas: true, sama: true, beda: true, asliUtuh: true });
     await page.evaluate(() => { if (!AVATAR_LOBI.d || AVATAR_LOBI.d.bawaan !== 'M') document.querySelectorAll('#lobiSiap .lobi-kartu')[1].click(); });   // Acak bisa memilih F: pilih M dulu
     // ketuk lagi = batal pilih

@@ -172,10 +172,11 @@
       const f = clamp(l / Math.max(8, m), 0, 2.2);
       out[j] = t[0] * f; out[j + 1] = t[1] * f; out[j + 2] = t[2] * f;
     }
-    const c = document.createElement('canvas'); c.width = c.height = uk;
-    c.getContext('2d').putImageData(new ImageData(out, uk, uk), 0, 0);
-    const tex = new THREE.CanvasTexture(c), asal = p.tex;
+    // tekstur data (bukan kanvas): iOS WebKit membatasi total memori kanvas — melewatinya membuat kanvas baru diam-diam
+    // kosong (NPC tak terlihat). Baris piksel sama seperti hasil getImageData, jadi orientasinya sama dengan peta asal
+    const tex = new THREE.DataTexture(new Uint8Array(out.buffer), uk, uk, THREE.RGBAFormat), asal = p.tex;
     tex.flipY = asal.flipY; tex.encoding = asal.encoding; tex.wrapS = asal.wrapS; tex.wrapT = asal.wrapT; tex.anisotropy = asal.anisotropy || 1;
+    tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter; tex.npcWarna = true; tex.needsUpdate = true;
     return tex;
   }
   function buangSet(k) { const s = SIMPAN.get(k); if (!s) return; SIMPAN.delete(k); for (const t of s.texs.values()) t.dispose(); for (const b of s.peta.values()) b.dispose(); }
@@ -205,7 +206,8 @@
   let PERBAIKI = {}; try { PERBAIKI = JSON.parse(localStorage.getItem('npcPerbaiki') || '{}') || {}; } catch (e) { PERBAIKI = {}; }
   // tanda lama (versi < 2) bisa terpasang keliru: 'tulang' saat NPC berenang (badan meledak / hilang — three r128 mengunci
   // tekstur tulang saat renderer dibuat), 'asli' / 'polos' sesaat setelah memori grafis habis & dipulihkan. Dibuang sekali.
-  if (PERBAIKI.v !== 2) { PERBAIKI = { ...(PERBAIKI.kul ? { kul: 1 } : {}), v: 2 }; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } }
+  // v3: 'asli' yang terekam saat memori kanvas iOS penuh (semua tekstur terbaca kosong) juga dibuang
+  if (PERBAIKI.v !== 3) { PERBAIKI = { ...(PERBAIKI.kul ? { kul: 1 } : {}), v: 3 }; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); } catch (e) { /* mode privat */ } }
   const BAWA = ['mode', 't', 'p', 'yaw', 'yawTuju', 'rumah', 'tuju', 'lanjut', 'kursi', 'po', 'laju', 'jelajah', 'dari', 'ke', 'tunggu', 'macet', 'menoleh', 'disapa', 'tg', 'jarak', 'pangku', 'renang', 'kolamTuju'];
   const diDunia = g => { for (let x = g; x; x = x.parent) if (x.isScene) return true; return false; };
   let PERINGATAN = false;
@@ -366,7 +368,7 @@
       d.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%);z-index:80;width:min(560px,calc(100% - 24px));max-height:80%;display:flex;flex-direction:column;gap:8px;padding:12px';
       const pre = el('pre'); pre.style.cssText = 'margin:0;overflow:auto;white-space:pre-wrap;font-size:.7rem;max-height:60vh;user-select:text;-webkit-user-select:text';
       const r = el('div', 'row'), salin = el('button', 'btn sm', 'Salin'), ulang = el('button', 'btn sm ghost', 'Atur ulang tampilan NPC'), tutup = el('button', 'btn sm ghost', 'Tutup');
-      ulang.onclick = () => { PERBAIKI = { v: 2 }; AMAN = 0; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); localStorage.removeItem('npcAman'); } catch (e) { /* mode privat */ } terapkanPerbaikan(); kotor(); d.querySelector('pre').textContent = diagnosa(); toast('Tampilan NPC diatur ulang'); };
+      ulang.onclick = () => { PERBAIKI = { v: 3 }; AMAN = 0; try { localStorage.setItem('npcPerbaiki', JSON.stringify(PERBAIKI)); localStorage.removeItem('npcAman'); } catch (e) { /* mode privat */ } terapkanPerbaikan(); kotor(); d.querySelector('pre').textContent = diagnosa(); toast('Tampilan NPC diatur ulang'); };
       salin.onclick = () => { try { navigator.clipboard.writeText(pre.textContent).then(() => toast('Diagnosa disalin'), () => toast('Tidak bisa menyalin — ambil tangkapan layar saja')); } catch (e) { toast('Tidak bisa menyalin — ambil tangkapan layar saja'); } };
       tutup.onclick = () => d.remove(); r.append(salin, ulang, tutup); d.append(pre, r); document.body.appendChild(d); }
     d.querySelector('pre').textContent = diagnosa();

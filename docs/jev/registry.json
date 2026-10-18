@@ -5738,6 +5738,59 @@
     "target": "0 per bulan",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-120",
+   "judul": "NPC hilang di iPad karena batas memori kanvas iOS: tekstur pewarnaan jadi tekstur data, tekstur karakter jadi ImageBitmap",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "iOS WebKit membatasi total memori kanvas; melewatinya membuat kanvas baru diam-diam kosong. Tekstur hasil pewarnaan NPC (kanvas 512–1024 px per bagian per kombinasi warna), tekstur karakter yang diperkecil (kanvas 1024 px) dan bingkai ilustrasi kencan menumpuk di kanvas, sehingga semua tekstur NPC terbaca kosong (α0) dan NPC tak terlihat (alphaTest membuang semua piksel). Uji gambar lalu merekam 'tekstur asli' yang juga kosong.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "diagnosa NPC dari iPad pengguna 2026-10-18: peta=1024×1024 α0, uji gambar K=100 A=0 B=475 C=478, perbaikan {v:2, peta:asli} — \"npc ilang\"",
+    "alternatif": [
+     "memperkecil semua tekstur karakter ke 512 px (wajah buram)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 5000000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tekstur pewarnaan = DataTexture (data di memori JS, tanpa kanvas); tekstur karakter diperkecil lalu disimpan sebagai ImageBitmap & kanvasnya dibebaskan; kanvas ilustrasi kencan dibebaskan setelah layar ditutup"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "laporan NPC tidak terlihat di iPad",
+    "target": "0 per bulan",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

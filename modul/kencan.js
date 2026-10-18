@@ -391,7 +391,9 @@
       lukis(0); c.dataset.tokoh = tokoh ? '1' : '0'; c.dataset.bingkai = tokoh ? String(tokoh.length) : '0';
       if (!diam) {
         const t0 = performance.now(); let tampil = false;
-        const putar = () => { if (c.isConnected) tampil = true; else if (tampil || performance.now() - t0 > 5000) return;   // berhenti setelah layar ditutup
+        // iOS WebKit membatasi total memori kanvas: bingkai tokoh (±1 MB tiap bingkai) & lapisan dibebaskan setelah layar ditutup
+        const bebaskan = () => { for (const k of [bg, fg, vin, c, ...(tokoh || [])]) k.width = k.height = 0; };
+        const putar = () => { if (c.isConnected) tampil = true; else if (tampil || performance.now() - t0 > 5000) return bebaskan();   // berhenti setelah layar ditutup
           const t = (performance.now() - t0) / 1000; c.dataset.t = t.toFixed(2); lukis(t); requestAnimationFrame(putar); };
         requestAnimationFrame(putar);
       }

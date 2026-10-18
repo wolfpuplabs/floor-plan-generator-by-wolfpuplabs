@@ -113,7 +113,7 @@ export const tes = {
         const n = N._uji.NPC.get(id), lama = n.a.model;
         N._uji.masukKolam(id, N._uji.kolamDekat(id));
         for (let i = 0; i < 300 && !/_renang/.test(n.a.baju || ''); i++) { await new Promise(r => setTimeout(r, 50)); N.langkah(0.05); }
-        let kain = 0, uk = 0; n.a.model.traverse(x => { if (x.isMesh && x.material.map && x.material.map.isCanvasTexture) { kain++; uk = Math.max(uk, x.material.map.image.width); } });
+        let kain = 0, uk = 0; n.a.model.traverse(x => { if (x.isMesh && x.material.map && x.material.map.npcWarna) { kain++; uk = Math.max(uk, x.material.map.image.width); } });
         out[id] = { baju: n.a.baju, lepas: !lama.parent, po: n.po, rig: Object.keys(n.a.rig || {}).length, warna: kain > 0, uk };
         n.renang.t = 0; N.langkah(0.05);
         for (let i = 0; i < 40 && (n.a.baju || '') !== ''; i++) { await new Promise(r => setTimeout(r, 50)); N.langkah(0.05); }

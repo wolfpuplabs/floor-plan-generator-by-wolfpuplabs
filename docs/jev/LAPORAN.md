@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 94 GO · 3 DEFER · 5 NO-GO dari 102 item.
+**Ringkasan:** 95 GO · 3 DEFER · 5 NO-GO dari 103 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -89,6 +89,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-010 | Atap dak beton | terkirim | 0.60 | 23,6 jt | 3 jt | 14.8× | 6.9× | 1.2 bln | 64 | **GO** |
 | JEV-117 | NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang | terkirim | 0.65 | 2,6 jt | 0,4 jt | 13.6× | 6.3× | 1.4 bln | 0 | **GO** |
 | JEV-119 | Memori grafis iPad habis saat mengganti warna NPC; NPC jadi warna polos setelah tampilan dipulihkan | terkirim | 0.65 | 2,5 jt | 0,4 jt | 12.8× | 5.9× | 1.5 bln | 0 | **GO** |
+| JEV-120 | NPC hilang di iPad karena batas memori kanvas iOS: tekstur pewarnaan jadi tekstur data, tekstur karakter jadi ImageBitmap | terkirim | 0.65 | 2,5 jt | 0,4 jt | 12.8× | 5.9× | 1.5 bln | 0 | **GO** |
 | JEV-009 | Ekspor GLB/OBJ/USDZ + AR maket | terkirim | 0.55 | 64,4 jt | 9,9 jt | 12.0× | 5.5× | 1.4 bln | 77 | **GO** |
 | JEV-002 | Editor dinding, bukaan, multi-lantai, undo | terkirim | 0.65 | 131,6 jt | 21 jt | 11.5× | 5.3× | 1.4 bln | 80 | **GO** |
 | JEV-020 | Pantulan probe untuk kaca, logam, air | terkirim | 0.50 | 19,7 jt | 4,2 jt | 8.4× | 3.7× | 2.1 bln | 107 | **GO** |
@@ -196,6 +197,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-010 Atap dak beton — GO.** ROI 14.8× ≥ 1, payback 1.2 bln.
 - **JEV-117 NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-119 Memori grafis iPad habis saat mengganti warna NPC; NPC jadi warna polos setelah tampilan dipulihkan — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
+- **JEV-120 NPC hilang di iPad karena batas memori kanvas iOS: tekstur pewarnaan jadi tekstur data, tekstur karakter jadi ImageBitmap — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-009 Ekspor GLB/OBJ/USDZ + AR maket — GO.** ROI 12.0× ≥ 1, payback 1.4 bln.
 - **JEV-002 Editor dinding, bukaan, multi-lantai, undo — GO.** ROI 11.5× ≥ 1, payback 1.4 bln.
 - **JEV-020 Pantulan probe untuk kaca, logam, air — GO.** ROI 8.4× ≥ 1, payback 2.1 bln.
