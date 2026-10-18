@@ -694,8 +694,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     if (!/^(F|M)(_renang2?)?$/.test(k)) return Promise.reject(new Error('karakter tidak dikenal'));
     return fetch('avatar/' + k + '.vrm').then(r => { if (!r.ok) throw new Error('karakter ' + k + ' tidak tersedia (HTTP ' + r.status + ')'); return r.arrayBuffer(); });
   }
-  function kecilkanTekstur(root, maks) {
-    const sudah = new Set();
+  async function kecilkanTekstur(root, maks) {
+    const sudah = new Set(), tugas = [];
     root.traverse(m => { if (!m.isMesh) return;
       for (const mt of [].concat(m.material)) for (const k of ['map', 'emissiveMap', 'normalMap']) {
         const t = mt && mt[k], im = t && t.image; if (!im || sudah.has(t)) continue; sudah.add(t);
@@ -704,7 +704,11 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
         if (typeof im.close === 'function') im.close();
         t.image = c; t.needsUpdate = true;
+        // iOS WebKit membatasi total memori kanvas (melewatinya = kanvas baru kosong, karakter tak terlihat): simpan sebagai
+        // ImageBitmap lalu bebaskan kanvasnya. Orientasi sama (flipY peta glTF = false, diabaikan WebGL untuk ImageBitmap)
+        if (typeof createImageBitmap === 'function') tugas.push(createImageBitmap(c).then(b => { t.image = b; t.needsUpdate = true; c.width = c.height = 0; }, () => {}));
       } });
+    await Promise.all(tugas);
     return root;
   }
   function muatAvatar3D(av) {
