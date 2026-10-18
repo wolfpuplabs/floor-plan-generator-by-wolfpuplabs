@@ -6287,6 +6287,61 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-130",
+   "judul": "Jok otomatis untuk model unggahan & kepribadian NPC sesuai tubuh F/M",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Duduk di model unggahan memakai tengah kotak batas & arah +Z model: model berisi dua kursi kemah membuat pemain duduk di celah antara keduanya dan menghadap arah salah; di mobil pemain duduk di antara jok depan. Kepribadian otomatis NPC dipilih tanpa melihat tubuhnya, sehingga NPC F bisa menjadi 'Pak Bima' / 'Pak Joko'.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna 2026-10-18 20.05: \"arah duduk ga bener\" & \"NPC F buat karakter female, jadi jangan karakter cowo kalo milih itu\"",
+    "alternatif": [
+     "pengguna mengatur Arah hadap & memecah model per kursi secara manual",
+     "pilih kepribadian manual per NPC"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul/kursi.js dimuat malas; pemindaian sekali per model (±1 ms untuk model uji, BVH untuk model berat), disimpan di userData"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "Arah hadap manual tetap tersedia; bawaan Otomatis"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan arah/posisi duduk di model & NPC beda jenis kelamin",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

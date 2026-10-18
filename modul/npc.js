@@ -1047,10 +1047,12 @@
     penyunting(ins, d, k => { HIST.label = k === 'baju' ? 'Pakaian NPC' : 'Warna NPC'; rebuildScene(); renderInspector(); });
     const KN = window.KARTU_NPC;
     if (KN) {
-      fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...KN.URUT.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], typeof d.params.kartu === 'string' && KN.KARTU[d.params.kartu] ? d.params.kartu : '',
+      // kepribadian mengikuti tubuh NPC (JEV-130): Karakter F hanya kartu perempuan, M hanya laki-laki
+      const jk = jenisAman(d.type), pas = KN.URUT.filter(k => KN.cocok(k, jk));
+      fRow(ins, 'Kepribadian', selInput([['', 'Otomatis'], ...pas.map(k => [k, KN.KARTU[k].nama + ' — ' + KN.KARTU[k].peran[BAHASA.kode === 'id' ? 'id' : 'en']])], pas.includes(d.params.kartu) ? d.params.kartu : '',
         v => { if (v) d.params.kartu = v; else delete d.params.kartu; HIST.label = 'Kepribadian NPC'; rebuildScene(); renderInspector(); }));
       const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 30; nm.value = typeof d.params.nama === 'string' ? d.params.nama : '';
-      const kk = KN.KARTU[d.params.kartu] || KN.KARTU[KN.URUT[benihAman(d) % 5 % 4]]; nm.placeholder = kk.nama;
+      nm.placeholder = KN.KARTU[KN.kartuNpc(d.params.kartu, jk, d.params.benih)].nama;
       nm.onchange = () => { const v = nm.value.trim().slice(0, 30); if (v) d.params.nama = v; else delete d.params.nama; HIST.label = 'Nama NPC'; rebuildScene(); };
       fRow(ins, 'Nama', nm);
     } else muatModul('kartunpc').then(() => { if (window.KARTU_NPC) renderInspector(); }, () => {});
