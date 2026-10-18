@@ -35,7 +35,7 @@ export const tes = {
     assert.deepEqual(r.aman, [9, undefined]);
   },
 
-  'NPC: syarat relasi; peluk & dansa berdiri rapat menghadap; gandeng mengikuti di sisi kanan; duduk bareng di sofa yang sama & bersandar; anak menolak; Berbaring di ranjang (pemain) & NPC tidur di kasur': async (page) => {
+  'NPC: syarat relasi; peluk & dansa berdiri rapat menghadap; gandeng mengikuti di sisi kanan; duduk bareng di sofa yang sama & bersandar; kartu lama "anak" jadi kartu bertema rumah; Berbaring di ranjang (pemain) & NPC tidur di kasur': async (page) => {
     await muatProyekJSON(page, rumah);
     await page.evaluate(() => localStorage.removeItem('npcIngat'));
     await page.waitForFunction(() => window.NPC && ['nA', 'nK'].every(id => window.NPC.keadaan(id) && window.NPC.keadaan(id).siap), undefined, { timeout: 90000 });
@@ -97,9 +97,9 @@ export const tes = {
     assert.deepEqual([pk.ok, pk.mode, pk.po, pk.lepas, pk.sesudah], [true, 'pangku', 16, ['lepas'], 'diam'], JSON.stringify(pk));
     assert.ok(pk.dekat < 0.45 && Math.abs(pk.y + 0.3) < 0.02 && pk.pw > 0.8 && pk.yTurun < 0.05, 'pangku: ' + JSON.stringify(pk));
     assert.deepEqual([...pk.cium, pk.ciumSesudah], [true, 'cium', 15, true, 'diam'], 'cium pipi: ' + JSON.stringify(pk));
-    // kartu anak menolak interaksi berpasangan (baris aksi disembunyikan)
+    // kartu anak "Dimas" dihapus (JEV-123): NPC lama berkartu 'anak' memakai kartu bertema rumah, baris aksi tampil
     await ngobrol('nK');
-    assert.equal(await page.evaluate(() => document.querySelector('#npcObrol .no-aksi').hidden), true);
+    assert.deepEqual(await page.evaluate(() => [document.querySelector('#npcObrol .no-aksi').hidden, /Dimas/.test($('#npcObrol').textContent), 'anak' in window.KARTU_NPC.KARTU, window.KARTU_NPC.URUT.length]), [false, false, false, 7]);
     await page.evaluate(() => window.DIALOG.tutup());
     // pemain berbaring di ranjang: aksi tambahan "Berbaring", mata di bantal, terkirim sebagai pose 9 di tengah kasur
     const b = await page.evaluate(() => { const grp = findGroup('obj', 'ranjang'); camera.position.set(8, 1.6, 4.6); FPS.yaw = 0; FPS.pitch = -0.5; fpsStep(0); scene.updateMatrixWorld(); AIM_T = 0; stepBidik(0.2);

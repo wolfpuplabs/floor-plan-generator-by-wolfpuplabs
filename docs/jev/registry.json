@@ -5903,6 +5903,63 @@
     "target": "> 20%",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-123",
+   "judul": "Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Model unggahan hanya bisa jadi kursi/lampu/audio/piano/gitar — kasur, perapian dan api unggun unggahan tidak bisa dipakai berbaring atau dinyalakan. NPC terlalu sering berjoget (setiap diam 4 detik saat musik latar menyala). Pengguna ingin kartu NPC anak \"Dimas\" dihapus.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-18: \"hilangkan npc dimas, npc jadi keseringan joget, tambahin opsi interaksi lie down, perapian, api unggun di uploaded asset\"",
+    "alternatif": [
+     "mematikan joget NPC sepenuhnya",
+     "menebak peran model dari nama berkas"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 2,
+     "ujiJam": 0.7,
+     "pemeliharaanJamPerTahun": 0.3,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.6,
+      "dampakRp": 2000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "parameter model baru dijepit (clamp) di setiap pemakaian"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "lidah api & cahaya memakai aset bawaan; tidak ada berkas baru"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "saluran TV bawaan dipindah ke modul/kanaltv.js (dimuat saat TV menyala) — index.html turun ±4,9 KB sebelum fitur baru"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pengaturan baru memakai baris inspector berlabel; aksi muncul sebagai tombol Berinteraksi seperti perabot bawaan"
+    }
+   },
+   "metrik": {
+    "nama": "model unggahan berkategori baring/api/unggun per proyek",
+    "target": "> 0,2",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

@@ -327,7 +327,11 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
   }
   function titikApi(id) {
     const g = grupObjek(id), o = cariObjek(id); if (!g || !o) return null; g.updateMatrixWorld(true);
-    const unggun = o.type === 'api_unggun';
+    const unggun = o.type === 'api_unggun' || (o.kind === 'model' && o.params && o.params.interaksi === 'unggun'), at = g.userData.apiTitik;
+    if (at) {                                                          // model unggahan (JEV-123): titik api pilihan pemilik, jarak duduk dari ukuran model
+      const pusat = g.localToWorld(at.clone()), s = new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3());
+      return { g, o, unggun, pusat, p: pusat.clone().add(new THREE.Vector3(0, 0.2, 0)), r: Math.max(unggun ? 1.15 : 1.35, Math.max(s.x, s.z) / 2 + 0.55) };
+    }
     return { g, o, unggun, pusat: g.getWorldPosition(new THREE.Vector3()), p: g.localToWorld(new THREE.Vector3(0, unggun ? 0.2 : 0.42, unggun ? 0 : 0.3)) };
   }
   function tambahKayu(t) {
@@ -351,9 +355,9 @@ body.aktivitas #fpsDok,body.aktivitas #fpsAim,body.aktivitas #fpsFoto,body.aktiv
     const a = mulai(marsh ? 'marshmallow' : 'hangat', t); if (!a) return;
     // duduk di sisi api yang terdekat (api unggun) atau di depan perapian, menghadap api
     let ux = camera.position.x - F.pusat.x, uz = camera.position.z - F.pusat.z;
-    if (!F.unggun) { const d0 = F.g.localToWorld(new THREE.Vector3(0, 0, 1)).sub(F.pusat); ux = d0.x; uz = d0.z; }
+    if (!F.unggun) { const d0 = F.g.localToWorld(new THREE.Vector3(0, 0, 1)).sub(F.g.getWorldPosition(new THREE.Vector3())); ux = d0.x; uz = d0.z; }
     const l = Math.hypot(ux, uz) || 1; ux /= l; uz /= l;
-    const r = F.unggun ? 1.15 : 1.35, x = F.pusat.x + ux * r, z = F.pusat.z + uz * r;
+    const r = F.r || (F.unggun ? 1.15 : 1.35), x = F.pusat.x + ux * r, z = F.pusat.z + uz * r;
     const g0 = fpsPijakan(x, z, FPS.feet + 0.8), tanah = levelElevation(0) + (adaTanahSitus() ? tinggiTanah(x, z) : 0);
     let feet = Math.max(g0 == null ? -1e9 : g0, tanah); if (!Number.isFinite(feet) || Math.abs(feet - FPS.feet) > 0.6) feet = FPS.feet;
     Object.assign(a, { F, x, z, feet, bonusT: 0, marsh, kayuT: 0 });

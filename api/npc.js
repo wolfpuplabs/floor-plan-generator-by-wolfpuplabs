@@ -66,22 +66,22 @@ The player is walking around a house${q.rumah.judul ? ` called "${q.rumah.judul}
 
 ${q.pilihan ? promptPilihan(q) : 'Respond ONLY with JSON: {"reply": "<what you say>", "sentiment": <number from -1 to 1: how the player\'s last message made you feel>}'}`;
 }
-// mode date sim: perasaan NPC + 4 pilihan ucapan pemain; selalu sopan & non-seksual (kartu anak: tanpa unsur romantis)
+// mode date sim: perasaan NPC + 4 pilihan ucapan pemain; selalu sopan & non-seksual
 const RASA = { happy: 'senang', comfortable: 'nyaman', attracted: 'tertarik', annoyed: 'kesal' };
 function promptPilihan(q) {
-  const s = q.suasana, anak = q.kartu === 'anak';
+  const s = q.suasana;
   return `YOUR CURRENT FEELINGS toward the player (0-3): happy ${s.senang}, comfortable ${s.nyaman}, attracted ${s.tertarik}, annoyed ${s.kesal}. Let them colour your reply.
 
 Also write exactly 4 short things the player could say next (max 12 words each, same language as your reply). Options A-C must differ in tone (kind, curious, playful or rude) and each changes exactly ONE of your feelings by +1 or -1. Option D always politely ends the conversation and has no effect.
-Keep everything wholesome and suitable for all ages: no sexual content, no innuendo${anak ? ', and NO romance or flirting at all (you are a child)' : '; at most light, sweet flirting'}.
+Keep everything wholesome and suitable for all ages: no sexual content, no innuendo; at most light, sweet flirting.
 
 Respond ONLY with JSON: {"reply": "<what you say>", "sentiment": <-1..1>, "options": [{"text": "<player line>", "effect": "happy+1"}, {"text": "...", "effect": "annoyed+1"}, {"text": "...", "effect": "comfortable+1"}, {"text": "...", "effect": "none"}]}`;
 }
-function bacaPilihan(o, anak) {
+function bacaPilihan(o) {
   const a = Array.isArray(o && o.options) ? o.options.slice(0, 4) : [];
   const p = a.map(x => { const t = teks(x && x.text, 90); if (!t || TERLARANG.test(t)) return null;
     const m = /^(happy|comfortable|attracted|annoyed)\s*([+-])\s*1$/.exec(teks(x.effect, 20).toLowerCase()), efek = {};
-    if (m && !(anak && m[1] === 'attracted')) efek[RASA[m[1]]] = m[2] === '+' ? 1 : -1;
+    if (m) efek[RASA[m[1]]] = m[2] === '+' ? 1 : -1;
     return { t, efek }; });
   if (p.length !== 4 || p.some(x => !x)) throw new Error('pilihan tidak lengkap');
   p[3].efek = {}; p[3].akhir = true;
@@ -102,7 +102,7 @@ async function tanyaGroq(q, env, fetchFn = fetch) {
     const balas = teks(o && o.reply, 600); if (!balas) throw new Error('jawaban kosong');
     if (TERLARANG.test(balas)) throw new Error('jawaban disaring');            // peramban memakai balasan dari kartu
     const rasa = Math.max(-1, Math.min(1, +o.sentiment || 0));
-    return q.pilihan ? { balas, rasa, pilihan: bacaPilihan(o, q.kartu === 'anak') } : { balas, rasa };
+    return q.pilihan ? { balas, rasa, pilihan: bacaPilihan(o) } : { balas, rasa };
   } finally { clearTimeout(batas); }
 }
 

@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 97 GO · 3 DEFER · 5 NO-GO dari 105 item.
+**Ringkasan:** 98 GO · 3 DEFER · 5 NO-GO dari 106 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -107,6 +107,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-122 | Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut | terkirim | 0.65 | 0,5 jt | 0,4 jt | 1.8× | 0.4× | 7.2 bln | 0 | **GO** |
 | JEV-019 | SFX langkah kaki & interaksi | terkirim | 0.35 | 3,3 jt | 2,7 jt | 1.4× | 0.2× | 8.4 bln | 409 | **GO** |
 | JEV-013 | Tracing void & area bentuk bebas | terkirim | 0.60 | 4,5 jt | 3,8 jt | 1.4× | 0.2× | 8.4 bln | 417 | **GO** |
+| JEV-123 | Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget | terkirim | 0.65 | 0,5 jt | 0,5 jt | 1.2× | 0.1× | 9.7 bln | 0 | **GO** |
 | JEV-005 | Deteksi perabot dari simbol denah | terkirim | 0.45 | 20,3 jt | 19,5 jt | 1.1× | 0.0× | 10.0 bln | 482 | **GO** |
 | JEV-042 | Modularisasi index.html (12k baris → modul + build) | usulan | 0.45 | 4,1 jt | 7,8 jt | 0.0× | -0.5× ⚠ | 23.1 bln | ∞ | **DEFER** |
 | JEV-043 | Impor Gaussian splat (.splat/.ply) | usulan | 0.30 | 4,7 jt | 10,7 jt | -0.1× | -0.6× ⚠ | 28.1 bln | 1.127 | **NO-GO** |
@@ -217,6 +218,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-122 Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut — GO.** ROI 1.8× ≥ 1, payback 7.2 bln.
 - **JEV-019 SFX langkah kaki & interaksi — GO.** ROI 1.4× ≥ 1, payback 8.4 bln.
 - **JEV-013 Tracing void & area bentuk bebas — GO.** ROI 1.4× ≥ 1, payback 8.4 bln.
+- **JEV-123 Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget — GO.** ROI 1.2× ≥ 1, payback 9.7 bln.
 - **JEV-005 Deteksi perabot dari simbol denah — GO.** ROI 1.1× ≥ 1, payback 10.0 bln. _Pengguna beberapa kali melaporkan hasil "masih ngaco" → peluang diturunkan ke 0,45. Akurasi uji: 88/97 simbol benar pada 5 denah uji._
 - **JEV-042 Modularisasi index.html (12k baris → modul + build) — DEFER.** ROI 0.04 < 1; payback 23 bln. _lainRpPerTahun = ±60 jam pemeliharaan/tahun yang dihemat × tarif._
 - **JEV-043 Impor Gaussian splat (.splat/.ply) — NO-GO.** ROI -0.11 < 0 — nilai harapan lebih kecil dari biaya.
