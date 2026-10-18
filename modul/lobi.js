@@ -735,11 +735,13 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   // M_renang.vrm — karakter yang sama diekspor dari VRoid Studio) selama berpose berenang; tanpa berkas itu tetap berbaju biasa.
   // Karakter F punya dua pilihan baju renang: dipilih dari benih warna, jadi semua peserta melihat baju yang sama
   const sufiksRenang = (k, benih) => (k === 'F' && (benih >>> 0) % 2 === 1 ? '_renang2' : '_renang');
-  L.sufiksRenang = sufiksRenang;
+  // pose di dalam air: berenang 17 / 18 & main air 21 (JEV-124: ciprat tidak lagi berganti ke baju biasa sesaat)
+  const poseAir = po => po === 17 || po === 18 || po === 21;
+  L.sufiksRenang = sufiksRenang; L.poseAir = poseAir;
   const BAJU_TIADA = new Set();
   function bajuAvatar(a, p) {
     const po = a.tuju && a.tuju.po, bw = p.av && p.av.bawaan, tetap = bw && p.av.baju ? '_' + p.av.baju : '', suf = tetap || (bw ? sufiksRenang(bw, p.av.benih || 0) : '');
-    const mau = (tetap || po === 17 || po === 18) && bw && !BAJU_TIADA.has(bw + suf) ? suf : '';
+    const mau = (tetap || poseAir(po)) && bw && !BAJU_TIADA.has(bw + suf) ? suf : '';
     if (!bw || !a.model || (a.baju || '') === mau || a.bajuMuat === mau) return;
     a.bajuMuat = mau;
     muatAvatar3D({ bawaan: bw + mau }).then(tpl => {

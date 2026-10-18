@@ -90,9 +90,12 @@ export const tes = {
 
   'iPad / iPhone: rasio piksel ≤ 1,5×, MSAA adegan 2×, peta bayangan ≤ 1024 (memori grafis terbatas)': Object.assign(async (page) => {
     const r = await page.evaluate(async () => { enterFPS(); for (let i = 0; i < 20; i++) await new Promise(ok => requestAnimationFrame(ok));
-      const out = { hemat: perangkatHemat(), pr: RES.dasar, bayang: sun.shadow.mapSize.x, msaa: FX.pipa ? FX.pipa.rtAdegan.samples : null };
-      setRenderQuality('tinggi'); out.prTinggi = RES.dasar; setRenderQuality('halus'); exitFPS(); return out; });
-    assert.deepEqual(r, { hemat: true, pr: 1.5, bayang: 1024, msaa: 2, prTinggi: 2 });
+      const out = { hemat: perangkatHemat(), pr: RES.dasar, bayang: sun.shadow.mapSize.x, efekHalus: fxAktif(), bufHalus: FX.pipa ? FX.pipa.rtAdegan.width : 2 };
+      // efek real-time (AO, bloom, HDR) hanya di kualitas Tinggi (JEV-124)
+      setRenderQuality('tinggi'); out.prTinggi = RES.dasar; for (let i = 0; i < 5; i++) await new Promise(ok => requestAnimationFrame(ok));
+      out.msaa = FX.pipa ? FX.pipa.rtAdegan.samples : null; out.bufTinggi = FX.pipa ? FX.pipa.rtAdegan.width > 2 : false;
+      setRenderQuality('halus'); out.bufKembali = FX.pipa.rtAdegan.width; out.centang = [$('#fxOn').checked, $('#fxOn').disabled]; exitFPS(); return out; });
+    assert.deepEqual(r, { hemat: true, pr: 1.5, bayang: 1024, efekHalus: false, bufHalus: 2, msaa: 2, prTinggi: 2, bufTinggi: true, bufKembali: 2, centang: [true, true] });
   }, { opsi: { ua: 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/155.0 Mobile/15E148 Safari/604.1', konteks: { deviceScaleFactor: 2 } } }),
 
   'suara NPC: gumaman sepanjang teks (mati = diam), huft saat kesal, sorakan; tombol suara gumam → dibacakan → mati': async (page) => {

@@ -696,7 +696,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
       <div class="f-row"><label>Kualitas</label><select id="rq">
         <option value="cepat">Cepat — hemat baterai</option>
         <option value="halus" selected>Halus — bawaan</option>
-        <option value="tinggi">Tinggi — bayangan &amp; tepi terhalus</option>
+        <option value="tinggi">Tinggi — efek real-time, bayangan &amp; tepi terhalus</option>
       </select></div>
       <div class="f-row"><label>Suasana</label><select id="mood">
         <option value="siang" selected>Siang lembut</option>
@@ -735,7 +735,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
         <p class="hint"><a id="langitKredit" target="_blank" rel="noopener" hidden>Lihat sumber panorama</a></p>
       </div>
       <label class="chk"><input type="checkbox" id="pbrOn" checked><span>Material PBR — pantulan lingkungan, relief (normal map), dan kekasaran per bagian</span></label>
-      <label class="chk"><input type="checkbox" id="fxOn" checked><span>Efek realistis real-time — ambient occlusion, pendar lampu (bloom), color grading filmis, vinyet</span></label>
+      <label class="chk"><input type="checkbox" id="fxOn" checked><span>Efek realistis real-time (kualitas Tinggi) — ambient occlusion, pendar lampu (bloom), color grading filmis, vinyet</span></label>
       <button class="btn ghost sm" id="renderShot">Render Gambar Tinggi (.png)</button>
       <p class="hint" id="rqNote"></p>
       <div class="section-title">Tampilan</div>
@@ -1659,8 +1659,12 @@ const FPS={ on:false, yaw:0, pitch:0, eye:1.60, r:0.26, speed:2.3, run:3.9, fov:
    shader kosong pada ½ resolusi, AO dihitung & dihaluskan pada ½ resolusi,
    lalu dikalikan ke gambar utama — antialias dan pencahayaan asli tetap.
    ===================================================================== */
-const FX={on:true, siap:false};
+const FX={on:true, siap:false, eks:{siang:0.4, senja:0.73, malam:0.88, gelap:0.88}, ke:0.4};   // eks: eksposur tanpa HDR (dikalibrasi ke terang rata-rata Tinggi)
 try{ FX.on=localStorage.getItem('fx_on')!=='0'; }catch(e){}
+// hanya di kualitas Tinggi (JEV-124): Halus & Cepat menggambar langsung tanpa AO/bloom/HDR — buffer efeknya dikecilkan agar memori lega
+var RQ_KINI='halus';                // kualitas render kini (setRenderQuality)
+const fxAktif=()=>FX.on&&RQ_KINI==='tinggi';
+function fxKecilkan(){ const P=FX.pipa||{}; for(const r of [P.rtAdegan,P.h1,P.h2,P.q1,P.q2,FX.rtD,FX.rtA,FX.rtB]) if(r&&r.width>2) r.setSize(2,2); }
 function fxSiapkan(){
   if(FX.siap) return;
   const rtOpt={minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, depthBuffer:false, stencilBuffer:false};
@@ -1865,7 +1869,8 @@ function fxPipelineSiap(){
 const _ukDB=new THREE.Vector2();
 let FX_T0=0;
 function renderFrame(){
-  if(!FX.on || !window.__siap){ renderer.render(scene,camera); return; }
+  if(!window.__siap){ renderer.render(scene,camera); return; }
+  if(!fxAktif()){ const e=renderer.toneMappingExposure; renderer.toneMappingExposure=e*FX.ke; renderer.render(scene,camera); renderer.toneMappingExposure=e; return; }
   if(!renderer.capabilities.isWebGL2){ renderer.render(scene,camera); fxAO(); return; }
   fxSiapkan(); const P=fxPipelineSiap();
   renderer.getDrawingBufferSize(_ukDB);
@@ -1903,11 +1908,13 @@ function renderFrame(){
   U.vinyet.value=FPS.on?0.3:0.16; U.aces.value=tm===THREE.NoToneMapping?0:1;
   fxQuad(P.komposit,null);
 }
-function setFX(on){
-  FX.on=on; try{ localStorage.setItem('fx_on',on?'1':'0'); }catch(e){}
+function setFX(on){ FX.on=on; try{ localStorage.setItem('fx_on',on?'1':'0'); }catch(e){} segarFX(); }
+function segarFX(){
+  const on=fxAktif(), c=document.getElementById('fxOn');
   renderer.domElement.style.filter = on && !renderer.capabilities.isWebGL2 ? 'contrast(1.06) saturate(1.1) brightness(1.02)' : '';
-  const c=document.getElementById('fxOn'); if(c) c.checked=on;
+  if(c){ c.checked=FX.on; c.disabled=RQ_KINI!=='tinggi'; }
   viewport.classList.toggle('fx',on && renderer.capabilities.isWebGL2);   // vinyet sudah digambar di komposit
+  if(!on) fxKecilkan();
 }
 
 const clock=new THREE.Clock();
@@ -4685,7 +4692,7 @@ function stepProbe(dt){
   // alat bantu editor tidak ikut terpantul
   const sembunyi=[helperRoot,DIM.grp,grid,gizmo,selBox].filter(Boolean), dulu=sembunyi.map(o=>o.visible);
   sembunyi.forEach(o=>o.visible=false);
-  const tm=renderer.toneMapping; if(FX.on&&renderer.capabilities.isWebGL2) renderer.toneMapping=THREE.NoToneMapping;
+  const tm=renderer.toneMapping; if(fxAktif()&&renderer.capabilities.isWebGL2) renderer.toneMapping=THREE.NoToneMapping;
   const rtLama=renderer.getRenderTarget();
   PROBE.cam.position.copy(pos); PROBE.cam.update(renderer,scene);
   renderer.toneMapping=tm; renderer.setRenderTarget(rtLama);
@@ -14205,9 +14212,9 @@ const RQ={
   cepat :{lipat:1, batas:1, bayang:1024, tone:THREE.NoToneMapping,        exp:1.0,
            n:'Satu piksel gambar per piksel layar. Paling hemat baterai.'},
   halus :{lipat:1, batas:2, bayang:2048, tone:THREE.ACESFilmicToneMapping, exp:1.0,
-           n:'Mengikuti kerapatan layar, bayangan 2048, pemetaan nada ACES.'},
+           n:'Mengikuti kerapatan layar, bayangan 2048, pemetaan nada ACES, tanpa efek real-time.'},
   tinggi:{lipat:2, batas:3, bayang:4096, tone:THREE.ACESFilmicToneMapping, exp:1.05,
-           n:'Digambar dua kali lipat lalu dikecilkan — tepi paling halus, paling berat.'}
+           n:'Digambar dua kali lipat lalu dikecilkan, dengan efek real-time (AO, bloom, eksposur otomatis) — paling halus, paling berat.'}
 };
 /* SUASANA — tata cahaya ala sinema: matahari rendah yang hangat, cahaya langit
    yang lembut dari atas, bayangan berpenumbra lunak, lampu ruangan berpendar
@@ -14225,7 +14232,7 @@ const SUASANA={
 /* kecerahan lingkungan pantulan (PBR & logam) per suasana — sebelumnya satu
    studio terang untuk semua waktu, sehingga PBR malah membanjiri ruang dengan
    cahaya sekitar, apalagi di malam hari */
-let MOOD='siang', RQ_KINI='halus';
+let MOOD='siang';
 /* HARI DALAM GAME (JEV-111): hari baru dimulai saat langit kembali siang setelah sempat malam — lewat siklus waktu,
    pilihan waktu, atau cutscene kencan "Keesokan paginya…". Ganti tanggal di dunia nyata juga menambah satu hari, agar
    pemain yang mematikan siklus tetap maju. Dipakai jatah relasi harian & kencan NPC (modul/dialog.js, modul/kencan.js). */
@@ -14304,7 +14311,7 @@ function terapkanLangit(){
   if(window.CUACA) window.CUACA.setelahLangit();
 }
 function setSuasana(k){
-  const s=SUASANA[k]||SUASANA.siang; MOOD=SUASANA[k]?k:'siang';
+  const s=SUASANA[k]||SUASANA.siang; MOOD=SUASANA[k]?k:'siang'; FX.ke=FX.eks[MOOD];
   sun.color.setHex(s.sun[0]); sun.intensity=s.sun[1]; sun.position.set(...s.sunPos);
   hemiL.color.setHex(s.hemi[0]); hemiL.groundColor.setHex(s.hemi[1]); terapkanPantulan();
   hemiL.userData.base=s.hemi[2]; ambL.userData.base=s.amb;
@@ -14745,6 +14752,7 @@ function setRenderQuality(k){
   bayangKotor();
   scene.traverse(m=>{ if(m.isMesh&&m.material) [].concat(m.material).forEach(x=>x.needsUpdate=true); });
   $('#rqNote').textContent=q.n+` Piksel sekarang ${fmt(renderer.getPixelRatio(),2)}×.`;
+  segarFX();
 }
 $('#rq').onchange=e=>{ setRenderQuality(e.target.value); simpanKualitas(RQ_KINI); toast('Kualitas render: '+e.target.selectedOptions[0].textContent.split('—')[0].trim()); };
 /* Render gambar: sesaat digambar pada resolusi jauh lebih tinggi lalu

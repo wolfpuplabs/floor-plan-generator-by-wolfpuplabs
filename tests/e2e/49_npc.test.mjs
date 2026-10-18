@@ -152,7 +152,7 @@ export const tes = {
       // karakter sudah termuat → NPC dirakit seketika saat adegan dibangun ulang; badannya tetap tampak di mode jalan
       const n = [...window.NPC._uji.NPC.values()][0], tampak = []; n.a.model.traverse(x => { if (x.isMesh) tampak.push(x.visible); }); const uji = window.NPC._uji.ujiGambar(n);
       // AO layar: badan NPC (bahan alpha-cutout) tetap ikut lintasan kedalaman — dulu AO dinding di belakangnya tergambar di wajahnya
-      const fx = FX.on; FX.on = true; renderFrame(); const aoSembunyi = FX_SEMBUNYI.filter(o => o.isSkinnedMesh).length, aoBahan = n.a.model.getObjectByProperty('isSkinnedMesh', true).material.alphaTest; FX.on = fx;
+      const fx = FX.on, rq = RQ_KINI; FX.on = true; RQ_KINI = 'tinggi'; renderFrame(); RQ_KINI = rq; const aoSembunyi = FX_SEMBUNYI.filter(o => o.isSkinnedMesh).length, aoBahan = n.a.model.getObjectByProperty('isSkinnedMesh', true).material.alphaTest; FX.on = fx;
       exitFPS(); return { d, beda, bidik, tampak, uji, aoSembunyi, aoBahan };
     });
     assert.ok(r.d >= 1 && r.d < 2.2, 'jarak dari NPC ' + r.d);
