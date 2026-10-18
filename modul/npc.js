@@ -609,7 +609,8 @@
   }
   // gandeng: berjalan di sisi kanan pengunjung, menyamai arah pandangnya
   function ikut(n, dt, sampingM = 0.55, belakangM = 0) {
-    const yaw = FPS.yaw, kx = -Math.cos(yaw), kz = Math.sin(yaw), tx = camera.position.x + kx * sampingM - Math.sin(yaw) * belakangM, tz = camera.position.z + kz * sampingM - Math.cos(yaw) * belakangM;
+    const G = window.LOBI && window.LOBI.gerak, yaw = G && G.yawBadan ? G.yawBadan() : FPS.yaw;   // arah badan pengunjung, bukan arah kamera (JEV-128)
+    const kx = -Math.cos(yaw), kz = Math.sin(yaw), tx = camera.position.x + kx * sampingM - Math.sin(yaw) * belakangM, tz = camera.position.z + kz * sampingM - Math.cos(yaw) * belakangM;
     const dx = tx - n.p.x, dz = tz - n.p.z, d = Math.hypot(dx, dz);
     if (d > 6) { diam(n, 1); return 0; }
     if (d < 0.04) { putarKe(n, yaw, dt, 4); return 0; }

@@ -60,6 +60,33 @@ export const tes = {
     assert.deepEqual(r.lepas, ['', '']); assert.equal(r.dokSembunyi, true);
   }, { opsi: { ua: IPAD, viewport: { width: 1194, height: 834 }, konteks: { hasTouch: true } } }),
 
+  'berinteraksi dengan NPC: menggeser layar hanya memutar kamera — badan & NPC tetap; berjalan = badan ikut arah pandang lagi (JEV-128)': async (page) => {
+    await muatProyekJSON(page, rumah);
+    await page.waitForFunction(() => window.NPC && window.NPC.keadaan('nA') && window.NPC.keadaan('nA').siap, undefined, { timeout: 120000 });
+    const r = await page.evaluate(async () => {
+      await muatModul('lobi'); const G = window.LOBI.gerak, N = window.NPC, out = {}, pos = () => N.keadaan('nA').p; try {
+      enterFPS(); camera.position.set(5, 1.6, 5.8); FPS.yaw = 0; FPS.pitch = 0; fpsStep(0); N.langkah(0.05);
+      // dansa berdua: badan menghadap NPC; layar digeser 1,5 rad → badan tetap, NPC tidak berpindah
+      N.aksiPasangan('nA', 'dansa'); FPS.gaya = { k: 'dansa', x: camera.position.x, z: camera.position.z, t: performance.now() };
+      for (let i = 0; i < 40; i++) N.langkah(0.05);
+      const y0 = G.posSaya().yaw, p0 = [pos().x, pos().z];
+      FPS.yaw += 1.5; for (let i = 0; i < 40; i++) N.langkah(0.05);
+      out.dansa = { badan: +(G.posSaya().yaw - y0).toFixed(3), npcGeser: +Math.hypot(pos().x - p0[0], pos().z - p0[1]).toFixed(2) };
+      // mulai berjalan: badan kembali mengikuti arah pandang
+      FPS.keys.add('w'); out.jalan = +(G.posSaya().yaw - FPS.yaw).toFixed(3); FPS.keys.delete('w');
+      N.aksiPasangan('nA', 'lepas'); FPS.gaya = null; for (let i = 0; i < 10; i++) N.langkah(0.05);
+      // gandeng diam: NPC tetap di sisi kanan badan walau kamera berputar
+      FPS.yaw = 0; N.aksiPasangan('nA', 'gandeng'); FPS.gaya = { k: 'gandeng', x: camera.position.x, z: camera.position.z, t: performance.now() };
+      for (let i = 0; i < 60; i++) N.langkah(0.05);
+      const g0 = [pos().x, pos().z]; FPS.yaw += 2; for (let i = 0; i < 60; i++) N.langkah(0.05);
+      out.gandeng = +Math.hypot(pos().x - g0[0], pos().z - g0[1]).toFixed(2);
+      N.aksiPasangan('nA', 'lepas'); FPS.gaya = null; exitFPS(); } catch (e) { return { galat: String(e.stack).slice(0, 600) }; }
+      // tanpa interaksi: badan mengikuti arah pandang seperti biasa
+      return out; });
+    assert.ok(!r.galat, r.galat); assert.deepEqual([r.dansa.badan, r.jalan], [0, 0], JSON.stringify(r));
+    assert.ok(r.dansa.npcGeser < 0.05 && r.gandeng < 0.05, 'NPC tidak ikut berputar: ' + JSON.stringify(r));
+  },
+
   'gandeng: tangan kanan pemain & tangan kiri NPC bertemu di tengah setinggi pinggul (tidak menyilang ke badan pasangan)': async (page) => {
     await muatProyekJSON(page, { v: 1, levels: [{ name: 'L1', height: 3, walls: [], objects: [] }] });
     const r = await page.evaluate(async () => {

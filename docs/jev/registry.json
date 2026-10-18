@@ -6179,6 +6179,59 @@
     "target": "0",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-128",
+   "judul": "Saat berinteraksi, menggeser layar hanya memutar kamera — badan & NPC tetap",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di kamera orang ketiga, menggeser layar saat berdansa / bergandengan / berinteraksi dengan NPC ikut memutar badan pemain (dan NPC gandengan), sehingga pasangan berputar dan pemandangan dari sudut lain tidak bisa dilihat.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna 2026-10-18 16.57: \"klo lg interaksi sama npc camera aja yg gerak karakter ga usah biar bisa liat dari sudut beda\"",
+    "alternatif": [
+     "mode kamera bebas terpisah dengan tombol sendiri"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 0.6,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.6,
+      "dampakRp": 1000000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "berjalan dengan stik / WASD langsung mengembalikan badan ke arah pandang — tidak ada mode tersembunyi"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan pasangan ikut berputar saat melihat sekeliling",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

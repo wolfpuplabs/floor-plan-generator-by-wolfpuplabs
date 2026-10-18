@@ -633,7 +633,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
         pasangG(r.b, q.multiply(r.restG), e); } }
   }
   function mulaiLambai(a) { if (a && a.rig && a.rig.rightUpperArm && a.rig.rightUpperArm.restG) a.lambai = a.lambai != null && a.lambai < 2 ? 0.4 : 0; }
-  L.gerak = { siapkanGerak, gerakAvatar, tebakRig, cariKedip, mulaiLambai, posSaya: () => posSaya(), posAman: d => posAman(d) };
+  L.gerak = { siapkanGerak, gerakAvatar, tebakRig, cariKedip, mulaiLambai, posSaya: () => posSaya(), posAman: d => posAman(d), yawBadan: () => yawBadan() };
   function bacaAvatar3D(buf) {
     return new Promise((ok, no) => {
       if (uriLuarGLTF(buf)) return no(new Error('avatar merujuk berkas di luar dirinya'));
@@ -842,6 +842,18 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
   }
   const KODE_GAYA = { joget: 3, ngantuk: 4, lambai: 5, peluk: 6, gandeng: 7, dansa: 10, bawa: 11, mancing: 12, kapak: 13, masak: 14, cium: 15, renang: 17, bebas: 18,
     ciprat: 21, peace: 22, pinggang: 23, hati: 24, hangat: 25, marshmallow: 26 };
+  // arah badan sendiri (JEV-128): selama berinteraksi dengan NPC, duduk, atau berpose/beraktivitas dan tidak sedang berjalan,
+  // menggeser layar hanya memutar kamera (orang ketiga: mengorbit) — badan tetap menghadap arah semula, NPC pasangannya pun diam.
+  // Mulai berjalan (stik / WASD) = badan kembali mengikuti arah pandang. Alasan kunci berganti = arah badan diambil ulang
+  const TOMBOL_JALAN = ['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  function yawBadan() {
+    const npc = window.NPC && window.NPC.pasangan ? window.NPC.pasangan() : null;
+    const alasan = !FPS.on ? '' : FPS.duduk ? 'duduk:' + FPS.duduk.id : npc ? 'npc:' + npc : FPS.gaya ? 'gaya:' + FPS.gaya.k : '';
+    const jalan = TOMBOL_JALAN.some(k => FPS.keys.has(k)) || (FPS.move && Math.hypot(FPS.move.f || 0, FPS.move.s || 0) > 0.1);
+    if (!alasan || jalan) { FPS.yawBadan = null; FPS.yawAlasan = ''; return FPS.yaw; }
+    if (FPS.yawBadan == null || FPS.yawAlasan !== alasan) { FPS.yawBadan = FPS.yaw; FPS.yawAlasan = alasan; }
+    return FPS.yawBadan;
+  }
   function posSaya() {
     if (!FPS.on) return { jalan: 0 };
     // gaya pilihan sendiri berakhir saat mulai berjalan; melambai hanya ±2,6 dtk
@@ -851,7 +863,7 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
     const B = FPS.duduk && FPS.duduk.baring;
     if (B) return { jalan: 1, x: +B.x.toFixed(2), y: +B.y.toFixed(2), z: +B.z.toFixed(2), yaw: +B.yaw.toFixed(3), po: 9, ...(PROJECT.adeganKini ? { ad: PROJECT.adeganKini } : {}) };
     const po = FPS.duduk ? (FPS.duduk.lantai ? 2 : 1) : FPS.gaya ? KODE_GAYA[FPS.gaya.k] || 0 : 0;
-    return { jalan: 1, x: +camera.position.x.toFixed(2), y: +FPS.feet.toFixed(2), z: +camera.position.z.toFixed(2), yaw: +FPS.yaw.toFixed(3),
+    return { jalan: 1, x: +camera.position.x.toFixed(2), y: +FPS.feet.toFixed(2), z: +camera.position.z.toFixed(2), yaw: +yawBadan().toFixed(3),
       ...(po ? { po } : {}), ...(PROJECT.adeganKini ? { ad: PROJECT.adeganKini } : {}) };
   }
 
