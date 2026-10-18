@@ -103,6 +103,41 @@ export const tes = {
     assert.deepEqual(r.panel, ['kiri', ['', 'auto', 'kanan', 'kiri']]);
   },
 
+  'mobil tinggi ala Defender (JEV-136): jok ±1,05 m dari tanah tetap terdeteksi, konsol di antara jok depan & kap mesin bukan jok; kendaraan setir kanan → di belakang setir': async (page) => {
+    await muatProyekJSON(page, RUANG);
+    await page.waitForFunction(() => !!window.KURSI, undefined, { timeout: 30000 });
+    const gltf = JSON.parse(fs.readFileSync(path.join(FIX, 'kursi_1k.gltf'), 'utf8'));
+    const bin = fs.readFileSync(path.join(FIX, 'kursi.bin')).toString('base64'), jpg = fs.readFileSync(path.join(FIX, 'kursi_diff_1k.jpg')).toString('base64');
+    const r = await page.evaluate(async ([gltf, bin, jpg]) => {
+      const isi = { 'kursi.bin': new Uint8Array(bufFromB64(bin)), 'textures/kursi_diff_1k.jpg': new Uint8Array(bufFromB64(jpg)) };
+      const a = await daftarkanAset('Defender', gltfKeGLB(gltf, uri => /^data:/.test(uri) ? dataURIkeU8(uri) : isi[uri]));
+      L().objects.push({ id: 'mD', kind: 'model', type: a.id, x: 8, y: 0, z: 2, rotY: 0, sx: 1, sy: 1, sz: 1, params: { interaksi: 'duduk', collider: false } });
+      rebuildScene();
+      const kotak = (g, w, h, d, x, y, z) => { const k = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial()); k.position.set(x, y, z); g.add(k); };
+      const g = findGroup('obj', 'mD'); for (const c of [...g.children]) g.remove(c); const w = new THREE.Group(); g.add(w);
+      // depan mobil = +X. Sasis & lantai kabin 0,7 m, dinding samping, atap 2,0 m, kap mesin 1,15 m, kaca depan tegak di x 0,8
+      kotak(w, 4, 0.3, 1.8, 0, 0.55, 0); kotak(w, 2.8, 0.06, 1.8, -0.6, 2.0, 0); kotak(w, 4, 1.3, 0.05, 0, 1.35, 0.9); kotak(w, 4, 1.3, 0.05, 0, 1.35, -0.9);
+      kotak(w, 1.3, 0.45, 1.8, 1.45, 0.92, 0); kotak(w, 0.04, 0.85, 1.7, 0.82, 1.57, 0); kotak(w, 0.25, 0.4, 1.7, 0.62, 1.15, 0);
+      for (const z of [-0.45, 0.45]) { kotak(w, 0.5, 0.35, 0.5, 0.1, 0.875, z); kotak(w, 0.1, 0.7, 0.5, -0.2, 1.4, z); }      // jok depan: dudukan 1,05 m
+      kotak(w, 0.5, 0.28, 0.25, 0.05, 0.84, 0);                                                                               // konsol 0,98 m
+      kotak(w, 0.5, 0.35, 1.4, -0.9, 0.875, 0); kotak(w, 0.1, 0.7, 1.4, -1.2, 1.4, 0);                                       // jok belakang
+      kotak(w, 0.06, 0.35, 0.35, 0.42, 1.4, 0.45);                                                                            // setir kanan (+Z)
+      g.updateMatrixWorld(true); delete g.userData.jokOtomatis;
+      const coba = titik => { const s = window.KURSI.titikDuduk({ id: 'mD', grp: g, titik: new THREE.Vector3(...titik) }, g.userData.duduk);
+        return s && { x: +s.pos.x.toFixed(2), y: +s.pos.y.toFixed(2), z: +s.pos.z.toFixed(2), yaw: +Math.atan2(s.arah.x, s.arah.z).toFixed(2) }; };
+      const out = { jok: window.KURSI._pindai(g).map(j => j.pos.clone().applyMatrix4(g.matrixWorld).toArray().map(v => +v.toFixed(2))) };
+      out.pintuKanan = coba([8.1, 1.3, 3.0]); out.tengah = coba([8.05, 1.1, 2.0]); out.kap = coba([9.6, 1.2, 2.0]); out.belakang = coba([6.0, 1.2, 2.0]);
+      cariObjek('mD').params.setir = 'auto'; out.sopir = coba([6.0, 1.2, 1.0]);
+      return out; }, [gltf, bin, jpg]);
+    const f = JSON.stringify(r);
+    assert.ok(r.jok.length === 3 && r.jok.every(p => p[1] > 1.0), 'tiga jok setinggi ±1,05 m (bukan konsol / kap): ' + f);
+    assert.ok(Math.abs(r.pintuKanan.z - 2.45) < 0.1 && Math.abs(r.pintuKanan.yaw - Math.PI / 2) < 0.05, 'dari pintu kanan → jok kanan menghadap depan: ' + f);
+    assert.ok(Math.abs(Math.abs(r.tengah.z - 2) - 0.45) < 0.1, 'dibidik di tengah → jok depan, bukan konsol: ' + f);
+    assert.ok(r.kap.x < 8.5 && r.kap.y > 1, 'kap mesin bukan jok: ' + f);
+    assert.ok(r.belakang.x < 7.4, 'pintu belakang → jok belakang: ' + f);
+    assert.ok(Math.abs(r.sopir.z - 2.45) < 0.1 && r.sopir.x > 7.9, 'kendaraan setir kanan → di belakang setir walau dibidik dari kiri belakang: ' + f);
+  },
+
   'kepribadian NPC mengikuti tubuhnya: NPC F hanya kartu perempuan (kartu laki-laki lama diganti), NPC M hanya laki-laki': async (page) => {
     const o = (id, type, x, params) => ({ id, kind: 'npc', type, x, y: 0, z: 3, rotY: Math.PI, sx: 1, sy: 1, sz: 1, params: { jelajah: 0, ...params } });
     await muatProyekJSON(page, { v: 1, levels: [{ name: 'L1', height: 3, walls: [], objects: [o('nF', 'F', 2, { benih: 1, kartu: 'tukang' }), o('nM', 'M', 4, { benih: 2, kartu: 'agen' }), o('nF2', 'F', 6, { benih: 3 })] }] });

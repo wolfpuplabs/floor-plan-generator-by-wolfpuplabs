@@ -6612,6 +6612,59 @@
     "target": "0",
     "tinjau": "2026-12-19"
    }
+  },
+  {
+   "id": "JEV-136",
+   "judul": "Jok mobil tinggi (ala Defender): jok terdeteksi, konsol tengah & kap mesin bukan jok",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pada model mobil tinggi (jok ±1,05 m dari dasar model) avatar duduk di konsol antara jok depan lalu di kap / atap: batas tinggi dudukan 1,1 m terlalu rendah untuk sebagian jok, dan pengelompokan sel bertetangga ±7 cm menyatukan konsol (7 cm lebih rendah) dengan kedua jok depan menjadi satu 'jok' lebar tanpa sandaran.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna ScreenRecording_10-19-2026_03-48-42: \"posisi duduknya blom bener\"",
+    "alternatif": [
+     "titik duduk manual per model (menyulitkan untuk setiap model unggahan)"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 0.8,
+     "ujiJam": 0.4,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1000000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pemindaian sekali per model (hasil disimpan); batas tinggi lebih besar hanya menambah sel calon"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan avatar duduk di konsol / kap mobil",
+    "target": "0",
+    "tinjau": "2026-12-19"
+   }
   }
  ]
 }
