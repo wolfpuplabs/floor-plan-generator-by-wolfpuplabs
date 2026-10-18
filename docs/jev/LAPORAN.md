@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 95 GO · 3 DEFER · 5 NO-GO dari 103 item.
+**Ringkasan:** 96 GO · 3 DEFER · 5 NO-GO dari 104 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -86,6 +86,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-049 | Duduk di kursi/sofa di mode jalan (katalog + model unggahan) | terkirim | 0.60 | 15,1 jt | 1,5 jt | 19.2× | 9.1× | 1.0 bln | 50 | **GO** |
 | JEV-001 | Generator denah gambar → model 3D | terkirim | 0.65 | 351 jt | 36 jt | 18.5× | 8.8× | 0.8 bln | 52 | **GO** |
 | JEV-048 | Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K | terkirim | 0.65 | 12,1 jt | 1,4 jt | 17.0× | 8.0× | 1.1 bln | 56 | **GO** |
+| JEV-121 | Memori grafis iPad: piksel render dibatasi, panorama 2K, kualitas turun otomatis setelah konteks WebGL hilang | terkirim | 0.65 | 2,3 jt | 0,3 jt | 15.4× | 7.2× | 1.2 bln | 0 | **GO** |
 | JEV-010 | Atap dak beton | terkirim | 0.60 | 23,6 jt | 3 jt | 14.8× | 6.9× | 1.2 bln | 64 | **GO** |
 | JEV-117 | NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang | terkirim | 0.65 | 2,6 jt | 0,4 jt | 13.6× | 6.3× | 1.4 bln | 0 | **GO** |
 | JEV-119 | Memori grafis iPad habis saat mengganti warna NPC; NPC jadi warna polos setelah tampilan dipulihkan | terkirim | 0.65 | 2,5 jt | 0,4 jt | 12.8× | 5.9× | 1.5 bln | 0 | **GO** |
@@ -194,6 +195,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-049 Duduk di kursi/sofa di mode jalan (katalog + model unggahan) — GO.** ROI 19.2× ≥ 1, payback 1.0 bln.
 - **JEV-001 Generator denah gambar → model 3D — GO.** ROI 18.5× ≥ 1, payback 0.8 bln.
 - **JEV-048 Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K — GO.** ROI 17.0× ≥ 1, payback 1.1 bln.
+- **JEV-121 Memori grafis iPad: piksel render dibatasi, panorama 2K, kualitas turun otomatis setelah konteks WebGL hilang — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-010 Atap dak beton — GO.** ROI 14.8× ≥ 1, payback 1.2 bln.
 - **JEV-117 NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-119 Memori grafis iPad habis saat mengganti warna NPC; NPC jadi warna polos setelah tampilan dipulihkan — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.

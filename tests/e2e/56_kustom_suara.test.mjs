@@ -61,7 +61,7 @@ export const tes = {
     assert.deepEqual(r.ganti, { warna: null, baju: 'renang2' });
   },
 
-  'NPC tetap tergambar: tanda lama (tulang cadangan, warna polos) dibuang; NPC berenang / berbaring & sesaat setelah memori grafis pulih tidak ikut uji gambar; ganti warna tidak menumpuk tekstur': async (page) => {
+  'NPC tetap tergambar: tanda lama (tulang cadangan, warna polos) dibuang; NPC berenang / berbaring & sesaat setelah memori grafis pulih tidak ikut uji gambar; ganti warna tidak menumpuk tekstur; memori grafis habis → kualitas render turun & diingat': async (page) => {
     await page.evaluate(() => localStorage.setItem('npcPerbaiki', JSON.stringify({ tulang: 1, kul: 1, peta: 'polos' })));
     await muatProyekJSON(page, rumah);
     await siap(page);
@@ -77,11 +77,15 @@ export const tes = {
       const o = L().objects.find(x => x.id === 'nF');
       for (const w of ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff']) { o.params.warna = { atas: w }; rebuildScene(); for (let i = 0; i < 40 && U.NPC.get('nF').kunciMat.indexOf(w) < 0; i++) await new Promise(ok => setTimeout(ok, 50)); }
       out.simpan2 = U.simpan();
+      // memori grafis habis: kualitas render turun satu tingkat tiap kali, diingat di perangkat ini; tidak turun di bawah Cepat
+      setRenderQuality('tinggi'); out.rq = [turunkanKualitas(), RQ_KINI, turunkanKualitas(), RQ_KINI, turunkanKualitas(), RQ_KINI, localStorage.getItem('rqPerangkat'), kualitasAwal()];
+      localStorage.removeItem('rqPerangkat'); setRenderQuality('halus');
       localStorage.removeItem('npcPerbaiki');
       return out; });
     assert.deepEqual([r.simpan, r.perbaikan, r.fvt], [{ kul: 1, v: 3 }, { kul: 1, v: 3 }, true]);
     assert.deepEqual([r.renang, r.baring, r.pulih, r.tegak], [true, true, true, true], JSON.stringify(r));
     assert.ok(r.simpan2 <= 3, 'tekstur warna lama dibuang: ' + r.simpan2);
+    assert.deepEqual(r.rq, [true, 'halus', true, 'cepat', false, 'cepat', 'cepat', 'cepat']);
   },
 
   'suara NPC: gumaman sepanjang teks (mati = diam), huft saat kesal, sorakan; tombol suara gumam → dibacakan → mati': async (page) => {

@@ -5791,6 +5791,61 @@
     "target": "0 per bulan",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-121",
+   "judul": "Memori grafis iPad: piksel render dibatasi, panorama 2K, kualitas turun otomatis setelah konteks WebGL hilang",
+   "status": "terkirim",
+   "kelas": "wajib",
+   "J": {
+    "masalah": "Di adegan taman yang berat (panorama 360 4K, target render HDR setengah-float seukuran layar retina), menambah NPC di iPad membuat konteks WebGL hilang (\"View restored after graphics memory ran out\"); setelah pulih masalah berulang karena kualitas tetap sama.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna 2026-10-18: menambah NPC F → toast memori grafis penuh; diagnosa: uniform fragmen null, readPixels framebuffer not complete (konteks hilang)",
+    "alternatif": [
+     "mematikan HDR di semua perangkat sentuh"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 1,
+     "ujiJam": 0.5,
+     "pemeliharaanJamPerTahun": 0.2,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 5000000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "hanya kualitas render tersimpan di localStorage perangkat"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "iPad/iPhone: rasio piksel ≤ 1,5× (Tinggi 2×) — target render ±44% lebih kecil; panorama 2K (±8 MB vs ±32 MB); konteks hilang → kualitas turun satu tingkat"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "pengguna tetap bisa memilih kualitas di panel Tampilan / bilah mode jalan"
+    }
+   },
+   "metrik": {
+    "nama": "konteks WebGL hilang per sesi di iPad",
+    "target": "< 0,1",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

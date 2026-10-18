@@ -4247,8 +4247,7 @@ function apiLangkah(){
   c.filter='blur(3px)'; c.drawImage(API.sim,0,0,API.cv.width,API.cv.height); c.filter='none';
   if(API.tex) API.tex.needsUpdate=true;
 }
-/* kayu bakar (JEV-118): api perapian / tungku / unggun membesar sesudah ditambah kayu (≤ 1,8×), susut ke 1× dalam ±3 menit;
-   api yang padam dinyalakan. Besarnya mengatur lidah api & kuat cahayanya */
+// kayu bakar (JEV-118): api membesar lalu susut
 const API_KUAT=new Map();
 function kuatkanApi(id,v){ for(const g of grupObjek(id)){ g.userData.apiKuat=v; g.traverse(x=>{ if(x.name==='lidahApi') x.scale.set(0.75+0.25*v,0.6+0.4*v,0.75+0.25*v); }); } }
 function stepApi(dt){
@@ -4264,11 +4263,9 @@ function stepApi(dt){
    (hitam = tak terlihat); ikut padam bersama halo */
 function lidahApi(w,h,pudar){
   if(!API.lidah) API.lidah=new THREE.MeshBasicMaterial({map:apiTex(), transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, toneMapped:false});
-  // api terbuka (api unggun): ujung atas & sisi lidah api memudar — tanpa dinding tungku tepi bidangnya akan terlihat
-  if(pudar && !API.lidahPudar){ const c=document.createElement('canvas'); c.width=32; c.height=64; const x=c.getContext('2d'), gr=x.createLinearGradient(0,0,0,64);
-    gr.addColorStop(0,'#000'); gr.addColorStop(0.45,'#888'); gr.addColorStop(1,'#fff'); x.fillStyle=gr; x.fillRect(0,0,32,64);
-    const gs=x.createLinearGradient(0,0,32,0); gs.addColorStop(0,'rgba(0,0,0,1)'); gs.addColorStop(0.25,'rgba(0,0,0,0)'); gs.addColorStop(0.75,'rgba(0,0,0,0)'); gs.addColorStop(1,'rgba(0,0,0,1)');
-    x.fillStyle=gs; x.fillRect(0,0,32,64); API.lidahPudar=API.lidah.clone(); API.lidahPudar.alphaMap=new THREE.CanvasTexture(c); }
+  // api terbuka: ujung & sisi lidah api memudar (alphaMap 16×16: atas → bawah, tepi → tengah)
+  if(pudar && !API.lidahPudar){ const d=new Uint8Array(16*16*4); for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const v=Math.round(255*Math.min(1,y/9)*Math.min(1,Math.min(x,15-x)/4)); d.set([v,v,v,255],(y*16+x)*4); }
+    const t=new THREE.DataTexture(d,16,16); t.magFilter=t.minFilter=THREE.LinearFilter; t.needsUpdate=true; API.lidahPudar=API.lidah.clone(); API.lidahPudar.alphaMap=t; }
   const g=new THREE.Group(); g.name='lidahApi';
   for(const a of [-0.45,0.45]){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),pudar?API.lidahPudar:API.lidah); m.rotation.y=a; m.position.y=h/2;
     m.userData.halo=true; m.userData.noExport=true; m.raycast=()=>{}; m.castShadow=false; m.receiveShadow=false; g.add(m); }
@@ -5458,20 +5455,14 @@ function tunggulKayu(){ const g=new THREE.Group();
   g.add(cyl(0.3,0.34,0.45,MAT.woodDark,0,0.225,0,18)); const k=cyl(0.12,0.12,0.38,MAT.wood,0,0.64,0,12); k.name='kayu'; g.add(k);
   for(let i=0;i<5;i++){ const p=cyl(0.065,0.065,0.42,MAT.wood,0.5+(i%3)*0.14,0.065+Math.floor(i/3)*0.12,0.05,8); p.rotation.x=Math.PI/2; g.add(p); }
   return g; }
-/* api unggun & tumpukan kayu bakar (JEV-118): lingkaran batu, bara menyala (titik cahaya + halo seperti perapian), kayu
-   bersandar membentuk kerucut, lidah api hidup; tumpukan kayu bakar = sumber kayu (Ambil kayu bakar) */
-function apiUnggun(){ const g=new THREE.Group();
-  for(let i=0;i<13;i++){ const a=i/13*Math.PI*2, b=sph(0.1,MAT.stone,Math.cos(a)*0.5,0.06,Math.sin(a)*0.5,1,8); b.scale.set(1.25,0.7,1); b.rotation.y=a; g.add(b); }
-  g.add(cyl(0.42,0.44,0.025,MAT.dark,0,0.0125,0,20));
-  g.add(cyl(0.2,0.24,0.04,fireMat(),0,0.04,0,14));                    // bara: titik cahaya & halo api
-  const kayu=new THREE.Group(); kayu.name='kayu';
-  for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+0.3, l=cyl(0.035,0.045,0.62,MAT.bark,Math.cos(a)*0.13,0.25,Math.sin(a)*0.13,8);
-    l.rotation.order='YXZ'; l.rotation.y=-a+Math.PI/2; l.rotation.x=0.42; kayu.add(l); }
-  g.add(kayu);
-  { const f=lidahApi(0.55,0.95,true); f.position.y=0.03; g.add(f); }
-  return g; }
+// api unggun & tumpukan kayu (JEV-118); bara = titik cahaya
+function apiUnggun(){ const g=new THREE.Group(), T=Math.PI*2, k=new THREE.Group(); k.name='kayu';
+  for(let i=0;i<13;i++){ const a=i/13*T, b=sph(0.1,MAT.stone,Math.cos(a)*0.5,0.06,Math.sin(a)*0.5,1,8); b.scale.set(1.25,0.7,1); b.rotation.y=a; g.add(b); }
+  g.add(cyl(0.42,0.44,0.025,MAT.dark,0,0.0125,0,20), cyl(0.2,0.24,0.04,fireMat(),0,0.04,0,14), k);
+  for(let i=0;i<6;i++){ const a=i/6*T+0.3, l=cyl(0.035,0.045,0.62,MAT.bark,Math.cos(a)*0.13,0.25,Math.sin(a)*0.13,8); l.rotation.set(0.42,Math.PI/2-a,0,'YXZ'); k.add(l); }
+  const f=lidahApi(0.55,0.95,true); f.position.y=0.03; g.add(f); return g; }
 function tumpukanKayu(){ const g=new THREE.Group();
-  for(const sx of [-0.45,0.45]) for(const sz of [-0.2,0.2]) g.add(box(0.06,0.5,0.06,MAT.woodDark,sx,0.25,sz));
+  for(const x of [-0.45,0.45]) for(const z of [-0.2,0.2]) g.add(box(0.06,0.5,0.06,MAT.woodDark,x,0.25,z));
   for(let r=0;r<3;r++) for(let i=0;i<6-r;i++){ const l=cyl(0.055,0.055,0.5,MAT.bark,-0.33+i*0.13+r*0.065,0.06+r*0.1,0,8); l.rotation.x=Math.PI/2; g.add(l); }
   return g; }
 function bangkuTaman(){ const g=new THREE.Group(), w=1.5;
@@ -12648,7 +12639,7 @@ const GPU={hilang:0, t:-1e9};   // t: konteks hilang / pulih terakhir
 renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); GPU.hilang++; GPU.t=performance.now(); toast('Memori grafis penuh — memulihkan tampilan…'); },false);
 renderer.domElement.addEventListener('webglcontextrestored',()=>{ pulihkanGPU(); },false);
 async function pulihkanGPU(){
-  GPU.t=performance.now();
+  GPU.t=performance.now(); turunkanKualitas();
   ENV_TEX.clear();
   PROBE.rt=null; PROBE.cam=null; PROBE.pm=null; PROBE.envRT=null; PROBE.env=null; PROBE.aktif=false; PROBE.kotor=true;
   if(fotoAktif()) terapkanCahayaFoto(); else { LANGIT_FOTO_ENV=null; terapkanEnv(); }
@@ -14670,7 +14661,7 @@ async function muatLangitFoto(opsi){
       pilih=pilihHDRI(d,lp.jenis,FOTO.id); if(!pilih) throw new Error('tidak ada panorama untuk lanskap ini'); }
     FOTO.target=pilih.id; isiDaftarLangit();
     infoLangit('Mengunduh '+pilih.nama+'…');
-    const res=lp.res||'4k', url=await urlHDRI(pilih.id,res); if(token!==FOTO.token) return;
+    const res=perangkatHemat()&&(lp.res||'4k')==='4k'?'2k':(lp.res||'4k'), url=await urlHDRI(pilih.id,res); if(token!==FOTO.token) return;
     // pratinjau cepat: 1K (±1,5 MB) tampil dulu, resolusi penuh menyusul — ◀ ▶ terasa responsif
     if(res!=='1k' && !(await adaDiCache(url))){
       try{
@@ -14752,11 +14743,19 @@ function terapkanPantulan(){
   hemiL.color.setHex(s.hemi[0]).lerp(dinding,0.3);
   ambL.color.set(0xffffff).lerp(dinding,0.35);
 }
+// iPad/iPhone (JEV-121): piksel ≤ 1,5×, panorama 2K; memori penuh → kualitas turun
+function perangkatHemat(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1); }
+function kualitasAwal(){ let v=null; try{ v=localStorage.getItem('rqPerangkat'); }catch(e){ /* mode privat */ } return RQ[v]?v:'halus'; }
+function simpanKualitas(k){ try{ localStorage.setItem('rqPerangkat',k); }catch(e){ /* mode privat */ } }
+function turunkanKualitas(){
+  const k={tinggi:'halus', halus:'cepat'}[RQ_KINI]; if(!k) return false;
+  setRenderQuality(k); simpanKualitas(k); toast('Kualitas render diturunkan agar memori grafis cukup'); return true;
+}
 function setRenderQuality(k){
   RQ_KINI=RQ[k]?k:'halus';
   for(const id of ['#rq','#fpsRq']){ const e=$(id); if(e) e.value=RQ_KINI; }      // panel Tampilan & bilah mode jalan selalu sama
   const q=RQ[k]||RQ.halus;
-  RES.dasar=Math.min(devicePixelRatio*q.lipat, q.batas); renderer.setPixelRatio(RES.dasar*RES.skala);
+  RES.dasar=Math.min(devicePixelRatio*q.lipat, perangkatHemat()?Math.min(q.batas,RQ_KINI==='tinggi'?2:1.5):q.batas); renderer.setPixelRatio(RES.dasar*RES.skala);
   renderer.toneMapping=q.tone; renderer.toneMappingExposure=q.exp*((SUASANA[MOOD]||SUASANA.siang).exp);
   sun.shadow.mapSize.set(q.bayang,q.bayang);
   if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
@@ -14766,7 +14765,7 @@ function setRenderQuality(k){
   scene.traverse(m=>{ if(m.isMesh&&m.material) [].concat(m.material).forEach(x=>x.needsUpdate=true); });
   $('#rqNote').textContent=q.n+` Piksel sekarang ${fmt(renderer.getPixelRatio(),2)}×.`;
 }
-$('#rq').onchange=e=>{ setRenderQuality(e.target.value); toast('Kualitas render: '+e.target.selectedOptions[0].textContent.split('—')[0].trim()); };
+$('#rq').onchange=e=>{ setRenderQuality(e.target.value); simpanKualitas(RQ_KINI); toast('Kualitas render: '+e.target.selectedOptions[0].textContent.split('—')[0].trim()); };
 /* Render gambar: sesaat digambar pada resolusi jauh lebih tinggi lalu
    dikembalikan, jadi hasil simpanannya tajam tanpa membebani pemakaian
    sehari-hari. */
@@ -15491,7 +15490,7 @@ function aksiAktivitas(o){
   if(!o||LIHAT.on) return null;
   if(o.kind==='area'&&o.params&&o.params.jenis==='kolam_ikan') return 'mancing';
   if(o.kind!=='furn') return null;
-  if(o.type==='api_unggun') return ['kayu','hangat','marshmallow'];                // api (JEV-118): Berinteraksi = nyala / padam
+  if(o.type==='api_unggun') return ['kayu','hangat','marshmallow'];
   if(NYALA_JENIS[o.type]==='api') return ['kayu','hangat'];
   return o.type==='panggangan'?'panggang':o.type==='tunggul_kayu'?'potong':o.type==='kayu_bakar'?'ambilkayu':/^kitchen_/.test(o.type)?'masak':null;
 }
@@ -15586,7 +15585,7 @@ function pakai(t){
 /* MAIN BARENG (JEV-078): aksi & suasana dibagi ke peserta lain lewat modul lobi. Yang dikirim
    KEADAAN AKHIR (nyala/mati, buka/tutup), bukan sakelar — pesan ganda/terlambat tidak membalik. */
 const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi','anim','media','kayu'];
-// kayu bakar (JEV-118; modul/aktivitas.js): api yang padam dinyalakan, lalu membesar — ikut terlihat oleh peserta Main bareng
+// kayu bakar (JEV-118), tersinkron di Main bareng
 function apiMenyala(id){ return !MATI.has(id); }
 function tambahKayuApi(id,luar){
   if(MATI.has(id)){ MATI.delete(id); for(const g of grupObjek(id)) terapkanNyala(g,true); LAMPU_T=0; if(!luar) laporAksi('api',id,true); try{ sfx('apiNyala'); }catch(e){ /* tanpa bunyi */ } bayangKotor(); }
@@ -16021,7 +16020,7 @@ try{ const v=+localStorage.getItem('fps_fov'); if(v>=40&&v<=90){ FPS.fov=v; $('#
 $('#fpsFov').onchange=e=>{ FPS.fov=+e.target.value; try{ localStorage.setItem('fps_fov',String(FPS.fov)); }catch(_){}
   if(FPS.on){ camera.fov=FPS.fov; camera.updateProjectionMatrix(); } e.target.blur(); };
 $('#fpsExit').onclick=exitFPS;
-$('#fpsRq').onchange=e=>{ setRenderQuality(e.target.value); toast('Kualitas render: '+e.target.selectedOptions[0].textContent); };
+$('#fpsRq').onchange=e=>{ setRenderQuality(e.target.value); simpanKualitas(RQ_KINI); toast('Kualitas render: '+e.target.selectedOptions[0].textContent); };
 // menu mode jalan bisa diciutkan jadi satu tombol; bawaan ciut di layar sempit (HP), pilihan diingat
 function ciutkanFps(v){ const b=$('#fpsbar'); b.classList.toggle('ciut',v); document.body.classList.toggle('menu-ciut',!!v); if(v) tutupLembar(); $('#fpsCiut').setAttribute('aria-expanded',String(!v));
   try{ localStorage.setItem('fps_ciut',v?'1':'0'); }catch(e){ /* mode privat */ } }
@@ -16573,7 +16572,7 @@ $('#wallH').addEventListener('change',e=>{
 /* ------------------------------ init ------------------------------ */
 renderCatalogs();
 renderFinishUI();
-setRenderQuality('halus');
+setRenderQuality(kualitasAwal());
 renderAtapUI();
 
 /* =====================================================================
