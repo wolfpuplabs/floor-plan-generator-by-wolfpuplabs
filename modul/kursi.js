@@ -7,7 +7,9 @@
    dikelompokkan menjadi satu jok. Arah hadap jok = menjauhi sandaran: dari empat sisi jok (sumbu model), sisi yang
    memiliki bidang 0,2–0,7 m di atas dudukan adalah sandaran; sisi seberangnya harus lega (lantai kaki lebih rendah).
    Dudukan tanpa sandaran (bangku, pouf) dipakai bila model tidak punya jok bersandaran. Jok dipilih yang terdekat dengan
-   titik bidik (pemain) atau posisi NPC. Arah hadap yang diatur sendiri di panel tetap dihormati. */
+   titik bidik (pemain) atau posisi NPC. Arah hadap yang diatur sendiri di panel tetap dihormati; model tanpa jok bersandaran
+   yang Tinggi dudukannya diisi sendiri memakai isian itu. */
+/* global cariObjek */
 (function () {
   'use strict';
   const ray = new THREE.Raycaster(), _o = new THREE.Vector3(), _d = new THREE.Vector3(0, -1, 0), _n = new THREE.Vector3(), _m3 = new THREE.Matrix3();
@@ -86,6 +88,9 @@
     const g = t.grp;
     if (!g.userData.jokOtomatis) { try { g.userData.jokOtomatis = pindai(g); } catch (e) { g.userData.jokOtomatis = []; } }
     const J = g.userData.jokOtomatis; if (!J.length) return null;
+    // hanya dudukan tanpa sandaran (bangku, balok) & Tinggi dudukan diisi sendiri di panel: ikuti isian itu (cara lama)
+    const o = typeof cariObjek === 'function' ? cariObjek(g.userData.id) : null;
+    if (!J[0].sandar && o && o.params && o.params.tinggiDuduk != null) return null;
     g.updateMatrixWorld(true);
     const dunia = v => v.clone().applyMatrix4(g.matrixWorld), acuan = t.titik || dunia(J[0].pos);
     let best = null, bd = 1e9;
