@@ -1,0 +1,134 @@
+/* Plan23D — ANTARMUKA: IKON & HUD MODE JALAN (JEV-126)
+   BERKAS HASIL BANGUN — sunting tools/antarmuka_templat.js.in lalu jalankan tools/bangun_ikon.py (lihat petunjuk di sana).
+   1. Ikon: emoji di teks UI (tombol, chip, toast, inspector, obrolan NPC, lembar mode jalan) diganti ikon garis Lucide
+      (lucide.dev, lucide-static @@VERSI@@, lisensi ISC © Lucide Contributors) sehingga tampil seragam di semua perangkat.
+      Teks dalam <option>, atribut (title / aria-label / placeholder) dan judul halaman cukup dibuang emojinya — elemen
+      itu tidak bisa memuat SVG. Kamus terjemahan (lang/en.js) ikut dinormalisasi tanpa emoji supaya kalimatnya tetap
+      cocok sesudah emojinya menjadi ikon. Teks yang diketik orang (obrolan) ditandai data-emoji & dibiarkan apa adanya.
+   2. HUD mode jalan di layar sentuh: tombol Berinteraksi + aksi lain pindah ke kanan bawah (dekat jempol kanan, tidak
+      menutupi tengah layar / avatar), ikon tombol mengikuti aksinya; keterangan bilah atas meredup jadi ringkas
+      setelah beberapa detik (ketuk bilah untuk membacanya lagi).
+   Dimuat langsung sesudah lang/en.js — sebelum lapisan bahasa dipasang. */
+/* Lisensi ikon (disertakan sesuai syarat lisensinya):
+@@LISENSI@@ */
+(function () {
+  'use strict';
+  const IKON = @@IKON@@;
+  const PETA = @@PETA@@;
+  const AKSI = @@AKSI@@;
+  const NS = 'http://www.w3.org/2000/svg';
+  const RE = new RegExp('(' + Object.keys(PETA).sort((a, b) => b.length - a.length).join('|') + ')\\uFE0F?', 'gu');
+  const ada = t => { RE.lastIndex = 0; return typeof t === 'string' && RE.test(t); };
+  const polos = t => t.replace(RE, '').replace(/[ \t]{2,}/g, ' ').trim();
+  const sentuh = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  document.documentElement.classList.toggle('sentuh', sentuh);
+
+  /* ---------- sprite & ikon ---------- */
+  const defs = document.querySelector('svg > defs');
+  if (defs) defs.insertAdjacentHTML('beforeend', Object.entries(IKON).map(([k, v]) => '<symbol id="l-' + k + '" viewBox="0 0 24 24">' + v + '</symbol>').join(''));
+  function ikon(n, tambahan) {
+    const s = document.createElementNS(NS, 'svg'); s.setAttribute('class', 'ik ik-e ik-' + n + (tambahan ? ' ' + tambahan : '')); s.setAttribute('aria-hidden', 'true');
+    const u = document.createElementNS(NS, 'use'); u.setAttribute('href', '#l-' + n); s.appendChild(u); return s;
+  }
+
+  /* ---------- emoji → ikon di DOM ---------- */
+  const LEWATI = /^(SCRIPT|STYLE|TEXTAREA|CANVAS|INPUT|SVG|USE|SYMBOL|DEFS|MODEL-VIEWER)$/i, POLOS = /^(OPTION|OPTGROUP|TITLE)$/, ATR = ['title', 'aria-label', 'placeholder', 'alt'];
+  const lewati = e => { for (let x = e; x && x !== document.body; x = x.parentElement) if (LEWATI.test(x.tagName) || x.hasAttribute('data-emoji')) return true; return false; };
+  function teks(n) {
+    const v = n.nodeValue; if (!ada(v)) return;
+    const p = n.parentElement; if (!p || lewati(p)) return;
+    if (POLOS.test(p.tagName)) { n.nodeValue = polos(v); return; }
+    // emoji di awal / akhir teks → ikon; di tengah kalimat dibuang saja (kalimatnya tetap utuh untuk kamus terjemahan)
+    const f = document.createDocumentFragment(), sisa = t => !t.replace(RE, '').trim();
+    let i = 0, m, buf = '';
+    const lepas = () => { if (buf) f.appendChild(document.createTextNode(buf.replace(/[ \t]{2,}/g, ' '))); buf = ''; };
+    RE.lastIndex = 0; const hasil = [...v.matchAll(RE)];          // matchAll menyalin lastIndex sisa ada() — harus dari awal
+    for (m of hasil) {
+      buf += v.slice(i, m.index); i = m.index + m[0].length;
+      if (sisa(v.slice(0, m.index)) || sisa(v.slice(i))) { lepas(); f.appendChild(ikon(PETA[m[1]])); }
+    }
+    buf += v.slice(i); lepas();
+    p.replaceChild(f, n);
+  }
+  const atribut = e => { for (const a of ATR) { const v = e.getAttribute(a); if (ada(v)) e.setAttribute(a, polos(v)); } };
+  function proses(r) {
+    if (r.nodeType === 3) return teks(r);
+    if (r.nodeType !== 1 || LEWATI.test(r.tagName) || r.hasAttribute('data-emoji')) return;
+    atribut(r); for (const c of [...r.childNodes]) proses(c);
+  }
+  proses(document.body);
+  if (ada(document.title)) document.title = polos(document.title);
+  new MutationObserver(ms => { for (const m of ms) {
+    if (m.type === 'characterData') teks(m.target);
+    else if (m.type === 'attributes') { if (m.target.nodeType === 1) atribut(m.target); }
+    else for (const n of m.addedNodes) proses(n);
+  } }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATR });
+  // dialog bawaan peramban tidak bisa memuat ikon
+  for (const f of ['confirm', 'alert', 'prompt']) { const asli = window[f].bind(window); window[f] = (m, ...x) => asli(typeof m === 'string' ? polos(m) : m, ...x); }
+
+  /* ---------- kamus terjemahan tanpa emoji ---------- */
+  const K = window.KAMUS_EN;
+  if (K) {
+    const objek = o => { const r = {}; for (const [k, v] of Object.entries(o || {})) if (!ada(k)) r[k] = ada(v) ? polos(v) : v;
+      for (const [k, v] of Object.entries(o || {})) { const p = polos(k); if (ada(k) && p && !(p in r)) r[p] = ada(v) ? polos(v) : v; } return r; };
+    K.teks = objek(K.teks); K.frasa = objek(K.frasa);
+    // pola regex: grup yang hanya berisi emoji ("(💢|😒) Netral") dibuang & nomor $n sesudahnya digeser; aturan yang tidak
+    // menyisakan kata (mis. "⚠ (.+)" → "(.+)", cocok dengan apa saja & memanggil dirinya sendiri) dibuang; regex rusak dibuang
+    const grupEmoji = new RegExp('\\((?:(?:' + Object.keys(PETA).join('|') + ')\\uFE0F?\\|?)+\\)\\s?', 'gu');
+    const aturan = ([r, t]) => {
+      if (!ada(r) && !ada(t)) return [r, t];
+      const buang = [];
+      const r2 = polos(r.replace(grupEmoji, (m, o, all) => { buang.push((all.slice(0, o).replace(/\\./g, '').match(/\((?!\?)/g) || []).length + 1); return ''; }));
+      const t2 = polos(t.replace(/\$(\d+)\s?/g, (m, i) => buang.includes(+i) ? '' : m).replace(/\$(\d+)/g, (m, i) => '$' + (+i - buang.filter(b => b < +i).length)));
+      if (!r2.replace(/\([^)]*\)/g, '').replace(/[\s^$]/g, '')) return null;           // tinggal grup saja: cocok dengan apa pun
+      try { new RegExp(r2); } catch (e) { return null; }
+      return [r2, t2];
+    };
+    for (const d of ['pola', 'frasaPola', 'ganti']) if (Array.isArray(K[d])) K[d] = K[d].map(aturan).filter(Boolean);
+  }
+
+  /* ---------- HUD mode jalan ---------- */
+  const css = document.createElement('style');
+  css.textContent = [
+    '.ik-e{width:1.15em;height:1.15em;vertical-align:-.2em}',
+    '.ik-heart,.ik-heart-handshake,.ik-hand-heart,.ik-heart-crack{color:#ff7a99}.ik-triangle-alert{color:#f3b544}.ik-flame,.ik-flame-kindling{color:#ff9a4a}.ik-star,.ik-sparkles{color:#f5c84c}',
+    '#fpsAksiDok{position:absolute;z-index:36;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px;pointer-events:none;' +
+      'right:calc(max(16px,env(safe-area-inset-right)) + 6px);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 92px)}',
+    '#fpsAksiDok[hidden]{display:none}',
+    '#fpsAksiDok #fpsAct{margin:0;pointer-events:auto;min-height:56px;padding:0 20px 0 15px;display:flex;align-items:center;gap:10px;font:650 .92rem/1 inherit;' +
+      'border-radius:999px;border:0;color:#08201b;background:rgba(78,201,176,.95);box-shadow:0 6px 20px rgba(0,0,0,.35);backdrop-filter:none}',
+    '#fpsAksiDok #fpsAct[hidden]{display:none}#fpsAksiDok #fpsAct .ik{width:24px;height:24px;stroke-width:2.1}',
+    '#fpsAksiDok #fpsAksiLain{flex-direction:column;align-items:flex-end;margin:0;gap:8px}',
+    '#fpsAksiDok .fps-aksi{min-height:46px;padding:0 16px 0 13px;display:flex;align-items:center;gap:8px;font:600 .84rem/1 inherit;background:rgba(18,20,24,.74);box-shadow:0 3px 12px rgba(0,0,0,.3)}',
+    '#fpsAksiDok .fps-aksi .ik{width:20px;height:20px}',
+    '#fpsAim .fps-aksi .ik,#fpsAim #fpsAct .ik{width:18px;height:18px;margin-right:6px;vertical-align:-.25em}',
+    '#fpsbar.redup #fpsinfo{display:none}#fpsbar.redup{padding:6px;gap:6px}',
+    '#fpsbar.redup{cursor:pointer}'
+  ].join('\n');
+  document.head.appendChild(css);
+
+  const aim = document.getElementById('fpsAim'), act = document.getElementById('fpsAct'), lain = document.getElementById('fpsAksiLain');
+  // ikon tombol mengikuti aksinya (data-j dari stepBidik): Berinteraksi tetap tertulis, gambarnya pintu / lampu / kursi …
+  function hiasAksi() {
+    if (act && act.dataset.j) { const n = AKSI[act.dataset.j] || AKSI._, u = act.querySelector('svg use');
+      if (u && u.getAttribute('href') !== '#l-' + n) u.setAttribute('href', '#l-' + n); else if (!u && sentuh) act.prepend(ikon(n)); }
+    if (lain) for (const b of lain.children) if (b.dataset.j && !b.querySelector('svg')) { const k = b.querySelector('kbd'); b.insertBefore(ikon(AKSI[b.dataset.j] || AKSI._), k ? k.nextSibling : b.firstChild); }
+  }
+  if (act && lain) {
+    new MutationObserver(hiasAksi).observe(act, { childList: true, attributes: true, attributeFilter: ['data-j'] });
+    new MutationObserver(hiasAksi).observe(lain, { childList: true });
+    if (sentuh && aim) {
+      const dok = document.createElement('div'); dok.id = 'fpsAksiDok'; dok.hidden = aim.hidden; dok.append(act, lain); aim.after(dok);
+      new MutationObserver(() => { dok.hidden = aim.hidden; }).observe(aim, { attributes: true, attributeFilter: ['hidden'] });
+    }
+  }
+  // bilah atas: keterangan cara bergerak meredup jadi ringkas (hanya lantai / keadaan) 6 dtk sesudah berubah; ketuk = tampil lagi
+  const bar = document.getElementById('fpsbar'), info = document.getElementById('fpsinfo');
+  if (bar && info) {
+    let t = 0; const segar = () => { bar.classList.remove('redup'); clearTimeout(t); t = setTimeout(() => bar.classList.add('redup'), 6000); };
+    new MutationObserver(segar).observe(info, { childList: true, characterData: true, subtree: true });
+    bar.addEventListener('pointerdown', e => { if (bar.classList.contains('redup') && !e.target.closest('button,select')) segar(); });
+    segar();
+  }
+  window.ANTARMUKA = { ikon, polos, ada, PETA, AKSI };
+})();

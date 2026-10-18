@@ -79,9 +79,9 @@ export const tes = {
       // berenang sendiri: kolam terdekat dalam jangkauan jelajah → masuk, berkeliling, waktu habis → naik ke tepi
       N.aksiPasangan('nS', 'lepas'); for (let i = 0; i < 3; i++) N.langkah(0.05);
       const kd = N._uji.kolamDekat('nS'); out.dekat = !!kd && Math.abs(kd.airY - A.airY) < 1e-6;
-      N._uji.masukKolam('nS', kd); const p0 = n.p.clone(); let datar = null, bobot = 0;
-      for (let i = 0; i < 160; i++) { N.langkah(0.05); bobot = Math.max(bobot, n.a.pw[18]); if (n.a.pw[18] > 0.9) { const d = Math.abs(tulang('head').y - tulang('hips').y); datar = datar == null ? d : Math.max(datar, d); } }
-      out.sendiri = { mode: n.mode, gerak: +n.p.distanceTo(p0).toFixed(2), di: K.kolam.dalam(A.poli, n.p.x, n.p.z, 0.25), datar: datar == null ? null : +datar.toFixed(2), bobot: +bobot.toFixed(2) };
+      N._uji.masukKolam('nS', kd); let datar = null, bobot = 0, jalur = 0;   // panjang lintasan (titik tuju acak & jeda: perpindahan bersih bisa kecil)
+      for (let i = 0; i < 160; i++) { const q = n.p.clone(); N.langkah(0.05); jalur += Math.hypot(n.p.x - q.x, n.p.z - q.z); bobot = Math.max(bobot, n.a.pw[18]); if (n.a.pw[18] > 0.9) { const d = Math.abs(tulang('head').y - tulang('hips').y); datar = datar == null ? d : Math.max(datar, d); } }
+      out.sendiri = { mode: n.mode, gerak: +jalur.toFixed(2), di: K.kolam.dalam(A.poli, n.p.x, n.p.z, 0.25), datar: datar == null ? null : +datar.toFixed(2), bobot: +bobot.toFixed(2) };
       n.renang.t = 0; N.langkah(0.05);
       out.naik = { mode: n.mode, di: pointInPoly(n.p.x, n.p.z, A.poli), y: +n.p.y.toFixed(2) };
       out.bajuAda = await N._uji.bajuRenang('F', '_renang2');

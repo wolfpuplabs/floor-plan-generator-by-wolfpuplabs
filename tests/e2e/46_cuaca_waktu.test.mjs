@@ -96,7 +96,7 @@ export const tes = {
     assert.ok(r.mulai >= 0, 'hujan turun sendiri');
     assert.equal(r.jenis, 'gerimis');
     assert.ok(r.tetes > 0, 'tetes tampil');
-    assert.match(r.toast1, /Gerimis.*\| 🎲 Acak · sekarang gerimis/);
+    assert.match(r.toast1, /Gerimis.*\| (\S+ )?Acak · sekarang gerimis/);          // <option> tidak bisa memuat ikon: emojinya dibuang (JEV-126)
     assert.ok(r.reda >= 0, 'hujan reda lagi');
     assert.match(r.toast2, /reda/);
     assert.equal(r.sisa, 0);

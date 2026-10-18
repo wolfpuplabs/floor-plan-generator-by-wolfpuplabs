@@ -102,6 +102,35 @@ export const tes = {
     assert.ok(r.barengHasil.mode === 'duduk' && r.barengHasil.po === 9 && r.barengHasil.kasur === 'mBaring' && r.barengHasil.beda > 0.05, 'berbaring bareng di model: ' + JSON.stringify(r.barengHasil));
   },
 
+  'NPC sudah rebahan di tengah kasur lalu pengunjung ikut berbaring: masing-masing satu sisi, tidak menumpuk (model unggahan & ranjang pustaka)': async (page) => {
+    await siapkan(page);
+    await page.evaluate(() => { L().objects.push({ id: 'nB', kind: 'npc', type: 'F', x: 3, y: 0, z: 5.5, rotY: 0, sx: 1, sy: 1, sz: 1, params: { benih: 3, jelajah: 4 } },
+      { id: 'ranjang', kind: 'furn', type: 'bed_double', x: 8, y: 0, z: 7, rotY: 0, sx: 1, sy: 1, sz: 1, params: {} }); rebuildScene(); });
+    await page.waitForFunction(() => window.NPC && window.NPC.keadaan('nB') && window.NPC.keadaan('nB').siap, undefined, { timeout: 120000 });
+    const r = await page.evaluate(async () => {
+      enterFPS(); camera.position.set(6, 1.6, 4); fpsStep(0); window.NPC.langkah(0.05);
+      const U = window.NPC._uji, n = U.NPC.get('nB'), out = {};
+      for (const id of ['mBaring', 'ranjang']) {
+        // NPC rebahan sendiri di kasur ini (di tengah)
+        if (id === 'ranjang') n.p.set(10, 0, 6.8);                         // di samping ranjang: kasur terdekat & jalur bebas
+        let ks = null; for (let i = 0; i < 20 && !(ks && ks.id === id); i++) ks = U.cariKasur(n, true);
+        U.aktivitas(n, 0, 1); n.kursi = ks; n.p.set(ks.q.x, n.p.y, ks.q.z); window.NPC._uji.mulaiJalan(n, ks.q.x, ks.q.z, 'kursi');
+        for (let i = 0; i < 400 && n.mode !== 'duduk'; i++) window.NPC.langkah(0.05);
+        const tengah = [n.p.x, n.p.z];
+        // pengunjung ikut berbaring di kasur yang sama
+        pakai({ jenis: 'baring', id, grp: findGroup('obj', id) }); for (let i = 0; i < 60; i++) { window.NPC.langkah(0.05); fpsStep(0.05); }
+        const B = FPS.duduk.baring, lebar = id === 'ranjang' ? 1.6 : findGroup('obj', id).userData.baring.wid;
+        out[id] = { mode: n.mode, po: n.po, jarak: +Math.hypot(n.p.x - B.x, n.p.z - B.z).toFixed(2), mataIkut: +Math.hypot(camera.position.x - B.x, camera.position.z - B.z).toFixed(2),
+          npcGeser: +Math.hypot(n.p.x - tengah[0], n.p.z - tengah[1]).toFixed(2), lebar: +lebar.toFixed(2) };
+        berdiri(); U.aktivitas(n, 0, 1); n.kursi = null; n.mode = 'diam'; n.p.set(3, 0, 5.5);
+      }
+      exitFPS(); return out; });
+    for (const id of ['mBaring', 'ranjang']) {
+      const x = r[id];
+      assert.ok(x.mode === 'duduk' && x.po === 9 && x.jarak >= 0.55 && x.npcGeser > 0.2, id + ' berdampingan: ' + JSON.stringify(x));
+    }
+  },
+
   'iPad: tekstur model unggahan diperkecil saat dimuat ke GPU (warna 1K), berkas proyek & tautan tetap memakai aslinya': Object.assign(async (page) => {
     await muatProyekJSON(page, RUANG);
     const gltf = JSON.parse(fs.readFileSync(path.join(FIX, 'kursi_1k.gltf'), 'utf8'));

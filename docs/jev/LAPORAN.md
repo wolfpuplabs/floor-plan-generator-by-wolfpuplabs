@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 100 GO · 3 DEFER · 5 NO-GO dari 108 item.
+**Ringkasan:** 103 GO · 3 DEFER · 5 NO-GO dari 111 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -98,15 +98,18 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-012 | Builder situs & taman | terkirim | 0.50 | 31,5 jt | 7,2 jt | 7.7× | 3.4× | 2.2 bln | 115 | **GO** |
 | JEV-011 | Tampak ortogonal atas/depan/iso | terkirim | 0.65 | 11,4 jt | 2,7 jt | 7.4× | 3.2× | 2.3 bln | 119 | **GO** |
 | JEV-016 | Pustaka model .glb sendiri + collider otomatis | terkirim | 0.60 | 23,2 jt | 6,2 jt | 6.5× | 2.8× | 2.6 bln | 133 | **GO** |
+| JEV-127 | Berbaring bersama NPC: masing-masing satu sisi kasur, tidak menumpuk | terkirim | 0.65 | 0,7 jt | 0,2 jt | 6.4× | 2.7× | 2.8 bln | 0 | **GO** |
 | JEV-006 | Rapikan denah otomatis (pra-proses) | terkirim | 0.60 | 15 jt | 4,2 jt | 6.1× | 2.6× | 2.7 bln | 140 | **GO** |
 | JEV-124 | Efek real-time hanya di kualitas Tinggi; baju renang tetap saat main air (orang ketiga & lobi) | terkirim | 0.65 | 1,2 jt | 0,3 jt | 6.1× | 2.5× | 2.8 bln | 0 | **GO** |
 | JEV-003 | Tangga 6 varian + void pelat | terkirim | 0.60 | 18 jt | 7,5 jt | 3.8× | 1.4× | 4.2 bln | 209 | **GO** |
 | JEV-014 | Interaksi mode jalan (pintu, lampu, gorden, TV) | terkirim | 0.45 | 14,2 jt | 6,2 jt | 3.6× | 1.3× | 4.4 bln | 217 | **GO** |
 | JEV-041 | Tes e2e + CI + lint ratchet di repo | terkirim | 0.85 | 6,1 jt | 2,9 jt | 3.3× | 1.1× | 3.6 bln | 0 | **GO** |
 | JEV-040 | Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global) | terkirim | 0.90 | 5,7 jt | 2,9 jt | 3.0× | 1.0× | 5.0 bln | 0 | **GO** |
+| JEV-128 | Saat berinteraksi, menggeser layar hanya memutar kamera — badan & NPC tetap | terkirim | 0.65 | 0,3 jt | 0,2 jt | 2.5× | 0.7× | 6.1 bln | 0 | **GO** |
 | JEV-051 | Model unggahan kategori Audio: putar musik / piano | terkirim | 0.50 | 1,3 jt | 0,8 jt | 2.4× | 0.7× | 4.9 bln | 298 | **GO** |
 | JEV-047 | Kolaborasi & berbagi tautan proyek (cloud) | usulan | 0.45 | 70,9 jt | 48 jt | 2.0× | 0.5× | 6.7 bln | 339 | **DEFER** |
 | JEV-122 | Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut | terkirim | 0.65 | 0,5 jt | 0,4 jt | 1.8× | 0.4× | 7.2 bln | 0 | **GO** |
+| JEV-126 | Gandengan tangan diperbaiki; HUD mode jalan tidak menghalangi; emoji UI diganti ikon Lucide | terkirim | 0.65 | 1 jt | 0,8 jt | 1.5× | 0.3× | 8.2 bln | 0 | **GO** |
 | JEV-019 | SFX langkah kaki & interaksi | terkirim | 0.35 | 3,3 jt | 2,7 jt | 1.4× | 0.2× | 8.4 bln | 409 | **GO** |
 | JEV-013 | Tracing void & area bentuk bebas | terkirim | 0.60 | 4,5 jt | 3,8 jt | 1.4× | 0.2× | 8.4 bln | 417 | **GO** |
 | JEV-123 | Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget | terkirim | 0.65 | 0,5 jt | 0,5 jt | 1.2× | 0.1× | 9.7 bln | 0 | **GO** |
@@ -211,15 +214,18 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-012 Builder situs & taman — GO.** ROI 7.7× ≥ 1, payback 2.2 bln.
 - **JEV-011 Tampak ortogonal atas/depan/iso — GO.** ROI 7.4× ≥ 1, payback 2.3 bln.
 - **JEV-016 Pustaka model .glb sendiri + collider otomatis — GO.** ROI 6.5× ≥ 1, payback 2.6 bln.
+- **JEV-127 Berbaring bersama NPC: masing-masing satu sisi kasur, tidak menumpuk — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-006 Rapikan denah otomatis (pra-proses) — GO.** ROI 6.1× ≥ 1, payback 2.7 bln.
 - **JEV-124 Efek real-time hanya di kualitas Tinggi; baju renang tetap saat main air (orang ketiga & lobi) — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-003 Tangga 6 varian + void pelat — GO.** ROI 3.8× ≥ 1, payback 4.2 bln.
 - **JEV-014 Interaksi mode jalan (pintu, lampu, gorden, TV) — GO.** ROI 3.6× ≥ 1, payback 4.4 bln.
 - **JEV-041 Tes e2e + CI + lint ratchet di repo — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-040 Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global) — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
+- **JEV-128 Saat berinteraksi, menggeser layar hanya memutar kamera — badan & NPC tetap — GO.** ROI 2.5× ≥ 1, payback 6.1 bln.
 - **JEV-051 Model unggahan kategori Audio: putar musik / piano — GO.** ROI 2.4× ≥ 1, payback 4.9 bln. _Kategori audio/piano sendiri ber-verdict NO-GO (JEV-015/018). Item ini hanya MEMAKAI ULANG mesin yang sudah ada — biayanya kecil._
 - **JEV-047 Kolaborasi & berbagi tautan proyek (cloud) — DEFER.** ROI lolos, tetapi guardrail belum dinilai: keamanan, privasi.
 - **JEV-122 Kamera orang ketiga di mode jalan, siklus waktu menyala bawaan, api unggun berbentuk kerucut — GO.** ROI 1.8× ≥ 1, payback 7.2 bln.
+- **JEV-126 Gandengan tangan diperbaiki; HUD mode jalan tidak menghalangi; emoji UI diganti ikon Lucide — GO.** ROI 1.5× ≥ 1, payback 8.2 bln.
 - **JEV-019 SFX langkah kaki & interaksi — GO.** ROI 1.4× ≥ 1, payback 8.4 bln.
 - **JEV-013 Tracing void & area bentuk bebas — GO.** ROI 1.4× ≥ 1, payback 8.4 bln.
 - **JEV-123 Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget — GO.** ROI 1.2× ≥ 1, payback 9.7 bln.

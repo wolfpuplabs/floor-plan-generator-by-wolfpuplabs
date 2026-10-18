@@ -53,7 +53,7 @@ export const tes = {
       const inp = $('#npcObrol input'); inp.focus(); inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true })); const gerak = FPS.keys.has('w');
       n = jumlah(); inp.value = 'Rumah ini keren sekali, kamu hebat!'; $('#npcObrol form').requestSubmit(); await tunggu(n + 2);
       const s1 = window.DIALOG.skor('nB');
-      n = jumlah(); document.querySelector('#npcObrol [data-cepat="hadiah"]').click(); const opsi = [...document.querySelectorAll('#npcObrol .no-chip:not([hidden]) button')].filter(x => /🎁 /.test(x.textContent) && !x.dataset.cepat);
+      n = jumlah(); document.querySelector('#npcObrol [data-cepat="hadiah"]').click(); await new Promise(r => setTimeout(r, 0)); const opsi = [...document.querySelectorAll('#npcObrol .no-chip:not([hidden]) button')].filter(x => x.querySelector('svg.ik-gift') && !x.dataset.cepat);
       const suka = window.KARTU_NPC.KARTU.arsitek.hadiah.suka, pilih = opsi.find(x => [...suka.id, ...suka.en].some(t => x.textContent.includes(t)));
       pilih.click(); await tunggu(n + 2); const s2 = window.DIALOG.skor('nB');
       return { rumahT, gerak, naik: s1 > s0, hadiah: s2 - s1, simpan: JSON.parse(localStorage.getItem('npcIngat')).nB.r.length, relasi: $('#npcObrol .no-relasi').textContent }; });
@@ -67,16 +67,16 @@ export const tes = {
       const jumlah = () => document.querySelectorAll('#npcObrol .no-m').length;
       const info0 = $('#npcObrol .no-info').textContent;
       let n = jumlah(), s0 = D.skor('nB'); document.querySelector('#npcObrol [data-cepat="puji"]').click(); await tunggu(n + 2);
-      const puji = D.skor('nB') - s0, delta = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent);
-      s0 = D.skor('nB'); document.querySelector('#npcObrol [data-cepat="kuis"]').click(); const tanya = [...document.querySelectorAll('#npcObrol .no-m')].at(-1).textContent, opsi = document.querySelectorAll('#npcObrol .no-kuis button').length;
+      const puji = D.skor('nB') - s0, delta = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent.trim() + (x.querySelector('svg.ik-heart') ? ' [hati]' : ''));
+      s0 = D.skor('nB'); document.querySelector('#npcObrol [data-cepat="kuis"]').click(); await new Promise(r => setTimeout(r, 0)); const tanyaEl = [...document.querySelectorAll('#npcObrol .no-m')].at(-1), tanya = tanyaEl.textContent.trim() + (tanyaEl.querySelector('svg.ik-target') ? ' [target]' : ''), opsi = document.querySelectorAll('#npcObrol .no-kuis button').length;
       document.querySelector('#npcObrol .no-kuis [data-jawab="1"]').click(); const benar = D.skor('nB') - s0, tutup1 = $('#npcObrol .no-kuis').hidden;
       s0 = D.skor('nB'); D.kuis(); document.querySelector('#npcObrol .no-kuis [data-jawab="0"]').click(); const salah = D.skor('nB') - s0;
       m.hg = 30; s0 = D.skor('nB'); n = jumlah(); document.querySelector('#npcObrol [data-cepat="puji"]').click(); await tunggu(n + 2);
       const habis = [...document.querySelectorAll('#npcObrol .no-delta')].map(x => x.textContent).at(-1), tetap = D.skor('nB') - s0; m.hg = 0;   // jatah dipulihkan untuk pemeriksaan AI di bawah
       return { info0, info1: $('#npcObrol .no-info').textContent, puji, delta, tanya, opsi, benar, tutup1, salah, habis, tetap }; });
     assert.match(k.info0, /^\d+ \/ 100.*(lagi ke|more to)/, 'skor & progres: ' + k.info0);
-    assert.ok(k.puji >= 5 && k.delta.some(t => /^\+5 ❤/.test(t)), 'pujian +5 tampil: ' + JSON.stringify(k));
-    assert.match(k.tanya, /^🎯 /); assert.equal(k.opsi, 3);
+    assert.ok(k.puji >= 5 && k.delta.some(t => /^\+5 \[hati\]/.test(t)), 'pujian +5 tampil: ' + JSON.stringify(k));
+    assert.match(k.tanya, /\[target\]$/); assert.equal(k.opsi, 3);
     assert.deepEqual([k.benar, k.tutup1, k.salah, k.tetap], [6, true, -3, 0], JSON.stringify(k));
     assert.match(k.habis, /jatah|limit/);
     // tutup & buka lagi: riwayat tampil, salam memakai tingkat relasi (bukan salam pertama)

@@ -54,8 +54,8 @@ export const tes = {
     assert.ok(b.kencan && b.nyaman >= 2 && b.naik > 0, 'ajak kencan muncul: ' + JSON.stringify(b));
     // ajak kencan → 4 jenis + batal (⭐ favorit tukang = BBQ) → BBQ → cutscene layar gelap → NPC hadir, kenangan, relasi naik
     const c = await page.evaluate(async () => { const m = window.DIALOG._dalam.ingatan('nA'), s0 = m.s;
-      [...document.querySelectorAll('#npcObrol .no-pilih button')].find(x => x.dataset.efek === 'kencan').click();
-      const jenis = [...document.querySelectorAll('#npcObrol .no-pilih button')].map(x => x.textContent);
+      [...document.querySelectorAll('#npcObrol .no-pilih button')].find(x => x.dataset.efek === 'kencan').click(); await new Promise(r => setTimeout(r, 0));   // lapisan ikon bekerja sesudah tugas ini
+      const jenis = [...document.querySelectorAll('#npcObrol .no-pilih button')].map(x => x.textContent + (x.querySelector('svg.ik-star') ? ' [bintang]' : ''));
       [...document.querySelectorAll('#npcObrol .no-pilih button')].find(x => /BBQ/.test(x.textContent)).click();
       let layar = false; for (let i = 0; i < 100 && !layar; i++) { layar = !!document.getElementById('kencanLayar'); await new Promise(r => setTimeout(r, 20)); }
       // ilustrasi adegan (bukan emoji): kanvas berisi latar BBQ + NPC itu sendiri (model 3D berwarna sama)
@@ -67,7 +67,7 @@ export const tes = {
       for (let i = 0; i < 60 && !window.DIALOG.terbuka(); i++) await new Promise(r => setTimeout(r, 50)); await new Promise(r => setTimeout(r, 800));
       const st = window.NPC.keadaan('nA'), jarak = Math.hypot(st.p.x - camera.position.x, st.p.z - camera.position.z);
       return { jenis, layar, gambar, teks, naik: m.s - s0, kh: m.kh, kencan: m.kencan.length, jarak: +jarak.toFixed(2), suasana: MOOD, log: [...document.querySelectorAll('#npcObrol .no-m')].map(x => x.textContent).slice(-2), lagi: null }; });
-    assert.equal(c.jenis.length, 5); assert.ok(c.jenis.some(t => /BBQ.*⭐/.test(t)), 'favorit ditandai: ' + c.jenis);
+    assert.equal(c.jenis.length, 5); assert.ok(c.jenis.some(t => /BBQ.*\[bintang\]/.test(t)), 'favorit ditandai: ' + c.jenis);
     assert.ok(c.gambar && c.gambar.w === 960 && c.gambar.h === 540 && !c.gambar.emoji && c.gambar.ragam > 40, 'ilustrasi kencan: ' + JSON.stringify(c.gambar));
     assert.equal(c.gambar.tokoh, '1', 'NPC tampil di ilustrasi');
     assert.deepEqual([c.gambar.bingkai, c.gambar.hidup], ['20', true], 'ilustrasi bergerak: NPC 20 bingkai, dilukis ulang tiap bingkai');

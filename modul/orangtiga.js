@@ -4,12 +4,12 @@
    (jalan, duduk, berbaring, berenang, gaya). Logika permainan tetap memakai kamera di kepala pemain: kamera hanya dipindah
    sesaat ketika digambar lalu dikembalikan, jadi bidikan, NPC, aktivitas & lobi tidak berubah. Kamera maju mendekat bila
    terhalang dinding / benda. Pilihan diingat di perangkat. */
-/* global FPS, camera, scene, levelGroups, AVATAR_LOBI, muatModul, toast, klonModel, bayangKotor, $ */
+/* global FPS, camera, scene, levelGroups, AVATAR_LOBI, muatModul, toast, klonModel, bayangKotor, $, AIM, renderer */
 (function () {
   'use strict';
   const JARAK = 2.8, TINGGI = 0.35;
   const S = { on: false, g: null, a: null, kunci: '', baju: '', memuat: false, d: JARAK, t: 0, lalu: null, ray: new THREE.Raycaster() };
-  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3(), qA = new THREE.Quaternion();
+  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3(), vD = new THREE.Vector3(), qA = new THREE.Quaternion();
   try { S.on = localStorage.getItem('kamera3') === '1'; } catch (e) { S.on = false; }
 
   const dataAvatar = () => (typeof AVATAR_LOBI !== 'undefined' && AVATAR_LOBI.d) || { bawaan: 'M', benih: 7 };
@@ -66,11 +66,21 @@
     for (const h of hits) { const o = h.object, m = o.material; if (!o.isMesh || !o.visible || o.userData.halo || (m && (m.transparent || m.visible === false))) continue; return Math.max(0.35, h.distance - 0.25); }
     return maks;
   }
+  // titik bidik di layar orang ketiga (JEV-126): bidikan tetap dari kepala, tetapi titik & tombolnya digambar di benda yang dibidik
+  // (atau ±6 m di depan pandangan) — bukan di tengah layar yang kini tertutup kepala avatar sendiri
+  function letakBidik(kepala, arah) {
+    const el = $('#fpsAim'); if (!el) return;
+    const t = AIM && AIM.titik ? vD.copy(AIM.titik) : AIM && AIM.grp && AIM.jenis === 'ngobrol' ? AIM.grp.getWorldPosition(vD).setY(vD.y + 1.25) : vD.copy(kepala).addScaledVector(arah, 6);
+    t.project(camera); const r = renderer.domElement.getBoundingClientRect();
+    if (t.z > 1 || Math.abs(t.x) > 1.2 || Math.abs(t.y) > 1.2) return;
+    el.style.left = ((t.x + 1) / 2 * r.width) + 'px'; el.style.top = ((1 - t.y) / 2 * r.height) + 'px'; S.bidik = true;
+  }
+  function lepasBidik() { if (!S.bidik) return; const el = $('#fpsAim'); if (el) el.style.left = el.style.top = ''; S.bidik = false; }
   function render(gambar) {
     const kini = performance.now(), dt = S.lalu == null ? 0 : Math.min(0.1, (kini - S.lalu) / 1000); S.lalu = kini;
-    if (!S.on || !FPS.on) { if (S.g) S.g.visible = false; return gambar(); }
+    if (!S.on || !FPS.on) { if (S.g) S.g.visible = false; lepasBidik(); return gambar(); }
     const pos = window.LOBI && window.LOBI.gerak ? window.LOBI.gerak.posSaya() : null;
-    if (!S.a || !pos || !pos.jalan) { rakit(pos && pos.po); if (S.g) S.g.visible = false; return gambar(); }
+    if (!S.a || !pos || !pos.jalan) { rakit(pos && pos.po); if (S.g) S.g.visible = false; lepasBidik(); return gambar(); }
     rakit(pos.po);                                                     // pakaian berganti: avatar lama tetap tampil sampai yang baru siap
     // avatar di tempat pemain (titik kaki & arah hadap sama seperti yang dikirim ke teman Main bareng)
     const g = S.g, x0 = g.position.x, z0 = g.position.z;
@@ -87,6 +97,7 @@
     const simpan = camera.position.clone(); qA.copy(camera.quaternion);
     camera.position.copy(kepala).addScaledVector(mundur, S.d);
     camera.lookAt(kepala.x + arah.x * 3, kepala.y + arah.y * 3, kepala.z + arah.z * 3); camera.updateMatrixWorld();
+    letakBidik(kepala, arah);
     g.visible = true;
     try { gambar(); }
     finally { g.visible = false; camera.position.copy(simpan); camera.quaternion.copy(qA); camera.updateMatrixWorld(); }
