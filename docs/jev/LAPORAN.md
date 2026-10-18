@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 99 GO · 3 DEFER · 5 NO-GO dari 107 item.
+**Ringkasan:** 100 GO · 3 DEFER · 5 NO-GO dari 108 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -93,6 +93,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-120 | NPC hilang di iPad karena batas memori kanvas iOS: tekstur pewarnaan jadi tekstur data, tekstur karakter jadi ImageBitmap | terkirim | 0.65 | 2,5 jt | 0,4 jt | 12.8× | 5.9× | 1.5 bln | 0 | **GO** |
 | JEV-009 | Ekspor GLB/OBJ/USDZ + AR maket | terkirim | 0.55 | 64,4 jt | 9,9 jt | 12.0× | 5.5× | 1.4 bln | 77 | **GO** |
 | JEV-002 | Editor dinding, bukaan, multi-lantai, undo | terkirim | 0.65 | 131,6 jt | 21 jt | 11.5× | 5.3× | 1.4 bln | 80 | **GO** |
+| JEV-125 | iPad: tekstur model unggahan diperkecil saat dimuat ke GPU; NPC berbaring di model unggahan | terkirim | 0.65 | 1,6 jt | 0,3 jt | 8.9× | 4.0× | 2.0 bln | 0 | **GO** |
 | JEV-020 | Pantulan probe untuk kaca, logam, air | terkirim | 0.50 | 19,7 jt | 4,2 jt | 8.4× | 3.7× | 2.1 bln | 107 | **GO** |
 | JEV-012 | Builder situs & taman | terkirim | 0.50 | 31,5 jt | 7,2 jt | 7.7× | 3.4× | 2.2 bln | 115 | **GO** |
 | JEV-011 | Tampak ortogonal atas/depan/iso | terkirim | 0.65 | 11,4 jt | 2,7 jt | 7.4× | 3.2× | 2.3 bln | 119 | **GO** |
@@ -205,6 +206,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-120 NPC hilang di iPad karena batas memori kanvas iOS: tekstur pewarnaan jadi tekstur data, tekstur karakter jadi ImageBitmap — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-009 Ekspor GLB/OBJ/USDZ + AR maket — GO.** ROI 12.0× ≥ 1, payback 1.4 bln.
 - **JEV-002 Editor dinding, bukaan, multi-lantai, undo — GO.** ROI 11.5× ≥ 1, payback 1.4 bln.
+- **JEV-125 iPad: tekstur model unggahan diperkecil saat dimuat ke GPU; NPC berbaring di model unggahan — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-020 Pantulan probe untuk kaca, logam, air — GO.** ROI 8.4× ≥ 1, payback 2.1 bln.
 - **JEV-012 Builder situs & taman — GO.** ROI 7.7× ≥ 1, payback 2.2 bln.
 - **JEV-011 Tampak ortogonal atas/depan/iso — GO.** ROI 7.4× ≥ 1, payback 2.3 bln.
