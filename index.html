@@ -1794,7 +1794,7 @@ function fxPipelineSiap(){
   // buffer MSAA kedalaman 16-bit, dan dari jauh muka dinding yang sebidang saling
   // "berebut" (z-fighting) — sambungan panel dinding tampak pecah-pecah bergerigi
   P.rtAdegan=new THREE.WebGLMultisampleRenderTarget(2,2,{minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, stencilBuffer:true, type:tipe});
-  P.rtAdegan.samples=4;
+  P.rtAdegan.samples=perangkatHemat()?2:4;
   P.h1=new THREE.WebGLRenderTarget(2,2,opt); P.h2=new THREE.WebGLRenderTarget(2,2,opt);
   P.q1=new THREE.WebGLRenderTarget(2,2,opt); P.q2=new THREE.WebGLRenderTarget(2,2,opt);
   if(hdr){
@@ -14743,7 +14743,7 @@ function terapkanPantulan(){
   hemiL.color.setHex(s.hemi[0]).lerp(dinding,0.3);
   ambL.color.set(0xffffff).lerp(dinding,0.35);
 }
-// iPad/iPhone (JEV-121): piksel ≤ 1,5×, panorama 2K; memori penuh → kualitas turun
+// iPad/iPhone (JEV-121): piksel ≤ 1,5×, MSAA 2×, bayangan 1024, panorama 2K
 function perangkatHemat(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1); }
 function kualitasAwal(){ let v=null; try{ v=localStorage.getItem('rqPerangkat'); }catch(e){ /* mode privat */ } return RQ[v]?v:'halus'; }
 function simpanKualitas(k){ try{ localStorage.setItem('rqPerangkat',k); }catch(e){ /* mode privat */ } }
@@ -14757,9 +14757,10 @@ function setRenderQuality(k){
   const q=RQ[k]||RQ.halus;
   RES.dasar=Math.min(devicePixelRatio*q.lipat, perangkatHemat()?Math.min(q.batas,RQ_KINI==='tinggi'?2:1.5):q.batas); renderer.setPixelRatio(RES.dasar*RES.skala);
   renderer.toneMapping=q.tone; renderer.toneMappingExposure=q.exp*((SUASANA[MOOD]||SUASANA.siang).exp);
-  sun.shadow.mapSize.set(q.bayang,q.bayang);
+  const bay=perangkatHemat()?Math.min(q.bayang,1024):q.bayang;
+  sun.shadow.mapSize.set(bay,bay);
   if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
-  for(const l of KOLAM){ const n=q.bayang>=4096?1024:q.bayang>=2048?512:256; l.shadow.mapSize.set(n,n);
+  for(const l of KOLAM){ const n=bay>=4096?1024:bay>=2048?512:256; l.shadow.mapSize.set(n,n);
     if(l.shadow.map){ l.shadow.map.dispose(); l.shadow.map=null; } }
   bayangKotor();
   scene.traverse(m=>{ if(m.isMesh&&m.material) [].concat(m.material).forEach(x=>x.needsUpdate=true); });
@@ -15585,7 +15586,7 @@ function pakai(t){
 /* MAIN BARENG (JEV-078): aksi & suasana dibagi ke peserta lain lewat modul lobi. Yang dikirim
    KEADAAN AKHIR (nyala/mati, buka/tutup), bukan sakelar — pesan ganda/terlambat tidak membalik. */
 const JENIS_AKSI_BAGI=['bukaan','lampu','api','tv','gorden','audio','musik','bunyi','anim','media','kayu'];
-// kayu bakar (JEV-118), tersinkron di Main bareng
+// kayu bakar (JEV-118)
 function apiMenyala(id){ return !MATI.has(id); }
 function tambahKayuApi(id,luar){
   if(MATI.has(id)){ MATI.delete(id); for(const g of grupObjek(id)) terapkanNyala(g,true); LAMPU_T=0; if(!luar) laporAksi('api',id,true); try{ sfx('apiNyala'); }catch(e){ /* tanpa bunyi */ } bayangKotor(); }
@@ -16055,7 +16056,7 @@ function fotoJalan(){
   else { download(file,nama); toast('Foto diunduh: '+nama); }
   return {nama, ukuran:u8.length, lebar:c.width, tinggi:c.height, bagikan:!!janji};
 }
-// pose foto (JEV-118): dua ketukan — modul/npc.js
+// pose foto: modul/npc.js
 function tombolFoto(){ return window.NPC&&window.NPC.tombolFoto?window.NPC.tombolFoto(fotoJalan):fotoJalan(); }
 $('#fpsFoto').onclick=()=>tombolFoto();
 { let v=null; try{ v=localStorage.getItem('fps_ciut'); }catch(e){ /* mode privat */ }
