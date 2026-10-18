@@ -1146,6 +1146,7 @@ body.layar-penuh #fpsbar{top:calc(max(12px,env(safe-area-inset-top)) + 58px)}
 </div>
 
 <script src="lang/en.js"></script>
+<script src="modul/antarmuka.js"></script>
 <script>
 /* ==========================================================================
    ARSITEK 3D — editor denah 3D berbasis data vektor
@@ -15682,10 +15683,10 @@ function stepBidik(dt){
   const lain=(AIM.ekstra||[]).map(j=>labelAksi({...AIM, jenis:j}));
   const kunci=(SENTUH?'s':'k')+lbl+'|'+lain.join('|');
   // tombol utama selalu bertuliskan "Berinteraksi" (permintaan pengguna); aksinya (Buka pintu, Bunyikan, …) jadi label aksesibel
-  if(b.dataset.k!==kunci){ b.dataset.k=kunci; b.setAttribute('aria-label',lbl);
+  if(b.dataset.k!==kunci){ b.dataset.k=kunci; b.dataset.j=AIM.jenis; b.setAttribute('aria-label',lbl);
     b.innerHTML = SENTUH ? '<svg class="ik" aria-hidden="true"><use href="#i-bidik"/></svg> Berinteraksi' : '<kbd translate="no">E</kbd>Berinteraksi';
     const w=$('#fpsAksiLain'); w.textContent='';
-    lain.forEach((l,i)=>{ const t=el('button','fps-aksi'); if(!SENTUH){ const k=el('kbd',null,String(i+2)); k.setAttribute('translate','no'); t.appendChild(k); } t.appendChild(document.createTextNode(l));
+    lain.forEach((l,i)=>{ const t=el('button','fps-aksi'); t.dataset.j=AIM.ekstra[i]; if(!SENTUH){ const k=el('kbd',null,String(i+2)); k.setAttribute('translate','no'); t.appendChild(k); } t.appendChild(document.createTextNode(l));
       t.addEventListener('pointerdown',e=>{ e.stopPropagation(); e.preventDefault(); pakai({...AIM, jenis:AIM.ekstra[i]}); }); w.appendChild(t); }); }
   $('#fpsAksiLain').hidden=!lain.length;
 }

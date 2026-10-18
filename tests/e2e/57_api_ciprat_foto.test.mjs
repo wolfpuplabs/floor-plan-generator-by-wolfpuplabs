@@ -27,7 +27,7 @@ export const tes = {
       camera.position.set(6, 1.6, 11); FPS.yaw = 0; N.aksiPasangan('nS', 'ikut'); for (let i = 0; i < 40; i++) N.langkah(0.05);
       pakai({ jenis: 'renang', id: 'kolam', titik: new THREE.Vector3(6, -0.12, 13.5) }); await tunggu(200);
       for (let i = 0; i < 60; i++) { K.langkah(0.05); N.langkah(0.05); }
-      out.tombol = [...document.querySelectorAll('#aktHud .ak-tombol button')].filter(b => !b.hidden).map(b => b.textContent);
+      out.tombol = [...document.querySelectorAll('#aktHud .ak-tombol button')].filter(b => !b.hidden).map(b => b.textContent.trim() + (b.querySelector('svg.ik-droplets') ? ' [percik]' : ''));
       // menghadap NPC lalu ciprat
       FPS.yaw = Math.atan2(n.p.x - camera.position.x, n.p.z - camera.position.z);
       K._uji.tekan(2, true); K._uji.tekan(2, false); K.langkah(0.05); out.pose = window.LOBI.gerak.posSaya().po;
@@ -36,7 +36,7 @@ export const tes = {
       // ciprat ke arah lain: NPC tidak kena
       FPS.yaw += Math.PI; K.langkah(1); const sebelum = n.cip; K._uji.tekan(2, true); K._uji.tekan(2, false); await tunggu(1600); out.melesetCip = n.cip > (sebelum || 0) ? 'kena' : 'tidak';
       K.selesai(); exitFPS(); return out; });
-    assert.deepEqual(r.tombol, ['💦 Ciprat', 'Selam']);
+    assert.deepEqual(r.tombol, ['Ciprat [percik]', 'Selam']);
     assert.equal(r.pose, 21, 'pose ciprat terkirim');
     assert.deepEqual([r.balas, r.tetes, r.melesetCip], [1, true, 'tidak'], JSON.stringify(r));
   },

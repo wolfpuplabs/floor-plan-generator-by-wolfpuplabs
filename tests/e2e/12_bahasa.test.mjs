@@ -53,9 +53,9 @@ export const tes = {
       document.getElementById('fpsinfo').innerHTML = '<b>Duduk</b> · ketuk <b>Berdiri</b> atau geser stik';
       document.getElementById('fpsAct').innerHTML = '👆 Buka pintu garasi';
       await new Promise(r => setTimeout(r, 0));
-      return [document.getElementById('fpsinfo').textContent, document.getElementById('fpsAct').textContent];
+      return [document.getElementById('fpsinfo').textContent, document.getElementById('fpsAct').textContent.trim(), !!document.querySelector('#fpsAct svg.ik-pointer')];
     });
-    assert.deepEqual(jalan, ['Seated · tap Stand up or move the stick', '👆 Open garage door']);
+    assert.deepEqual(jalan, ['Seated · tap Stand up or move the stick', 'Open garage door', true], 'emoji jadi ikon, kalimat tetap diterjemahkan (JEV-126)');
   }, { opsi: { bahasa: null } }),
   'inggris: semua tab, kartu Mulai, toolbar & inspector tanpa sisa teks Indonesia': Object.assign(async (page) => {
     const sisa = new Set();

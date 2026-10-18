@@ -135,6 +135,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | E-69 | **Model unggahan: berbaring, perapian & api unggun; NPC lebih tenang** — kategori interaksi baru untuk model unggahan: 🛏 *Berbaring* (tinggi kasur & arah kepala), 🔥 *Perapian* dan 🏕 *Api unggun* (lidah api + cahaya berkedip di titik api pilihan; nyala/padam, tambah kayu, hangatkan diri, marshmallow untuk api unggun). Kartu NPC anak "Dimas" dihapus (kartu lama memakai kartu bertema rumah). NPC tidak lagi ikut berjoget setiap kali musik diputar dan jarang memilih joget sendiri. | JEV-123 | ✅ |
 | E-70 | **Efek real-time hanya di Tinggi; baju renang tetap saat main air** — ambient occlusion, bloom, eksposur otomatis HDR & color grading hanya berjalan di kualitas Tinggi; Halus (bawaan) & Cepat menggambar langsung dengan eksposur dikoreksi per suasana (terang setara Tinggi) dan buffer efeknya dilepas. Pose main air (ciprat) dihitung sebagai di dalam air, sehingga avatar (orang ketiga & teman Main bareng) tidak berganti baju sesaat; avatar orang ketiga disimpan per pakaian sehingga keluar-masuk kolam tidak memuat ulang. | JEV-124 | ✅ |
 | E-71 | **Model unggahan hemat memori di iPad; NPC berbaring di model unggahan** — di iPad/iPhone tekstur model unggahan diperkecil saat dimuat ke GPU (warna & normal ≤ 1K, lainnya ≤ 512) tanpa mengubah berkas proyek maupun model yang dibagikan. NPC mencari kasur juga di model unggahan berkategori Berbaring (sendiri maupun berbaring bareng pengunjung), memakai tinggi, lebar & arah kepala model itu. | JEV-125 | ✅ |
+| E-72 | **Gandengan natural, HUD tidak menghalangi, ikon menggantikan emoji** — gandengan: lengan turun & kedua tangan bertemu di tengah setinggi pinggul (bukan menyilang), NPC tetap sejajar di samping; mode jalan di layar sentuh: tombol Berinteraksi & aksi lain di kanan bawah dekat jempol dengan ikon sesuai aksinya, keterangan bilah atas meredup otomatis, titik bidik orang ketiga digambar di benda yang dibidik; seluruh emoji di teks UI diganti ikon garis Lucide (ISC) yang seragam di semua perangkat, terjemahan tetap utuh. | JEV-126 | ✅ |
 
 ### 5.3 Isi ruang & lingkungan (P1)
 
@@ -188,7 +189,7 @@ Prioritas: **P0** = inti (tanpa ini produk tidak ada), **P1** = pembeda, **P2** 
 | Luring | Inti (denah→3D, edit, simpan) berjalan tanpa internet setelah termuat; fitur daring (HDRI, galeri) gagal dengan pesan jelas dan kembali ke cadangan |
 | Privasi | Tidak ada akun, cookie pelacak, atau telemetri. Data proyek tidak keluar perangkat. Permintaan ke pihak ketiga hanya atas tindakan pengguna, ke host di daftar izin (`tools/guard-config.json`) |
 | Keamanan | Lihat `docs/AUDIT.md`: berkas proyek = masukan tak tepercaya (G1–G3); CSP (G4); SRI (G5); galat tertangkap (G6) |
-| Lisensi | Aset pihak ketiga hanya CC0/MIT/Apache; kredit ditautkan |
+| Lisensi | Aset pihak ketiga hanya CC0/MIT/ISC/Apache; kredit ditautkan, teks lisensi ikut disertakan bila diwajibkan (ikon Lucide, ISC) |
 | Aksesibilitas | Teks UI kontras ≥ 4.5:1; kontrol bisa dipakai sentuh & papan tik; elemen baru wajib `aria-label` (TD-08) |
 | Bahasa | UI Bahasa Indonesia |
 

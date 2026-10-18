@@ -6069,6 +6069,63 @@
     "target": "< 0,05",
     "tinjau": "2026-12-18"
    }
+  },
+  {
+   "id": "JEV-126",
+   "judul": "Gandengan tangan diperbaiki; HUD mode jalan tidak menghalangi; emoji UI diganti ikon Lucide",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Saat bergandengan, NPC tertinggal di belakang dan lengannya terentang menyilang ke punggung pemain; avatar pemain tidak menggenggam. Di kamera orang ketiga titik bidik & tombol Berinteraksi menutupi kepala avatar di tengah layar. Emoji tampil tidak seragam antar perangkat; pengguna minta UI/UX lebih ramah dengan ikon.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna 2026-10-18 (16.39): gandengan, bidikan menutupi avatar; \"redesign ui/ux yg user friendly sama ganti emoji pake icon\"",
+    "alternatif": [
+     "menulis ulang setiap string berikon satu per satu di kode",
+     "memakai font ikon"
+    ]
+   },
+   "E": {
+    "peluang": 0.8,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.7,
+      "dampakRp": 3000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "ikon disisipkan sebagai elemen SVG (createElementNS), bukan innerHTML dari teks; teks ketikan pengguna bisa ditandai data-emoji agar tidak diubah"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikon Lucide (lucide-static 1.59.0, ISC) — hanya 126 ikon yang dipakai, teks lisensi lengkap disertakan di modul/antarmuka.js"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "modul ±44 KB tanpa jaringan tambahan; pemindai emoji hanya bekerja pada teks yang memuat emoji"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "ikon aria-hidden dengan teks tetap terbaca; tombol aksi sentuh ≥ 46–56 px di dekat jempol kanan"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan 'UI menghalangi' / tampilan emoji rusak per bulan",
+    "target": "0",
+    "tinjau": "2026-12-18"
+   }
   }
  ]
 }

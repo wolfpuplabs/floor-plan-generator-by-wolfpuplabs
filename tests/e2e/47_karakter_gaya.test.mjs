@@ -8,8 +8,8 @@ const rumah = { v: 1, levels: [{ name: 'L1', height: 3, walls: [[0, 0, 6, 0], [6
 export const tes = {
   'karakter bawaan: kartu F & M di panel Main bareng, pilihan diingat, VRM dimuat dari situs dengan kerangka humanoid & kedip': async (page) => {
     await muatProyekJSON(page, rumah);
-    const kartu = await page.evaluate(() => [...document.querySelectorAll('#lobiSiap .lobi-kartu')].map(b => [b.textContent.trim(), b.querySelector('img') && b.querySelector('img').getAttribute('src')]));
-    assert.deepEqual(kartu, [['Karakter F', 'avatar/F.webp'], ['Karakter M', 'avatar/M.webp'], ['🎲Acak', null]]);
+    const kartu = await page.evaluate(() => [...document.querySelectorAll('#lobiSiap .lobi-kartu')].map(b => [b.textContent.trim(), b.querySelector('img') ? b.querySelector('img').getAttribute('src') : b.querySelector('svg.ik-dices') ? 'ikon-dadu' : null]));
+    assert.deepEqual(kartu, [['Karakter F', 'avatar/F.webp'], ['Karakter M', 'avatar/M.webp'], ['Acak', 'ikon-dadu']]);
     await page.evaluate(() => document.querySelectorAll('#lobiSiap .lobi-kartu')[1].click());
     const r = await page.evaluate(() => ({ d: AVATAR_LOBI.d, simpan: JSON.parse(localStorage.getItem('lobiAvatar3D')), tekan: [...document.querySelectorAll('#lobiSiap .lobi-kartu')].map(b => b.getAttribute('aria-pressed')) }));
     assert.deepEqual([r.d.nama, r.d.bawaan, r.simpan.bawaan, r.simpan.benih, r.tekan], ['Karakter M', 'M', 'M', r.d.benih, ['false', 'true', null]]);

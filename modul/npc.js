@@ -610,7 +610,7 @@
     const dx = tx - n.p.x, dz = tz - n.p.z, d = Math.hypot(dx, dz);
     if (d > 6) { diam(n, 1); return 0; }
     if (d < 0.04) { putarKe(n, yaw, dt, 4); return 0; }
-    const v = Math.min(d * 5, 4), l = Math.min(d, v * dt);
+    const v = Math.min(d * 9, 6), l = Math.min(d, v * dt);                     // cepat menyusul: tetap sejajar di samping, tidak tertinggal di belakang
     let [px, pz] = fpsResolveWalls(n.p.x + dx / d * l, n.p.z + dz / d * l, n.p.y);
     const t = tanahDi(n, px, pz); if (t != null && Math.abs(t - n.p.y) < 0.3) n.p.y = t; else { px = n.p.x; pz = n.p.z; }
     const maju = Math.hypot(px - n.p.x, pz - n.p.z); n.p.x = px; n.p.z = pz;
@@ -622,10 +622,10 @@
     const [px, pz] = fpsResolveWalls(P.x + Math.sin(P.yaw) * 0.7, P.z + Math.cos(P.yaw) * 0.7, n.rumah ? n.rumah.y : P.y - 0.45);
     const t = tanahDi(n, px, pz); n.p.set(px, t != null ? t : (n.rumah ? n.rumah.y : P.y - 0.45), pz); n.yaw = P.yaw + Math.PI; diam(n, 2);
   }
-  // hati kecil 💕 yang melayang naik dari kepala NPC (cium / pangku)
+  // hati kecil (ikon hati Lucide, ISC) yang melayang naik dari kepala NPC (cium / pangku)
   const HATI = []; let TEX_HATI = null;
   function hati(n) {
-    if (!TEX_HATI) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.font = '48px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💕', 32, 34); TEX_HATI = new THREE.CanvasTexture(c); }
+    if (!TEX_HATI) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.scale(2.4, 2.4); x.translate(1, 1.5); x.fillStyle = '#ff6f91'; x.fill(new Path2D('M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5')); TEX_HATI = new THREE.CanvasTexture(c); }
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX_HATI, transparent: true, depthWrite: false }));
     s.scale.set(0.22, 0.22, 1); s.position.set(n.p.x, n.p.y + 1.75, n.p.z); s.userData.noExport = true; s.raycast = () => {};
     scene.add(s); HATI.push({ s, t: 0 });

@@ -16,6 +16,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const IKON_TINGKAT = { benci: '💢', tidakSuka: '😒', netral: '🙂', suka: '😊', sayang: '💛', pujaan: '💖' };
   const NAMA_TINGKAT = { benci: 'Benci', tidakSuka: 'Kurang suka', netral: 'Netral', suka: 'Suka', sayang: 'Sayang', pujaan: 'Sangat dekat' };
+  const NAMA_TINGKAT_EN = { benci: 'Hostile', tidakSuka: 'Wary', netral: 'Neutral', suka: 'Friendly', sayang: 'Close', pujaan: 'Best friends' };
 
   /* ---------- memori per perangkat ---------- */
   const KUNCI = 'npcIngat';
@@ -120,14 +121,14 @@ body.jalan.ngobrol #fpsLembar{display:none}`;
   }
   // teks *aksi* (gaya SillyTavern) tampil miring; selebihnya teks biasa (tanpa innerHTML)
   function isiPesan(d, t) { t.split(/(\*[^*]{1,200}\*)/).forEach(b => { if (!b) return; if (/^\*.*\*$/.test(b)) d.appendChild(el('i', null, b.slice(1, -1))); else d.appendChild(document.createTextNode(b)); }); }
-  function tulis(d, t) { const x = el('div', 'no-m ' + (d === 'u' ? 'no-u' : 'no-n')); isiPesan(x, t); P.log.appendChild(x); P.isi.scrollTop = P.isi.scrollHeight; return x; }
+  function tulis(d, t) { const x = el('div', 'no-m ' + (d === 'u' ? 'no-u' : 'no-n')); if (d === 'u') x.setAttribute('data-emoji', ''); isiPesan(x, t); P.log.appendChild(x); P.isi.scrollTop = P.isi.scrollHeight; return x; }
   function segarRelasi() { const m = ingatan(KINI.id), lv = K.tingkat(m.s), i = K.TINGKAT.findIndex(x => x[0] === lv), r = K.TINGKAT[i], nx = K.TINGKAT[i + 1], id = L() === 'id';
     P.relasi.textContent = IKON_TINGKAT[lv] + ' ' + NAMA_TINGKAT[lv]; P.relasi.title = 'Relasi ' + Math.round(m.s) + ' / 100';
     P.batang.style.width = Math.round(clamp((m.s - r[1]) / (Math.min(100, r[2]) - r[1]), 0, 1) * 100) + '%';
     // skor & progres ke tingkat berikutnya, plus sisa jatah kenaikan hari ini
     const sisaHari = m.h === hariIni() ? Math.max(0, 30 - (m.hg || 0)) : 30;
     P.skor.textContent = Math.round(m.s) + ' / 100';
-    P.lagi.textContent = nx ? (id ? `${Math.ceil(nx[1] - m.s)} lagi ke ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}` : `${Math.ceil(nx[1] - m.s)} more to ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}`) : (id ? 'Tingkat tertinggi' : 'Highest level');
+    P.lagi.textContent = nx ? (id ? `${Math.ceil(nx[1] - m.s)} lagi ke ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT[nx[0]]}` : `${Math.ceil(nx[1] - m.s)} more to ${IKON_TINGKAT[nx[0]]} ${NAMA_TINGKAT_EN[nx[0]]}`) : (id ? 'Tingkat tertinggi' : 'Highest level');
     const ke = typeof HARI_GAME !== 'undefined' ? HARI_GAME.n : 0;
     P.jatah.textContent = id ? `hari ke-${ke} · jatah +${Math.round(sisaHari)}` : `day ${ke} · +${Math.round(sisaHari)} left`;
     if (window.KENCAN) window.KENCAN.segar(m); }
