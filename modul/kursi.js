@@ -3,7 +3,7 @@
    dua kursi kemah membuat pemain duduk di celah antara keduanya; mobil membuat pemain duduk di antara jok depan; kursi
    yang depannya bukan +Z membuat pemain menghadap sandaran.
    Di sini model dipindai sekali (disimpan di userData): kisi sinar tegak dari atas, dalam sumbu model sendiri. Permukaan
-   menghadap atas setinggi 0,2–1,1 m dengan ruang kepala ≥ 0,75 m = calon dudukan; sel bertetangga yang setinggi
+   menghadap atas setinggi 0,2–1,5 m (jok mobil tinggi ±1,1 m, JEV-136) dengan ruang kepala ≥ 0,75 m = calon dudukan; sel bertetangga yang setinggi
    dikelompokkan menjadi satu jok. Arah hadap jok = menjauhi sandaran: dari empat sisi jok (sumbu model), sisi yang
    memiliki bidang 0,2–0,7 m di atas dudukan adalah sandaran; sisi seberangnya harus lega (lantai kaki lebih rendah).
    Dudukan tanpa sandaran (bangku, pouf) dipakai bila model tidak punya jok bersandaran; bila ada jok beratap (kabin mobil),
@@ -51,10 +51,10 @@
       const u = u0 + (i + 0.5) * (u1 - u0) / NU, w = w0 + (j + 0.5) * (w1 - w0) / NW;
       for (const s of tiang(titik(u, w))) {
         const r = s.y - y0;
-        if (s.naik && r >= 0.2 && r <= 1.1 && s.atas >= 0.75) { kisi.set(i + ',' + j, { i, j, u, w, y: s.y, atap: s.atas < 3 }); break; }
+        if (s.naik && r >= 0.2 && r <= 1.5 && s.atas >= 0.75) { kisi.set(i + ',' + j, { i, j, u, w, y: s.y, atap: s.atas < 3 }); break; }
       }
     }
-    // kelompok sel bertetangga yang setinggi (±7 cm)
+    // kelompok sel bertetangga yang setinggi (±3,5 cm antartetangga: konsol tengah 7 cm lebih rendah tidak ikut jok)
     // disimpan dalam koordinat lokal model: tetap benar walau model digeser / diputar sesudahnya
     const jok = [], sudah = new Set(), inv = new THREE.Matrix4().copy(g.matrixWorld).invert();
     for (const [k, s0] of kisi) {
@@ -62,7 +62,7 @@
       const grup = [], antre = [s0]; sudah.add(k);
       while (antre.length) { const s = antre.pop(); grup.push(s);
         for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const kk = (s.i + di) + ',' + (s.j + dj), t = kisi.get(kk);
-          if (t && !sudah.has(kk) && Math.abs(t.y - s.y) < 0.07) { sudah.add(kk); antre.push(t); } } }
+          if (t && !sudah.has(kk) && Math.abs(t.y - s.y) < 0.035) { sudah.add(kk); antre.push(t); } } }
       if (grup.length * sel * sel < 0.05) continue;                                      // < ±22×22 cm: bukan dudukan
       const n = grup.length, u = grup.reduce((a, s) => a + s.u, 0) / n, w = grup.reduce((a, s) => a + s.w, 0) / n, y = grup.reduce((a, s) => a + s.y, 0) / n;
       const ru = Math.max(...grup.map(s => Math.abs(s.u - u))) + sel / 2, rw = Math.max(...grup.map(s => Math.abs(s.w - w))) + sel / 2;
@@ -90,7 +90,9 @@
       // ciri jok sungguhan (JEV-132): dalam dudukan 28–80 cm (pijakan samping, bemper & lis tipis yang "bersandar" ke badan
       // mobil terlalu dangkal; lantai kabin / bak kargo terlalu dalam), dan di depannya ada ruang kaki ≥ 12 cm lebih rendah
       const dalam = arah === null ? 0 : 2 * (arah < 2 ? ru : rw);
-      if (arah !== null && (dalam < 0.28 || dalam > 0.8 || !ruangKaki([[1, 0, rw], [-1, 0, rw], [0, 1, ru], [0, -1, ru]][arah]))) arah = null;
+      // JEV-136: dan cukup lebar (≥ 32 cm) — konsol / kotak di antara jok depan mobil bukan jok
+      const lintang = arah === null ? 0 : 2 * (arah < 2 ? rw : ru);
+      if (arah !== null && (dalam < 0.28 || dalam > 0.8 || lintang < 0.32 || !ruangKaki([[1, 0, rw], [-1, 0, rw], [0, 1, ru], [0, -1, ru]][arah]))) arah = null;
       const vek = arah === null ? null : [ex, ex.clone().negate(), ez, ez.clone().negate()][arah].clone();
       // ruang di depan jok setinggi dada (20–75 cm di atas dudukan): setir lebih dekat ke jok sopir daripada dasbor ke jok
       // penumpang — dipakai untuk menemukan jok sopir pada model kendaraan (JEV-133)
