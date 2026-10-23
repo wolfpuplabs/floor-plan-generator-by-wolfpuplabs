@@ -16655,7 +16655,7 @@ setSuasana('siang');
 if(window.innerWidth<900 && proyekKosong()) setSidebar(false);
 perbaruiMulai();
 for(const s of $$('.pilih-bahasa')){ s.value=BAHASA.kode; s.onchange=()=>gantiBahasa(s.value); }
-window.__siap=true; for(const m of ['eksposur','kursi']) muatModul(m).catch(()=>{});   // JEV-129/130
+window.__siap=true; for(const m of ['eksposur','kursi','pustaka']) muatModul(m).catch(()=>{});   // JEV-129/130/137
 // tautan lihat-saja dibuka SETELAH halaman tampil: membangun rumah (shader, GI) butuh
 // beberapa detik dan tidak boleh menahan tampilan pertama
 if(/^#(lihat|l)=/.test(location.hash)){

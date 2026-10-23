@@ -6665,6 +6665,63 @@
     "target": "0",
     "tinjau": "2026-12-19"
    }
+  },
+  {
+   "id": "JEV-137",
+   "judul": "Galeri adegan: terbitkan adegan ke halaman awal, masuk & ajak teman",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Adegan yang sudah dibuat hanya bisa dibagikan lewat tautan pribadi. Pengunjung halaman awal tidak punya contoh adegan untuk dijelajahi, dan dari tautan lihat-saja tidak ada cara mengajak teman main bareng (ruang lobi hanya bisa dibuat dari tab File editor).",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-10-23: \"scene yg udah disave bisa dipublish scenenya, bisa jadi scene sample library di home page, orang bisa masuk sama ngundang2\"",
+    "alternatif": [
+     "daftar contoh statis di kode (tiap tambahan butuh deploy)",
+     "galeri terbuka tanpa moderasi (konten siapa pun langsung tampil di halaman awal — ditolak)"
+    ]
+   },
+   "E": {
+    "peluang": 0.75,
+    "biaya": {
+     "bangunJam": 3,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 2500000,
+      "reduksi": 0.75
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kiriman siapa pun masuk antrean; tayang hanya setelah disetujui pemegang GALERI_KUNCI (dibandingkan lewat sidik SHA-256, waktu tetap); judul/pesan/gambar dibaca server dari isi tautan, dipotong & ditulis lewat textContent; gambar hanya URL Blob; token penarik disimpan sebagai sidik; antrean dibatasi 200"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "nama pembuat opsional; kunci pemilik & token penarik hanya di localStorage perangkat itu"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "daftar galeri publik di-cache CDN 60 dtk; modul dimuat setelah halaman siap; ruang ajak teman memakai ulang tautan adegan (tanpa unggah ulang)"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "kartu berupa tombol berteks judul; status terbit aria-live; dialog ajak berperan dialog"
+    }
+   },
+   "metrik": {
+    "nama": "adegan tayang di galeri & ruang main bareng dari mode lihat",
+    "target": "≥ 5 adegan tayang dalam 2 bulan",
+    "tinjau": "2026-12-23"
+   }
   }
  ]
 }
