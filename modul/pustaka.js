@@ -30,7 +30,7 @@
   function gaya() {
     if (document.getElementById('pustakaGaya')) return;
     const s = document.createElement('style'); s.id = 'pustakaGaya';
-    s.textContent = `#mulaiKartu{max-height:calc(100% - 24px);overflow-y:auto}
+    s.textContent = `#mulaiKartu.ada-galeri{max-height:calc(100% - 24px);overflow-y:auto}
 .pustaka-awal{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
 .pustaka-awal h3{font-size:.95rem;margin-bottom:2px}
 .pustaka-awal .hint{margin-bottom:8px}
@@ -73,7 +73,7 @@
     w.appendChild(el('h3', null, 'Galeri adegan'));
     w.appendChild(el('p', 'hint', 'Ketuk untuk masuk & jalan-jalan — dari dalam bisa mengajak teman main bareng.'));
     const d = el('div', 'pustaka-daftar'); for (const x of item) d.appendChild(kartu(x));
-    w.appendChild(d); k.appendChild(w);
+    w.appendChild(d); k.appendChild(w); k.classList.add('ada-galeri');
   }
 
   /* ---------- tab File: terbitkan, kiriman saya, alat pemilik ---------- */
