@@ -1178,7 +1178,8 @@ body.jalan #lobiObrolan .lb-pesan,body.lihat #lobiObrolan .lb-pesan{max-height:m
       const k = await kunciBaru();
       const ruang = `p23d-${mode === 'edit' ? 'e' : 'l'}${maks === 10 ? 'a' : maks}-${k.sidik}`;
       try { localStorage.setItem('lobiKunci:' + ruang, JSON.stringify(k)); } catch (e) { /* kunci hanya di memori sesi ini */ }
-      const r = await buatTautanLihat(undefined, { bagikan: o.bagikan });
+      // o.tautan: adegan galeri yang sudah punya tautan pendek (JEV-137) — dipakai ulang, tidak diunggah lagi
+      const r = o.tautan && o.tautan.urlBagikan ? o.tautan : await buatTautanLihat(undefined, { bagikan: o.bagikan });
       // undangan lewat halaman kartu pratinjau …/l/<id>?r=<ruang> bila tautan pendek aktif (JEV-087)
       const url = r.urlBagikan ? r.urlBagikan + '?r=' + ruang : r.url + '&r=' + ruang;
       await masukRuang(ruang, nama, url);
