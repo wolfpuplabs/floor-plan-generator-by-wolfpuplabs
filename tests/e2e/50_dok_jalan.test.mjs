@@ -17,7 +17,8 @@ export const tes = {
       const sejajar = ik.every(b => Math.abs((b.top + b.bottom) / 2 - (f.top + f.bottom) / 2) < 3);
       return { bilah, kiri: kiri.length, kanan: kanan.length, sejajar, lembar: $('#fpsLembar').hidden };
     });
-    assert.deepEqual(r, { bilah: ['fpsExit', 'fpsinfo', 'fpsCiut'], kiri: 2, kanan: 2, sejajar: true, lembar: true });
+    // kiri: kamera orang ketiga (JEV-135) + 2 ikon lembar
+    assert.deepEqual(r, { bilah: ['fpsExit', 'fpsinfo', 'fpsCiut'], kiri: 3, kanan: 2, sejajar: true, lembar: true });
     // buka lembar: satu sekali waktu, isi sesuai ikon
     const buka = k => page.evaluate(k => { $('#fpsDok [data-lembar="' + k + '"]').click();
       return { tampak: !$('#fpsLembar').hidden, isi: [...document.querySelectorAll('#fpsLembar .fl')].filter(f => !f.hidden).map(f => f.dataset.lembar),

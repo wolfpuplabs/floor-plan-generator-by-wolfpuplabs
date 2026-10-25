@@ -1890,12 +1890,12 @@ function renderFrame(){
   const eks=[P.terang.uniforms,P.komposit.uniforms];
   if(P.hdr){
     const kini=performance.now(), dt=Math.min(0.25,(kini-(FX_T0||kini))/1000); FX_T0=kini;
-    P.ukurLum.uniforms.tSrc.value=P.rtAdegan.texture; P.ukurLum.uniforms.batas.value=Math.log2((KUNCI_EKSPOSUR[MOOD]??0.25)*2.5); fxQuad(P.ukurLum,P.lum);
+    P.ukurLum.uniforms.tSrc.value=P.rtAdegan.texture; const kn=KUNCI_EKSPOSUR[MOOD]??0.25; P.ukurLum.uniforms.batas.value=Math.log2(kn*2.5); fxQuad(P.ukurLum,P.lum);
     P.rataLum.uniforms.tSrc.value=P.lum.texture; fxQuad(P.rataLum,P.lum1);
     P.adapt.uniforms.tPrev.value=P.adA.texture; P.adapt.uniforms.tCur.value=P.lum1.texture;
     P.adapt.uniforms.laju.value=P.adaptAwal?1:1-Math.exp(-dt*(FPS.on?1.6:3.0)); P.adaptAwal=false;
     fxQuad(P.adapt,P.adB); const t=P.adA; P.adA=P.adB; P.adB=t;
-    for(const U of eks){ U.tEksp.value=P.adA.texture; U.dasar.value=renderer.toneMappingExposure; U.kunci.value=KUNCI_EKSPOSUR[MOOD]??0.25; }
+    for(const U of eks){ U.tEksp.value=P.adA.texture; U.dasar.value=renderer.toneMappingExposure; U.kunci.value=kn; }
   }
   // 4. bloom
   P.terang.uniforms.tSrc.value=P.rtAdegan.texture; fxQuad(P.terang,P.h1);
