@@ -1807,15 +1807,17 @@ function fxPipelineSiap(){
     const o1={minFilter:THREE.NearestFilter, magFilter:THREE.NearestFilter, depthBuffer:false, stencilBuffer:false, type:THREE.HalfFloatType};
     P.lum=new THREE.WebGLRenderTarget(32,32,o1); P.lum1=new THREE.WebGLRenderTarget(1,1,o1);
     P.adA=new THREE.WebGLRenderTarget(1,1,o1); P.adB=new THREE.WebGLRenderTarget(1,1,o1); P.adaptAwal=true;
-    P.ukurLum=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tSrc:{value:null}},
-      fragmentShader:`uniform sampler2D tSrc; varying vec2 vUv;
-        float lg(vec2 uv){ return log2(max(dot(texture2D(tSrc,uv).rgb,vec3(0.2126,0.7152,0.0722)),1e-4)); }
+    // JEV-138: luminans dibatasi 2,5× kunci, sepertiga atas layar berbobot ≥0,4 (sama dengan modul/eksposur.js)
+    P.ukurLum=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tSrc:{value:null}, batas:{value:9}},
+      fragmentShader:`uniform sampler2D tSrc; uniform float batas; varying vec2 vUv;
+        float lg(vec2 uv){ return min(batas,log2(max(dot(texture2D(tSrc,uv).rgb,vec3(0.2126,0.7152,0.0722)),1e-4))); }
         void main(){ vec2 d=vec2(0.25/32.0);
           gl_FragColor=vec4((lg(vUv+d)+lg(vUv-d)+lg(vUv+vec2(d.x,-d.y))+lg(vUv-vec2(d.x,-d.y)))*0.25,0.0,0.0,1.0); }`});
     P.rataLum=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tSrc:{value:null}},
       fragmentShader:`uniform sampler2D tSrc; varying vec2 vUv;
-        void main(){ float s=0.0; for(int j=0;j<32;j++) for(int i=0;i<32;i++) s+=texture2D(tSrc,(vec2(float(i),float(j))+0.5)/32.0).r;
-          gl_FragColor=vec4(s/1024.0,0.0,0.0,1.0); }`});
+        void main(){ float s=0.0,n=0.0; for(int j=0;j<32;j++){ float w=1.0-0.6*smoothstep(0.55,1.0,(float(j)+0.5)/32.0); n+=w*32.0;
+          for(int i=0;i<32;i++) s+=w*texture2D(tSrc,(vec2(float(i),float(j))+0.5)/32.0).r; }
+          gl_FragColor=vec4(s/n,0.0,0.0,1.0); }`});
     P.adapt=new THREE.ShaderMaterial({vertexShader:vs, depthTest:false, depthWrite:false, uniforms:{tPrev:{value:null}, tCur:{value:null}, laju:{value:1}},
       fragmentShader:`uniform sampler2D tPrev, tCur; uniform float laju; varying vec2 vUv;
         void main(){ float a=texture2D(tPrev,vec2(0.5)).r, b=texture2D(tCur,vec2(0.5)).r; gl_FragColor=vec4(mix(a,b,laju),0.0,0.0,1.0); }`});
@@ -1888,12 +1890,12 @@ function renderFrame(){
   const eks=[P.terang.uniforms,P.komposit.uniforms];
   if(P.hdr){
     const kini=performance.now(), dt=Math.min(0.25,(kini-(FX_T0||kini))/1000); FX_T0=kini;
-    P.ukurLum.uniforms.tSrc.value=P.rtAdegan.texture; fxQuad(P.ukurLum,P.lum);
+    P.ukurLum.uniforms.tSrc.value=P.rtAdegan.texture; const kn=KUNCI_EKSPOSUR[MOOD]??0.25; P.ukurLum.uniforms.batas.value=Math.log2(kn*2.5); fxQuad(P.ukurLum,P.lum);
     P.rataLum.uniforms.tSrc.value=P.lum.texture; fxQuad(P.rataLum,P.lum1);
     P.adapt.uniforms.tPrev.value=P.adA.texture; P.adapt.uniforms.tCur.value=P.lum1.texture;
     P.adapt.uniforms.laju.value=P.adaptAwal?1:1-Math.exp(-dt*(FPS.on?1.6:3.0)); P.adaptAwal=false;
     fxQuad(P.adapt,P.adB); const t=P.adA; P.adA=P.adB; P.adB=t;
-    for(const U of eks){ U.tEksp.value=P.adA.texture; U.dasar.value=renderer.toneMappingExposure; U.kunci.value=KUNCI_EKSPOSUR[MOOD]??0.25; }
+    for(const U of eks){ U.tEksp.value=P.adA.texture; U.dasar.value=renderer.toneMappingExposure; U.kunci.value=kn; }
   }
   // 4. bloom
   P.terang.uniforms.tSrc.value=P.rtAdegan.texture; fxQuad(P.terang,P.h1);
@@ -10018,16 +10020,9 @@ function detectFixtures(thin,w,h,pxm,segs){
    deret dapur, lemari, nakas, mesin cuci — dibaca dari simbol baku gambar
    kerja (garis tipis, tampak atas) lalu dipasang sebagai perabot 3D dengan
    ukuran & arah seperti di gambar.
-   Garis perabot biasanya paling tipis & paling muda warnanya; pada resolusi
-   olah dinding (±760 px) garis itu sering hilang. Karena itu perabot dibaca
-   dari salinan gambar beresolusi lebih tinggi dengan ambang yang lebih
-   longgar, sesudah pita dinding dibuang.
-   Tiap simbol diringkas jadi ciri sederhana: ukuran (m), sisi kotak mana
-   yang tergambar (sisi yang menempel dinding sering terpotong), garis dalam
-   yang sejajar sisi (sandaran sofa, bantal & lipatan selimut ranjang),
-   kepadatan isi, bentuk bulat. Jenisnya diputuskan dari ukuran baku +
-   ciri itu + konteks (kursi di sekeliling meja = meja makan; kotak kecil di
-   samping kepala ranjang = nakas; meja di depan sofa = meja tamu).
+   Garis perabot tipis & muda: dibaca dari salinan beresolusi tinggi (ambang
+   longgar, pita dinding dibuang). Jenis = ukuran baku + ciri (sisi tergambar,
+   garis dalam, kepadatan, bulat) + konteks (kursi keliling meja = meja makan).
    ===================================================================== */
 const SISI_ARAH=[[0,-1],[1,0],[0,1],[-1,0]];          // atas, kanan, bawah, kiri → arah dunia (x,z)
 function ciriSimbol(ink,W,c,P){

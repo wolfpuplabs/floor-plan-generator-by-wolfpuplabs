@@ -6722,6 +6722,61 @@
     "target": "≥ 5 adegan tayang dalam 2 bulan",
     "tinjau": "2026-12-23"
    }
+  },
+  {
+   "id": "JEV-138",
+   "judul": "Eksposur otomatis: menghadap langit senja / matahari tidak menggelapkan adegan",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di mode jalan, menghadap matahari terbenam membuat avatar, lantai & seluruh adegan gelap (siluet); menunduk ke lantai terang lagi. Eksposur otomatis memakai rata-rata log-luminans seluruh layar, jadi langit yang jauh lebih terang dari kunci menariknya ke atas dan faktor eksposur turun ke batas bawah 0,35.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPhone pengguna ScreenRecording_10-24-2026_01-35-21: \"knapa klo liat ke depan/ atas jd gelap\"",
+    "alternatif": [
+     "mematikan eksposur otomatis (dalam ruangan / malam kembali salah terang)",
+     "menaikkan batas bawah faktor (langit siang jadi pucat)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1200000,
+      "reduksi": 0.8
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "pengukuran tetap 48×32 (Halus) & 32×32 (Tinggi); hanya batas & bobot per piksel"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "adegan tidak lagi jadi siluet saat menghadap cahaya terang"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan layar gelap saat menghadap langit / matahari",
+    "target": "0",
+    "tinjau": "2026-12-25"
+   }
   }
  ]
 }

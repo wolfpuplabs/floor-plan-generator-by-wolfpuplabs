@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 112 GO · 3 DEFER · 5 NO-GO dari 120 item.
+**Ringkasan:** 113 GO · 3 DEFER · 5 NO-GO dari 121 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -110,6 +110,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-041 | Tes e2e + CI + lint ratchet di repo | terkirim | 0.85 | 6,1 jt | 2,9 jt | 3.3× | 1.1× | 3.6 bln | 0 | **GO** |
 | JEV-131 | Kepala di bantal saat berbaring, tepi baju renang tidak bercak, resolusi adaptif pulih | terkirim | 0.65 | 0,7 jt | 0,3 jt | 3.3× | 1.1× | 4.8 bln | 0 | **GO** |
 | JEV-134 | Pose memancing wajar: joran dipegang di depan perut, di tangan avatar orang ketiga | terkirim | 0.65 | 0,4 jt | 0,2 jt | 3.2× | 1.1× | 5.1 bln | 0 | **GO** |
+| JEV-138 | Eksposur otomatis: menghadap langit senja / matahari tidak menggelapkan adegan | terkirim | 0.65 | 0,6 jt | 0,3 jt | 3.2× | 1.1× | 5.3 bln | 0 | **GO** |
 | JEV-040 | Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global) | terkirim | 0.90 | 5,7 jt | 2,9 jt | 3.0× | 1.0× | 5.0 bln | 0 | **GO** |
 | JEV-135 | Duduk di lantai menapak tanah, ikan 3D bermotif, tombol kamera orang ketiga sendiri | terkirim | 0.65 | 0,6 jt | 0,3 jt | 2.8× | 0.9× | 5.4 bln | 0 | **GO** |
 | JEV-128 | Saat berinteraksi, menggeser layar hanya memutar kamera — badan & NPC tetap | terkirim | 0.65 | 0,3 jt | 0,2 jt | 2.5× | 0.7× | 6.1 bln | 0 | **GO** |
@@ -235,6 +236,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-041 Tes e2e + CI + lint ratchet di repo — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-131 Kepala di bantal saat berbaring, tepi baju renang tidak bercak, resolusi adaptif pulih — GO.** ROI 3.3× ≥ 1, payback 4.8 bln.
 - **JEV-134 Pose memancing wajar: joran dipegang di depan perut, di tangan avatar orang ketiga — GO.** ROI 3.2× ≥ 1, payback 5.1 bln.
+- **JEV-138 Eksposur otomatis: menghadap langit senja / matahari tidak menggelapkan adegan — GO.** ROI 3.2× ≥ 1, payback 5.3 bln.
 - **JEV-040 Guardrail keamanan G1–G6 (CSP, SRI, sanitasi proyek, esc, URI luar, galat global) — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-135 Duduk di lantai menapak tanah, ikan 3D bermotif, tombol kamera orang ketiga sendiri — GO.** ROI 2.8× ≥ 1, payback 5.4 bln.
 - **JEV-128 Saat berinteraksi, menggeser layar hanya memutar kamera — badan & NPC tetap — GO.** ROI 2.5× ≥ 1, payback 6.1 bln.
