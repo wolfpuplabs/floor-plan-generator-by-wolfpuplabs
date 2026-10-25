@@ -39,4 +39,35 @@ export const tes = {
     assert.ok(r.ikut[1] > r.ikut[0] + 20, 'langit & adegan ikut eksposur: ' + JSON.stringify(r.ikut));
     assert.ok(Math.abs(r.suasana[1] - r.suasana[0]) < 0.05, 'setSuasana tidak menyetel ulang ke 0,4: ' + JSON.stringify(r.suasana));
   },
+
+  // JEV-138: menghadap matahari terbenam dulu membuat avatar & lantai jadi siluet gelap — langit yang jauh lebih terang
+  // dari kunci menarik rata-rata log-luminans ke atas. Kini luminans di atas 2,5× kunci dihitung 2,5× kunci & sepertiga
+  // atas layar berbobot lebih kecil, sama di Halus & Tinggi
+  'menghadap langit senja yang terang tidak menggelapkan adegan: eksposur menghadap langit ≈ menunduk ke lantai; Halus ≈ Tinggi': async (page) => {
+    await muatProyekJSON(page, { v: 1, levels: [{ name: 'L1', height: 3, walls: dinding.map(w => ({ ...w, x1: w.x1 + 20, x2: w.x2 + 20 })), objects: [] }] });
+    await page.waitForFunction(() => !!window.EKSPOSUR, undefined, { timeout: 30000 });
+    const r = await page.evaluate(async () => {
+      const raf = n => new Promise(async ok => { for (let i = 0; i < n; i++) await new Promise(o => requestAnimationFrame(o)); ok(); });
+      const terang = () => { renderFrame(); const c = document.createElement('canvas'); c.width = 96; c.height = 64; const x = c.getContext('2d'); x.drawImage(renderer.domElement, 0, 0, 96, 64);
+        const d = x.getImageData(0, 0, 96, 64).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; return s / (d.length / 4); };
+      setSuasana('senja');
+      // langit senja di depan (kamera menghadap +Z): bidang bercahaya ±20× kunci menutup separuh atas pandangan; dermaga & sosok
+      // (dulu: menghadap langit 0,36 — batas bawah — vs menunduk 0,89)
+      const g = new THREE.Group(), kunci = KUNCI_EKSPOSUR.senja;
+      const langit = new THREE.Mesh(new THREE.PlaneGeometry(400, 120), new THREE.MeshBasicMaterial({ fog: false }));
+      langit.material.color.setRGB(20 * kunci * 1.4, 20 * kunci, 20 * kunci * 0.5); langit.position.set(3, 61.6, 60); langit.rotation.y = Math.PI; g.add(langit);
+      const lantai = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 120), new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.9 })); lantai.position.set(3, -0.05, 0); g.add(lantai);
+      const sosok = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.7, 0.3), new THREE.MeshStandardMaterial({ color: 0x505050 })); sosok.position.set(3, 0.85, 3); g.add(sosok);
+      scene.add(g);
+      enterFPS(); camera.position.set(3, 1.6, 0); FPS.feet = 0;
+      const lihat = async (pitch, n = 60) => { FPS.yaw = 0; FPS.pitch = pitch; fpsStep(0); await raf(n); };
+      const out = {};
+      setRenderQuality('halus');
+      await lihat(0.05); out.langit = { ke: +FX.ke.toFixed(2), halus: +terang().toFixed(1) };
+      await lihat(-1.2); out.lantai = { ke: +FX.ke.toFixed(2) };
+      await lihat(0.05); setRenderQuality('tinggi'); await raf(60); out.langit.tinggi = +terang().toFixed(1);
+      setRenderQuality('halus'); scene.remove(g); exitFPS(); return out; });
+    assert.ok(r.lantai.ke / r.langit.ke < 1.4 && r.langit.ke > 0.6, 'menghadap langit tidak jauh lebih gelap dari menunduk: ' + JSON.stringify(r));
+    assert.ok(r.langit.halus / r.langit.tinggi > 0.75 && r.langit.halus / r.langit.tinggi < 1.33, 'Halus ≈ Tinggi menghadap langit: ' + JSON.stringify(r));
+  },
 };
