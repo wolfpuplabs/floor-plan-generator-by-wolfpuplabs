@@ -6904,6 +6904,60 @@
     "target": "≥ 10 foto dalam 2 bulan",
     "tinjau": "2027-01-01"
    }
+  },
+  {
+   "id": "JEV-141",
+   "judul": "Dinding beton: sambungan bekisting tidak lagi diagonal; dinding bertumpuk di void tanpa strip z-fighting",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Di adegan loft beton (void dua lantai) dinding tampak bergaris-garis diagonal dan ada strip terang putus-putus setinggi pelat lantai 2. (1) anti pola berulang (JEV-059) mencampur salinan tekstur yang diputar 37°, sehingga sambungan bekisting beton ekspos ikut miring; (2) kaki 6 cm dinding lantai atas yang dibenamkan ke pelat sebidang dengan puncak dinding lantai bawah → di void tanpa pelat kedua muka berebut kedalaman.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "rekaman layar iPad pengguna ScreenRecording_11-01-2026_23-31-08: \"kenapa kualitasnya jadi gitu\"",
+    "alternatif": [
+     "mematikan anti pola berulang untuk beton (pola 2×2 panel tampak berulang)",
+     "tidak membenamkan kaki dinding atas (garis cahaya bocor di pertemuan dinding–lantai kembali)"
+    ]
+   },
+   "E": {
+    "peluang": 0.85,
+    "biaya": {
+     "bangunJam": 1.2,
+     "ujiJam": 0.6,
+     "pemeliharaanJamPerTahun": 0.1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.9,
+      "dampakRp": 1500000,
+      "reduksi": 0.85
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos"
+    },
+    "privasi": {
+     "status": "lolos"
+    },
+    "lisensi": {
+     "status": "lolos"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "satu balok kaki tambahan hanya untuk panel dinding lantai atas yang menyentuh lantai; shader beton sama ringannya"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "keluhan garis / strip aneh di dinding",
+    "target": "0",
+    "tinjau": "2027-01-01"
+   }
   }
  ]
 }

@@ -2243,10 +2243,11 @@ function setPBR(on){
    (2) tekstur acak (cat, plester, beton, teraso) dicampur dengan dirinya sendiri
    yang diputar & diskalakan lewat topeng noise, (3) keramik: tiap keping sedikit
    beda nada seperti ubin sungguhan dari lot produksi yang sama. */
-const ULANG_ACAK=new Set(['W_cat','W_plester','W_beton','L_beton','L_teraso']);
+// 1: campur salinan diputar (tekstur acak); 2: geser satu panel — sambungan lurus (beton bekisting) tetap lurus (JEV-141)
+const ULANG_ACAK={W_cat:1, W_plester:1, W_beton:2, L_beton:1, L_teraso:1};
 const ULANG_KEPING={L_keramik:2, L_keramik2:2};
 function antiUlang(m,kunci){
-  const acak=ULANG_ACAK.has(kunci)?1:0, kep=ULANG_KEPING[kunci]||0;
+  const acak=ULANG_ACAK[kunci]||0, kep=ULANG_KEPING[kunci]||0;
   m.customProgramCacheKey=()=>'ulang_'+acak+'_'+kep;
   m.onBeforeCompile=sh=>{
     pasangGIShader(sh);
@@ -2263,7 +2264,7 @@ float uN(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f);
       .replace('#include <map_fragment>',`#ifdef USE_MAP
   vec4 texelColor=texture2D( map, vUv );
   #if ${acak}
-  { vec2 uv2=mat2(0.8,-0.6,0.6,0.8)*vUv*0.71+vec2(0.37,0.61);
+  { vec2 uv2=${acak===2?'vUv+vec2(0.5)':'mat2(0.8,-0.6,0.6,0.8)*vUv*0.71+vec2(0.37,0.61)'};
     float t=smoothstep(0.3,0.7,uN(vUPos*0.8+vec3(3.1)));
     texelColor=mix(texelColor,texture2D( map, uv2 ),t); }
   #endif
@@ -2572,10 +2573,14 @@ function buildWallGroup(w, lv){
   }
   if(cur<len-1e-4) panels.push([cur,len,0,h]);
 
+  // lantai atas: kaki 6 cm jadi balok terpisah 3 mm lebih tipis — dinding yang bertumpuk di atas dinding bawah tidak lagi
+  // sebidang dengannya (di void tanpa pelat dulu tampak strip putus-putus berebut kedalaman, JEV-141)
+  const atas=PROJECT.levels.indexOf(lv)>0;
   for(const [x0,x1,y00,y1] of panels){
     // kaki dinding dibenamkan 6 cm ke pelat: tak terlihat, tetapi peta bayangan
     // lampu tidak lagi punya celah di pertemuan dinding–lantai (garis cahaya bocor)
-    const y0 = y00<=0.001 ? -0.06 : y00;
+    const y0 = y00<=0.001 && !atas ? -0.06 : y00;
+    if(atas && y00<=0.001 && x1-x0>=0.004){ const k=box(x1-x0,0.06,Math.max(0.01,t-0.006),mat,(x0+x1)/2-len/2,-0.03,0); k.userData.wallPanel=true; g.add(k); }
     const pw=x1-x0, ph=y1-y0;
     if(pw<0.004||ph<0.004) continue;
     const pnl=box(pw,ph,t,mat, x0+pw/2-len/2, y0+ph/2, 0);
@@ -8850,24 +8855,9 @@ addEventListener('keydown',e=>{
   else if(e.key==='PageDown'){ e.preventDefault(); setActiveLevel(Math.max(0,PROJECT.active-1)); }
 });
 
-/* ======================================================================
-   EKSTRAKSI DENAH (raster → vektor)
-
-   Dasarnya kaidah gambar kerja arsitektur: BERAT GARIS itu bermakna.
-     - Garis tebal / poche masif  = dinding yang terpotong  → jadi dinding 3D
-     - Garis tipis                = busur ayun pintu, simbol jendela,
-                                    arsiran, furnitur, dimensi, teks → dibaca
-                                    sebagai SIMBOL, bukan dinding
-   Maka gambar dipisah dulu jadi dua lapis berdasarkan lebar goresan,
-   lalu tiap lapis dibaca dengan caranya sendiri.
-
-   Lapis dinding : closing (menutup rongga dinding garis-ganda)
-                   → opening selebar tebal dinding minimum (membuang garis tipis)
-                   → distance transform → penipisan → polyline → ortogonal
-                   → satukan sumbu → sambung segaris → rapikan sambungan
-   Lapis simbol  : busur ayun  → pintu (lebar = jari-jari busur = lebar daun)
-                   garis dalam pita dinding → jendela
-   ====================================================================== */
+/* EKSTRAKSI DENAH (raster → vektor). Berat garis bermakna: garis tebal / poche = dinding terpotong → dinding 3D;
+   garis tipis = busur pintu, jendela, arsiran, furnitur, dimensi, teks → simbol. Lapis dinding: closing → opening
+   → distance transform → penipisan → polyline → ortogonal → rapikan. Lapis simbol: busur → pintu, garis di pita dinding → jendela. */
 
 /* Tingkat terang kertas = puncak histogram di sisi terang. Gambar kerja
    arsitektur selalu tinta gelap di atas kertas terang, jadi ambang hitam
