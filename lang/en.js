@@ -2046,7 +2046,12 @@ window.KAMUS_EN={
   "Terlalu sering — tunggu sebentar lalu coba lagi.":"Too many requests — wait a moment and try again.",
   "Layanan AI terlalu lama menjawab — coba lagi.":"The AI service took too long to respond — try again.",
   "Layanan AI tidak mengembalikan gambar (mungkin ditolak saringannya) — coba gaya lain.":"The AI service returned no image (it may have been blocked by its filter) — try another style.",
-  "Gagal memproses foto — periksa koneksi lalu coba lagi.":"Could not process the photo — check your connection and try again."
+  "Gagal memproses foto — periksa koneksi lalu coba lagi.":"Could not process the photo — check your connection and try again.",
+  "Kuota layanan AI habis atau belum aktif — model gambar Gemini butuh billing di Google AI Studio (atau tunggu kuota pulih).":"The AI service quota is used up or not active — Gemini image models need billing in Google AI Studio (or wait for the quota to reset).",
+  "Kunci API ditolak atau belum punya izin — periksa GEMINI_API_KEY / OPENAI_API_KEY di Vercel.":"The API key was rejected or lacks permission — check GEMINI_API_KEY / OPENAI_API_KEY in Vercel.",
+  "Model AI gambar tidak ditemukan — isi GEMINI_IMAGE_MODEL di Vercel dengan model gambar yang tersedia.":"The AI image model was not found — set GEMINI_IMAGE_MODEL in Vercel to an available image model.",
+  "Layanan AI menolak permintaan (kunci API tidak sah atau wilayah tidak didukung).":"The AI service rejected the request (invalid API key or unsupported region).",
+  "Layanan AI sedang bermasalah — coba lagi nanti.":"The AI service is having problems — try again later."
  },
  // frasa
  "frasa":{

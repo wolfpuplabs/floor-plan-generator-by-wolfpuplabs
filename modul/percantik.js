@@ -41,7 +41,8 @@
 #percantik .pc-gaya{display:flex;gap:6px;flex-wrap:wrap}
 #percantik .pc-gaya .btn.active{border-color:var(--accent);color:var(--accent)}
 #percantik .row{flex-wrap:wrap}
-#percantik input{width:100%}`;
+#percantik input{width:100%;background:#212128;color:var(--txt);border:1px solid var(--line);padding:7px 8px;border-radius:8px;min-height:38px;font:inherit;font-size:.86rem;outline:none}
+#percantik .hint small{opacity:.75;word-break:break-word}`;
     document.head.appendChild(s);
   }
 
@@ -107,10 +108,24 @@
         else if (r.status === 429) info.textContent = 'Terlalu sering — tunggu sebentar lalu coba lagi.';
         else if (r.status === 504) info.textContent = 'Layanan AI terlalu lama menjawab — coba lagi.';
         else if (r.status === 502 && j.galat === 'tanpa-gambar') info.textContent = 'Layanan AI tidak mengembalikan gambar (mungkin ditolak saringannya) — coba gaya lain.';
+        else if (r.status === 502 && j.galat === 'penyedia') tampilGalat(info, j);
         else info.textContent = 'Gagal memproses foto (' + r.status + ').';
       } catch (e) { info.textContent = 'Gagal memproses foto — periksa koneksi lalu coba lagi.'; }
       finally { S.sibuk = false; jalan.disabled = false; proses.remove(); }
     };
+  }
+
+  // galat dari layanan AI: sebab yang bisa ditindaklanjuti pemilik situs + pesan asli penyedia (sudah dipotong server)
+  function tampilGalat(info, j) {
+    const k = +j.kode || 0;
+    info.textContent = '';
+    const sebab = k === 429 ? 'Kuota layanan AI habis atau belum aktif — model gambar Gemini butuh billing di Google AI Studio (atau tunggu kuota pulih).'
+      : k === 401 || k === 403 ? 'Kunci API ditolak atau belum punya izin — periksa GEMINI_API_KEY / OPENAI_API_KEY di Vercel.'
+        : k === 404 ? 'Model AI gambar tidak ditemukan — isi GEMINI_IMAGE_MODEL di Vercel dengan model gambar yang tersedia.'
+          : k === 400 ? 'Layanan AI menolak permintaan (kunci API tidak sah atau wilayah tidak didukung).'
+            : 'Layanan AI sedang bermasalah — coba lagi nanti.';
+    info.appendChild(el('span', null, sebab));
+    if (j.pesan) { info.appendChild(document.createElement('br')); info.appendChild(el('small', null, String(j.pesan).slice(0, 240))); }
   }
 
   function simpanHasil() {

@@ -8,7 +8,9 @@ export const tes = {
   'mulai: kartu pada proyek kosong → rumah contoh dimuat & bisa langsung dijelajahi': async (page) => {
     assert.equal(await page.isVisible('#mulaiKartu'), true, 'kartu Mulai harus tampil pada proyek kosong');
     await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
-    await page.click('#mulaiContoh');
+    // membangun rumah contoh sinkron ±25 dtk di Chromium tanpa GPU — melewati batas klik 30 dtk Playwright saat mesin sibuk
+    assert.equal(await page.isEnabled('#mulaiContoh'), true);
+    await page.evaluate(() => document.getElementById('mulaiContoh').click());
     await page.waitForFunction(() => /Proyek dimuat: Rumah contoh/.test(document.getElementById('toast').textContent));
     const r = await page.evaluate(() => ({ dinding: L().walls.length, bukaan: L().walls.reduce((s, w) => s + w.openings.length, 0),
       objek: L().objects.length, ruang: (() => { const P = petaRuang(L()); return new Set([...P.lab].filter(v => v > 0 && !P.bocor[v])).size; })() }));

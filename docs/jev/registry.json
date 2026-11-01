@@ -6790,13 +6790,14 @@
     "alternatif": [
      "EdenLive real-time (server GPU sendiri, biaya per jam per pengguna)",
      "EdenLive video offline (antrean GPU)"
-    ]
+    ],
+    "catatanEstimasi": "manfaat waktu: foto presentasi fotoreal biasanya butuh ekspor + render di aplikasi lain (±20 mnt / foto); biaya termasuk perbaikan pesan galat penyedia (PR lanjutan)"
    },
    "E": {
     "peluang": 0.7,
     "biaya": {
-     "bangunJam": 2.5,
-     "ujiJam": 1,
+     "bangunJam": 4,
+     "ujiJam": 1.5,
      "pemeliharaanJamPerTahun": 1,
      "lainRp": 0
     },
@@ -6805,6 +6806,11 @@
       "pInsidenPerTahun": 0.7,
       "dampakRp": 2000000,
       "reduksi": 0.7
+     },
+     "waktu": {
+      "jangkauan": 0.2,
+      "pakaiPerTahun": 6,
+      "menitHemat": 20
      }
     }
    },

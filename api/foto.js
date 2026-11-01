@@ -61,16 +61,30 @@ async function bacaBadan(req) {
   return JSON.parse(teks);
 }
 
+// galat penyedia: status + pesan singkatnya (mis. kuota / kunci / model) — tanpa kunci API, dipotong
+async function galatPenyedia(r) {
+  let pesan = '';
+  try { const j = await r.json(); pesan = (j && j.error && (j.error.message || j.error.status)) || ''; } catch (e) { /* bukan JSON */ }
+  const e = new Error('penyedia ' + r.status); e.penyedia = r.status;
+  e.pesan = String(pesan).replace(/AIza[\w-]{20,}|sk-[\w-]{16,}/g, '…').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 240);
+  return e;
+}
+// model gambar Gemini berganti nama dari waktu ke waktu: yang diisi pemilik dulu, lalu cadangan bila model tidak ditemukan (404)
+const MODEL_GEMINI = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview', 'gemini-2.5-flash-image-preview', 'gemini-2.0-flash-preview-image-generation'];
 async function tanyaGemini(jpg, gaya, env, ambil) {
-  const model = /^[\w.-]{1,80}$/.test(env.GEMINI_IMAGE_MODEL || '') ? env.GEMINI_IMAGE_MODEL : 'gemini-2.5-flash-image';
-  const r = await ambil(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt(gaya) }, { inline_data: { mime_type: 'image/jpeg', data: jpg.toString('base64') } }] }],
-      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }) });
-  if (!r.ok) { const e = new Error('penyedia ' + r.status); e.penyedia = r.status; throw e; }
-  const j = await r.json(), bag = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
-  const p = bag.find(x => x && (x.inlineData || x.inline_data)), d = p && (p.inlineData || p.inline_data);
-  return d && d.data;
+  const pilihan = /^[\w.-]{1,80}$/.test(env.GEMINI_IMAGE_MODEL || '') ? [env.GEMINI_IMAGE_MODEL] : [];
+  let galat = null;
+  for (const model of [...new Set([...pilihan, ...MODEL_GEMINI])]) {
+    const r = await ambil(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt(gaya) }, { inline_data: { mime_type: 'image/jpeg', data: jpg.toString('base64') } }] }],
+        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }) });
+    if (!r.ok) { galat = await galatPenyedia(r); galat.model = model; if (r.status === 404) continue; throw galat; }
+    const j = await r.json(), bag = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+    const p = bag.find(x => x && (x.inlineData || x.inline_data)), d = p && (p.inlineData || p.inline_data);
+    return d && d.data;
+  }
+  throw galat;
 }
 async function tanyaOpenAI(jpg, gaya, env, ambil) {
   const model = /^[\w.-]{1,80}$/.test(env.OPENAI_IMAGE_MODEL || '') ? env.OPENAI_IMAGE_MODEL : 'gpt-image-1';
@@ -78,7 +92,7 @@ async function tanyaOpenAI(jpg, gaya, env, ambil) {
   f.append('model', model); f.append('prompt', prompt(gaya)); f.append('size', 'auto'); f.append('quality', 'medium');
   f.append('image', new Blob([jpg], { type: 'image/jpeg' }), 'render.jpg');
   const r = await ambil('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { authorization: 'Bearer ' + env.OPENAI_API_KEY }, body: f });
-  if (!r.ok) { const e = new Error('penyedia ' + r.status); e.penyedia = r.status; throw e; }
+  if (!r.ok) throw await galatPenyedia(r);
   const j = await r.json();
   return j && j.data && j.data[0] && j.data[0].b64_json;
 }
@@ -112,8 +126,9 @@ function buatHandler(ambilEnv = () => process.env, ambil = (u, o) => fetch(u, o)
       return kirim(200, { gambar: keluar, penyedia });
     } catch (e) {
       if (henti.signal.aborted) return kirim(504, { galat: 'waktu-habis' });
-      if (!e.penyedia) console.error('api/foto', e);
-      return kirim(502, { galat: 'penyedia', kode: e.penyedia || 0 });
+      // dicatat di log Vercel agar pemilik bisa melihat sebabnya (status & pesan penyedia, tanpa kunci)
+      if (!e.penyedia) console.error('api/foto', e); else console.warn('api/foto', penyedia, e.model || '', e.penyedia, e.pesan || '');
+      return kirim(502, { galat: 'penyedia', kode: e.penyedia || 0, pesan: e.pesan || '' });
     } finally { clearTimeout(t); }
   };
 }

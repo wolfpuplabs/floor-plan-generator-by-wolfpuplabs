@@ -63,7 +63,8 @@ export const tes = {
     await ambil('#app');
     for (const t of ['plan', 'levels', 'objects', 'tampilan', 'file']) await ambil('#sidebar', t);
     await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
-    await page.click('#mulaiContoh');
+    // membangun rumah contoh sinkron ±25 dtk di Chromium tanpa GPU — melewati batas klik 30 dtk Playwright saat mesin sibuk
+    await page.evaluate(() => document.getElementById('mulaiContoh').click());
     await page.waitForFunction(() => /^Project loaded:/.test(document.getElementById('toast').textContent), undefined, { timeout: 60000 });
     for (const t of ['plan', 'levels', 'objects', 'tampilan', 'file']) await ambil('#sidebar', t);
     await ambil('#toolbar');
