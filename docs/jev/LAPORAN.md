@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 115 GO · 3 DEFER · 5 NO-GO dari 123 item.
+**Ringkasan:** 116 GO · 3 DEFER · 5 NO-GO dari 124 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -103,6 +103,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-127 | Berbaring bersama NPC: masing-masing satu sisi kasur, tidak menumpuk | terkirim | 0.65 | 0,7 jt | 0,2 jt | 6.4× | 2.7× | 2.8 bln | 0 | **GO** |
 | JEV-006 | Rapikan denah otomatis (pra-proses) | terkirim | 0.60 | 15 jt | 4,2 jt | 6.1× | 2.6× | 2.7 bln | 140 | **GO** |
 | JEV-124 | Efek real-time hanya di kualitas Tinggi; baju renang tetap saat main air (orang ketiga & lobi) | terkirim | 0.65 | 1,2 jt | 0,3 jt | 6.1× | 2.5× | 2.8 bln | 0 | **GO** |
+| JEV-141 | Dinding beton: sambungan bekisting tidak lagi diagonal; dinding bertumpuk di void tanpa strip z-fighting | terkirim | 0.65 | 0,7 jt | 0,3 jt | 4.0× | 1.5× | 4.4 bln | 0 | **GO** |
 | JEV-003 | Tangga 6 varian + void pelat | terkirim | 0.60 | 18 jt | 7,5 jt | 3.8× | 1.4× | 4.2 bln | 209 | **GO** |
 | JEV-132 | Jok otomatis: abaikan pijakan, bemper & lantai kabin — duduk di jok sungguhan | terkirim | 0.65 | 0,4 jt | 0,2 jt | 3.6× | 1.3× | 4.5 bln | 0 | **GO** |
 | JEV-014 | Interaksi mode jalan (pintu, lampu, gorden, TV) | terkirim | 0.45 | 14,2 jt | 6,2 jt | 3.6× | 1.3× | 4.4 bln | 217 | **GO** |
@@ -231,6 +232,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-127 Berbaring bersama NPC: masing-masing satu sisi kasur, tidak menumpuk — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-006 Rapikan denah otomatis (pra-proses) — GO.** ROI 6.1× ≥ 1, payback 2.7 bln.
 - **JEV-124 Efek real-time hanya di kualitas Tinggi; baju renang tetap saat main air (orang ketiga & lobi) — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
+- **JEV-141 Dinding beton: sambungan bekisting tidak lagi diagonal; dinding bertumpuk di void tanpa strip z-fighting — GO.** ROI 4.0× ≥ 1, payback 4.4 bln.
 - **JEV-003 Tangga 6 varian + void pelat — GO.** ROI 3.8× ≥ 1, payback 4.2 bln.
 - **JEV-132 Jok otomatis: abaikan pijakan, bemper & lantai kabin — duduk di jok sungguhan — GO.** ROI 3.6× ≥ 1, payback 4.5 bln.
 - **JEV-014 Interaksi mode jalan (pintu, lampu, gorden, TV) — GO.** ROI 3.6× ≥ 1, payback 4.4 bln.
