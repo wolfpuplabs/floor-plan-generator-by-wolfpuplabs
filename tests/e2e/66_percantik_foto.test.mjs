@@ -51,7 +51,7 @@ export const tes = {
     assert.deepEqual(kode, [200, 200, 200, 200, 200, 429]);
     // penyedia: galat, tanpa gambar, keluaran bukan gambar
     const Hx = (f) => api.buatHandler(() => ({ GEMINI_API_KEY: 'k' }), f);
-    assert.deepEqual((await panggil(Hx(async () => new Response('{}', { status: 500 })), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.1' })).j, { galat: 'penyedia', kode: 500, pesan: '' });
+    assert.deepEqual((await panggil(Hx(async () => new Response('{}', { status: 500 })), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.1' })).j, { galat: 'penyedia', kode: 500, pesan: '', penyedia: 'gemini' });
     assert.equal((await panggil(Hx(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'maaf' }] } }] }))), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.2' })).status, 502);
     const html = Buffer.from('<html><script>x</script></html>').toString('base64');
     assert.equal((await panggil(Hx(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { data: html } }] } }] }))), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.3' })).j.galat, 'tanpa-gambar');
@@ -63,6 +63,32 @@ export const tes = {
     assert.deepEqual(urut, ['model-lama', 'gemini-2.5-flash-image', 'gemini-3-pro-image-preview']);
     const q = await panggil(Hx(async () => new Response(JSON.stringify({ error: { code: 429, message: 'Quota exceeded for metric generate_content_free_tier, limit: 0. key AIzaSyA1234567890abcdefghijk\nhint' } }), { status: 429 })), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.5' });
     assert.equal(q.status, 502); assert.equal(q.j.kode, 429); assert.match(q.j.pesan, /^Quota exceeded/); assert.doesNotMatch(q.j.pesan, /AIza|\n/);
+    // Cloudflare Workers AI (gratis): cadangan otomatis saat Gemini kehabisan kuota; SD img2img, sisi panjang 768 kelipatan 8
+    const AKUN = 'a'.repeat(32), sof = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 17, 8, 0x02, 0x80, 0x04, 0x00, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);   // 1024 × 640
+    assert.deepEqual(api.ukuranJpeg(sof), { w: 1024, h: 640 });
+    const JSOF = 'data:image/jpeg;base64,' + sof.toString('base64'), jalur = [];
+    const cf = async (u, o) => { jalur.push(u);
+      if (u.includes('generativelanguage')) return new Response(JSON.stringify({ error: { message: 'You exceeded your current quota' } }), { status: 429 });
+      return new Response(Buffer.from(PNG, 'base64'), { headers: { 'content-type': 'image/png' } }); };
+    const ENVC = { GEMINI_API_KEY: 'g', CLOUDFLARE_ACCOUNT_ID: AKUN, CLOUDFLARE_API_TOKEN: 'cf-rahasia' };
+    let cfBadan = null;
+    const Hc = api.buatHandler(() => ENVC, async (u, o) => { if (u.includes('cloudflare')) cfBadan = { u, o, b: JSON.parse(o.body) }; return cf(u, o); });
+    const rc = await panggil(Hc, 'POST', { gambar: JSOF, gaya: 'siang' }, { 'x-forwarded-for': '6.6.6.1' });
+    assert.equal(rc.status, 200); assert.equal(rc.j.penyedia, 'cloudflare'); assert.equal(rc.j.gambar, 'data:image/png;base64,' + PNG);
+    assert.equal(cfBadan.u, `https://api.cloudflare.com/client/v4/accounts/${AKUN}/ai/run/@cf/runwayml/stable-diffusion-v1-5-img2img`);
+    assert.equal(cfBadan.o.headers.authorization, 'Bearer cf-rahasia');
+    assert.deepEqual([cfBadan.b.width, cfBadan.b.height, cfBadan.b.strength, cfBadan.b.image.length, cfBadan.b.prompt], [768, 480, 0.45, sof.length, api.promptSD('siang')]);
+    // FOTO_PENYEDIA=cloudflare: Gemini tidak dicoba; Cloudflare saja di GET juga ai:true
+    jalur.length = 0;
+    await panggil(api.buatHandler(() => ({ ...ENVC, FOTO_PENYEDIA: 'cloudflare' }), cf), 'POST', { gambar: JSOF }, { 'x-forwarded-for': '6.6.6.2' });
+    assert.equal(jalur.length, 1); assert.match(jalur[0], /cloudflare/);
+    assert.deepEqual((await panggil(api.buatHandler(() => ({ CLOUDFLARE_ACCOUNT_ID: AKUN, CLOUDFLARE_API_TOKEN: 't' }), cf), 'GET')).j, { ai: true, kunci: false });
+    // galat Cloudflare (format errors[]) dilaporkan bila semua penyedia gagal; akun tidak sah tidak memanggil apa pun
+    const semuaGagal = api.buatHandler(() => ENVC, async u => u.includes('cloudflare') ? new Response(JSON.stringify({ errors: [{ message: 'Daily free allocation exceeded' }] }), { status: 429 }) : cf(u));
+    const sg = await panggil(semuaGagal, 'POST', { gambar: JSOF }, { 'x-forwarded-for': '6.6.6.3' });
+    assert.deepEqual([sg.status, sg.j.kode, sg.j.penyedia, sg.j.pesan], [502, 429, 'cloudflare', 'Daily free allocation exceeded']);
+    const salahAkun = await panggil(api.buatHandler(() => ({ CLOUDFLARE_ACCOUNT_ID: '../x', CLOUDFLARE_API_TOKEN: 't' }), async () => { throw new Error('tidak boleh dipanggil'); }), 'POST', { gambar: JSOF }, { 'x-forwarded-for': '6.6.6.4' });
+    assert.deepEqual([salahAkun.j.kode, salahAkun.j.pesan], [400, 'CLOUDFLARE_ACCOUNT_ID tidak sah (32 karakter heksadesimal)']);
     // OpenAI (tanpa kunci Gemini): multipart ke images/edits
     let oa = null;
     const Ho = api.buatHandler(() => ({ OPENAI_API_KEY: 'o-rahasia' }), async (u, o) => { oa = { u, o }; return new Response(JSON.stringify({ data: [{ b64_json: PNG }] })); });
@@ -88,7 +114,7 @@ export const tes = {
       const q = r.request();
       if (q.method() === 'GET') return r.fulfill({ json: { ai: true, kunci: false } });
       kiriman = JSON.parse(q.postData());
-      return r.fulfill({ json: { gambar: 'data:image/png;base64,' + PNG, penyedia: 'gemini' } });
+      return r.fulfill({ json: { gambar: 'data:image/png;base64,' + PNG, penyedia: 'cloudflare' } });
     });
     await muatProyekJSON(page, { v: 1, levels: [{ name: 'L1', height: 3, walls: dinding, objects: [] }] });
     // tanpa AI (hosting statis: api/foto 404) tombol tidak ada
@@ -106,7 +132,7 @@ export const tes = {
     await page.waitForFunction(() => document.querySelector('#percantik .pc-tag').textContent === 'AI');
     assert.equal(kiriman.gaya, 'senja'); assert.match(kiriman.gambar, /^data:image\/jpeg;base64,\/9j\//, 'tangkapan JPEG');
     const st = await page.evaluate(() => ({ src: document.querySelector('#percantik .pc-gambar img').src.slice(0, 22), simpan: !document.querySelector('#percantik button:nth-child(3)').hidden, keadaan: window.PERCANTIK.keadaan() }));
-    assert.equal(st.src, 'data:image/png;base64,'); assert.equal(st.simpan, true); assert.equal(st.keadaan.gaya, 'senja');
+    assert.equal(st.src, 'data:image/png;base64,'); assert.match(await page.textContent('#percantik .hint'), /Cloudflare Workers AI \(gratis\)/); assert.equal(st.simpan, true); assert.equal(st.keadaan.gaya, 'senja');
     // tekan lama gambar = asli
     const tekan = await page.evaluate(() => { const box = document.querySelector('#percantik .pc-gambar'), img = box.querySelector('img');
       box.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); const a = [img.src.slice(0, 23), box.querySelector('.pc-tag').textContent];

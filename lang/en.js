@@ -2051,7 +2051,9 @@ window.KAMUS_EN={
   "Kunci API ditolak atau belum punya izin — periksa GEMINI_API_KEY / OPENAI_API_KEY di Vercel.":"The API key was rejected or lacks permission — check GEMINI_API_KEY / OPENAI_API_KEY in Vercel.",
   "Model AI gambar tidak ditemukan — isi GEMINI_IMAGE_MODEL di Vercel dengan model gambar yang tersedia.":"The AI image model was not found — set GEMINI_IMAGE_MODEL in Vercel to an available image model.",
   "Layanan AI menolak permintaan (kunci API tidak sah atau wilayah tidak didukung).":"The AI service rejected the request (invalid API key or unsupported region).",
-  "Layanan AI sedang bermasalah — coba lagi nanti.":"The AI service is having problems — try again later."
+  "Layanan AI sedang bermasalah — coba lagi nanti.":"The AI service is having problems — try again later.",
+  "Diproses dengan Cloudflare Workers AI (gratis) — mutunya lebih rendah daripada Gemini / OpenAI.":"Processed with Cloudflare Workers AI (free) — lower quality than Gemini / OpenAI.",
+  "Kuota layanan AI habis atau belum aktif — aktifkan billing Gemini, atau pasang Cloudflare Workers AI (gratis) sebagai cadangan.":"The AI service quota is used up or not active — enable Gemini billing, or add Cloudflare Workers AI (free) as a fallback."
  },
  // frasa
  "frasa":{

@@ -1,6 +1,6 @@
 /* Plan23D — PERCANTIK FOTO DENGAN AI (JEV-139)
    Di mode jalan, tombol ✨ di samping dok mengambil tampilan sekarang (≤ 1536 px, JPEG) dan mengirimnya ke api/foto.js,
-   yang meneruskannya ke layanan AI gambar milik pemilik situs (Google Gemini / OpenAI) dengan prompt tetap: foto fotoreal,
+   yang meneruskannya ke layanan AI gambar milik pemilik situs (Google Gemini / OpenAI / Cloudflare Workers AI gratis) dengan prompt tetap: foto fotoreal,
    sudut kamera & tata letak sama. Gaya cahaya dipilih dari daftar (asli, siang, senja, malam, mendung).
    Hasil tampil di panel: tekan lama / tombol "Sebelum" untuk membandingkan, lalu simpan / bagikan.
    Tombol hanya tampil bila server melapor ai:true (env belum diatur → tidak ada apa-apa). Bila pemilik memasang FOTO_KUNCI,
@@ -104,6 +104,7 @@
         if (r.ok && typeof j.gambar === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(j.gambar)) {
           S.hasil = j.gambar; lihat(false); banding.hidden = simpanB.hidden = false; jalan.lastChild.textContent = ' Coba lagi';
           info.textContent = 'Selesai. Tekan lama gambar untuk melihat aslinya.';
+          if (j.penyedia === 'cloudflare') { info.appendChild(document.createElement('br')); info.appendChild(el('small', null, 'Diproses dengan Cloudflare Workers AI (gratis) — mutunya lebih rendah daripada Gemini / OpenAI.')); }
         } else if (r.status === 403 && j.galat === 'kunci') { simpan('fotoKunci', ''); info.textContent = 'Kunci foto AI salah.'; }
         else if (r.status === 429) info.textContent = 'Terlalu sering — tunggu sebentar lalu coba lagi.';
         else if (r.status === 504) info.textContent = 'Layanan AI terlalu lama menjawab — coba lagi.';
@@ -119,7 +120,7 @@
   function tampilGalat(info, j) {
     const k = +j.kode || 0;
     info.textContent = '';
-    const sebab = k === 429 ? 'Kuota layanan AI habis atau belum aktif — model gambar Gemini butuh billing di Google AI Studio (atau tunggu kuota pulih).'
+    const sebab = k === 429 ? 'Kuota layanan AI habis atau belum aktif — aktifkan billing Gemini, atau pasang Cloudflare Workers AI (gratis) sebagai cadangan.'
       : k === 401 || k === 403 ? 'Kunci API ditolak atau belum punya izin — periksa GEMINI_API_KEY / OPENAI_API_KEY di Vercel.'
         : k === 404 ? 'Model AI gambar tidak ditemukan — isi GEMINI_IMAGE_MODEL di Vercel dengan model gambar yang tersedia.'
           : k === 400 ? 'Layanan AI menolak permintaan (kunci API tidak sah atau wilayah tidak didukung).'

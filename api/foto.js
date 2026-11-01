@@ -4,6 +4,11 @@
      GEMINI_IMAGE_MODEL   opsional, bawaan gemini-2.5-flash-image
      OPENAI_API_KEY   kunci OpenAI (https://platform.openai.com/api-keys)
      OPENAI_IMAGE_MODEL   opsional, bawaan gpt-image-1
+     CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN   Cloudflare Workers AI — GRATIS dalam jatah harian (JEV-140): Stable
+                      Diffusion image-to-image, mutu lebih rendah tetapi tata letak tetap. Token berizin "Workers AI".
+     CLOUDFLARE_IMAGE_MODEL   opsional, bawaan @cf/runwayml/stable-diffusion-v1-5-img2img
+     FOTO_PENYEDIA    opsional: gemini | openai | cloudflare — dicoba lebih dulu. Penyedia lain yang diatur menjadi cadangan
+                      otomatis bila yang pertama kehabisan kuota / ditolak (mis. Gemini tanpa billing → Cloudflare gratis)
      FOTO_KUNCI       opsional (≥ 12 karakter): bila diisi, hanya yang memegang kunci ini (kepala x-kunci-foto) yang boleh
                       memakai — tiap foto memakan kuota / biaya API pemilik situs
    - GET  /api/foto  → { ai, kunci }   (ai:false = belum diatur, tombol ✨ tidak tampil)
@@ -64,7 +69,7 @@ async function bacaBadan(req) {
 // galat penyedia: status + pesan singkatnya (mis. kuota / kunci / model) — tanpa kunci API, dipotong
 async function galatPenyedia(r) {
   let pesan = '';
-  try { const j = await r.json(); pesan = (j && j.error && (j.error.message || j.error.status)) || ''; } catch (e) { /* bukan JSON */ }
+  try { const j = await r.json(); pesan = (j && j.error && (j.error.message || j.error.status)) || (j && Array.isArray(j.errors) && j.errors[0] && j.errors[0].message) || ''; } catch (e) { /* bukan JSON */ }
   const e = new Error('penyedia ' + r.status); e.penyedia = r.status;
   e.pesan = String(pesan).replace(/AIza[\w-]{20,}|sk-[\w-]{16,}/g, '…').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 240);
   return e;
@@ -97,11 +102,48 @@ async function tanyaOpenAI(jpg, gaya, env, ambil) {
   return j && j.data && j.data[0] && j.data[0].b64_json;
 }
 
+// ukuran JPEG dari penanda SOF (tanpa pustaka gambar)
+function ukuranJpeg(b) {
+  for (let i = 2; i + 9 < b.length;) {
+    if (b[i] !== 0xff) { i++; continue; }
+    const m = b[i + 1], n = b.readUInt16BE(i + 2);
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
+    i += 2 + n;
+  }
+  return null;
+}
+// Stable Diffusion 1.5 image-to-image: prompt pendek bergaya kata kunci; kekuatan 0,45 = tata letak dipertahankan
+const SD_GAYA = { asli: 'natural lighting', siang: 'bright daylight, clear sky', senja: 'warm golden hour sunset light', malam: 'night, warm lamps glowing', mendung: 'soft overcast light' };
+const promptSD = gaya => 'photorealistic architectural photograph of a house, real materials, detailed textures, realistic lighting and shadows, ' + SD_GAYA[gaya] + ', sharp focus, high quality, family-friendly';
+async function tanyaCloudflare(jpg, gaya, env, ambil) {
+  const model = /^@cf\/[\w.-]+\/[\w.-]+$/.test(env.CLOUDFLARE_IMAGE_MODEL || '') ? env.CLOUDFLARE_IMAGE_MODEL : '@cf/runwayml/stable-diffusion-v1-5-img2img';
+  if (!/^[0-9a-f]{32}$/i.test(env.CLOUDFLARE_ACCOUNT_ID || '')) { const e = new Error('akun'); e.penyedia = 400; e.pesan = 'CLOUDFLARE_ACCOUNT_ID tidak sah (32 karakter heksadesimal)'; throw e; }
+  // sisi panjang 768, kelipatan 8 (batas model SD 1.5)
+  const u = ukuranJpeg(jpg) || { w: 1024, h: 640 }, k = 768 / Math.max(u.w, u.h), dim = v => Math.max(256, Math.round(v * k / 8) * 8);
+  const r = await ambil(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/${model}`, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.CLOUDFLARE_API_TOKEN },
+    body: JSON.stringify({ prompt: promptSD(gaya), negative_prompt: 'cartoon, cgi, 3d render, painting, blurry, distorted, deformed, text, watermark, logo, nsfw',
+      image: [...jpg], strength: 0.45, guidance: 7.5, num_steps: 20, width: dim(u.w), height: dim(u.h) }) });
+  if (!r.ok) throw await galatPenyedia(r);
+  if (/^image\//.test(r.headers.get('content-type') || '')) return Buffer.from(await r.arrayBuffer()).toString('base64');
+  const j = await r.json().catch(() => null);
+  return j && j.result && (j.result.image || j.result.images && j.result.images[0]);
+}
+const TANYA = { gemini: tanyaGemini, openai: tanyaOpenAI, cloudflare: tanyaCloudflare };
+// penyedia yang diatur, FOTO_PENYEDIA lebih dulu
+function daftarPenyedia(env) {
+  const ada = { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, cloudflare: !!(env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_API_TOKEN) };
+  const urut = ['gemini', 'openai', 'cloudflare'], pertama = urut.includes(env.FOTO_PENYEDIA) ? [env.FOTO_PENYEDIA] : [];
+  return [...new Set([...pertama, ...urut])].filter(p => ada[p]);
+}
+// kuota / izin / model / server penyedia → coba penyedia berikutnya; galat lain (mis. gambar ditolak) langsung dilaporkan
+const cobaLagi = k => [401, 402, 403, 404, 429].includes(k) || k >= 500;
+
 function buatHandler(ambilEnv = () => process.env, ambil = (u, o) => fetch(u, o)) {
   return async function handler(req, res) {
     res.setHeader('cache-control', 'no-store'); res.setHeader('content-type', 'application/json; charset=utf-8'); res.setHeader('x-content-type-options', 'nosniff');
     const kirim = (s, o) => { res.statusCode = s; res.end(JSON.stringify(o)); };
-    const env = ambilEnv(), penyedia = env.GEMINI_API_KEY ? 'gemini' : env.OPENAI_API_KEY ? 'openai' : '';
+    const env = ambilEnv(), daftar = daftarPenyedia(env), penyedia = daftar[0] || '';
     const kunci = String(env.FOTO_KUNCI || ''), perluKunci = kunci.length >= 12;
     if (req.method === 'GET') return kirim(200, { ai: !!penyedia, kunci: !!penyedia && perluKunci });
     if (req.method !== 'POST') { res.setHeader('allow', 'GET, POST'); return kirim(405, { galat: 'metode' }); }
@@ -120,15 +162,27 @@ function buatHandler(ambilEnv = () => process.env, ambil = (u, o) => fetch(u, o)
     if (jpg.length > BATAS_MASUK) return kirim(413, { galat: 'ukuran' });
     const henti = new AbortController(), t = setTimeout(() => henti.abort(), WAKTU);
     const ambilBatas = (u, o) => ambil(u, { ...o, signal: henti.signal });
+    let galat = null, kosong = false;
     try {
-      const keluar = gambarSah(await (penyedia === 'gemini' ? tanyaGemini : tanyaOpenAI)(jpg, gaya, env, ambilBatas));
-      if (!keluar) return kirim(502, { galat: 'tanpa-gambar' });             // mis. ditolak saringan keamanan penyedia
-      return kirim(200, { gambar: keluar, penyedia });
+      for (const p of daftar) {
+        try {
+          const keluar = gambarSah(await TANYA[p](jpg, gaya, env, ambilBatas));
+          if (keluar) return kirim(200, { gambar: keluar, penyedia: p });
+          kosong = true;                                                     // mis. ditolak saringan keamanan penyedia → coba berikutnya
+        } catch (e) {
+          if (henti.signal.aborted) throw e;
+          // dicatat di log Vercel agar pemilik bisa melihat sebabnya (status & pesan penyedia, tanpa kunci)
+          if (!e.penyedia) { console.error('api/foto', p, e); throw e; }
+          console.warn('api/foto', p, e.model || '', e.penyedia, e.pesan || '');
+          galat = { ...e, p, pesan: e.pesan, penyedia: e.penyedia };
+          if (!cobaLagi(e.penyedia)) break;
+        }
+      }
+      if (galat) return kirim(502, { galat: 'penyedia', kode: galat.penyedia || 0, pesan: galat.pesan || '', penyedia: galat.p });
+      return kirim(502, { galat: kosong ? 'tanpa-gambar' : 'penyedia', kode: 0, pesan: '' });
     } catch (e) {
       if (henti.signal.aborted) return kirim(504, { galat: 'waktu-habis' });
-      // dicatat di log Vercel agar pemilik bisa melihat sebabnya (status & pesan penyedia, tanpa kunci)
-      if (!e.penyedia) console.error('api/foto', e); else console.warn('api/foto', penyedia, e.model || '', e.penyedia, e.pesan || '');
-      return kirim(502, { galat: 'penyedia', kode: e.penyedia || 0, pesan: e.pesan || '' });
+      return kirim(502, { galat: 'penyedia', kode: 0, pesan: '' });
     } finally { clearTimeout(t); }
   };
 }
@@ -136,3 +190,5 @@ module.exports = buatHandler();
 module.exports.buatHandler = buatHandler;
 module.exports.prompt = prompt;
 module.exports.GAYA = GAYA;
+module.exports.promptSD = promptSD;
+module.exports.ukuranJpeg = ukuranJpeg;

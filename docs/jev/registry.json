@@ -6841,6 +6841,69 @@
     "target": "≥ 20 foto dalam 2 bulan",
     "tinjau": "2027-01-01"
    }
+  },
+  {
+   "id": "JEV-140",
+   "judul": "Percantik foto: opsi gratis Cloudflare Workers AI + cadangan otomatis antarpenyedia",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Percantik foto (JEV-139) gagal di situs: kunci Gemini tanpa billing → kuota model gambar 0 (\"You exceeded your current quota\"). Pemilik meminta opsi gratis.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "tangkapan layar iPad pengguna 2026-11-01 19.45 (pesan kuota Gemini) lalu pesan \"tambahin opsi gratis aja\"",
+    "alternatif": [
+     "mengaktifkan billing Gemini / OpenAI (berbayar per foto)",
+     "layanan gambar gratis tanpa akun (kebijakan & ketersediaan tidak jelas, foto dikirim ke pihak tak dikenal)"
+    ],
+    "catatanEstimasi": "manfaat waktu sama dengan JEV-139 tetapi jangkauan lebih kecil (mutu SD 1.5 lebih rendah); risiko: fitur tidak bisa dipakai tanpa billing"
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 1.5,
+     "ujiJam": 0.7,
+     "pemeliharaanJamPerTahun": 0.5,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "waktu": {
+      "jangkauan": 0.1,
+      "pakaiPerTahun": 6,
+      "menitHemat": 15
+     },
+     "risiko": {
+      "pInsidenPerTahun": 0.8,
+      "dampakRp": 1000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "token Cloudflare hanya di env Vercel; id akun dicocokkan pola 32 heksadesimal sebelum masuk URL; keluaran tetap diperiksa byte awal (PNG/JPEG/WebP); prompt tetap dari daftar gaya"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "foto dikirim ke penyedia pilihan pemilik situs (kini juga Cloudflare) — panel tetap memberi tahu; tidak disimpan di server Plan23D"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "model Stable Diffusion 1.5 di Workers AI mengikuti ketentuan Cloudflare & lisensi CreativeML OpenRAIL-M"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "cadangan berjalan dalam batas waktu 55 dtk yang sama; keluaran SD 768 px"
+    },
+    "aksesibilitas": {
+     "status": "lolos"
+    }
+   },
+   "metrik": {
+    "nama": "foto AI berhasil diproses tanpa billing",
+    "target": "≥ 10 foto dalam 2 bulan",
+    "tinjau": "2027-01-01"
+   }
   }
  ]
 }
