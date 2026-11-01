@@ -51,10 +51,18 @@ export const tes = {
     assert.deepEqual(kode, [200, 200, 200, 200, 200, 429]);
     // penyedia: galat, tanpa gambar, keluaran bukan gambar
     const Hx = (f) => api.buatHandler(() => ({ GEMINI_API_KEY: 'k' }), f);
-    assert.deepEqual((await panggil(Hx(async () => new Response('{}', { status: 500 })), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.1' })).j, { galat: 'penyedia', kode: 500 });
+    assert.deepEqual((await panggil(Hx(async () => new Response('{}', { status: 500 })), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.1' })).j, { galat: 'penyedia', kode: 500, pesan: '' });
     assert.equal((await panggil(Hx(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'maaf' }] } }] }))), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.2' })).status, 502);
     const html = Buffer.from('<html><script>x</script></html>').toString('base64');
     assert.equal((await panggil(Hx(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { data: html } }] } }] }))), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.3' })).j.galat, 'tanpa-gambar');
+    // model tidak ditemukan (404) → model cadangan; kuota (429) → kode + pesan penyedia tanpa kunci API
+    const urut = [];
+    const H404 = api.buatHandler(() => ({ GEMINI_API_KEY: 'k', GEMINI_IMAGE_MODEL: 'model-lama' }), async u => { urut.push(u.split('/models/')[1].split(':')[0]);
+      return urut.length < 3 ? new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404 }) : gemini(u, { body: JSON.stringify({}) }); });
+    assert.equal((await panggil(H404, 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.4' })).status, 200);
+    assert.deepEqual(urut, ['model-lama', 'gemini-2.5-flash-image', 'gemini-3-pro-image-preview']);
+    const q = await panggil(Hx(async () => new Response(JSON.stringify({ error: { code: 429, message: 'Quota exceeded for metric generate_content_free_tier, limit: 0. key AIzaSyA1234567890abcdefghijk\nhint' } }), { status: 429 })), 'POST', { gambar: JPG }, { 'x-forwarded-for': '2.2.2.5' });
+    assert.equal(q.status, 502); assert.equal(q.j.kode, 429); assert.match(q.j.pesan, /^Quota exceeded/); assert.doesNotMatch(q.j.pesan, /AIza|\n/);
     // OpenAI (tanpa kunci Gemini): multipart ke images/edits
     let oa = null;
     const Ho = api.buatHandler(() => ({ OPENAI_API_KEY: 'o-rahasia' }), async (u, o) => { oa = { u, o }; return new Response(JSON.stringify({ data: [{ b64_json: PNG }] })); });
@@ -107,6 +115,12 @@ export const tes = {
     // simpan → berkas PNG terunduh
     const [unduh] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => [...document.querySelectorAll('#percantik button')].find(b => /Simpan/.test(b.textContent)).click())]);
     assert.match(unduh.suggestedFilename(), /^Plan23D-AI-\d{8}-\d{6}\.png$/);
+    // galat penyedia: sebab yang bisa ditindaklanjuti + pesan asli penyedia
+    await page.unroute('**/api/foto');
+    await page.route('**/api/foto', r => r.fulfill({ status: 502, json: { galat: 'penyedia', kode: 429, pesan: 'Quota exceeded, limit: 0' } }));
+    await page.evaluate(() => [...document.querySelectorAll('#percantik button')].find(b => /Coba lagi/.test(b.textContent)).click());
+    await page.waitForFunction(() => /Kuota layanan AI habis/.test(document.querySelector('#percantik .hint').textContent));
+    assert.match(await page.textContent('#percantik .hint small'), /Quota exceeded, limit: 0/);
     await page.evaluate(() => exitFPS());
   },
 };
