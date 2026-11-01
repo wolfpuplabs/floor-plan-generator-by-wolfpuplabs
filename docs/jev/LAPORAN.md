@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 114 GO · 3 DEFER · 5 NO-GO dari 122 item.
+**Ringkasan:** 115 GO · 3 DEFER · 5 NO-GO dari 123 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -87,6 +87,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-001 | Generator denah gambar → model 3D | terkirim | 0.65 | 351 jt | 36 jt | 18.5× | 8.8× | 0.8 bln | 52 | **GO** |
 | JEV-139 | Percantik foto dengan AI di mode jalan (Enhance foto) | terkirim | 0.65 | 10,4 jt | 1,1 jt | 17.5× | 8.2× | 1.0 bln | 26 | **GO** |
 | JEV-048 | Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K | terkirim | 0.65 | 12,1 jt | 1,4 jt | 17.0× | 8.0× | 1.1 bln | 56 | **GO** |
+| JEV-140 | Percantik foto: opsi gratis Cloudflare Workers AI + cadangan otomatis antarpenyedia | terkirim | 0.65 | 4 jt | 0,5 jt | 15.8× | 7.4× | 1.0 bln | 16 | **GO** |
 | JEV-121 | Memori grafis iPad: piksel render dibatasi, panorama 2K, kualitas turun otomatis setelah konteks WebGL hilang | terkirim | 0.65 | 2,3 jt | 0,3 jt | 15.4× | 7.2× | 1.2 bln | 0 | **GO** |
 | JEV-010 | Atap dak beton | terkirim | 0.60 | 23,6 jt | 3 jt | 14.8× | 6.9× | 1.2 bln | 64 | **GO** |
 | JEV-117 | NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang | terkirim | 0.65 | 2,6 jt | 0,4 jt | 13.6× | 6.3× | 1.4 bln | 0 | **GO** |
@@ -214,6 +215,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-001 Generator denah gambar → model 3D — GO.** ROI 18.5× ≥ 1, payback 0.8 bln.
 - **JEV-139 Percantik foto dengan AI di mode jalan (Enhance foto) — GO.** ROI 17.5× ≥ 1, payback 1.0 bln.
 - **JEV-048 Pemilih panorama 360° manual (◀ ▶, galeri thumbnail, toggle acak) + pratinjau 1K — GO.** ROI 17.0× ≥ 1, payback 1.1 bln.
+- **JEV-140 Percantik foto: opsi gratis Cloudflare Workers AI + cadangan otomatis antarpenyedia — GO.** ROI 15.8× ≥ 1, payback 1.0 bln.
 - **JEV-121 Memori grafis iPad: piksel render dibatasi, panorama 2K, kualitas turun otomatis setelah konteks WebGL hilang — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
 - **JEV-010 Atap dak beton — GO.** ROI 14.8× ≥ 1, payback 1.2 bln.
 - **JEV-117 NPC rusak (badan meledak jadi segitiga) lalu hilang di iPad: jalur tulang cadangan yang salah terpasang dibuang — GO.** kelas wajib (keamanan/hukum/keandalan) — ROI tetap dihitung untuk transparansi.
