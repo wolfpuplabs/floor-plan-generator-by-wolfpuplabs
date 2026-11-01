@@ -2027,7 +2027,26 @@ window.KAMUS_EN={
   "Ruang terbuka. Kirim undangan ini ke teman — undangan tetap berlaku walau kamu keluar.":"The room is open. Send this invite to your friends — it stays valid even after you leave.",
   "Ruang gagal dibuka — coba lagi":"The room could not be opened — try again",
   "Ajak teman":"Invite friends",
-  "Ajak teman main bareng di adegan ini":"Invite friends to play together in this scene"
+  "Ajak teman main bareng di adegan ini":"Invite friends to play together in this scene",
+  "Asli":"Original",
+  "Mendung":"Overcast",
+  "Percantik foto dengan AI":"Enhance photo with AI",
+  "Kunci foto AI":"AI photo key",
+  "Percantik":"Enhance",
+  "Sebelum":"Before",
+  "Simpan":"Save",
+  "AI":"AI",
+  "Foto":"Photo",
+  "Foto dikirim ke layanan AI pemilik situs untuk diproses. Tata letak tetap; detail kecil bisa berubah.":"The photo is sent to the site owner's AI service for processing. The layout stays the same; small details may change.",
+  "Isi kunci foto AI dari pemilik situs":"Enter the AI photo key from the site owner",
+  "Memproses… biasanya 10–40 detik":"Processing… usually 10–40 seconds",
+  "Coba lagi":"Try again",
+  "Selesai. Tekan lama gambar untuk melihat aslinya.":"Done. Press and hold the image to see the original.",
+  "Kunci foto AI salah.":"Wrong AI photo key.",
+  "Terlalu sering — tunggu sebentar lalu coba lagi.":"Too many requests — wait a moment and try again.",
+  "Layanan AI terlalu lama menjawab — coba lagi.":"The AI service took too long to respond — try again.",
+  "Layanan AI tidak mengembalikan gambar (mungkin ditolak saringannya) — coba gaya lain.":"The AI service returned no image (it may have been blocked by its filter) — try another style.",
+  "Gagal memproses foto — periksa koneksi lalu coba lagi.":"Could not process the photo — check your connection and try again."
  },
  // frasa
  "frasa":{
@@ -2348,7 +2367,8 @@ window.KAMUS_EN={
   ["hari ke-(\\d+) · jatah \\+(\\d+)","day $1 · +$2 left"],
   ["🌅 Hari ke-(\\d+)","🌅 Day $1"],
   ["Gagal menerbitkan — server menolak \\((\\d+)\\)\\.", "Publishing failed — the server refused ($1)."],
-  ["Ayo masuk ke (.+) bareng", "Come join me in $1"]
+  ["Ayo masuk ke (.+) bareng", "Come join me in $1"],
+  ["Gagal memproses foto \\((\\d+)\\)\\.", "Could not process the photo ($1)."]
  ],
  // frasaPola
  "frasaPola":[

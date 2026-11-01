@@ -105,7 +105,7 @@
     '#fpsbar.redup #fpsinfo{display:none}#fpsbar.redup{padding:6px;gap:6px}',
     '#fpsbar.redup{cursor:pointer}',
     // kamera orang ketiga: tombol sendiri di dok, di kiri ikon Waktu & cuaca — tidak menggeser tombol rana di tengah
-    '#fpsDok #fpsO3{position:absolute;right:100%;margin-right:12px}#fpsDok #fpsO3.on{border-color:var(--accent);color:var(--accent);background:rgba(18,20,24,.85)}'
+    '#fpsDok #fpsO3{position:absolute;right:100%;margin-right:12px}@media (max-width:480px){#fpsDok #fpsO3{right:auto;left:0;bottom:calc(100% + 10px);margin:0}}#fpsDok #fpsO3.on{border-color:var(--accent);color:var(--accent);background:rgba(18,20,24,.85)}'
   ].join('\n');
   document.head.appendChild(css);
 
