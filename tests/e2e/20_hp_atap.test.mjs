@@ -49,9 +49,11 @@ export const tes = {
       assert.equal(await b.evaluate(() => FPS.on), true, 'tautan lihat langsung di mode jalan');
       await b.evaluate(() => exitFPS());
       assert.equal(await b.evaluate(() => ATAP_TUTUP), true, 'penerima mendapat atap tertutup');
-      // petunjuk hilang sendiri setelah 9 detik (WebGL CI lambat) — tampilkan lagi untuk diukur
-      await b.evaluate(() => { document.getElementById('hint').hidden = false; }); await b.waitForTimeout(300);
-      const [bar, lantai, petunjuk, tampak] = await Promise.all(['#lihatBar', '#levelbar', '#hint', '#viewbar'].map(s => kotakEl(b, s)));
+      // petunjuk hilang sendiri 9 detik setelah tautan dibuka — tampilkan lagi & ukur dalam SATU langkah (dulu jeda 300 ms
+      // di antaranya bisa tersela timer 9 detik itu bila pemuatan lambat)
+      const [bar, lantai, petunjuk, tampak] = await b.evaluate(() => { document.getElementById('hint').hidden = false;
+        return ['#lihatBar', '#levelbar', '#hint', '#viewbar'].map(s => { const e = document.querySelector(s); if (!e || e.hidden || getComputedStyle(e).display === 'none') return null;
+          const r = e.getBoundingClientRect(); return r.width ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null; }); });
       assert.ok(bar && lantai && petunjuk && tampak, JSON.stringify({ bar, lantai, petunjuk, tampak }));
       assert.ok(lantai.top >= bar.bottom, `bilah lantai (${lantai.top}) di bawah bilah lihat (${bar.bottom})`);
       assert.ok(!potong(petunjuk, tampak), 'petunjuk tidak menutupi tombol tampak: ' + JSON.stringify({ petunjuk, tampak }));

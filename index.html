@@ -3224,6 +3224,7 @@ function tapakAtap(lv,tritisan){
   const ws=lv.walls.filter(w=>!w.rail); if(!ws.length) return null;
   let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
   for(const w of ws){ x0=Math.min(x0,w.x1,w.x2); x1=Math.max(x1,w.x1,w.x2); z0=Math.min(z0,w.z1,w.z2); z1=Math.max(z1,w.z1,w.z2); }
+  for(const o of lv.objects) if(o.kind==='void') for(const [x,z] of voidPolygon(o)){ x0=Math.min(x0,x); x1=Math.max(x1,x); z0=Math.min(z0,z); z1=Math.max(z1,z); }   // atap menutup void (JEV-142)
   const c=0.05, pad=tritisan+0.5;
   x0-=pad; z0-=pad; x1+=pad; z1+=pad;
   const nx=Math.ceil((x1-x0)/c), nz=Math.ceil((z1-z0)/c);
@@ -3302,8 +3303,12 @@ function buildAtap(lv,idx){
   // lantai bawah yang lebih luas dari lantai atas (teras, ruang tinggi) tetap beratap
   // Pelat lantai atas (kotak pembungkus semua dindingnya, termasuk balkon berpagar) juga
   // menutupi: atap lantai bawah tidak boleh menumpuk dengan lantai balkon di tinggi yang sama
+  // void (JEV-142): atap lantai ini juga menutup void-nya sendiri (dulu bolong — malam tampak hitam — bila dinding lantai
+  // ini tidak mengelilingi void), dan atap lantai bawah tidak dipasang di void lantai atas (tetap dobel tinggi)
+  const voidDi=(l,x,z)=>l.objects.some(o=>o.kind==='void'&&pointInPoly(x,z,voidPolygon(o)));
+  if(lv.objects.some(o=>o.kind==='void')) for(let n=0;n<T.length;n++) if(!T[n]&&voidDi(lv,x0+((n/nz|0)+0.5)*c,z0+(n%nz+0.5)*c)) T[n]=1;
   if(idx!=null) for(let j=idx+1;j<PROJECT.levels.length;j++){
-    const lvA=PROJECT.levels[j], up=tapakAtap(lvA,0);
+    const lvA=PROJECT.levels[j], up=tapakAtap(lvA,0), vs=lvA.objects.some(o=>o.kind==='void');
     let pel=null;
     if(lvA.slab && lvA.walls.length){ pel=[1e9,-1e9,1e9,-1e9];
       for(const w of lvA.walls){ pel[0]=Math.min(pel[0],w.x1,w.x2); pel[1]=Math.max(pel[1],w.x1,w.x2); pel[2]=Math.min(pel[2],w.z1,w.z2); pel[3]=Math.max(pel[3],w.z1,w.z2); }
@@ -3311,6 +3316,7 @@ function buildAtap(lv,idx){
     if(!up && !pel) continue;
     for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){ const n=i*nz+k; if(!T[n]) continue;
       const px=x0+(i+0.5)*c, pz=z0+(k+0.5)*c;
+      if(vs && voidDi(lvA,px,pz)){ T[n]=0; continue; }
       if(pel && px>pel[0]&&px<pel[1]&&pz>pel[2]&&pz<pel[3]){ T[n]=0; continue; }
       if(!up) continue;
       const ui=Math.floor((px-up.x0)/up.c), uk=Math.floor((pz-up.z0)/up.c);
@@ -4148,20 +4154,9 @@ function plantBig(){
   return g;
 }
 
-/* ======================================================================
-   BUILDER — INTERIOR: DEKORASI, PENCAHAYAAN, TANAMAN, KARPET, PENYIMPANAN,
-   DAPUR LENGKAP, PERAPIAN
-   Ukuran dan ketinggian pasang mengikuti kaidah desain interior:
-   - pusat karya seni di dinding ±1,50 m dari lantai (garis pandang galeri),
-     jarak antarbingkai pada galeri 5–8 cm;
-   - lampu gantung meja makan 75–85 cm di atas daun meja, di atas island
-     75–90 cm di atas meja; chandelier di area lalu-lalang terbawah ≥ 2,10 m;
-   - lampu dinding (sconce) ±1,65 m; pusat layar TV setinggi mata duduk ±1,10 m;
-   - meja dapur 85–90 cm, kabinet atas 55–65 cm di atas meja, hood 65–75 cm
-     di atas kompor, lorong kerja 1,0–1,2 m;
-   - perapian: hearth menjorok ≥ 45 cm, rak mantel ±1,20 m.
-   Benda yang digantung di plafon membaca tinggi lantai tempatnya dipasang.
-   ====================================================================== */
+/* BUILDER — INTERIOR (dekorasi, lampu, tanaman, karpet, penyimpanan, dapur, perapian). Kaidah: pusat karya seni ±1,50 m,
+   lampu gantung 75–90 cm di atas meja / island, chandelier ≥ 2,10 m, sconce ±1,65 m, pusat TV ±1,10 m, meja dapur 85–90 cm,
+   kabinet atas 55–65 cm di atasnya, hood 65–75 cm, hearth ≥ 45 cm, mantel ±1,20 m. Benda plafon membaca tinggi lantainya. */
 let BUILD_LV=null;
 const ceilH=()=>((BUILD_LV&&BUILD_LV.height)||3.2)-STD.slabT;
 function msh(geo,mat,x=0,y=0,z=0){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; return m; }
@@ -4498,19 +4493,10 @@ Object.assign(MAT,{
 });
 MAT.porselenDalam=MAT.porselen.clone(); MAT.porselenDalam.side=THREE.BackSide;      // bak & wastafel tertanam: dilihat dari dalam
 MAT.stainlessDalam=MAT.stainless.clone(); MAT.stainlessDalam.side=THREE.BackSide;
-/* ---------- TEKSTUR FOTO + TANPA POLA BERULANG (JEV-059) ----------
-   (1) ACAK ULANG — tekstur yang diulang tiap 0,5–1 m membentuk "ubin" yang langsung
-       tertangkap mata (motif kain atau urat marmer yang sama berderet). Di shader,
-       tiap sampel dibaca dua kali dengan geseran acak yang dipilih oleh noise
-       berskala besar lalu dicampur halus (teknik Quilez "texture repetition"),
-       sehingga pola tidak pernah berulang persis. Peta warna, normal, dan kekasaran
-       memakai geseran yang sama supaya reliefnya tetap cocok dengan warnanya.
-       WebGL2 memakai textureGrad (turunan dari UV asli) supaya tidak ada garis
-       mipmap di batas campuran.
-   (2) TEKSTUR FOTO — objek katalog maupun model unggahan bisa memakai foto sungguhan:
-       foto sendiri (difoto dari sampel bahan, dibuat mulus di tepinya) atau tekstur
-       foto PBR Poly Haven (CC0: warna + normal + kekasaran). Foto sendiri tersimpan
-       di proyek; tekstur Poly Haven hanya dirujuk dan diunduh ulang (dengan cache). */
+/* TEKSTUR FOTO + TANPA POLA BERULANG (JEV-059). (1) Acak ulang: tiap sampel dibaca dua kali dengan geseran acak dari
+   noise berskala besar lalu dicampur (teknik Quilez "texture repetition"); warna, normal & kekasaran memakai geseran sama;
+   WebGL2 memakai textureGrad (tanpa garis mipmap). (2) Tekstur foto: foto sendiri (tersimpan di proyek) atau PBR Poly Haven
+   (CC0, hanya dirujuk & diunduh ulang dengan cache). */
 const ACAK_GLSL=`
 float auH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float auN(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
