@@ -4,9 +4,10 @@
      GEMINI_IMAGE_MODEL   opsional, bawaan gemini-2.5-flash-image
      OPENAI_API_KEY   kunci OpenAI (https://platform.openai.com/api-keys)
      OPENAI_IMAGE_MODEL   opsional, bawaan gpt-image-1
-     CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN   Cloudflare Workers AI — GRATIS dalam jatah harian (JEV-140): Stable
-                      Diffusion image-to-image, mutu lebih rendah tetapi tata letak tetap. Token berizin "Workers AI".
-     CLOUDFLARE_IMAGE_MODEL   opsional, bawaan @cf/runwayml/stable-diffusion-v1-5-img2img
+     CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN   Cloudflare Workers AI — GRATIS dalam jatah harian (JEV-140): FLUX.2 [klein]
+                      (edit dengan gambar acuan) lalu model Stable Diffusion image-to-image sebagai cadangan, tergantung model
+                      yang diizinkan untuk akun itu. Token berizin "Workers AI".
+     CLOUDFLARE_IMAGE_MODEL   opsional: model Workers AI yang dicoba lebih dulu
      FOTO_PENYEDIA    opsional: gemini | openai | cloudflare — dicoba lebih dulu. Penyedia lain yang diatur menjadi cadangan
                       otomatis bila yang pertama kehabisan kuota / ditolak (mis. Gemini tanpa billing → Cloudflare gratis)
      FOTO_KUNCI       opsional (≥ 12 karakter): bila diisi, hanya yang memegang kunci ini (kepala x-kunci-foto) yang boleh
@@ -115,19 +116,42 @@ function ukuranJpeg(b) {
 // Stable Diffusion 1.5 image-to-image: prompt pendek bergaya kata kunci; kekuatan 0,45 = tata letak dipertahankan
 const SD_GAYA = { asli: 'natural lighting', siang: 'bright daylight, clear sky', senja: 'warm golden hour sunset light', malam: 'night, warm lamps glowing', mendung: 'soft overcast light' };
 const promptSD = gaya => 'photorealistic architectural photograph of a house, real materials, detailed textures, realistic lighting and shadows, ' + SD_GAYA[gaya] + ', sharp focus, high quality, family-friendly';
+// model Workers AI berbeda per akun (model lama bisa "not allowed"): dicoba berurutan. FLUX.2 [klein] = edit gambar dengan
+// gambar acuan (multipart, Apache-2.0 untuk 4B); keluarga Stable Diffusion = image-to-image JSON (image + strength)
+const MODEL_CF = ['@cf/black-forest-labs/flux-2-klein-4b', '@cf/black-forest-labs/flux-2-dev', '@cf/runwayml/stable-diffusion-v1-5-img2img',
+  '@cf/lykon/dreamshaper-8-lcm', '@cf/stabilityai/stable-diffusion-xl-base-1.0'];
 async function tanyaCloudflare(jpg, gaya, env, ambil) {
-  const model = /^@cf\/[\w.-]+\/[\w.-]+$/.test(env.CLOUDFLARE_IMAGE_MODEL || '') ? env.CLOUDFLARE_IMAGE_MODEL : '@cf/runwayml/stable-diffusion-v1-5-img2img';
   if (!/^[0-9a-f]{32}$/i.test(env.CLOUDFLARE_ACCOUNT_ID || '')) { const e = new Error('akun'); e.penyedia = 400; e.pesan = 'CLOUDFLARE_ACCOUNT_ID tidak sah (32 karakter heksadesimal)'; throw e; }
-  // sisi panjang 768, kelipatan 8 (batas model SD 1.5)
-  const u = ukuranJpeg(jpg) || { w: 1024, h: 640 }, k = 768 / Math.max(u.w, u.h), dim = v => Math.max(256, Math.round(v * k / 8) * 8);
-  const r = await ambil(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/${model}`, {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.CLOUDFLARE_API_TOKEN },
-    body: JSON.stringify({ prompt: promptSD(gaya), negative_prompt: 'cartoon, cgi, 3d render, painting, blurry, distorted, deformed, text, watermark, logo, nsfw',
-      image: [...jpg], strength: 0.45, guidance: 7.5, num_steps: 20, width: dim(u.w), height: dim(u.h) }) });
-  if (!r.ok) throw await galatPenyedia(r);
-  if (/^image\//.test(r.headers.get('content-type') || '')) return Buffer.from(await r.arrayBuffer()).toString('base64');
-  const j = await r.json().catch(() => null);
-  return j && j.result && (j.result.image || j.result.images && j.result.images[0]);
+  const pilihan = /^@cf\/[\w.-]+\/[\w.-]+$/.test(env.CLOUDFLARE_IMAGE_MODEL || '') ? [env.CLOUDFLARE_IMAGE_MODEL] : [];
+  const u = ukuranJpeg(jpg) || { w: 1024, h: 640 };
+  // sisi panjang n, kelipatan m
+  const ukur = (n, m) => { const k = n / Math.max(u.w, u.h), d = v => Math.max(256, Math.round(v * k / m) * m); return { w: d(u.w), h: d(u.h) }; };
+  let galat = null;
+  for (const model of [...new Set([...pilihan, ...MODEL_CF])]) {
+    let badan, kepala = { authorization: 'Bearer ' + env.CLOUDFLARE_API_TOKEN };
+    if (/flux-2/.test(model)) {
+      const z = ukur(1024, 16), f = new FormData();
+      f.append('prompt', prompt(gaya)); f.append('input_image_0', new Blob([jpg], { type: 'image/jpeg' }), 'render.jpg');
+      f.append('width', String(z.w)); f.append('height', String(z.h));
+      badan = f;
+    } else {
+      const z = ukur(768, 8);
+      kepala = { ...kepala, 'content-type': 'application/json' };
+      badan = JSON.stringify({ prompt: promptSD(gaya), negative_prompt: 'cartoon, cgi, 3d render, painting, blurry, distorted, deformed, text, watermark, logo, nsfw',
+        image: [...jpg], strength: 0.45, guidance: 7.5, num_steps: /lcm/.test(model) ? 8 : 20, width: z.w, height: z.h });
+    }
+    const r = await ambil(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/${model}`, { method: 'POST', headers: kepala, body: badan });
+    if (!r.ok) {
+      galat = await galatPenyedia(r); galat.model = model;
+      // token salah (401) / jatah habis (429) berlaku untuk semua model; selain itu (model tidak diizinkan / tidak ada / skema) → model berikutnya
+      if (r.status === 401 || r.status === 429) throw galat;
+      continue;
+    }
+    if (/^image\//.test(r.headers.get('content-type') || '')) return Buffer.from(await r.arrayBuffer()).toString('base64');
+    const j = await r.json().catch(() => null), g = j && j.result && (j.result.image || j.result.images && j.result.images[0]);
+    if (g) return g;
+  }
+  throw galat || Object.assign(new Error('tanpa gambar'), { penyedia: 502, pesan: 'Cloudflare tidak mengembalikan gambar' });
 }
 const TANYA = { gemini: tanyaGemini, openai: tanyaOpenAI, cloudflare: tanyaCloudflare };
 // penyedia yang diatur, FOTO_PENYEDIA lebih dulu
