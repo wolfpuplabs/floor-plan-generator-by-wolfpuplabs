@@ -5,7 +5,7 @@
 
 Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, peluang ≥ 0.3, dan semua guardrail keras dinilai lolos. **DEFER** bila ROI ≥ 0. Selain itu **NO-GO**. Guardrail keras yang gagal = NO-GO apa pun ROI-nya.
 
-**Ringkasan:** 113 GO · 3 DEFER · 5 NO-GO dari 121 item.
+**Ringkasan:** 113 GO · 4 DEFER · 5 NO-GO dari 122 item.
 
 | ID | Item | Status | Peluang | EV/tahun | Biaya 2 th | ROI | ROI pesimis | Payback | Pengguna impas | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -124,6 +124,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 | JEV-123 | Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget | terkirim | 0.65 | 0,5 jt | 0,5 jt | 1.2× | 0.1× | 9.7 bln | 0 | **GO** |
 | JEV-137 | Galeri adegan: terbitkan adegan ke halaman awal, masuk & ajak teman | terkirim | 0.65 | 1 jt | 0,9 jt | 1.2× | 0.1× | 8.7 bln | 0 | **GO** |
 | JEV-005 | Deteksi perabot dari simbol denah | terkirim | 0.45 | 20,3 jt | 19,5 jt | 1.1× | 0.0× | 10.0 bln | 482 | **GO** |
+| JEV-139 | Percantik foto dengan AI di mode jalan (Enhance foto) | terkirim | 0.65 | 0,6 jt | 0,8 jt | 0.5× | -0.2× ⚠ | 12.9 bln | ∞ | **DEFER** |
 | JEV-042 | Modularisasi index.html (12k baris → modul + build) | usulan | 0.45 | 4,1 jt | 7,8 jt | 0.0× | -0.5× ⚠ | 23.1 bln | ∞ | **DEFER** |
 | JEV-043 | Impor Gaussian splat (.splat/.ply) | usulan | 0.30 | 4,7 jt | 10,7 jt | -0.1× | -0.6× ⚠ | 28.1 bln | 1.127 | **NO-GO** |
 | JEV-017 | Animasi api perapian | terkirim | 0.30 | 0,5 jt | 2 jt | -0.5× | -0.8× ⚠ | 61.4 bln | 2.064 | **NO-GO** |
@@ -250,6 +251,7 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 - **JEV-123 Model unggahan: berbaring, perapian & api unggun; kartu NPC Dimas dihapus; NPC jarang berjoget — GO.** ROI 1.2× ≥ 1, payback 9.7 bln.
 - **JEV-137 Galeri adegan: terbitkan adegan ke halaman awal, masuk & ajak teman — GO.** ROI 1.2× ≥ 1, payback 8.7 bln.
 - **JEV-005 Deteksi perabot dari simbol denah — GO.** ROI 1.1× ≥ 1, payback 10.0 bln. _Pengguna beberapa kali melaporkan hasil "masih ngaco" → peluang diturunkan ke 0,45. Akurasi uji: 88/97 simbol benar pada 5 denah uji._
+- **JEV-139 Percantik foto dengan AI di mode jalan (Enhance foto) — DEFER.** ROI 0.54 < 1; payback 13 bln.
 - **JEV-042 Modularisasi index.html (12k baris → modul + build) — DEFER.** ROI 0.04 < 1; payback 23 bln. _lainRpPerTahun = ±60 jam pemeliharaan/tahun yang dihemat × tarif._
 - **JEV-043 Impor Gaussian splat (.splat/.ply) — NO-GO.** ROI -0.11 < 0 — nilai harapan lebih kecil dari biaya.
 - **JEV-017 Animasi api perapian — NO-GO.** ROI -0.52 < 0 — nilai harapan lebih kecil dari biaya.
@@ -259,10 +261,11 @@ Ambang: **GO** bila ROI ≥ 1 (manfaat ≥ 2× biaya), payback ≤ 12 bulan, pel
 
 ## Pelajaran retrospektif
 
-Fitur yang **sudah dibangun** tetapi tidak lolos gerbang ROI bila dinilai sejak awal (3):
+Fitur yang **sudah dibangun** tetapi tidak lolos gerbang ROI bila dinilai sejak awal (4):
 
 - JEV-015 Audio: CD, kaset, piringan hitam — NO-GO; biaya 4,8 jt vs EV 0,5 jt/tahun.
 - JEV-017 Animasi api perapian — NO-GO; biaya 2 jt vs EV 0,5 jt/tahun.
 - JEV-018 Piano yang bisa dimainkan — NO-GO; biaya 3,9 jt vs EV 0,1 jt/tahun.
+- JEV-139 Percantik foto dengan AI di mode jalan (Enhance foto) — DEFER; biaya 0,8 jt vs EV 0,6 jt/tahun.
 
-Total biaya 2 tahun pada item itu: **10,7 jt** — kapasitas yang semestinya bisa dialihkan ke item GO di backlog.
+Total biaya 2 tahun pada item itu: **11,5 jt** — kapasitas yang semestinya bisa dialihkan ke item GO di backlog.

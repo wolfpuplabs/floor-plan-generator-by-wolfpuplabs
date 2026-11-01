@@ -1,3 +1,13 @@
 {
-  "rewrites": [{ "source": "/l/:id", "destination": "/api/lihat?id=:id" }]
+  "rewrites": [
+    {
+      "source": "/l/:id",
+      "destination": "/api/lihat?id=:id"
+    }
+  ],
+  "functions": {
+    "api/foto.js": {
+      "maxDuration": 60
+    }
+  }
 }

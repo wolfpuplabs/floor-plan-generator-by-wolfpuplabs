@@ -6777,6 +6777,64 @@
     "target": "0",
     "tinjau": "2026-12-25"
    }
+  },
+  {
+   "id": "JEV-139",
+   "judul": "Percantik foto dengan AI di mode jalan (Enhance foto)",
+   "status": "terkirim",
+   "kelas": "fitur",
+   "J": {
+    "masalah": "Pengguna ingin tampilan fotoreal dari adegannya. EdenLive (render generatif real-time) butuh server GPU 80 GB / RTX 5090 per pengguna, jadi langkah pertama yang disepakati: satu tangkapan mode jalan diubah jadi foto fotoreal lewat layanan AI gambar, tanpa server GPU sendiri.",
+    "bukti": "permintaan-pengguna",
+    "sumberBukti": "pesan pengguna 2026-11-01: \"https://github.com/VAST-AI-Research/EdenLive.git buat realtime looks di enhance make ini gimana?\" lalu \"enhance foto dulu aja\"",
+    "alternatif": [
+     "EdenLive real-time (server GPU sendiri, biaya per jam per pengguna)",
+     "EdenLive video offline (antrean GPU)"
+    ]
+   },
+   "E": {
+    "peluang": 0.7,
+    "biaya": {
+     "bangunJam": 2.5,
+     "ujiJam": 1,
+     "pemeliharaanJamPerTahun": 1,
+     "lainRp": 0
+    },
+    "manfaat": {
+     "risiko": {
+      "pInsidenPerTahun": 0.7,
+      "dampakRp": 2000000,
+      "reduksi": 0.7
+     }
+    }
+   },
+   "guardrail": {
+    "keamanan": {
+     "status": "lolos",
+     "catatan": "kunci API hanya di env Vercel; bukan proksi bebas (prompt tetap dari daftar gaya, tanpa teks bebas); masuk hanya JPEG ≤ 2 MB, keluar hanya PNG/JPEG/WebP sungguhan; asal harus situs ini; 5 permintaan/menit/IP; FOTO_KUNCI opsional (sidik SHA-256, waktu tetap)"
+    },
+    "privasi": {
+     "status": "lolos",
+     "catatan": "foto dikirim ke penyedia AI pilihan pemilik situs — panel memberi tahu sebelum memproses; tidak disimpan di server Plan23D"
+    },
+    "lisensi": {
+     "status": "lolos",
+     "catatan": "ikon sparkles Lucide (ISC, lisensi sudah disertakan); hasil gambar mengikuti ketentuan penyedia (Google / OpenAI)"
+    },
+    "kinerja": {
+     "status": "lolos",
+     "catatan": "tangkapan ≤ 1536 px JPEG ≤ 1,8 MB; modul kecil dimuat setelah halaman siap; fungsi maks. 60 dtk"
+    },
+    "aksesibilitas": {
+     "status": "lolos",
+     "catatan": "tombol berlabel, panel berperan dialog, status aria-live, tombol 'Sebelum' selain tekan lama"
+    }
+   },
+   "metrik": {
+    "nama": "foto AI tersimpan / dibagikan",
+    "target": "≥ 20 foto dalam 2 bulan",
+    "tinjau": "2027-01-01"
+   }
   }
  ]
 }
