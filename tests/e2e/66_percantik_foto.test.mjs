@@ -72,12 +72,32 @@ export const tes = {
       return new Response(Buffer.from(PNG, 'base64'), { headers: { 'content-type': 'image/png' } }); };
     const ENVC = { GEMINI_API_KEY: 'g', CLOUDFLARE_ACCOUNT_ID: AKUN, CLOUDFLARE_API_TOKEN: 'cf-rahasia' };
     let cfBadan = null;
-    const Hc = api.buatHandler(() => ENVC, async (u, o) => { if (u.includes('cloudflare')) cfBadan = { u, o, b: JSON.parse(o.body) }; return cf(u, o); });
+    const Hc = api.buatHandler(() => ENVC, async (u, o) => { if (u.includes('cloudflare')) cfBadan = { u, o }; return cf(u, o); });
     const rc = await panggil(Hc, 'POST', { gambar: JSOF, gaya: 'siang' }, { 'x-forwarded-for': '6.6.6.1' });
     assert.equal(rc.status, 200); assert.equal(rc.j.penyedia, 'cloudflare'); assert.equal(rc.j.gambar, 'data:image/png;base64,' + PNG);
-    assert.equal(cfBadan.u, `https://api.cloudflare.com/client/v4/accounts/${AKUN}/ai/run/@cf/runwayml/stable-diffusion-v1-5-img2img`);
+    // model pertama: FLUX.2 [klein] — multipart dengan gambar acuan, ukuran kelipatan 16 (sisi panjang 1024)
+    assert.equal(cfBadan.u, `https://api.cloudflare.com/client/v4/accounts/${AKUN}/ai/run/@cf/black-forest-labs/flux-2-klein-4b`);
     assert.equal(cfBadan.o.headers.authorization, 'Bearer cf-rahasia');
-    assert.deepEqual([cfBadan.b.width, cfBadan.b.height, cfBadan.b.strength, cfBadan.b.image.length, cfBadan.b.prompt], [768, 480, 0.45, sof.length, api.promptSD('siang')]);
+    const fb = cfBadan.o.body;
+    assert.deepEqual([fb.get('prompt'), fb.get('input_image_0').type, fb.get('input_image_0').size, fb.get('width'), fb.get('height')], [api.prompt('siang'), 'image/jpeg', sof.length, '1024', '640']);
+    // model tidak diizinkan untuk akun ("not allowed", 403) / tidak ada → model berikutnya; SD = JSON image + strength
+    const dicoba = []; let sdBadan = null;
+    const Hm = api.buatHandler(() => ({ CLOUDFLARE_ACCOUNT_ID: AKUN, CLOUDFLARE_API_TOKEN: 't' }), async (u, o) => {
+      const m = u.split('/ai/run/')[1]; dicoba.push(m);
+      if (m !== '@cf/lykon/dreamshaper-8-lcm') return new Response(JSON.stringify({ errors: [{ message: 'AiError: This account is not allowed to access ' + m }] }), { status: 403 });
+      sdBadan = JSON.parse(o.body); return new Response(JSON.stringify({ result: { image: PNG } }));
+    });
+    const rm = await panggil(Hm, 'POST', { gambar: JSOF, gaya: 'senja' }, { 'x-forwarded-for': '6.6.6.5' });
+    assert.equal(rm.status, 200);
+    assert.deepEqual(dicoba, ['@cf/black-forest-labs/flux-2-klein-4b', '@cf/black-forest-labs/flux-2-dev', '@cf/runwayml/stable-diffusion-v1-5-img2img', '@cf/lykon/dreamshaper-8-lcm']);
+    assert.deepEqual([sdBadan.width, sdBadan.height, sdBadan.strength, sdBadan.num_steps, sdBadan.image.length, sdBadan.prompt], [768, 480, 0.45, 8, sof.length, api.promptSD('senja')]);
+    // semua model ditolak → pesan model terakhir; token salah (401) → berhenti di model pertama
+    const H403 = api.buatHandler(() => ({ CLOUDFLARE_ACCOUNT_ID: AKUN, CLOUDFLARE_API_TOKEN: 't' }), async u => new Response(JSON.stringify({ errors: [{ message: 'not allowed ' + u.split('/ai/run/')[1] }] }), { status: 403 }));
+    const r403 = await panggil(H403, 'POST', { gambar: JSOF }, { 'x-forwarded-for': '6.6.6.6' });
+    assert.deepEqual([r403.j.kode, r403.j.pesan], [403, 'not allowed @cf/stabilityai/stable-diffusion-xl-base-1.0']);
+    let n401 = 0;
+    await panggil(api.buatHandler(() => ({ CLOUDFLARE_ACCOUNT_ID: AKUN, CLOUDFLARE_API_TOKEN: 't' }), async () => { n401++; return new Response('{}', { status: 401 }); }), 'POST', { gambar: JSOF }, { 'x-forwarded-for': '6.6.6.7' });
+    assert.equal(n401, 1);
     // FOTO_PENYEDIA=cloudflare: Gemini tidak dicoba; Cloudflare saja di GET juga ai:true
     jalur.length = 0;
     await panggil(api.buatHandler(() => ({ ...ENVC, FOTO_PENYEDIA: 'cloudflare' }), cf), 'POST', { gambar: JSOF }, { 'x-forwarded-for': '6.6.6.2' });
@@ -143,10 +163,10 @@ export const tes = {
     assert.match(unduh.suggestedFilename(), /^Plan23D-AI-\d{8}-\d{6}\.png$/);
     // galat penyedia: sebab yang bisa ditindaklanjuti + pesan asli penyedia
     await page.unroute('**/api/foto');
-    await page.route('**/api/foto', r => r.fulfill({ status: 502, json: { galat: 'penyedia', kode: 429, pesan: 'Quota exceeded, limit: 0' } }));
+    await page.route('**/api/foto', r => r.fulfill({ status: 502, json: { galat: 'penyedia', kode: 429, pesan: 'Quota exceeded, limit: 0', penyedia: 'gemini' } }));
     await page.evaluate(() => [...document.querySelectorAll('#percantik button')].find(b => /Coba lagi/.test(b.textContent)).click());
     await page.waitForFunction(() => /Kuota layanan AI habis/.test(document.querySelector('#percantik .hint').textContent));
-    assert.match(await page.textContent('#percantik .hint small'), /Quota exceeded, limit: 0/);
+    assert.equal(await page.textContent('#percantik .hint small'), 'gemini: Quota exceeded, limit: 0');
     await page.evaluate(() => exitFPS());
   },
 };

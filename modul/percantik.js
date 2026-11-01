@@ -121,12 +121,13 @@
     const k = +j.kode || 0;
     info.textContent = '';
     const sebab = k === 429 ? 'Kuota layanan AI habis atau belum aktif — aktifkan billing Gemini, atau pasang Cloudflare Workers AI (gratis) sebagai cadangan.'
-      : k === 401 || k === 403 ? 'Kunci API ditolak atau belum punya izin — periksa GEMINI_API_KEY / OPENAI_API_KEY di Vercel.'
+      : k === 401 || k === 403 ? 'Kunci API ditolak atau belum punya izin — periksa GEMINI_API_KEY / OPENAI_API_KEY / CLOUDFLARE_API_TOKEN di Vercel.'
         : k === 404 ? 'Model AI gambar tidak ditemukan — isi GEMINI_IMAGE_MODEL di Vercel dengan model gambar yang tersedia.'
           : k === 400 ? 'Layanan AI menolak permintaan (kunci API tidak sah atau wilayah tidak didukung).'
             : 'Layanan AI sedang bermasalah — coba lagi nanti.';
     info.appendChild(el('span', null, sebab));
-    if (j.pesan) { info.appendChild(document.createElement('br')); info.appendChild(el('small', null, String(j.pesan).slice(0, 240))); }
+    // nama penyedia di depan pesan aslinya (pesan Cloudflare dulu tampil di bawah saran kunci Gemini / OpenAI)
+    if (j.pesan) { info.appendChild(document.createElement('br')); info.appendChild(el('small', null, (/^(gemini|openai|cloudflare)$/.test(j.penyedia) ? j.penyedia + ': ' : '') + String(j.pesan).slice(0, 240))); }
   }
 
   function simpanHasil() {
